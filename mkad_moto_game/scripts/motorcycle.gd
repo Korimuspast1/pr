@@ -1,9 +1,11 @@
 extends CharacterBody3D
 ## Motorcycle — управляемый игроком мотоцикл.
 ## Аркадная модель движения (не полноценная физика колёс, но с ускорением,
-## торможением, инерцией в поворотах и наклоном корпуса) + процедурная,
-## полностью "не кубическая" 3D-модель байка, собранная из цилиндров,
-## сфер и капсул прямо в коде.
+## торможением, инерцией в поворотах и наклоном корпуса).
+## 3D-модель байка — готовый (не процедурный) GLB-меш "vehicle-motorcycle"
+## из официального Kenney "Starter Kit: Racing" (CC0), см. CREDITS.md.
+## Наездник поверх модели по-прежнему собран из капсул/сфер вручную —
+## в комплекте Kenney фигуры райдера нет.
 
 signal crashed_into_traffic
 
@@ -15,8 +17,12 @@ const ENGINE_BRAKE: float = 3.2
 const HANDBRAKE_DECEL: float = 26.0
 const OFFROAD_DRAG: float = 6.0
 
-const WHEEL_RADIUS: float = 0.33
-const WHEELBASE: float = 1.42
+const MOTO_SCENE_PATH: String = "res://assets/kenney/moto/vehicle-motorcycle.glb"
+const ENGINE_SOUND_PATH: String = "res://assets/audio/engine-motorcycle.ogg"
+const SKID_SOUND_PATH: String = "res://assets/audio/skid.ogg"
+const IMPACT_SOUND_PATH: String = "res://assets/audio/impact.ogg"
+const WHEEL_RADIUS: float = 0.3
+const WHEELBASE: float = 1.514
 
 var speed: float = 0.0            # м/с, со знаком (вперёд +)
 var steer_input: float = 0.0
@@ -31,6 +37,10 @@ var front_fork_pivot: Node3D
 var front_wheel_roll: Node3D
 var headlight: SpotLight3D
 var taillight: OmniLight3D
+var engine_sound: AudioStreamPlayer3D
+var skid_sound: AudioStreamPlayer3D
+var impact_sound: AudioStreamPlayer3D
+var _impact_cooldown: float = 0.0
 
 func _ready() -> void:
 	add_to_group("player")
@@ -45,232 +55,75 @@ func _ready() -> void:
 func _build_collision() -> void:
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(0.75, 1.1, 2.05)
+	box.size = Vector3(0.85, 1.05, 2.3)
 	shape.shape = box
-	shape.position = Vector3(0, 0.55, 0)
+	shape.position = Vector3(0, 0.5, 0.05)
 	add_child(shape)
 
 # ---------------------------------------------------------------------------
-# ПРОЦЕДУРНАЯ 3D-МОДЕЛЬ МОТОЦИКЛА
+# 3D-МОДЕЛЬ МОТОЦИКЛА (готовый GLB-ассет Kenney, CC0) + процедурный наездник
 # ---------------------------------------------------------------------------
-func _add_tube(parent: Node3D, from: Vector3, to: Vector3, radius: float, mat: Material) -> void:
-	var length := from.distance_to(to)
-	if length < 0.001:
-		return
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = radius
-	cyl.bottom_radius = radius
-	cyl.height = length
-	cyl.radial_segments = 10
-	var mi := MeshInstance3D.new()
-	mi.mesh = cyl
-	mi.material_override = mat
-
-	var y_axis := (to - from).normalized()
-	var up_ref := Vector3.UP
-	if abs(y_axis.dot(Vector3.UP)) > 0.98:
-		up_ref = Vector3.RIGHT
-	var x_axis := y_axis.cross(up_ref).normalized()
-	var z_axis := x_axis.cross(y_axis).normalized()
-	mi.transform = Transform3D(Basis(x_axis, y_axis, z_axis), (from + to) * 0.5)
-	parent.add_child(mi)
-
-func _wheel(radius: float, width: float, mat_tire: Material, mat_rim: Material) -> Node3D:
-	var root := Node3D.new()
-	var tire := CylinderMesh.new()
-	tire.top_radius = radius
-	tire.bottom_radius = radius
-	tire.height = width
-	tire.radial_segments = 20
-	var tire_mi := MeshInstance3D.new()
-	tire_mi.mesh = tire
-	tire_mi.material_override = mat_tire
-	tire_mi.rotation_degrees = Vector3(0, 0, 90)
-	root.add_child(tire_mi)
-
-	var rim := CylinderMesh.new()
-	rim.top_radius = radius * 0.55
-	rim.bottom_radius = radius * 0.55
-	rim.height = width + 0.02
-	rim.radial_segments = 12
-	var rim_mi := MeshInstance3D.new()
-	rim_mi.mesh = rim
-	rim_mi.material_override = mat_rim
-	rim_mi.rotation_degrees = Vector3(0, 0, 90)
-	root.add_child(rim_mi)
-	return root
-
 func _build_model() -> void:
-	var mat_body := StandardMaterial3D.new()
-	mat_body.albedo_color = Color(0.78, 0.08, 0.1)
-	mat_body.metallic = 0.55
-	mat_body.roughness = 0.28
-
-	var mat_frame := StandardMaterial3D.new()
-	mat_frame.albedo_color = Color(0.08, 0.08, 0.09)
-	mat_frame.metallic = 0.7
-	mat_frame.roughness = 0.35
-
-	var mat_chrome := StandardMaterial3D.new()
-	mat_chrome.albedo_color = Color(0.85, 0.86, 0.88)
-	mat_chrome.metallic = 1.0
-	mat_chrome.roughness = 0.12
-
-	var mat_tire := StandardMaterial3D.new()
-	mat_tire.albedo_color = Color(0.03, 0.03, 0.03)
-	mat_tire.roughness = 0.9
-
 	var mat_seat := StandardMaterial3D.new()
 	mat_seat.albedo_color = Color(0.04, 0.04, 0.045)
 	mat_seat.roughness = 0.8
 
-	var mat_glass := StandardMaterial3D.new()
-	mat_glass.albedo_color = Color(0.6, 0.75, 0.8, 0.35)
-	mat_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat_glass.metallic = 0.2
-	mat_glass.roughness = 0.05
+	var mat_suit := StandardMaterial3D.new()
+	mat_suit.albedo_color = Color(0.08, 0.08, 0.09)
+	mat_suit.metallic = 0.15
+	mat_suit.roughness = 0.5
 
-	var rear_axle := Vector3(0, WHEEL_RADIUS, -WHEELBASE * 0.5)
-	var front_axle := Vector3(0, WHEEL_RADIUS, WHEELBASE * 0.5)
-	var head_top := Vector3(0, 1.02, WHEELBASE * 0.42)
-	var seat_pivot := Vector3(0, 0.86, -0.30)
-	var swingarm_pivot := Vector3(0, 0.42, -0.28)
-	var engine_center := Vector3(0, 0.5, 0.05)
+	# --- Готовая модель байка Kenney "Starter Kit: Racing" (CC0) ---
+	var moto_scene: PackedScene = load(MOTO_SCENE_PATH)
+	var moto_instance: Node3D = moto_scene.instantiate()
+	model.add_child(moto_instance)
+	# Исходная модель "смотрит" в сторону +Z, а вперёд для CharacterBody3D — это
+	# -Z, поэтому разворачиваем модель на 180°, чтобы фара/вилка были спереди.
+	moto_instance.rotation_degrees.y = 180.0
 
-	# --- Колёса ---
-	rear_wheel_pivot = _wheel(WHEEL_RADIUS, 0.20, mat_tire, mat_chrome)
-	rear_wheel_pivot.position = rear_axle
-	model.add_child(rear_wheel_pivot)
+	rear_wheel_pivot = moto_instance.get_node("wheel-back")
+	front_wheel_roll = moto_instance.get_node("wheel-front")
+	var body_node: Node3D = moto_instance.get_node("body")
+	front_fork_pivot = body_node.get_node("fork")
 
-	front_fork_pivot = Node3D.new()
-	front_fork_pivot.position = front_axle
-	model.add_child(front_fork_pivot)
-
-	front_wheel_roll = _wheel(WHEEL_RADIUS, 0.16, mat_tire, mat_chrome)
-	front_fork_pivot.add_child(front_wheel_roll)
-
-	# --- Рама (трубчатая) ---
-	_add_tube(model, rear_axle, swingarm_pivot, 0.035, mat_frame)
-	_add_tube(model, swingarm_pivot, engine_center, 0.045, mat_frame)
-	_add_tube(model, engine_center, head_top, 0.045, mat_frame)
-	_add_tube(model, seat_pivot, head_top, 0.04, mat_frame)
-	_add_tube(model, seat_pivot, swingarm_pivot, 0.04, mat_frame)
-	_add_tube(model, head_top, front_axle, 0.05, mat_chrome)   # передняя вилка
-	_add_tube(model, head_top + Vector3(0.09, 0, 0), front_axle + Vector3(0.09, 0, 0), 0.035, mat_chrome)
-	_add_tube(model, head_top - Vector3(0.09, 0, 0), front_axle - Vector3(0.09, 0, 0), 0.035, mat_chrome)
-
-	# --- Двигатель ---
-	var engine := MeshInstance3D.new()
-	var eng_box := BoxMesh.new()
-	eng_box.size = Vector3(0.34, 0.32, 0.42)
-	engine.mesh = eng_box
-	engine.material_override = mat_frame
-	engine.position = engine_center
-	model.add_child(engine)
-
-	# --- Бензобак ---
-	var tank := MeshInstance3D.new()
-	var tank_mesh := CapsuleMesh.new()
-	tank_mesh.radius = 0.19
-	tank_mesh.height = 0.62
-	tank.mesh = tank_mesh
-	tank.material_override = mat_body
-	tank.rotation_degrees = Vector3(90, 0, 0)
-	tank.position = Vector3(0, 0.86, 0.18)
-	tank.scale = Vector3(1.0, 1.0, 1.25)
-	model.add_child(tank)
-
-	# --- Сиденье ---
-	var seat := MeshInstance3D.new()
-	var seat_mesh := CapsuleMesh.new()
-	seat_mesh.radius = 0.16
-	seat_mesh.height = 0.6
-	seat.mesh = seat_mesh
-	seat.material_override = mat_seat
-	seat.rotation_degrees = Vector3(90, 0, 0)
-	seat.position = Vector3(0, 0.80, -0.42)
-	seat.scale = Vector3(0.95, 1.0, 1.35)
-	model.add_child(seat)
-
-	# --- Хвост/крыло заднее ---
-	var tail := MeshInstance3D.new()
-	var tail_mesh := BoxMesh.new()
-	tail_mesh.size = Vector3(0.22, 0.12, 0.4)
-	tail.mesh = tail_mesh
-	tail.material_override = mat_body
-	tail.position = Vector3(0, 0.86, -0.72)
-	tail.rotation_degrees = Vector3(-8, 0, 0)
-	model.add_child(tail)
-
-	# --- Фара ---
-	var lamp := MeshInstance3D.new()
-	var lamp_mesh := SphereMesh.new()
-	lamp_mesh.radius = 0.11
-	lamp_mesh.height = 0.2
-	lamp.mesh = lamp_mesh
-	lamp.material_override = mat_chrome
-	lamp.position = Vector3(0, 0.95, WHEELBASE * 0.52)
-	model.add_child(lamp)
-
+	# --- Функциональные источники света (фара / стоп-сигнал) ---
 	headlight = SpotLight3D.new()
-	headlight.position = Vector3(0, 0.95, WHEELBASE * 0.54)
+	headlight.position = Vector3(0, 0.85, 1.25)
 	headlight.rotation_degrees = Vector3(-8, 180, 0)
 	headlight.spot_range = 45.0
 	headlight.spot_angle = 32.0
 	headlight.light_energy = 3.0
 	model.add_child(headlight)
 
-	# --- Ветровое стекло ---
-	var screen := MeshInstance3D.new()
-	var screen_mesh := BoxMesh.new()
-	screen_mesh.size = Vector3(0.36, 0.28, 0.02)
-	screen.mesh = screen_mesh
-	screen.material_override = mat_glass
-	screen.position = Vector3(0, 1.12, WHEELBASE * 0.46)
-	screen.rotation_degrees = Vector3(-24, 0, 0)
-	model.add_child(screen)
-
-	# --- Руль ---
-	var bar_y := 1.02
-	_add_tube(model, Vector3(-0.24, bar_y, front_axle.z - 0.02), Vector3(0.24, bar_y, front_axle.z - 0.02), 0.02, mat_chrome)
-	_add_tube(model, Vector3(0, 0.92, front_axle.z - 0.02), Vector3(0, bar_y, front_axle.z - 0.02), 0.025, mat_chrome)
-	for side in [-1.0, 1.0]:
-		var grip := MeshInstance3D.new()
-		var grip_mesh := CylinderMesh.new()
-		grip_mesh.top_radius = 0.022
-		grip_mesh.bottom_radius = 0.022
-		grip_mesh.height = 0.11
-		grip.mesh = grip_mesh
-		grip.material_override = mat_seat
-		grip.rotation_degrees = Vector3(0, 0, 90)
-		grip.position = Vector3(side * 0.29, bar_y, front_axle.z - 0.02)
-		model.add_child(grip)
-
-	# --- Глушитель ---
-	_add_tube(model, Vector3(0.16, 0.42, -0.05), Vector3(0.22, 0.30, -0.95), 0.065, mat_chrome)
-
-	# --- Задний фонарь ---
-	var mat_tail_light := StandardMaterial3D.new()
-	mat_tail_light.albedo_color = Color(0.9, 0.05, 0.05)
-	mat_tail_light.emission_enabled = true
-	mat_tail_light.emission = Color(1.0, 0.1, 0.1)
-	mat_tail_light.emission_energy_multiplier = 2.0
-	var tail_lamp := MeshInstance3D.new()
-	var tail_lamp_mesh := BoxMesh.new()
-	tail_lamp_mesh.size = Vector3(0.12, 0.06, 0.04)
-	tail_lamp.mesh = tail_lamp_mesh
-	tail_lamp.material_override = mat_tail_light
-	tail_lamp.position = Vector3(0, 0.83, -0.92)
-	model.add_child(tail_lamp)
-
 	taillight = OmniLight3D.new()
-	taillight.position = Vector3(0, 0.83, -0.95)
+	taillight.position = Vector3(0, 0.68, -1.05)
 	taillight.light_color = Color(1, 0.2, 0.2)
 	taillight.omni_range = 2.0
 	taillight.light_energy = 0.6
 	model.add_child(taillight)
 
-	_build_rider(mat_frame, mat_seat)
+	# --- Звук двигателя и юза (готовые CC0-сэмплы Kenney) ---
+	engine_sound = AudioStreamPlayer3D.new()
+	engine_sound.stream = load(ENGINE_SOUND_PATH)
+	engine_sound.unit_size = 8.0
+	engine_sound.autoplay = true
+	engine_sound.volume_db = -15.0
+	model.add_child(engine_sound)
+
+	skid_sound = AudioStreamPlayer3D.new()
+	skid_sound.stream = load(SKID_SOUND_PATH)
+	skid_sound.unit_size = 6.0
+	skid_sound.volume_db = -80.0
+	model.add_child(skid_sound)
+
+	impact_sound = AudioStreamPlayer3D.new()
+	impact_sound.stream = load(IMPACT_SOUND_PATH)
+	impact_sound.unit_size = 8.0
+	model.add_child(impact_sound)
+
+	# В комплекте Kenney нет фигуры райдера — добавляем процедурного
+	# наездника поверх готовой модели байка.
+	_build_rider(mat_suit, mat_seat)
 
 func _build_rider(mat_suit: Material, mat_helmet: Material) -> void:
 	var mat_skin := StandardMaterial3D.new()
@@ -291,7 +144,7 @@ func _build_rider(mat_suit: Material, mat_helmet: Material) -> void:
 	torso_mesh.height = 0.62
 	torso.mesh = torso_mesh
 	torso.material_override = mat_suit
-	torso.position = Vector3(0, 1.08, -0.36)
+	torso.position = Vector3(0, 0.98, -0.34)
 	torso.rotation_degrees = Vector3(28, 0, 0)
 	rider.add_child(torso)
 
@@ -301,7 +154,7 @@ func _build_rider(mat_suit: Material, mat_helmet: Material) -> void:
 	head_mesh.height = 0.27
 	head.mesh = head_mesh
 	head.material_override = mat_helmet_glossy
-	head.position = Vector3(0, 1.42, -0.18)
+	head.position = Vector3(0, 1.33, -0.14)
 	rider.add_child(head)
 
 	var visor := MeshInstance3D.new()
@@ -313,7 +166,7 @@ func _build_rider(mat_suit: Material, mat_helmet: Material) -> void:
 	mat_visor.metallic = 0.8
 	mat_visor.roughness = 0.1
 	visor.material_override = mat_visor
-	visor.position = Vector3(0, 1.40, -0.045)
+	visor.position = Vector3(0, 1.31, -0.01)
 	rider.add_child(visor)
 
 	for side in [-1.0, 1.0]:
@@ -323,8 +176,8 @@ func _build_rider(mat_suit: Material, mat_helmet: Material) -> void:
 		arm_mesh.height = 0.42
 		arm.mesh = arm_mesh
 		arm.material_override = mat_suit
-		arm.position = Vector3(side * 0.22, 1.02, 0.05)
-		arm.rotation_degrees = Vector3(60, 0, side * 12.0)
+		arm.position = Vector3(side * 0.22, 0.98, 0.28)
+		arm.rotation_degrees = Vector3(58, 0, side * 12.0)
 		rider.add_child(arm)
 
 		var leg := MeshInstance3D.new()
@@ -333,7 +186,7 @@ func _build_rider(mat_suit: Material, mat_helmet: Material) -> void:
 		leg_mesh.height = 0.5
 		leg.mesh = leg_mesh
 		leg.material_override = mat_suit
-		leg.position = Vector3(side * 0.16, 0.62, -0.32)
+		leg.position = Vector3(side * 0.18, 0.56, -0.18)
 		leg.rotation_degrees = Vector3(0, 0, side * 18.0)
 		rider.add_child(leg)
 
@@ -399,6 +252,23 @@ func _integrate_motion(delta: float) -> void:
 	var forward := -global_transform.basis.z
 	velocity = forward * speed
 	move_and_slide()
+	_check_traffic_collision()
+
+func _check_traffic_collision() -> void:
+	_impact_cooldown = max(_impact_cooldown - get_physics_process_delta_time(), 0.0)
+	if _impact_cooldown > 0.0:
+		return
+	for i in get_slide_collision_count():
+		var collision := get_slide_collision(i)
+		var other := collision.get_collider()
+		if other is Node and (other as Node).is_in_group("traffic"):
+			var impact_speed: float = abs(speed)
+			impact_sound.volume_db = clamp(remap(impact_speed, 0.0, 20.0, -20.0, 0.0), -20.0, 0.0)
+			impact_sound.play()
+			speed *= 0.4
+			_impact_cooldown = 0.6
+			crashed_into_traffic.emit()
+			break
 
 func _apply_ring_constraints() -> void:
 	var p := global_position
@@ -434,13 +304,38 @@ func _update_visuals(delta: float) -> void:
 	lean_visual = lerp(lean_visual, target_lean, clamp(delta * 6.0, 0.0, 1.0))
 	model.rotation.z = lean_visual * deg_to_rad(28.0)
 
+	# Качение колёс — независимо крутим Euler X, не трогая basis напрямую,
+	# чтобы не конфликтовать с рулением по Y (см. wheel-front ниже).
 	var roll_delta := (speed * delta) / WHEEL_RADIUS
-	rear_wheel_pivot.rotate_x(roll_delta)
-	front_wheel_roll.rotate_x(roll_delta)
+	rear_wheel_pivot.rotation.x += roll_delta
+	front_wheel_roll.rotation.x += roll_delta
+
+	# Руление: синхронно поворачиваем вилку (fork) и переднее колесо по Y.
 	var target_steer_angle: float = clamp(-steer_input, -1.0, 1.0) * deg_to_rad(28.0)
-	front_fork_pivot.rotation.y = lerp(front_fork_pivot.rotation.y, target_steer_angle, clamp(delta * 8.0, 0.0, 1.0))
+	front_fork_pivot.rotation.y = lerp_angle(front_fork_pivot.rotation.y, target_steer_angle, clamp(delta * 8.0, 0.0, 1.0))
+	front_wheel_roll.rotation.y = lerp_angle(front_wheel_roll.rotation.y, target_steer_angle, clamp(delta * 8.0, 0.0, 1.0))
 
 	taillight.light_energy = 1.6 if Input.get_action_strength("brake") > 0.1 or Input.is_action_pressed("handbrake") else 0.4
+
+	_update_audio(delta)
+
+func _update_audio(delta: float) -> void:
+	var throttle := Input.get_action_strength("throttle")
+	var speed_ratio: float = clamp(abs(speed) / (MAX_SPEED_KMH / 3.6), 0.0, 1.0)
+
+	if not engine_sound.playing:
+		engine_sound.play()
+	var target_pitch: float = 0.7 + speed_ratio * 1.6 + throttle * 0.25
+	engine_sound.pitch_scale = lerp(engine_sound.pitch_scale, target_pitch, clamp(delta * 3.0, 0.0, 1.0))
+	engine_sound.volume_db = lerp(-24.0, -6.0, clamp(speed_ratio + throttle * 0.4, 0.0, 1.0))
+
+	var skidding: bool = Input.is_action_pressed("handbrake") or (abs(steer_input) > 0.5 and abs(speed) > 8.0)
+	if skidding:
+		if not skid_sound.playing:
+			skid_sound.play()
+		skid_sound.volume_db = lerp(skid_sound.volume_db, -6.0, clamp(delta * 6.0, 0.0, 1.0))
+	else:
+		skid_sound.volume_db = lerp(skid_sound.volume_db, -80.0, clamp(delta * 4.0, 0.0, 1.0))
 
 func _update_telemetry(delta: float) -> void:
 	Game.report_speed(abs(speed) * 3.6)
