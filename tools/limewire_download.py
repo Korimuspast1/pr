@@ -376,6 +376,11 @@ def download(url: str, out: str, timeout_s: int = 900) -> bool:
                 dl = dli.value
                 log(f"download event: {dl.suggested_filename!r}; saving...")
                 dl.save_as(out)
+                try:
+                    with open(out + ".name", "w", encoding="utf-8") as fh:
+                        fh.write(dl.suggested_filename or "")
+                except Exception:
+                    pass
                 got = True
             except PWTimeout as e:
                 log(f"attempt {which}: no download ({e})")

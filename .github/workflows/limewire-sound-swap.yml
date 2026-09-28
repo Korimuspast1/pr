@@ -196,19 +196,64 @@ jobs:
               print()
           PY
 
-      - name: Dry-run the swap
+      - name: Analyse both mods (generic report)
+        continue-on-error: true
         run: |
           python tools/swap_mod_sounds.py mods/donor.zip mods/target.zip \
-            --strategy "${{ steps.p.outputs.strategy }}" ${{ steps.p.outputs.extra }} \
+            --strategy "${{ steps.p.outputs.strategy }}" --recurse-zips \
             --dry-run --report out/plan.json | tee out/dryrun.txt
 
-      - name: Build the patched mod
+      - name: Transplant the engine sound (BeamNG-aware)
+        id: build
         run: |
-          python tools/swap_mod_sounds.py mods/donor.zip mods/target.zip \
-            -o "out/mod2_with_mod1_sounds.zip" \
-            --strategy "${{ steps.p.outputs.strategy }}" ${{ steps.p.outputs.extra }} \
-            --report out/report.json | tee out/result.txt
+          DN=$(cat mods/mod1_donor.bin.name 2>/dev/null || echo "mod1.zip")
+          TN=$(cat mods/mod2_target.bin.name 2>/dev/null || echo "mod2.zip")
+          DS="${DN%.zip}"; TS="${TN%.zip}"
+          OUT="out/${TS}_with_${DS}_sounds.zip"
+          echo "out=$OUT" >> "$GITHUB_OUTPUT"
+          echo "building $OUT"
+          if python tools/beamng_engine_swap.py mods/donor.zip mods/target.zip \
+               -o "$OUT" --with-exhaust --report out/report.json | tee out/result.txt; then
+            echo "mode=beamng" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::BeamNG-aware swap failed, falling back to the generic file swap"
+            python tools/swap_mod_sounds.py mods/donor.zip mods/target.zip \
+              -o "$OUT" --strategy "${{ steps.p.outputs.strategy }}" \
+              ${{ steps.p.outputs.extra }} --report out/report.json | tee out/result.txt
+            echo "mode=generic" >> "$GITHUB_OUTPUT"
+          fi
           ls -la out/
+
+      - name: Verify the built mod
+        run: |
+          python - "${{ steps.build.outputs.out }}" <<'PY' | tee out/verify.txt
+          import sys, zipfile, posixpath
+          sys.path.insert(0, "tools")
+          import beamng_engine_swap as B
+          z = zipfile.ZipFile(sys.argv[1]); names = set(z.namelist())
+          bad = z.testzip()
+          print("archive integrity:", bad or "OK")
+          assert not bad
+          nblend = 0; missing_total = 0
+          for n in sorted(names):
+              if n.lower().endswith(".sfxblend2d.json"):
+                  nblend += 1
+                  b = B.parse_jsonc(z.read(n).decode("utf-8", "replace"))
+                  paths = B.sample_paths(b)
+                  missing = [p for p in paths if p not in names]
+                  missing_total += len(missing)
+                  print(f"blend {n}: {len(paths)} samples, {len(missing)} missing")
+                  for m in missing[:5]:
+                      print("   MISSING:", m)
+          nj = 0
+          for n in sorted(names):
+              if n.lower().endswith(".jbeam"):
+                  B.parse_jsonc(z.read(n).decode("utf-8", "replace")); nj += 1
+          print(f"jbeam files parsed OK: {nj}")
+          print(f"blends checked: {nblend}, dangling sample refs: {missing_total}")
+          assert missing_total == 0, "a blend points at a sample that is not in the zip"
+          print("VERIFY OK")
+          PY
 
       - name: Upload everything as an artifact
         if: always()
@@ -230,14 +275,16 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -rf delivery
           mkdir -p delivery
-          cp out/mod2_with_mod1_sounds.zip delivery/
-          for f in report.json result.txt dryrun.txt inventory.txt; do
+          cp "${{ steps.build.outputs.out }}" delivery/
+          for f in report.json result.txt dryrun.txt inventory.txt verify.txt; do
             cp "out/$f" delivery/ 2>/dev/null || true
           done
-          git add -f delivery/
+          ls -la delivery/
+          git add -A delivery/
           git diff --cached --quiet && { echo "nothing to commit"; exit 0; }
-          git commit -m "Deliver mod 2 with mod 1 sounds (built by CI) [skip ci]"
+          git commit -m "Deliver mod 2 with mod 1 engine sound (${{ steps.build.outputs.mode }}) [skip ci]"
           for i in 1 2 3; do
             git pull --rebase origin "${{ github.ref_name }}" \
               && git push origin "HEAD:${{ github.ref_name }}" && exit 0
