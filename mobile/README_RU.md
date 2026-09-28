@@ -1,56 +1,64 @@
-# CustomProfileMobile для Discord Android
+# CustomProfileMobile v2 для Discord Android
 
-Это мобильный порт CustomProfile под Vendetta-compatible моды Discord Android:
+Мобильный порт CustomProfile под Vendetta-compatible моды Discord Android:
 
 - Revenge
 - Bunny
-- Vendetta/Pyoncord-совместимые загрузчики
+- Vendetta / Pyoncord-совместимые загрузчики
 
 Плагин **local-only**: изменения профиля видишь только ты на своём телефоне. Он не просит Discord token и ничего не отправляет на сервер.
 
 ## Установка на Android
 
-Рекомендую вариант через **Revenge Manager**, потому что это ближе всего к “Vencord на телефоне”.
+Рекомендую **Revenge Manager**.
 
 1. Установи Revenge Manager / Bunny Manager.
-2. Установи через него Discord.
+2. Через него установи модифицированный Discord.
 3. Открой Discord → Settings → Plugins.
 4. Нажми `+` / Install plugin.
 5. Вставь URL плагина:
 
 ```text
-https://cdn.jsdelivr.net/gh/Korimuspast1/pr@24663df2b81ad7b20481867362c4b07c11396c3b/mobile/dist/custom-profile
+https://cdn.jsdelivr.net/gh/Korimuspast1/pr@arena/01a0e825-pr/mobile/dist/custom-profile
 ```
 
 Если загрузчик просит прямую ссылку на manifest:
 
 ```text
-https://cdn.jsdelivr.net/gh/Korimuspast1/pr@24663df2b81ad7b20481867362c4b07c11396c3b/mobile/dist/custom-profile/manifest.json
+https://cdn.jsdelivr.net/gh/Korimuspast1/pr@arena/01a0e825-pr/mobile/dist/custom-profile/manifest.json
 ```
 
 Raw GitHub manifest:
 
 ```text
-https://raw.githubusercontent.com/Korimuspast1/pr/refs/heads/arena/01a0e825-pr/mobile/dist/custom-profile/manifest.json
+https://raw.githubusercontent.com/Korimuspast1/pr/arena/01a0e825-pr/mobile/dist/custom-profile/manifest.json
 ```
 
-## Что умеет первая версия
+## Что добавлено в v2
 
-- локально менять username/display name;
-- локально менять bio/pronouns в профиле;
-- локально подменять аватар по URL;
-- локально подменять баннер по URL;
-- локально задавать profile colors;
-- локально симулировать Nitro там, где мобильный Discord читает `premiumType`;
-- добавлять несколько фейковых бейджей только для твоего отображения.
+- предпросмотр профиля в настройках;
+- пресеты: Nitro / Staff / Anime / Dark;
+- больше бейджей;
+- Nitro уровни;
+- Boost уровни;
+- avatar decorations;
+- custom decoration URL;
+- profile effects / custom effect ID;
+- best-effort clan tag / nameplate;
+- best-effort fake Orbs Balance;
+- fake connections до 3 штук;
+- импорт/экспорт профиля JSON;
+- 3 слота профилей;
+- локальные override-ы для других пользователей;
+- защита от дублей бейджей.
 
 ## Ограничения
 
 - Другие люди это не увидят.
-- Это не полный порт Vencord: мобильный Discord работает на React Native, а Vencord — на Desktop/Electron.
+- Это не полноценный Vencord APK: мобильный Discord работает на React Native, а Vencord — на Desktop/Electron.
+- Nameplate, Orbs Balance и Profile Effects зависят от текущей версии Discord Android и могут работать не на всех сборках.
 - После обновлений Discord некоторые патчи могут перестать работать.
 - Клиентские моды Discord могут нарушать ToS Discord — используй на свой риск.
-
 
 ## Почему не один готовый Discord APK?
 
