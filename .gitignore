@@ -1,0 +1,4 @@
+# Mod archives worked on locally - keep large binaries out of git
+mods/
+*.zip
+!tools/**/*.zip
