@@ -387,10 +387,11 @@ function patchUser(user: any) {
         };
         overrides.clan = { ...(user.clan ?? {}), tag: clanTag, identityEnabled: true };
     }
-    if (nameplateText) {
-        overrides.nameplate = { label: nameplateText, text: nameplateText };
-        overrides.nameplateText = nameplateText;
-    }
+    // Do NOT inject user.nameplate here. Discord Android expects an internal
+    // nameplate asset object with palette metadata; a handmade object crashes
+    // NameplateInner/getBackgroundGradientColors on current builds. The text is
+    // still used as a safe local note in the profile bio below.
+    void nameplateText;
 
     if (!Object.keys(overrides).length) return user;
 
@@ -425,10 +426,14 @@ function patchProfile(profile: any) {
     const nitro = NITRO_LEVELS[nitroIdx];
     const boost = BOOST_LEVELS[boostIdx];
 
+    const safeBioLines = [String(config!.bio || "").trim()];
+    if (extraNote) safeBioLines.push(extraNote);
+    if (String(config!.nameplateText || "").trim()) safeBioLines.push(`Nameplate: ${String(config!.nameplateText).trim()}`);
+    if (orbsBalance >= 0) safeBioLines.push(`Orbs Balance: ${orbsBalance}`);
+
     const overrides: Record<string, any> = {};
-    if (config!.bio || extraNote) {
-        overrides.bio = [String(config!.bio || ""), extraNote ? `\n${extraNote}` : ""].join("").trim();
-    }
+    const safeBio = safeBioLines.filter(Boolean).join("\n").trim();
+    if (safeBio) overrides.bio = safeBio;
     if (config!.pronouns) overrides.pronouns = String(config!.pronouns);
     if (primary != null) {
         overrides.accentColor = primary;
@@ -802,12 +807,12 @@ function Settings() {
                 <FormInput title="" placeholder="effect id" value={String(storage.customEffectId ?? "")} onChange={(v: string) => { storage.customEffectId = v; }} />
             </FormSection>
 
-            <FormSection title="Nameplate / clan / orbs">
+            <FormSection title="Clan / local note / orbs">
                 <Text style={hintStyle}>Clan tag (best-effort)</Text>
                 <FormInput title="" placeholder="TAG" value={String(storage.clanTag ?? "")} onChange={(v: string) => { storage.clanTag = v.slice(0, 8); }} />
-                <Text style={hintStyle}>Nameplate text (best-effort)</Text>
+                <Text style={hintStyle}>Nameplate text (safe mode: shown as profile note)</Text>
                 <FormInput title="" placeholder="Custom nameplate" value={String(storage.nameplateText ?? "")} onChange={(v: string) => { storage.nameplateText = v; }} />
-                <Text style={hintStyle}>Fake Orbs Balance (best-effort)</Text>
+                <Text style={hintStyle}>Fake Orbs Balance (best-effort + bio fallback)</Text>
                 <FormInput title="" placeholder="2170" value={String(storage.orbsBalance ?? "")} onChange={(v: string) => { storage.orbsBalance = v.replace(/[^0-9]/g, ""); }} />
             </FormSection>
 
