@@ -147,6 +147,7 @@ jobs:
           mkdir -p diagnostics
           rm -rf diagnostics/*
           cp mods/*.png            diagnostics/ 2>/dev/null || true
+          cp mods/*.jpg            diagnostics/ 2>/dev/null || true
           cp mods/*.html           diagnostics/ 2>/dev/null || true
           cp mods/*.ui.txt         diagnostics/ 2>/dev/null || true
           cp mods/*.network.log    diagnostics/ 2>/dev/null || true
@@ -156,7 +157,7 @@ jobs:
           ls -la diagnostics/ || true
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f diagnostics/ || true
+          git add -A diagnostics/ || true
           if git diff --cached --quiet; then
             echo "no diagnostics to commit"
           else
@@ -217,6 +218,7 @@ jobs:
           path: |
             out/
             mods/*.png
+            mods/*.jpg
             mods/*.html
             mods/*.txt
             mods/*.log
