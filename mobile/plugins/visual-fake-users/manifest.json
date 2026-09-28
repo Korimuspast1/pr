@@ -1,0 +1,7 @@
+{
+  "name": "VisualFakeUsers",
+  "description": "Local-only fake users for Discord Android: visual test accounts in member list/profile with custom ID, avatar, roles, status and bio.",
+  "authors": [{ "name": "Arena port", "id": "0" }],
+  "main": "src/index.tsx",
+  "vendetta": { "icon": "ic_add_friend" }
+}
