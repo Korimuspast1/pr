@@ -1,4 +1,5 @@
-# Mod archives worked on locally - keep large binaries out of git
-mods/
-*.zip
-!tools/**/*.zip
+# Local mod archives - keep large binaries out of git.
+# The job descriptor and the readme are tracked; everything else here is not.
+mods/*
+!mods/README.md
+!mods/job.json

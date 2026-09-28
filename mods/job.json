@@ -1,0 +1,7 @@
+{
+  "donor_url":  "https://limewire.com/d/tAoZ9#dkMNhZe4Zp",
+  "target_url": "https://limewire.com/d/WMi61#kifSwwgP2U",
+  "strategy":   "basename",
+  "extra_args": "--inject-unmatched --recurse-zips",
+  "_note": "donor = Yamaha_YZF-R15_earlybeta.zip (sounds come FROM here); target = Motocross_motorcycle.zip (sounds are replaced IN here). Editing this file re-runs the CI job."
+}
