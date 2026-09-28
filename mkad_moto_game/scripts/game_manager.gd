@@ -39,21 +39,21 @@ signal lap_completed(lap_number: int)
 # ---------------------------------------------------------------------------
 
 ## Точка на окружности заданного радиуса под углом theta (XZ-плоскость).
-static func ring_point(theta: float, radius: float) -> Vector3:
+func ring_point(theta: float, radius: float) -> Vector3:
 	return Vector3(cos(theta) * radius, 0.0, sin(theta) * radius)
 
 ## Касательная (направление движения) в точке кольца.
 ## direction: 1 = против часовой (увеличение theta), -1 = по часовой.
-static func ring_tangent(theta: float, direction: int) -> Vector3:
+func ring_tangent(theta: float, direction: int) -> Vector3:
 	var t := Vector3(-sin(theta), 0.0, cos(theta))
 	return t.normalized() * sign(direction)
 
 ## Радиальный угол точки в мировых координатах XZ.
-static func angle_of(pos: Vector3) -> float:
+func angle_of(pos: Vector3) -> float:
 	return atan2(pos.z, pos.x)
 
 ## Расстояние от центра кольца (по плоскости XZ).
-static func radius_of(pos: Vector3) -> float:
+func radius_of(pos: Vector3) -> float:
 	return Vector2(pos.x, pos.z).length()
 
 func reset_player_stats() -> void:

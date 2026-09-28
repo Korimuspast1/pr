@@ -81,10 +81,30 @@ func _build_model() -> void:
 	# -Z, поэтому разворачиваем модель на 180°, чтобы фара/вилка были спереди.
 	moto_instance.rotation_degrees.y = 180.0
 
-	rear_wheel_pivot = moto_instance.get_node("wheel-back")
-	front_wheel_roll = moto_instance.get_node("wheel-front")
-	var body_node: Node3D = moto_instance.get_node("body")
-	front_fork_pivot = body_node.get_node("fork")
+	# Импортированный glTF оборачивает узлы модели в дополнительный корневой
+	# узел (по имени сцены), поэтому ищем "wheel-back"/"wheel-front"/"body"/
+	# "fork" рекурсивно по всему поддереву, а не как прямых потомков —
+	# это устойчиво к точной глубине вложенности после импорта в Godot.
+	rear_wheel_pivot = moto_instance.find_child("wheel-back", true, false) as Node3D
+	front_wheel_roll = moto_instance.find_child("wheel-front", true, false) as Node3D
+	var body_node: Node3D = moto_instance.find_child("body", true, false) as Node3D
+	if body_node:
+		front_fork_pivot = body_node.find_child("fork", true, false) as Node3D
+	# Защита: если формат импорта вдруг изменится и узлы не найдутся —
+	# не падаем с ошибкой null, а используем пустые узлы-заглушки, чтобы
+	# анимация руля/колёс просто ничего не вращала.
+	if rear_wheel_pivot == null:
+		push_warning("motorcycle.gd: узел 'wheel-back' не найден в GLB, использую заглушку")
+		rear_wheel_pivot = Node3D.new()
+		moto_instance.add_child(rear_wheel_pivot)
+	if front_wheel_roll == null:
+		push_warning("motorcycle.gd: узел 'wheel-front' не найден в GLB, использую заглушку")
+		front_wheel_roll = Node3D.new()
+		moto_instance.add_child(front_wheel_roll)
+	if front_fork_pivot == null:
+		push_warning("motorcycle.gd: узел 'fork' не найден в GLB, использую заглушку")
+		front_fork_pivot = Node3D.new()
+		moto_instance.add_child(front_fork_pivot)
 
 	# --- Функциональные источники света (фара / стоп-сигнал) ---
 	headlight = SpotLight3D.new()
@@ -125,7 +145,7 @@ func _build_model() -> void:
 	# наездника поверх готовой модели байка.
 	_build_rider(mat_suit, mat_seat)
 
-func _build_rider(mat_suit: Material, mat_helmet: Material) -> void:
+func _build_rider(mat_suit: Material, _mat_seat: Material) -> void:
 	var mat_skin := StandardMaterial3D.new()
 	mat_skin.albedo_color = Color(0.82, 0.66, 0.55)
 

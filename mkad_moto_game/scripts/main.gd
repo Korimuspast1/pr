@@ -87,7 +87,7 @@ func _spawn_player() -> Node3D:
 	bike.look_at(bike.global_position + tangent, Vector3.UP)
 	return bike
 
-func _spawn_camera(player: Node3D) -> void:
+func _spawn_camera(_player: Node3D) -> void:
 	var rig := Node3D.new()
 	rig.name = "ChaseCamera"
 	rig.set_script(load("res://scripts/chase_camera.gd"))

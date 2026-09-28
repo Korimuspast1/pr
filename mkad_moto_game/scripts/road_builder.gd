@@ -160,8 +160,8 @@ func _build_lane_markings() -> void:
 			var theta := TAU * float(i) / float(count)
 			var pos := Vector3(cos(theta) * r, 0.08, sin(theta) * r)
 			var tangent := Vector3(-sin(theta), 0.0, cos(theta))
-			var basis := Basis.looking_at(tangent, Vector3.UP)
-			mm.set_instance_transform(i, Transform3D(basis, pos))
+			var inst_basis := Basis.looking_at(tangent, Vector3.UP)
+			mm.set_instance_transform(i, Transform3D(inst_basis, pos))
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
 		mmi.material_override = white if dashed else white
@@ -210,6 +210,20 @@ func _find_meshinstance(node: Node) -> MeshInstance3D:
 			return r
 	return null
 
+## Composed local transform from "root" down to "target" by multiplying
+## each Node3D's own .transform along the parent chain. Используем это
+## вместо .global_transform, потому что инстанс ассета ещё не добавлен
+## в дерево сцены (global_transform в этом случае недоступен и Godot
+## печатает ошибку "!is_inside_tree()").
+func _local_transform_between(root: Node, target: Node) -> Transform3D:
+	var xform := Transform3D.IDENTITY
+	var n := target
+	while n != null and n != root:
+		if n is Node3D:
+			xform = (n as Node3D).transform * xform
+		n = n.get_parent()
+	return xform
+
 func _load_asset_mesh(path: String) -> Dictionary:
 	var packed: PackedScene = load(path)
 	if packed == null:
@@ -219,7 +233,7 @@ func _load_asset_mesh(path: String) -> Dictionary:
 	var result := {}
 	if mi and mi.mesh:
 		result["mesh"] = mi.mesh
-		result["xform"] = mi.global_transform
+		result["xform"] = _local_transform_between(inst, mi)
 	inst.free()
 	return result
 
@@ -276,7 +290,6 @@ func _build_streetlights() -> void:
 	mmi.multimesh = mm
 	add_child(mmi)
 
-	var light_mat := StandardMaterial3D.new()
 	# Точечные фонари для ночной атмосферы (недорого — общий OmniLight с широким радиусом мог бы
 	# быть тяжёлым при полусотне штук, поэтому используем только каждый 3-й фонарь).
 	for i in range(0, count, 3):
@@ -326,7 +339,6 @@ func _build_gantries() -> void:
 		var theta := TAU * float(g) / float(gantry_count) + 0.35
 		var pos := Game.ring_point(theta, Game.RING_RADIUS)
 		var tangent := Game.ring_tangent(theta, 1)
-		var radial := Vector3(cos(theta), 0, sin(theta))
 
 		var root := Node3D.new()
 		root.position = pos
@@ -352,13 +364,13 @@ func _build_gantries() -> void:
 		beam.position = Vector3(0, clearance, 0)
 		root.add_child(beam)
 
-		var sign := MeshInstance3D.new()
+		var sign_mesh := MeshInstance3D.new()
 		var sign_box := BoxMesh.new()
 		sign_box.size = Vector3(span * 0.55, 1.7, 0.08)
-		sign.mesh = sign_box
-		sign.material_override = sign_mat
-		sign.position = Vector3(0, clearance - 1.0, 0.25)
-		root.add_child(sign)
+		sign_mesh.mesh = sign_box
+		sign_mesh.material_override = sign_mat
+		sign_mesh.position = Vector3(0, clearance - 1.0, 0.25)
+		root.add_child(sign_mesh)
 
 		var label := Label3D.new()
 		label.text = "МКАД"
@@ -444,8 +456,8 @@ func _build_buildings() -> void:
 		var d := _rng.randf_range(16.0, 34.0)
 		var h := _rng.randf_range(18.0, 90.0)
 		var pos := Vector3(cos(theta) * r, h * 0.5, sin(theta) * r)
-		var basis := Basis(Vector3.UP, _rng.randf_range(0, TAU)).scaled(Vector3(w, h, d))
-		mm.set_instance_transform(i, Transform3D(basis, pos))
+		var inst_basis := Basis(Vector3.UP, _rng.randf_range(0, TAU)).scaled(Vector3(w, h, d))
+		mm.set_instance_transform(i, Transform3D(inst_basis, pos))
 
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
@@ -465,8 +477,8 @@ func _build_buildings() -> void:
 		var d := _rng.randf_range(14.0, 26.0)
 		var h := _rng.randf_range(14.0, 60.0)
 		var pos := Vector3(cos(theta) * r, h * 0.5, sin(theta) * r)
-		var basis := Basis(Vector3.UP, _rng.randf_range(0, TAU)).scaled(Vector3(w, h, d))
-		mm2.set_instance_transform(i, Transform3D(basis, pos))
+		var inst_basis := Basis(Vector3.UP, _rng.randf_range(0, TAU)).scaled(Vector3(w, h, d))
+		mm2.set_instance_transform(i, Transform3D(inst_basis, pos))
 	var mmi2 := MultiMeshInstance3D.new()
 	mmi2.multimesh = mm2
 	mmi2.material_override = mat
@@ -541,8 +553,8 @@ func _build_trees() -> void:
 		var r: float = placements[i].y
 		var pos := Vector3(cos(theta) * r, 0.0, sin(theta) * r)
 		var s := _rng.randf_range(0.8, 1.4)
-		var basis := Basis(Vector3.UP, _rng.randf_range(0, TAU)).scaled(Vector3.ONE * s)
-		mm.set_instance_transform(i, Transform3D(basis, pos))
+		var inst_basis := Basis(Vector3.UP, _rng.randf_range(0, TAU)).scaled(Vector3.ONE * s)
+		mm.set_instance_transform(i, Transform3D(inst_basis, pos))
 
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
