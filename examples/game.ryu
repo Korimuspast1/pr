@@ -1,0 +1,39 @@
+; ryuu 1 — карточка игры (модель ApiGame из Ryuu Manifest Tool)
+; Одна строка = один узел. Никаких кавычек, скобок, запятых и двоеточий.
+
+. appid # 2427700
+. name ~ Ryuu Manifest Tool
+. tags
++ ~ steam
++ ~ manifest
++ ~ tools
+. nsfw ? no
+. drm ~ none
+. added_date % 2026-09-28
+. updated_date % 2026-09-28T14:30:00+00:00
+. header_image & https://cdn.example.com/headers/2427700.jpg
+. dlc | list
+
+; список записей: '+' открывает элемент, а следующий '+' сам закрывает
+; предыдущий — разделителей не нужно. Подъём ' закрывает внутренний
+; список branches, чтобы вернуться к элементам depots.
+. depots
++
+. depot_id # 3736911
+. size # 482_130_944
+. checksum $ 5raSLRE=
+. branches
++ ~ public
++ ~ beta
+'
++
+. depot_id # 3736912
+. size # 12_582_912
+. manifest_gid # 1234567890123456789
+'''
+. description
+~~~
+Ryuu Manifest Tool — утилита для работы с манифестами Steam.
+Кавычки "вот такие", слэши \обратные\ и точки с запятой; —
+записываются как есть, без единого escape.
+~~~

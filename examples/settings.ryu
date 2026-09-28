@@ -1,0 +1,28 @@
+; ryuu 1 — настройки приложения (модель Settings)
+; Плоская карта: каждый узел — одна строка, значения размечены рунами типов.
+
+. steam_config_path ~ C:/Program Files (x86)/Steam/config
+. depot_cache_path ~ C:/Program Files (x86)/Steam/depotcache
+. steam_exe_path ~ C:/Program Files (x86)/Steam/steam.exe
+. steamtools_path ~ D:/SteamTools
+. log_to_file ? yes
+. auto_updating_manifests ? yes
+. share_games_with_community ? no
+. mirror_manifests_to_steam_depotcache ? yes
+. auth_key ~ ryuu-2f8c91e4a7b3d5f6
+. game_card_size # 320
+. hook_mode ~ balanced
+. setup_completed ? yes
+. denuvo_terms_accepted ? no
+. show_nsfw ? no
+. cloud_redirect_enabled ? yes
+
+; вложенная секция появляется там же, где и всё остальное —
+; просто продолжайте писать поля глубже, а '~' сам закроет узел
+. mirrors
++ ~ https://mirror-1.example.com
++ ~ https://mirror-2.example.com
+. window
+. width # 1280
+. height # 800
+. maximized ? no

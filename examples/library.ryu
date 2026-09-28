@@ -1,0 +1,21 @@
+; ryuu 1 — библиотека игр: корень-список (замена CSV)
+; Каждая запись — элемент списка, '+' открывает следующую.
+
++
+. appid # 730
+. name ~ Counter-Strike 2
+. size # 31_000_000_000
+. released % 2012-08-21
+. free ? yes
++
+. appid # 570
+. name ~ Dota 2
+. size # 18_000_000_000
+. released % 2013-07-09
+. free ? yes
++
+. appid # 2427700
+. name ~ Ryuu Manifest Tool
+. size # 7_287_296
+. released % 2026-09-28
+. free ? yes

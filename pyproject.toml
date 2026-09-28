@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ryuu-format"
+version = "1.0.0"
+description = "RYU (Ryuu Notation) — текстовый формат структурированных данных: обход дерева курсором, без кавычек, скобок и запятых"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+keywords = ["ryuu", "data-format", "serialization", "config", "manifest"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Markup",
+]
+
+[project.scripts]
+ryuu = "ryuu.__main__:main"
+
+[tool.setuptools]
+packages = ["ryuu"]
