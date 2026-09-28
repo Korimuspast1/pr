@@ -1,0 +1,1 @@
+{"name":"VisualOwnerMode","description":"Local-only visual server owner/admin mode: fake owner, fake roles, and visual permissions. Does not grant real permissions.","authors":[{"name":"Arena port","id":"0"}],"main":"index.js","vendetta":{"icon":"ic_badge_staff"},"hash":"10031410644398f8a5b72b6ff0818c5fc9b0235f0a1ef76fc98c036048bcbadf"}

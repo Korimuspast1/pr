@@ -1,0 +1,7 @@
+{
+  "name": "VisualOwnerMode",
+  "description": "Local-only visual server owner/admin mode: fake owner, fake roles, and visual permissions. Does not grant real permissions.",
+  "authors": [{ "name": "Arena port", "id": "0" }],
+  "main": "src/index.tsx",
+  "vendetta": { "icon": "ic_badge_staff" }
+}
