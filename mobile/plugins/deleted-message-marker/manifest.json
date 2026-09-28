@@ -1,0 +1,14 @@
+{
+  "name": "DeletedMessageMarker",
+  "description": "AyuGram-style local deleted/edited message marker for Discord Android mods. Keeps deleted messages visible in chat with a clear mark.",
+  "authors": [
+    {
+      "name": "Arena port",
+      "id": "0"
+    }
+  ],
+  "main": "src/index.tsx",
+  "vendetta": {
+    "icon": "ic_message_delete"
+  }
+}
