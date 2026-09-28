@@ -9,7 +9,8 @@ name: LimeWire sound swap
 # key lives in the "#..." fragment of the share link, so a plain GET is not
 # enough.
 #
-# Triggered by editing mods/job.json (push) or manually (workflow_dispatch).
+# Diagnostics are committed to diagnostics/ on every run, success or not,
+# because the agent driving this cannot reach the Actions log storage.
 
 on:
   workflow_dispatch:
@@ -74,10 +75,8 @@ jobs:
             STRAT=$(jq -r '.strategy // "basename"' mods/job.json)
             EXTRA=$(jq -r '.extra_args // "--inject-unmatched --recurse-zips"' mods/job.json)
           fi
-          echo "donor=$DONOR"   >> "$GITHUB_OUTPUT"
-          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
-          echo "strategy=$STRAT" >> "$GITHUB_OUTPUT"
-          echo "extra=$EXTRA"   >> "$GITHUB_OUTPUT"
+          { echo "donor=$DONOR"; echo "target=$TARGET";
+            echo "strategy=$STRAT"; echo "extra=$EXTRA"; } >> "$GITHUB_OUTPUT"
           echo "donor  = $DONOR"
           echo "target = $TARGET"
           echo "strategy = $STRAT   extra = $EXTRA"
@@ -97,19 +96,24 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p mods out
+          set -o pipefail
           python tools/limewire_download.py "${{ steps.p.outputs.donor }}" \
-            -o mods/mod1_donor.bin --timeout 900
+            -o mods/mod1_donor.bin --timeout 900 2>&1 | tee out/download_donor.log
 
       - name: Download mod 2 (target)
         continue-on-error: true
         run: |
+          set -o pipefail
           python tools/limewire_download.py "${{ steps.p.outputs.target }}" \
-            -o mods/mod2_target.bin --timeout 900
+            -o mods/mod2_target.bin --timeout 900 2>&1 | tee out/download_target.log
 
       - name: Identify downloads
+        continue-on-error: true
         run: |
-          ls -la mods/ || true
-          python - <<'PY'
+          mkdir -p out
+          ls -la mods/ > out/mods_listing.txt 2>&1 || true
+          cat out/mods_listing.txt
+          python - <<'PY' 2>&1 | tee out/identify.txt
           import os, zipfile, shutil
           for tag, src in (("donor", "mods/mod1_donor.bin"), ("target", "mods/mod2_target.bin")):
               if not os.path.isfile(src):
@@ -117,18 +121,52 @@ jobs:
                   continue
               size = os.path.getsize(src)
               with open(src, "rb") as fh:
-                  magic = fh.read(8)
+                  head = fh.read(512)
               isz = zipfile.is_zipfile(src)
-              print(f"{tag}: {size} bytes  zip={isz}  magic={magic!r}")
-              if isz:
+              print(f"{tag}: {size} bytes  zip={isz}")
+              print(f"{tag}: first bytes = {head[:64]!r}")
+              if not isz:
+                  try:
+                      print(f"{tag}: as text = {head.decode('utf-8','replace')[:400]!r}")
+                  except Exception:
+                      pass
+              else:
                   dst = f"mods/{tag}.zip"
                   shutil.move(src, dst)
                   with zipfile.ZipFile(dst) as z:
                       names = z.namelist()
-                  print(f"{tag}: {len(names)} entries; first 25:")
-                  for n in names[:25]:
+                  print(f"{tag}: {len(names)} entries; first 30:")
+                  for n in names[:30]:
                       print("   ", n)
           PY
+
+      - name: Publish diagnostics to the branch
+        if: always()
+        run: |
+          set -x
+          mkdir -p diagnostics
+          rm -rf diagnostics/*
+          cp mods/*.png            diagnostics/ 2>/dev/null || true
+          cp mods/*.html           diagnostics/ 2>/dev/null || true
+          cp mods/*.ui.txt         diagnostics/ 2>/dev/null || true
+          cp mods/*.network.log    diagnostics/ 2>/dev/null || true
+          cp out/*.log out/*.txt   diagnostics/ 2>/dev/null || true
+          # keep the branch light
+          find diagnostics -type f -size +3M -print -delete || true
+          ls -la diagnostics/ || true
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f diagnostics/ || true
+          if git diff --cached --quiet; then
+            echo "no diagnostics to commit"
+          else
+            git commit -m "CI diagnostics for run ${{ github.run_id }} [skip ci]"
+            for i in 1 2 3; do
+              git pull --rebase origin "${{ github.ref_name }}" \
+                && git push origin "HEAD:${{ github.ref_name }}" && break
+              echo "push retry $i"; sleep 5
+            done
+          fi
 
       - name: Fail early if a download did not produce a zip
         run: |
@@ -148,7 +186,8 @@ jobs:
                   infos = [i for i in z.infolist() if not i.is_dir()]
               print(f"===== {tag}: {p} =====")
               print(f"entries: {len(infos)}")
-              for e, n in Counter(posixpath.splitext(i.filename)[1].lower() for i in infos).most_common():
+              for e, n in Counter(posixpath.splitext(i.filename)[1].lower()
+                                  for i in infos).most_common():
                   print(f"   {e or '(none)':14s} x{n}")
               print("-- full listing --")
               for i in sorted(infos, key=lambda i: i.filename.lower()):
@@ -164,7 +203,6 @@ jobs:
 
       - name: Build the patched mod
         run: |
-          NAME=$(python -c "import sys,os;print(os.path.basename('mods/target.zip'))")
           python tools/swap_mod_sounds.py mods/donor.zip mods/target.zip \
             -o "out/mod2_with_mod1_sounds.zip" \
             --strategy "${{ steps.p.outputs.strategy }}" ${{ steps.p.outputs.extra }} \
@@ -180,11 +218,12 @@ jobs:
             out/
             mods/*.png
             mods/*.html
+            mods/*.txt
             mods/*.log
           retention-days: 7
           if-no-files-found: warn
 
-      - name: Commit the result back to the branch
+      - name: Commit the finished mod back to the branch
         if: success()
         run: |
           git config user.name  "github-actions[bot]"
