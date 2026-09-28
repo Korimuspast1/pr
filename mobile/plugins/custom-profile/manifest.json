@@ -1,0 +1,14 @@
+{
+  "name": "CustomProfileMobile",
+  "description": "Local-only CustomProfile port for Discord Android mods (Revenge/Bunny/Vendetta). Changes are visible only on your phone.",
+  "authors": [
+    {
+      "name": "Arena port",
+      "id": "0"
+    }
+  ],
+  "main": "src/index.tsx",
+  "vendetta": {
+    "icon": "ic_profile_24px"
+  }
+}
