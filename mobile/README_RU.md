@@ -19,13 +19,13 @@
 5. Вставь URL плагина:
 
 ```text
-https://cdn.jsdelivr.net/gh/Korimuspast1/pr@cf14d7012f75d7f3ecb44b1adc24f5eaea36765b/mobile/dist/custom-profile
+https://cdn.jsdelivr.net/gh/Korimuspast1/pr@24663df2b81ad7b20481867362c4b07c11396c3b/mobile/dist/custom-profile
 ```
 
 Если загрузчик просит прямую ссылку на manifest:
 
 ```text
-https://cdn.jsdelivr.net/gh/Korimuspast1/pr@cf14d7012f75d7f3ecb44b1adc24f5eaea36765b/mobile/dist/custom-profile/manifest.json
+https://cdn.jsdelivr.net/gh/Korimuspast1/pr@24663df2b81ad7b20481867362c4b07c11396c3b/mobile/dist/custom-profile/manifest.json
 ```
 
 Raw GitHub manifest:
