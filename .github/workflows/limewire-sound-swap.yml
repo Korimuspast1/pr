@@ -1,0 +1,161 @@
+name: LimeWire sound swap
+
+# Downloads two mod archives from LimeWire share links, moves every sound
+# from the donor mod into the target mod, and commits the result back to
+# this branch. Runs on a GitHub runner because it has unrestricted internet.
+
+on:
+  workflow_dispatch:
+    inputs:
+      donor_url:
+        description: "LimeWire link of mod #1 (sounds are taken FROM here)"
+        required: true
+        type: string
+      target_url:
+        description: "LimeWire link of mod #2 (sounds are replaced IN here)"
+        required: true
+        type: string
+      strategy:
+        description: "Pairing strategy"
+        required: false
+        default: "basename"
+        type: choice
+        options: [basename, tail, mirror]
+      extra_args:
+        description: "Extra flags for swap_mod_sounds.py"
+        required: false
+        default: "--inject-unmatched --recurse-zips"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  swap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Download mod 1 (donor)
+        id: dl1
+        run: |
+          mkdir -p mods out
+          python tools/limewire_download.py "${{ inputs.donor_url }}" -o mods/mod1_donor.bin --timeout 900
+        continue-on-error: true
+
+      - name: Download mod 2 (target)
+        id: dl2
+        run: |
+          python tools/limewire_download.py "${{ inputs.target_url }}" -o mods/mod2_target.bin --timeout 900
+        continue-on-error: true
+
+      - name: Identify downloads
+        id: ident
+        run: |
+          set -x
+          ls -la mods/ || true
+          python - <<'PY'
+          import os, zipfile, shutil, json, pathlib
+          res = {}
+          for tag, src in (("donor","mods/mod1_donor.bin"), ("target","mods/mod2_target.bin")):
+              if not os.path.isfile(src):
+                  print(f"{tag}: MISSING"); res[tag]=None; continue
+              size = os.path.getsize(src)
+              isz = zipfile.is_zipfile(src)
+              print(f"{tag}: {size} bytes, zip={isz}")
+              with open(src,'rb') as fh: magic = fh.read(8)
+              print(f"{tag}: magic={magic!r}")
+              if isz:
+                  dst = f"mods/{tag}.zip"
+                  shutil.move(src, dst); res[tag]=dst
+                  with zipfile.ZipFile(dst) as z:
+                      names = z.namelist()
+                  print(f"{tag}: {len(names)} entries, first 25:")
+                  for n in names[:25]: print("   ", n)
+              else:
+                  res[tag]=None
+          pathlib.Path("out/identify.json").write_text(json.dumps(res, indent=2))
+          PY
+
+      - name: Fail early if a download did not produce a zip
+        run: |
+          test -f mods/donor.zip  || { echo "::error::donor mod was not downloaded as a zip"; exit 1; }
+          test -f mods/target.zip || { echo "::error::target mod was not downloaded as a zip"; exit 1; }
+
+      - name: Inspect both archives
+        run: |
+          python - <<'PY' | tee out/inventory.txt
+          import zipfile, posixpath
+          from collections import Counter
+          for tag in ("donor","target"):
+              p = f"mods/{tag}.zip"
+              with zipfile.ZipFile(p) as z:
+                  infos = [i for i in z.infolist() if not i.is_dir()]
+              print(f"===== {tag}: {p} =====")
+              print(f"entries: {len(infos)}")
+              ext = Counter(posixpath.splitext(i.filename)[1].lower() for i in infos)
+              for e, n in ext.most_common():
+                  print(f"   {e or '(none)':14s} x{n}")
+              print("-- full listing --")
+              for i in sorted(infos, key=lambda i: i.filename.lower()):
+                  print(f"   {i.file_size:10d}  {i.filename}")
+              print()
+          PY
+
+      - name: Dry-run the swap
+        run: |
+          python tools/swap_mod_sounds.py mods/donor.zip mods/target.zip \
+            --strategy "${{ inputs.strategy }}" ${{ inputs.extra_args }} \
+            --dry-run --report out/plan.json | tee out/dryrun.txt
+
+      - name: Build the patched mod
+        run: |
+          python tools/swap_mod_sounds.py mods/donor.zip mods/target.zip \
+            -o "out/mod2_with_mod1_sounds.zip" \
+            --strategy "${{ inputs.strategy }}" ${{ inputs.extra_args }} \
+            --report out/report.json | tee out/result.txt
+          ls -la out/
+
+      - name: Upload everything as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sound-swap-output
+          path: |
+            out/
+            mods/*.png
+            mods/*.html
+            mods/*.log
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Commit the result back to the branch
+        if: success()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p delivery
+          cp out/mod2_with_mod1_sounds.zip delivery/
+          cp out/report.json out/result.txt out/dryrun.txt out/inventory.txt delivery/ 2>/dev/null || true
+          git add -f delivery/
+          git commit -m "Deliver mod 2 with mod 1 sounds (built by CI)" || { echo "nothing to commit"; exit 0; }
+          for i in 1 2 3; do
+            git pull --rebase origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}" && break
+            echo "retry $i"; sleep 5
+          done
