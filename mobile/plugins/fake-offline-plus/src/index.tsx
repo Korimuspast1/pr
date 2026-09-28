@@ -21,8 +21,10 @@ const UserStore = findByStoreName("UserStore") || findByProps("getCurrentUser");
 const AuthStore = findByStoreName("AuthenticationStore") || findByProps("getId", "getToken");
 const PresenceStore = findByStoreName("PresenceStore") || findByProps("getStatus", "getState");
 const StatusActions = findByProps("updateStatus") || findByProps("setStatus") || findByProps("updateRemoteSettings") || findByProps("saveAccountChanges");
+const RestAPI = findByProps("get", "post", "patch") || findByProps("patch", "put", "del");
 
 const cleanups: Array<() => void> = [];
+let statusLockTimer: any = null;
 
 function initDefaults() {
     storage.enabled ??= true;
@@ -30,8 +32,12 @@ function initDefaults() {
     storage.hideInDMs ??= true;
     storage.hideInServers ??= true;
     storage.panicMode ??= false;
-    storage.localStatusSpoof ??= true;
+    storage.localStatusSpoof ??= false;
     storage.localStatus ??= "invisible";
+    storage.realStatusLock ??= false;
+    storage.realStatus ??= "invisible";
+    storage.lockInterval ??= "5";
+    storage.lastRealStatusResult ??= "Not applied yet";
     storage.toastBlockedTyping ??= false;
     storage.blockedTypingCount ??= 0;
     storage.quietHours ??= false;
@@ -104,21 +110,65 @@ function blockTyping(args: any[]) {
     return true;
 }
 
-function trySetInvisible() {
+function normalizeStatus(value: unknown) {
+    const raw = String(value || "invisible").trim().toLowerCase();
+    if (["invisible", "offline", "idle", "dnd", "online"].includes(raw)) return raw === "offline" ? "invisible" : raw;
+    return "invisible";
+}
+
+function wantedRealStatus() {
+    return normalizeStatus(storage.realStatus || storage.localStatus || "invisible");
+}
+
+async function trySetRealStatus(showToastResult = true) {
+    const status = wantedRealStatus();
     const attempts = [
-        () => StatusActions?.updateStatus?.("invisible"),
-        () => StatusActions?.setStatus?.("invisible"),
-        () => StatusActions?.updateRemoteSettings?.({ status: "invisible" }),
-        () => StatusActions?.saveAccountChanges?.({ status: "invisible" }),
+        () => StatusActions?.updateStatus?.(status),
+        () => StatusActions?.updateStatus?.({ status }),
+        () => StatusActions?.setStatus?.(status),
+        () => StatusActions?.setStatus?.({ status }),
+        () => StatusActions?.updateRemoteSettings?.({ status }),
+        () => StatusActions?.saveAccountChanges?.({ status }),
+        () => RestAPI?.patch?.({ url: "/users/@me/settings", body: { status } }),
+        () => RestAPI?.put?.({ url: "/users/@me/settings", body: { status } }),
     ];
-    let ok = false;
+
+    let attempted = false;
+    let lastError = "";
     for (const fn of attempts) {
         try {
             const ret = fn();
-            if (ret !== undefined) ok = true;
-        } catch { /* try next */ }
+            if (ret === undefined) continue;
+            attempted = true;
+            if (ret && typeof ret.then === "function") await ret;
+            storage.lastRealStatusResult = `Applied ${status} at ${new Date().toLocaleTimeString()}`;
+            if (showToastResult) notify(`Tried server-side status: ${status}`);
+            return true;
+        } catch (e: any) {
+            lastError = e?.message || String(e);
+        }
     }
-    notify(ok ? "Tried to set invisible" : "No compatible status action found", ok ? "check" : "small");
+
+    storage.lastRealStatusResult = attempted ? `Attempted ${status}, no confirmation` : `No compatible status action${lastError ? `: ${lastError}` : ""}`;
+    if (showToastResult) notify(storage.lastRealStatusResult, attempted ? "check" : "small");
+    return attempted;
+}
+
+function stopStatusLock() {
+    if (statusLockTimer) {
+        clearInterval(statusLockTimer);
+        statusLockTimer = null;
+    }
+}
+
+function startStatusLock() {
+    stopStatusLock();
+    if (!storage.enabled || !storage.realStatusLock) return;
+    trySetRealStatus(false).catch(() => {});
+    const mins = Math.max(1, Math.min(60, parseInt(String(storage.lockInterval || "5"), 10) || 5));
+    statusLockTimer = setInterval(() => {
+        trySetRealStatus(false).catch(() => {});
+    }, mins * 60 * 1000);
 }
 
 function spoofStatusResult(args: any[], ret: any) {
@@ -138,8 +188,7 @@ function Settings() {
             <FormSection title="FakeOfflinePlus">
                 <FormSwitchRow label="Enabled" value={!!storage.enabled} onValueChange={(v: boolean) => { storage.enabled = v; }} />
                 <FormSwitchRow label="Panic mode" subLabel="Forces privacy features on" value={!!storage.panicMode} onValueChange={(v: boolean) => { storage.panicMode = v; }} />
-                <FormRow label="Try set real Discord status to Invisible" subLabel="Best-effort; depends on Discord version" onPress={trySetInvisible} trailing={FormRow.Arrow} />
-                <Text style={hint}>Reliable feature: blocking outgoing typing events. Status spoof below is local-only unless the action above works.</Text>
+                <Text style={hint}>Non-local: hiding typing blocks outgoing typing events. Server-side status below tries Discord's real status APIs without using or storing your token.</Text>
             </FormSection>
 
             <FormSection title="Typing privacy">
@@ -160,7 +209,16 @@ function Settings() {
                 <FormInput title="" placeholder="8" value={String(storage.quietEnd || "")} onChange={(v: string) => { storage.quietEnd = v.replace(/[^0-9]/g, ""); }} />
             </FormSection>
 
-            <FormSection title="Local status spoof">
+            <FormSection title="Server-side status lock">
+                <FormSwitchRow label="Lock real Discord status" subLabel="Best-effort: reapplies status every N minutes" value={!!storage.realStatusLock} onValueChange={(v: boolean) => { storage.realStatusLock = v; v ? startStatusLock() : stopStatusLock(); }} />
+                <Text style={hint}>Real status: invisible / idle / dnd / online</Text>
+                <FormInput title="" placeholder="invisible" value={String(storage.realStatus || "")} onChange={(v: string) => { storage.realStatus = v.trim(); }} />
+                <Text style={hint}>Reapply interval minutes</Text>
+                <FormInput title="" placeholder="5" value={String(storage.lockInterval || "")} onChange={(v: string) => { storage.lockInterval = v.replace(/[^0-9]/g, ""); }} />
+                <FormRow label="Apply real status now" subLabel={String(storage.lastRealStatusResult || "Not applied yet")} onPress={() => trySetRealStatus(true)} trailing={FormRow.Arrow} />
+            </FormSection>
+
+            <FormSection title="Local status fallback">
                 <FormSwitchRow label="Spoof my status locally" subLabel="Only changes how your status looks on your device" value={!!storage.localStatusSpoof} onValueChange={(v: boolean) => { storage.localStatusSpoof = v; }} />
                 <Text style={hint}>Local status text: invisible / offline / idle / dnd / online</Text>
                 <FormInput title="" placeholder="invisible" value={String(storage.localStatus || "")} onChange={(v: string) => { storage.localStatus = v.trim(); }} />
@@ -198,9 +256,11 @@ export default {
                 } catch { return ret; }
             }));
         }
+        startStatusLock();
         notify("FakeOfflinePlus loaded");
     },
     onUnload: () => {
+        stopStatusLock();
         while (cleanups.length) {
             try { cleanups.pop()?.(); } catch { }
         }

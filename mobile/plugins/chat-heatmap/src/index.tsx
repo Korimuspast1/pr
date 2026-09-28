@@ -19,6 +19,7 @@ const SelectedChannelStore = findByStoreName("SelectedChannelStore");
 const cleanups: Array<() => void> = [];
 let memStats: any = null;
 let writes = 0;
+let publishing = false;
 
 function initDefaults() {
     storage.enabled ??= true;
@@ -27,6 +28,12 @@ function initDefaults() {
     storage.trackWords ??= true;
     storage.trackEmoji ??= true;
     storage.searchUser ??= "";
+    storage.webhookUrl ??= "";
+    storage.publishTitle ??= "Discord Chat Heatmap";
+    storage.autoPublish ??= false;
+    storage.publishEvery ??= "100";
+    storage.lastPublishTotal ??= 0;
+    storage.lastPublishStatus ??= "Not published yet";
     storage.stats ??= makeEmptyStats();
 }
 
@@ -148,6 +155,11 @@ function handleMessage(message: any) {
         trimObject(s.words, 120);
         trimObject(s.emoji, 80);
         flush();
+
+        const every = Math.max(10, parseInt(String(storage.publishEvery || "100"), 10) || 100);
+        if (storage.autoPublish && String(storage.webhookUrl || "").startsWith("https://") && s.total - (Number(storage.lastPublishTotal) || 0) >= every) {
+            publishHeatmap("auto").catch(e => console.error("[ChatHeatmap] auto publish failed", e));
+        }
     } catch (e) {
         console.error("[ChatHeatmap] handle error", e);
     }
@@ -187,6 +199,67 @@ function resetStats() {
     notify("Chat heatmap reset", "ic_message_retry");
 }
 
+function formatTop(obj: Record<string, number>, n = 8) {
+    const rows = top(obj, n);
+    return rows.length ? rows.map(([k, v], i) => `${i + 1}. ${k}: ${v}`).join("\n") : "no data";
+}
+
+function heatmapSummary() {
+    const s = stats();
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+    const parts = [
+        `**${String(storage.publishTitle || "Discord Chat Heatmap")}**`,
+        `Messages: **${s.total || 0}** | Media: **${s.attachments || 0}**`,
+        `Started: ${fmtDate(s.startedAt)} | Updated: ${fmtDate(s.updatedAt)}`,
+        "",
+        "**By day**",
+        "```" + heatRows(s.byDay || [], days).slice(0, 700) + "```",
+        "**By hour**",
+        "```" + heatRows(s.byHour || [], hours).slice(0, 900) + "```",
+        "**Top users**",
+        "```" + formatTop(s.byUser, 8).slice(0, 800) + "```",
+        "**Top words**",
+        "```" + formatTop(s.words, 12).slice(0, 600) + "```",
+        "**Top emoji**",
+        "```" + formatTop(s.emoji, 10).slice(0, 500) + "```",
+    ];
+    return parts.join("\n").slice(0, 1900);
+}
+
+async function publishHeatmap(reason = "manual") {
+    if (publishing) return;
+    const webhook = String(storage.webhookUrl || "").trim();
+    if (!/^https:\/\/.*discord(?:app)?\.com\/api\/webhooks\//i.test(webhook)) {
+        storage.lastPublishStatus = "Webhook URL is missing or invalid";
+        notify("Invalid Discord webhook URL", "small");
+        return;
+    }
+
+    publishing = true;
+    try {
+        const body = {
+            username: "ChatHeatmap",
+            content: heatmapSummary(),
+            allowed_mentions: { parse: [] },
+        };
+        const res = await fetch(webhook, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        storage.lastPublishTotal = stats().total || 0;
+        storage.lastPublishStatus = `${reason} publish OK at ${fmtDate(Date.now())}`;
+        notify("Heatmap published to webhook");
+    } catch (e: any) {
+        storage.lastPublishStatus = `Publish failed: ${e?.message || e}`;
+        notify("Heatmap publish failed", "small");
+    } finally {
+        publishing = false;
+    }
+}
+
 function Settings() {
     useProxy(storage);
     const s = stats();
@@ -208,6 +281,17 @@ function Settings() {
                 <FormRow label="Current channel count" subLabel={selected ? String(s.byChannel?.[selected] || 0) : "unknown"} />
                 <FormRow label="Copy stats JSON" onPress={copyStats} trailing={FormRow.Arrow} />
                 <FormRow label="Reset stats" onPress={resetStats} trailing={FormRow.Arrow} />
+            </FormSection>
+
+            <FormSection title="Publish / non-local sharing">
+                <Text style={hint}>Discord webhook URL. This posts the heatmap to a channel through your webhook, so other people can see it. No token is used.</Text>
+                <FormInput title="" placeholder="https://discord.com/api/webhooks/..." value={String(storage.webhookUrl || "")} onChange={(v: string) => { storage.webhookUrl = v.trim(); }} />
+                <Text style={hint}>Publish title</Text>
+                <FormInput title="" placeholder="Discord Chat Heatmap" value={String(storage.publishTitle || "")} onChange={(v: string) => { storage.publishTitle = v; }} />
+                <FormSwitchRow label="Auto-publish" subLabel="Posts after every N tracked messages" value={!!storage.autoPublish} onValueChange={(v: boolean) => { storage.autoPublish = v; }} />
+                <Text style={hint}>Auto-publish every N messages</Text>
+                <FormInput title="" placeholder="100" value={String(storage.publishEvery || "")} onChange={(v: string) => { storage.publishEvery = v.replace(/[^0-9]/g, ""); }} />
+                <FormRow label="Publish now" subLabel={String(storage.lastPublishStatus || "Not published yet")} onPress={() => publishHeatmap("manual")} trailing={FormRow.Arrow} />
             </FormSection>
 
             <FormSection title="By hour">
