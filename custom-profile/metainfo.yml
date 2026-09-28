@@ -1,0 +1,9 @@
+id: custom_profile
+name: Custom Profile
+description: "{plugin_description}"
+author: "Custom Profile"
+version: "1.0.0"
+icon: exteraPlugins/1
+app_version: ">=12.5.1"
+sdk_version: ">=1.4.4.3"
+requirements: ""
