@@ -1,0 +1,3 @@
+# Python bytecode generated while validating the Elyx source
+__pycache__/
+*.py[cod]
