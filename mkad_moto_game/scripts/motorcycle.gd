@@ -169,7 +169,7 @@ func _build_rider(mat_suit: Material, mat_helmet: Material) -> void:
 	visor.position = Vector3(0, 1.31, -0.01)
 	rider.add_child(visor)
 
-	for side in [-1.0, 1.0]:
+	for side: float in [-1.0, 1.0]:
 		var arm := MeshInstance3D.new()
 		var arm_mesh := CapsuleMesh.new()
 		arm_mesh.radius = 0.045

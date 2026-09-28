@@ -179,7 +179,7 @@ func _build_median() -> void:
 	var inner_r := Game.RING_RADIUS - Game.MEDIAN_HALF_WIDTH
 	var outer_r := Game.RING_RADIUS + Game.MEDIAN_HALF_WIDTH
 
-	for r in [inner_r, outer_r]:
+	for r: float in [inner_r, outer_r]:
 		var cyl := CylinderMesh.new()
 		cyl.top_radius = r
 		cyl.bottom_radius = r
@@ -232,8 +232,8 @@ func _build_guardrails() -> void:
 	var scale_factor := 6.0
 	var spacing := 1.0 * scale_factor
 
-	for r in [Game.OUTER_EDGE - 0.15, Game.INNER_EDGE + 0.15]:
-		var circumference := TAU * r
+	for r: float in [Game.OUTER_EDGE - 0.15, Game.INNER_EDGE + 0.15]:
+		var circumference: float = TAU * r
 		var count := int(circumference / spacing)
 		var mm := MultiMesh.new()
 		mm.mesh = mesh
@@ -333,7 +333,7 @@ func _build_gantries() -> void:
 		root.transform.basis = Basis.looking_at(tangent, Vector3.UP)
 		add_child(root)
 
-		for side in [-1.0, 1.0]:
+		for side: float in [-1.0, 1.0]:
 			var pole := MeshInstance3D.new()
 			var cyl := CylinderMesh.new()
 			cyl.top_radius = 0.18
