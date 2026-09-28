@@ -1,0 +1,29 @@
+#include <winver.h>
+
+1 ICON "../assets/app.ico"
+1 24 "app.manifest"
+
+1 VERSIONINFO
+FILEVERSION     1,0,0,0
+PRODUCTVERSION  1,0,0,0
+FILEOS          0x40004L
+FILETYPE        0x1L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000004b0"
+        BEGIN
+            VALUE "CompanyName",      "SteamFinder"
+            VALUE "FileDescription",  "SteamFinder - poisk igr v Steam"
+            VALUE "FileVersion",      "1.0.0.0"
+            VALUE "InternalName",     "SteamFinder"
+            VALUE "OriginalFilename", "SteamFinder.exe"
+            VALUE "ProductName",      "SteamFinder"
+            VALUE "ProductVersion",   "1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0, 1200
+    END
+END
