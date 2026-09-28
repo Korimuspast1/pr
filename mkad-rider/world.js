@@ -1,5 +1,6 @@
 import * as THREE from './three.module.min.js';
 import { hash } from './textures.js';
+import { mergeGeos } from './bake.js';
 
 // ============================================================
 //  Мир: небо, свет, МКАД (5+5 полос), ограждения, фонари,
@@ -17,7 +18,9 @@ const ROAD_LEN = 1600;
 const SUN_DIR = new THREE.Vector3(0.42, 0.72, 0.38).normalize();
 const UP = new THREE.Vector3(0, 1, 0);
 
-// «лента» периодических объектов вдоль дороги
+// «лента» периодических объектов вдоль дороги.
+// ИНКРЕМЕНТАЛЬНО: при сдвиге на d периодов перезаписываются только
+// d «переехавших» слотов — нет шторма аллокаций и загрузок буфера (анти-лаг).
 class Belt {
   constructor(period, count, offset, place) {
     this.period = period; this.count = count; this.offset = offset;
@@ -25,12 +28,17 @@ class Belt {
   }
   update(pz, behind = 80) {
     const f = Math.floor((pz - behind) / this.period);
-    if (f !== this.first) {
-      this.first = f;
+    if (f === this.first) return false;
+    if (this.first === null || f < this.first || f - this.first >= this.count) {
+      // первый кадр или телепорт — полная раскладка
       for (let i = 0; i < this.count; i++) this.place(i, (f + i) * this.period + this.offset);
-      return true;
+    } else {
+      const d = f - this.first;
+      // слоты [count-d, count) получают новые дальние позиции
+      for (let i = this.count - d; i < this.count; i++) this.place(i, (f + i) * this.period + this.offset);
     }
-    return false;
+    this.first = f;
+    return true;
   }
 }
 
@@ -191,24 +199,27 @@ export class World {
     this.medianFence.position.set(-1.7, 1.42, 0);
     scene.add(this.medianFence);
 
-    // шумозащитные экраны (прозрачные секции)
+    // шумозащитные экраны (прозрачные секции; стойки слиты в один меш)
     this.screens = [];
     const screenMat = new THREE.MeshPhysicalMaterial({
       color: 0x9fc4d4, transparent: true, opacity: 0.4,
       roughness: 0.12, metalness: 0.15, side: THREE.DoubleSide, envMapIntensity: 1.2,
     });
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x7d858c, roughness: 0.4, metalness: 0.8 });
+    const postParts = [];
+    for (let k = -100; k <= 100; k += 10) {
+      const pg = new THREE.BoxGeometry(0.09, 2.75, 0.13);
+      pg.translate(-1.7, 2.6, k);
+      postParts.push({ geo: pg, matrix: null });
+    }
+    const postsMesh = new THREE.Mesh(mergeGeos(postParts), frameMat);
+    postsMesh.castShadow = true;
     for (let i = 0; i < 3; i++) {
       const grp = new THREE.Group();
       const panel = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.6, 200), screenMat);
       panel.position.set(-1.7, 2.75, 0);
       grp.add(panel);
-      const frameMat = new THREE.MeshStandardMaterial({ color: 0x7d858c, roughness: 0.4, metalness: 0.8 });
-      for (let k = -100; k <= 100; k += 10) {
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.09, 2.75, 0.13), frameMat);
-        post.position.set(-1.7, 2.6, k);
-        post.castShadow = true;
-        grp.add(post);
-      }
+      grp.add(postsMesh.clone());
       grp.position.z = i * 900 + 300;
       this.screens.push(grp);
       scene.add(grp);
@@ -223,51 +234,51 @@ export class World {
     this.rail2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, ROAD_LEN), railMat);
     this.rail2.position.set(20.15, 0.30, 0);
     scene.add(this.rail2);
-    // столбики отбойника
+    // столбики отбойника — раскладка ОДИН раз, весь меш прилипает к игроку
     const postGeo = new THREE.BoxGeometry(0.1, 0.72, 0.12);
     const postMat = new THREE.MeshStandardMaterial({ color: 0x8d949b, roughness: 0.5, metalness: 0.8 });
     this.railPosts = new THREE.InstancedMesh(postGeo, postMat, 340);
-    this.railPosts.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    scene.add(this.railPosts);
-    const _m = new THREE.Matrix4();
-    this.railBelt = new Belt(4, 340, 0, (i, z) => {
-      _m.makeTranslation(20.15, 0.36, z);
-      this.railPosts.setMatrixAt(i, _m);
+    {
+      const _m = new THREE.Matrix4();
+      for (let i = 0; i < 340; i++) {
+        _m.makeTranslation(20.15, 0.36, (i - 20) * 4);   // покрытие: -80 … +1280 м
+        this.railPosts.setMatrixAt(i, _m);
+      }
       this.railPosts.instanceMatrix.needsUpdate = true;
-    });
+    }
+    this.railPosts.frustumCulled = false;
+    scene.add(this.railPosts);
 
-    // ---------- ФОНАРИ ----------
-    this.lamps = [];
+    // ---------- ФОНАРИ (3 InstancedMesh вместо 112 мешей) ----------
     const lampMat = new THREE.MeshStandardMaterial({ color: 0x9aa1a8, roughness: 0.45, metalness: 0.85 });
     const headMat = new THREE.MeshStandardMaterial({ color: 0xb9c2c9, roughness: 0.5, metalness: 0.6, emissive: 0xfff6df, emissiveIntensity: 0.12 });
-    for (let i = 0; i < 28; i++) {
-      const grp = new THREE.Group();
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.11, 10.6, 10), lampMat);
-      pole.position.y = 5.3;
-      pole.castShadow = true;
-      grp.add(pole);
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.4, 8), lampMat);
-      arm.rotation.z = Math.PI / 2;
-      arm.position.set(1.6, 10.3, 0);
-      grp.add(arm);
-      const head = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.16, 0.3), headMat);
-      head.position.set(3.1, 10.2, 0);
-      grp.add(head);
-      this.lamps.push(grp);
-      scene.add(grp);
+    const LAMP_N = 28;
+    const poleGeo = new THREE.CylinderGeometry(0.07, 0.11, 10.6, 10); poleGeo.translate(0, 5.3, 0);
+    const armGeo = new THREE.CylinderGeometry(0.05, 0.05, 3.4, 8); armGeo.rotateZ(Math.PI / 2); armGeo.translate(1.6, 10.3, 0);
+    const lampHeadGeo = new THREE.BoxGeometry(0.85, 0.16, 0.3); lampHeadGeo.translate(3.1, 10.2, 0);
+    this.lampPoles = new THREE.InstancedMesh(poleGeo, lampMat, LAMP_N);
+    this.lampArms = new THREE.InstancedMesh(armGeo, lampMat, LAMP_N);
+    this.lampHeads = new THREE.InstancedMesh(lampHeadGeo, headMat, LAMP_N);
+    this.lampPoles.castShadow = true;
+    for (const im of [this.lampPoles, this.lampArms, this.lampHeads]) {
+      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      im.frustumCulled = false;
+      scene.add(im);
     }
+    this._lampDirty = false;
+    const _lm = new THREE.Matrix4(), _lq = new THREE.Quaternion(), _ls = new THREE.Vector3(1, 1, 1), _lp = new THREE.Vector3(), _ly = new THREE.Euler();
+    const setLamp = (j, x, z, rotY) => {
+      _lp.set(x, 0, z); _lq.setFromEuler(_ly.set(0, rotY, 0));
+      _lm.compose(_lp, _lq, _ls);
+      this.lampPoles.setMatrixAt(j, _lm);
+      this.lampArms.setMatrixAt(j, _lm);
+      this.lampHeads.setMatrixAt(j, _lm);
+      this._lampDirty = true;
+    };
     // правая сторона (рука фонаря в сторону дороги)
-    this.lampBelt = new Belt(50, 14, 0, (i, z) => {
-      const g = this.lamps[i];
-      g.position.set(21.9, 0, z);
-      g.rotation.y = Math.PI;
-    });
+    this.lampBelt = new Belt(50, 14, 0, (i, z) => setLamp(i, 21.9, z, Math.PI));
     // левая сторона
-    this.lampBeltL = new Belt(50, 14, 25, (i, z) => {
-      const g = this.lamps[14 + i];
-      g.position.set(-24.3, 0, z);
-      g.rotation.y = 0;
-    });
+    this.lampBeltL = new Belt(50, 14, 25, (i, z) => setLamp(14 + i, -24.3, z, 0));
 
     // ---------- ДЕРЕВЬЯ ----------
     const N = 240, HALF = N / 2;
@@ -290,17 +301,22 @@ export class World {
       this.scene.add(im);
     }
     const _tm = new THREE.Matrix4(), _tq = new THREE.Quaternion(), _ts = new THREE.Vector3(), _tp = new THREE.Vector3();
+    const _hide = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
+    const _blobT = new THREE.Matrix4(), _trUp = new THREE.Matrix4();
     const _col = new THREE.Color();
     this.treeBelt = new Belt(6.5, HALF, 0, (i, z) => {
       for (const side of [0, 1]) { // 0 — справа, 1 — слева
         const j = side * HALF + i;
-        const h1 = hash(j * 3.7 + 1.3), h2 = hash(j * 7.1 + 5.2), h3 = hash(j * 11.3 + 9.7), h4 = hash(j * 5.9 + 2.8);
+        // случайность привязана к ПЕРИОДИЧЕСКОМУ ИНДЕКСУ k: дерево
+        // стабильно в мировых координатах, рециклинг не меняет вид
+        const k = Math.round(z / 6.5);
+        const h1 = hash(k * 3.7 + side * 171.7 + 1.3), h2 = hash(k * 7.1 + side * 97.3 + 5.2),
+              h3 = hash(k * 11.3 + side * 57.1 + 9.7), h4 = hash(k * 5.9 + side * 29.7 + 2.8);
         const skipP = side === 1 ? 0.32 : 0.20; // слева (встречка) чаще просветы
         if (h4 < skipP) { // пусто
-          _tm.makeScale(0.0001, 0.0001, 0.0001);
-          this.treeTrunks.setMatrixAt(j, _tm);
-          this.treeBlobs.setMatrixAt(j, _tm);
-          this.treeCones.setMatrixAt(j, _tm);
+          this.treeTrunks.setMatrixAt(j, _hide);
+          this.treeBlobs.setMatrixAt(j, _hide);
+          this.treeCones.setMatrixAt(j, _hide);
           continue;
         }
         const x = side === 0 ? 25 + h1 * h1 * 95 : -(31 + h1 * h1 * 100);
@@ -311,11 +327,11 @@ export class World {
         _ts.set(s, s * (0.85 + h2 * 0.4), s);
         _tm.compose(_tp, _tq, _ts);
         this.treeTrunks.setMatrixAt(j, _tm);
-        this.treeCones.setMatrixAt(j, conifer ? _tm : _tm.clone().makeScale(0.0001, 0.0001, 0.0001));
-        const blobT = _tm.clone();
-        if (conifer) blobT.makeScale(0.0001, 0.0001, 0.0001);
-        else blobT.multiply(new THREE.Matrix4().makeTranslation(0, 3.5 / s * s, 0));
-        this.treeBlobs.setMatrixAt(j, blobT);
+        this.treeCones.setMatrixAt(j, conifer ? _tm : _hide);
+        _blobT.copy(_tm);
+        if (conifer) _blobT.copy(_hide);
+        else _blobT.multiply(_trUp.makeTranslation(0, 3.5, 0));
+        this.treeBlobs.setMatrixAt(j, _blobT);
         _col.setHSL(0.26 + h2 * 0.09, 0.52, 0.30 + h1 * 0.12);
         this.treeBlobs.setColorAt(j, _col);
       }
@@ -441,14 +457,20 @@ export class World {
     this.medianFence.position.z = Math.round(pz / 2.6) * 2.6;
     this.rail.position.z = Math.round(pz / 4) * 4;
     this.rail2.position.z = Math.round(pz / 4) * 4;
+    this.railPosts.position.z = Math.round(pz / 4) * 4;   // столбики — весь меш
 
-    // ленты
-    this.railBelt.update(pz);
+    // ленты (инкрементально)
     this.lampBelt.update(pz);
     this.lampBeltL.update(pz);
     this.treeBelt.update(pz, 90);
     this.kmBeltR.update(pz, 200);
     this.kmBeltL.update(pz, 200);
+    if (this._lampDirty) {
+      this.lampPoles.instanceMatrix.needsUpdate = true;
+      this.lampArms.instanceMatrix.needsUpdate = true;
+      this.lampHeads.instanceMatrix.needsUpdate = true;
+      this._lampDirty = false;
+    }
 
     // шумоэкраны
     for (const s of this.screens) {

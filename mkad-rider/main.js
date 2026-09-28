@@ -4,6 +4,7 @@ import { buildBike } from './bike.js';
 import { buildCar, buildTruck, CAR_COLORS, TRUCK_COLORS } from './cars.js';
 import { World, LANES_X, X_MIN, X_MAX, ONCOMING_X } from './world.js';
 import { GameAudio } from './audio.js';
+import { hash } from './textures.js';
 
 // ============================================================
 const $ = id => document.getElementById(id);
@@ -48,6 +49,9 @@ const S = {
   muted: false,
   // вилли (стант)
   wheelie: 0, wheelieVel: 0, wheelieTime: 0, stuntBank: 0,
+  // подвеска: сжатие передней/задней (м), скорости, крен камеры, стык полосы
+  suspF: 0.03, suspFv: 0, suspR: 0.03, suspRv: 0,
+  camDip: 0, camDipV: 0, edge: 0, prevSeam: null,
 };
 try { S.best = parseFloat(localStorage.getItem('mkadRiderBest') || '0') || 0; } catch (e) { }
 
@@ -63,7 +67,10 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'Enter' && S.mode === 'title') startGame();
   if (e.code === 'KeyR' && (S.mode === 'ride' || S.mode === 'crash')) restart();
-  if (e.code === 'KeyC' && S.mode !== 'title') { S.camMode = (S.camMode + 1) % 3; }
+  if (e.code === 'KeyC' && S.mode !== 'title') {
+    S.camMode = (S.camMode + 1) % 3;
+    mLook.yaw = 0; mLook.pitch = 0;   // смена камеры возвращает взгляд вперёд
+  }
   if (e.code === 'KeyM') { S.muted = !S.muted; audio.setMuted(S.muted); toast(S.muted ? 'Звук выключен' : 'Звук включен'); }
   if ((e.code === 'KeyP' || e.code === 'Escape') && (S.mode === 'ride' || S.mode === 'pause')) togglePause();
 });
@@ -85,6 +92,33 @@ if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
   bindTouch('tGas', 'gas'); bindTouch('tBrake', 'brake');
   bindTouch('tWheelie', 'wheelie');
 }
+
+// ---------- обзор мышью (захват курсора; если не дали — драг) ----------
+const mLook = { yaw: 0, pitch: 0, locked: false, drag: false };
+const cv = renderer.domElement;
+cv.addEventListener('mousedown', e => {
+  if (S.mode === 'title' || S.mode === 'pause' || S.mode === 'crash') return;
+  mLook.drag = true;
+  // пробуем захватить курсор (в iframe может не пустить — тогда работает перетаскивание)
+  if (!mLook.locked && cv.requestPointerLock) {
+    try { const p = cv.requestPointerLock(); if (p && p.catch) p.catch(() => { }); } catch (err) { }
+  }
+});
+addEventListener('mouseup', () => { mLook.drag = false; });
+addEventListener('mousemove', e => {
+  if (S.mode === 'title') return;
+  if (mLook.locked || mLook.drag) {
+    mLook.yaw = clamp(mLook.yaw - e.movementX * 0.0023, -2.8, 2.8);
+    mLook.pitch = clamp(mLook.pitch - e.movementY * 0.0018, -0.55, 0.65);
+  }
+});
+document.addEventListener('pointerlockchange', () => {
+  const on = document.pointerLockElement === cv;
+  if (on && !mLook.locked) toast('Обзор мышью · Esc — вернуть курсор');
+  mLook.locked = on;
+  if (on) mLook.drag = false;
+});
+document.addEventListener('pointerlockerror', () => { /* драг останется рабочим */ });
 
 // ---------- искры ----------
 const SPARK_N = 260;
@@ -128,21 +162,36 @@ function updateSparks(dt) {
 const LANESPEED = [20.5, 23.5, 26.5, 29.5, 32.5];
 const cars = [];        // попутные
 const oncoming = [];    // встречные (декор)
+const carPool = { sedan: [], hatch: [], van: [], truck: [] };   // рециклинг: без GC-лагов
 
 function makeCar(lane) {
   const r = Math.random();
-  let car;
-  if (r < 0.10 && lane <= 2) car = buildTruck(TRUCK_COLORS[(Math.random() * TRUCK_COLORS.length) | 0], T);
-  else if (r < 0.32) car = buildCar('van', Math.random() < 0.75 ? 0xe9e9e9 : CAR_COLORS[(Math.random() * CAR_COLORS.length) | 0], T);
-  else if (r < 0.58) car = buildCar('hatch', CAR_COLORS[(Math.random() * CAR_COLORS.length) | 0], T);
-  else car = buildCar('sedan', CAR_COLORS[(Math.random() * CAR_COLORS.length) | 0], T);
+  const kind = (r < 0.10 && lane <= 2) ? 'truck' : (r < 0.32 ? 'van' : (r < 0.58 ? 'hatch' : 'sedan'));
+  let car = carPool[kind].pop();
+  if (car) {
+    // перекраска рециклинговой машины
+    const colors = kind === 'truck' ? TRUCK_COLORS : CAR_COLORS;
+    let hex = colors[(Math.random() * colors.length) | 0];
+    if (kind === 'van' && Math.random() < 0.75) hex = 0xe9e9e9;
+    car.setPaint(hex);
+  } else {
+    if (kind === 'truck') car = buildTruck(TRUCK_COLORS[(Math.random() * TRUCK_COLORS.length) | 0], T);
+    else if (kind === 'van') car = buildCar('van', Math.random() < 0.75 ? 0xe9e9e9 : CAR_COLORS[(Math.random() * CAR_COLORS.length) | 0], T);
+    else car = buildCar(kind, CAR_COLORS[(Math.random() * CAR_COLORS.length) | 0], T);
+  }
   const base = car.kind === 'truck' ? rnd(17, 19.5) : LANESPEED[lane] * rnd(0.94, 1.07);
   const c = {
     ...car, lane, x: LANES_X[lane], targetX: LANES_X[lane], z: 0, v: base, baseV: base,
     changing: false, blinkT: 0, counted: false,
   };
+  c.group.rotation.y = 0;
   scene.add(car.group);
   return c;
+}
+
+function recycleCar(c) {
+  scene.remove(c.group);
+  if (carPool[c.kind] && carPool[c.kind].length < 10) carPool[c.kind].push(c);
 }
 
 function laneFree(lane, z, margin = 42, list = cars) {
@@ -218,7 +267,7 @@ function updateTraffic(dt) {
     for (const w of c.wheels) w.mesh.rotation.x += (c.v / w.r) * dt;
 
     if (c.z < S.z - 90) {
-      scene.remove(c.group);
+      recycleCar(c);
       cars.splice(i, 1);
     }
   }
@@ -457,6 +506,19 @@ addEventListener('error', e => {
 const GEARS = [0, 11, 19, 28, 38, 49, 63];
 let curGear = 1, curRPM = 0.12;
 
+// ---------- микропрофиль дороги ----------
+// рябь асфальта, канавки на стыках полос (каждые 3.75 м), гравий у краёв
+function roadProfile(x, z) {
+  let h = (hash(Math.floor(x * 31) * 7.13 + Math.floor(z * 2.7)) - 0.5) * 0.006
+        + (hash(Math.floor(x * 9) * 3.7 + Math.floor(z * 1.1) * 5.1) - 0.5) * 0.011;
+  const s = ((x % 3.75) + 3.75) % 3.75;
+  const dEdge = Math.min(s, 3.75 - s);            // 0 ровно на стыке
+  if (dEdge < 0.10) h -= 0.011 * (1 - dEdge / 0.10);
+  const edge = clamp(Math.max((x - 17.55) / 1.9, (2.9 - x) / 1.9), 0, 1);
+  if (edge > 0) h += (hash(Math.floor(z * 6.1) * 3.1 + Math.floor(x * 17) * 7.7) - 0.5) * 0.05 * edge;
+  return { h, edge };
+}
+
 function physics(dt) {
   const gas = (keys['KeyW'] || keys['ArrowUp'] || touch.gas) ? 1 : 0;
   const brake = (keys['KeyS'] || keys['ArrowDown'] || keys['Space'] || touch.brake) ? 1 : 0;
@@ -472,33 +534,50 @@ function physics(dt) {
   S.steerTarget = steerIn;
 
   // ---------- ВИЛЛИ (стант на Shift) ----------
-  const bal = 1.02;                 // точка баланса (рад)
+  // Подхват: морда резко идёт вверх (~0.4 с), дальше — балансировка.
+  // С газом устойчиво; без газа на малой скорости валит на спину.
+  const bal = 1.06;                 // точка баланса (рад)
+  let wDamp;
   if (wantWheelie) {
-    const speedK = clamp(1.15 - S.v / 45, 0.55, 1.15);
-    const lift = (2.0 + gas * 4.4) * clamp(1 - S.wheelie / 1.12, 0, 1) * speedK;
+    const speedK = clamp(1.3 - S.v / 70, 0.85, 1.3);
+    let lift = (1.2 + gas * 1.6) * clamp(1 - S.wheelie / 1.15, 0, 1) * speedK;
+    // подхват («сцепление»): мощный импульс, гаснет с ростом угла
+    if (S.wheelie < 0.5) lift += (2.2 + gas * 1.2) * clamp(1 - S.wheelie / 0.55, 0, 1);
     S.wheelieVel += lift * dt;
-    S.wheelieVel += (bal - S.wheelie) * 2.4 * dt;      // стремление к балансу
-    // «подхват сцеплением»: с малой скорости — резкий старт
-    if (gas && S.v < 13 && S.wheelie < 0.25) S.wheelieVel += 3.0 * clamp(1.6 - S.v / 8, 0, 1.6) * dt;
-    // НИЗКАЯ СКОРОСТЬ = НЕУСТОЙЧИВОСТЬ (нет гироскопа) — выше 60° тянет на спину
-    if (S.wheelie > 1.05) S.wheelieVel += clamp(0.9 - S.v / 13, 0, 0.9) * 2.4 * dt;
+    S.wheelieVel += (bal - S.wheelie) * 3.2 * dt;      // стремление к балансу
+    // НИЗКАЯ СКОРОСТЬ = НЕУСТОЙЧИВОСТЬ (нет гироскопа) — тянет на спину
+    if (S.wheelie > 1.02) S.wheelieVel += clamp(0.95 - S.v / 13, 0, 0.95) * 2.6 * dt;
     S.wheelieTime += dt;
     S.stuntBank += dt * (15 + S.v * 1.6 + S.wheelie * 55);
+    // райдер «ловит» байк: демпфер растёт с углом и скоростью подъёма
+    wDamp = S.wheelie < 0.4 ? 1.2 : 4.0;
+    if (S.wheelie > 0.55) wDamp = 4.0 + (S.wheelie - 0.55) * 7 + Math.max(0, S.wheelieVel) * 1.4;
+    if (S.wheelie > 1.02) wDamp = 1.4;
   } else {
-    S.wheelieVel -= 5.0 * dt;        // газ сброшен — перед опускается
-    if (S.wheelie <= 0.001 && S.stuntBank > 40) {
-      // приземлился — банк станта в зачёт
-      S.score += S.stuntBank;
-      showBonus(`+${Math.round(S.stuntBank)} СТАНТ!`);
-      S.stuntBank = 0;
-      S.wheelieTime = 0;
-    }
-    if (S.wheelie <= 0.001) S.stuntBank = 0;
+    S.wheelieVel -= 6.5 * dt;        // газ сброшен — перед опускается
+    wDamp = 1.6;
   }
-  const damp = S.wheelie > 1.05 ? 1.7 : 3.6;           // у предела контроль теряется
-  S.wheelieVel *= Math.max(0, 1 - damp * dt);
+  S.wheelieVel *= Math.max(0, 1 - wDamp * dt);
+  const wPrev = S.wheelie;
   S.wheelie += S.wheelieVel * dt;
-  if (S.wheelie < 0) { S.wheelie = 0; S.wheelieVel = 0; }
+  if (S.wheelie <= 0) {
+    S.wheelie = 0;
+    if (wPrev > 0.02) {              // переднее коснулось дороги — посадка
+      const impact = Math.min(Math.abs(S.wheelieVel) / 3.5, 1.3);
+      if (impact > 0.2) {
+        audio.land(impact);          // удар подвески
+        S.suspFv += impact * 1.0;    // вилка сжимается
+        S.camDipV -= impact * 0.9;   // камера «клюёт»
+      }
+    }
+    S.wheelieVel = 0;
+    if (S.stuntBank > 40) {
+      S.score += S.stuntBank;        // приземлился — банк станта в зачёт
+      showBonus(`+${Math.round(S.stuntBank)} СТАНТ!`);
+    }
+    S.stuntBank = 0;
+    S.wheelieTime = 0;
+  }
   if (S.wheelie > 1.28) { crash('Перевернулся на вилли! Держи газ и баланс'); return; }
 
   // ---------- продольная динамика ----------
@@ -511,12 +590,16 @@ function physics(dt) {
   S.v = Math.max(0, S.v + a * dt);
   if (S.v > 63) S.v = 63;
 
-  // ---------- поперечная динамика (плавно, с лимитом ускорения) ----------
+  // ---------- повороты: наклон ВЕДЁТ, траектория следует (не скольжение) ----------
   const maxLat = 3.1 + 6.5 / (1 + S.v * 0.13);
   const steerEff = S.steer * (S.wheelie > 0.15 ? 0.35 : 1); // вилли — руль слабее
-  const targetVx = steerEff * maxLat;
-  const LAT_ACC = 7.5;
-  const dv = clamp(targetVx - S.vx, -LAT_ACC * dt, LAT_ACC * dt);
+  // руль задаёт ЦЕЛЬ НАКЛОНА; байк заваливается в наклон, как настоящий
+  const leanT = steerEff * 0.60 * clamp(S.v / 7, 0, 1);
+  const leanRate = steerEff === 0 ? 5.0 : 2.0;   // выходит из наклона быстрее, чем входит
+  S.lean += clamp(leanT - S.lean, -leanRate * dt, leanRate * dt);
+  // боковая сила рождается ИЗ наклона — дуга прописывается за корпусом
+  const targetVx = (S.lean / 0.60) * maxLat;
+  const dv = clamp(targetVx - S.vx, -6.5 * dt, 6.5 * dt);
   S.vx += dv;
   S.x += S.vx * dt;
   S.z += S.v * dt;
@@ -538,18 +621,42 @@ function physics(dt) {
     S.v *= Math.max(0.75, 1 - 0.5 * dt * 10);
   }
 
-  // визуальный наклон и курс — всё сглажено
-  const leanTarget = clamp(S.vx / Math.max(maxLat, 0.1) * 0.58 * Math.min(S.v / 9, 1), -0.62, 0.62);
-  S.lean = lerp(S.lean, leanTarget, Math.min(1, 4.5 * dt));
-  const yawTarget = Math.atan2(S.vx, Math.max(S.v, 6)) * 0.85;
+  // ---------- ПОДВЕСКА: колёса касаются дороги ----------
+  const roadF = roadProfile(S.x + S.vx * 0.05, S.z + 0.72);   // под передним
+  const roadR = roadProfile(S.x, S.z - 0.70);                 // под задним
+  S.edge = roadF.edge;
+  const airF = S.wheelie > 0.12;                              // перед в воздухе
+  const accL = (S.v - vPrev) / dt;
+  // перенос веса: тормоз грузит перед, разгон — зад
+  const wF = clamp(0.5 - accL * 0.028 + brake * 0.30 - gas * 0.12, 0.18, 0.92);
+  const targetF = airF ? -0.006 : 0.028 + wF * 0.030 + roadF.h * 0.85;
+  const targetR = 0.028 + (1 - wF) * 0.030 + roadR.h * 0.85;
+  S.suspFv += ((targetF - S.suspF) * 300 - S.suspFv * 21) * dt;
+  S.suspRv += ((targetR - S.suspR) * 300 - S.suspRv * 21) * dt;
+  S.suspF = clamp(S.suspF + S.suspFv * dt, -0.012, 0.11);
+  S.suspR = clamp(S.suspR + S.suspRv * dt, -0.012, 0.11);
+
+  // переезд стыка между полосами: «тук» + толчок в вилку
+  const seamK = Math.round(S.x / 3.75);
+  if (S.prevSeam === null) S.prevSeam = seamK;
+  if (seamK !== S.prevSeam) {
+    const nCross = Math.min(Math.abs(seamK - S.prevSeam), 2);
+    if (S.v > 6 && S.wheelie < 0.1) audio.bump(Math.min(1, S.v / 30) * nCross);
+    S.suspFv -= S.v * 0.012 * nCross;
+    S.prevSeam = seamK;
+  }
+
+  // визуальный курс — сглажен (наклон уже посчитан в блоке поворотов)
+  const yawTarget = Math.atan2(S.vx, Math.max(S.v, 6)) * 0.9 + S.lean * 0.18;
   S.yaw = lerp(S.yaw, yawTarget, Math.min(1, 6 * dt));
   const acc = (S.v - vPrev) / dt;
-  const pitchTarget = clamp(-acc * 0.004 - gas * (S.v < 12 ? 0.05 : 0.01), -0.09, 0.12);
+  const pitchTarget = clamp(-acc * 0.004 - gas * (S.v < 12 ? 0.05 : 0.01) + (S.suspF - S.suspR) * 0.9, -0.14, 0.16);
   S.pitch = lerp(S.pitch, pitchTarget, Math.min(1, 6 * dt));
 
-  // передачи
+  // передачи (с «клац» при переключении)
   let g = 1;
   for (let i = 0; i < GEARS.length - 1; i++) if (S.v >= GEARS[i]) g = i + 1;
+  if (g !== curGear && S.v > 6 && S.mode === 'ride') audio.shift();
   curGear = g;
   const lo = GEARS[g - 1], hi = GEARS[g];
   curRPM = clamp(0.12 + 0.88 * (S.v - lo) / (hi - lo), 0.10, 1) + (S.wheelie > 0.1 ? 0.06 : 0);
@@ -581,13 +688,15 @@ function crash(reason = 'ДТП на МКАДе') {
 
 function restart() {
   $('crash').classList.add('hidden');
-  for (const c of cars) scene.remove(c.group);
+  for (const c of cars) recycleCar(c);
   cars.length = 0;
   S.mode = 'ride';
   S.x = LANES_X[2]; S.z += 10; S.v = 8; S.vx = 0;
   S.dist = 0; S.score = 0; S.nearMiss = 0;
   S.lean = 0; S.yaw = 0; S.pitch = 0; S.steer = 0;
   S.wheelie = 0; S.wheelieVel = 0; S.wheelieTime = 0; S.stuntBank = 0;
+  S.suspF = 0.03; S.suspFv = 0; S.suspR = 0.03; S.suspRv = 0;
+  S.camDip = 0; S.camDipV = 0; S.prevSeam = null;
   bike.group.rotation.set(0, 0, 0);
   for (let i = 0; i < 10; i++) spawnAhead();
   audio.resume();
@@ -606,6 +715,19 @@ let fovCur = 62;
 function updateCamera(dt, t) {
   const v = S.v;
 
+  // пружина «клевка» камеры (посадка после вилли, кочки)
+  S.camDipV += (-S.camDip * 90 - S.camDipV * 11) * dt;
+  S.camDip += S.camDipV * dt;
+  const sag = (S.suspF + S.suspR) * 0.5;   // среднее сжатие подвески
+
+  // спин-бэк обзора: без захвата курсора взгляд плавно возвращается вперёд
+  if (!mLook.locked && !mLook.drag) {
+    mLook.yaw = lerp(mLook.yaw, 0, Math.min(1, 5 * dt));
+    mLook.pitch = lerp(mLook.pitch, 0, Math.min(1, 5 * dt));
+  }
+  // в шлеме приборка перезжает в угол и уменьшается
+  document.body.classList.toggle('helm', S.camMode === 2);
+
   if (S.mode === 'title') {
     const a = t * 0.22;
     camPos.set(S.x + Math.sin(a) * 5.2, 1.55 + Math.sin(t * 0.3) * 0.25, S.z - Math.cos(a) * 5.2);
@@ -619,14 +741,16 @@ function updateCamera(dt, t) {
   }
 
   if (S.camMode === 2) {
-    // ===== камера от шлема: сидим на голове райдера =====
+    // ===== камера от шлема: сидим на голове райдера, мышь вертит головой =====
     bike.group.updateMatrixWorld();
     bike.head.getWorldPosition(_headW);
     camera.position.copy(_headW);
-    // направление взгляда — вперёд по мотоциклу (с наклоном и вилли)
+    camera.position.y += S.camDip * 0.7;   // посадка чувствуется и шлемом
+    // направление взгляда — вперёд по мотоциклу + поворот головы мышью
     _fwd.set(0, 0, 1).applyQuaternion(bike.group.quaternion);
+    _fwd.applyAxisAngle(_UPV, mLook.yaw);
     camLookT.copy(_headW).addScaledVector(_fwd, 40);
-    camLookT.y -= 1.6; // чуть вниз к дороге
+    camLookT.y += mLook.pitch * 26 - 1.6; // чуть вниз к дороге; мышью — вверх/вниз
     camLookSm.lerp(camLookT, Math.min(1, 22 * dt));
     camera.up.set(0, 1, 0);
     camera.lookAt(camLookSm);
@@ -637,28 +761,33 @@ function updateCamera(dt, t) {
     camera.rotateZ(Math.sin(t * 47) * amp);
     fovCur = lerp(fovCur, 78 + v * 0.12, Math.min(1, 6 * dt));
   } else {
-    // ===== погоня / близкая (плавный демпфер) =====
-    const back = (S.camMode === 0 ? 4.7 : 3.4) + v * 0.016;
-    const up = (S.camMode === 0 ? 1.68 : 1.42) + v * 0.003;
-    camDesired.set(S.x * 0.96, up, S.z - back);
+    // ===== погоня / близкая (плавный демпфер) + орбита мышью =====
+    const back = (S.camMode === 0 ? 4.7 : 3.4) + v * 0.016 + S.wheelie * 0.55;
+    const up = (S.camMode === 0 ? 1.68 : 1.42) + v * 0.003 - S.wheelie * 0.22;
+    // офсет камеры и точки взгляда, повёрнутые на угол обзора мышью
+    const cyw = Math.cos(mLook.yaw), syw = Math.sin(mLook.yaw);
+    const cox = -back * syw, coz = -back * cyw;
+    const aimD = 7 + v * 0.05;
+    const aox = aimD * syw, aoz = aimD * cyw;
+    camDesired.set(S.x * 0.96 + cox, up - sag * 0.5 - mLook.pitch * 2.8, S.z + coz);
     const k = 1 - Math.exp(-5.5 * dt);
     camPos.x += (camDesired.x - camPos.x) * k;
     camPos.y += (camDesired.y - camPos.y) * k;
     camPos.z += (camDesired.z - camPos.z) * k;
 
-    // мягкая вибрация (синусоиды, не белый шум)
-    const shakeAmp = Math.pow(Math.min(v / 62, 1), 2.2) * 0.05 * (1 + S.wheelie * 2.5);
+    // мягкая вибрация (синусоиды, не белый шум) + тряска на гравии у края
+    const shakeAmp = Math.pow(Math.min(v / 62, 1), 2.2) * 0.05 * (1 + S.wheelie * 2.5) * (1 + S.edge * 3.2);
     const vibX = (Math.sin(t * 31.4) * 0.6 + Math.sin(t * 47.1 + 2.1) * 0.4) * shakeAmp;
     const vibY = (Math.sin(t * 36.7 + 1.0) * 0.6 + Math.sin(t * 53.0 + 3.0) * 0.4) * shakeAmp;
     const vibZ = (Math.sin(t * 41.3 + 0.5)) * shakeAmp * 0.6;
 
-    camera.position.set(camPos.x + vibX, camPos.y + vibY, camPos.z + vibZ);
-    camLookT.set(S.x, 1.0 + S.wheelie * 0.55, S.z + 7 + v * 0.05);
+    camera.position.set(camPos.x + vibX, camPos.y + vibY + S.camDip, camPos.z + vibZ);
+    camLookT.set(S.x + aox, 1.0 + S.wheelie * 0.55 + mLook.pitch * 3.6, S.z + aoz);
     camLookSm.lerp(camLookT, Math.min(1, 9 * dt));
     camera.up.set(0, 1, 0);
     camera.lookAt(camLookSm);
     camera.rotateZ(S.lean * 0.09); // лёгкий крен за байком
-    fovCur = lerp(fovCur, (S.camMode === 0 ? 62 : 66) + v * 0.15, Math.min(1, 4 * dt));
+    fovCur = lerp(fovCur, (S.camMode === 0 ? 62 : 66) + v * 0.15 + S.wheelie * 9, Math.min(1, 4 * dt));
   }
   camera.fov = fovCur;
   camera.updateProjectionMatrix();
@@ -715,12 +844,21 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-// ---------- адаптивное качество ----------
-let slowTime = 0, pr = Math.min(window.devicePixelRatio, 2);
+// ---------- адаптивное качество (3 ступени) ----------
+let slowTime = 0, pr = Math.min(window.devicePixelRatio, 2), qLevel = 0;
 function adaptQuality(dt) {
   if (dt > 0.034 && S.mode === 'ride') slowTime += dt; else slowTime = Math.max(0, slowTime - dt * 0.5);
-  if (slowTime > 2.2 && pr > 1) {
-    pr = 1; renderer.setPixelRatio(1); slowTime = 0;
+  if (slowTime > 2.2) {
+    slowTime = 0;
+    if (qLevel === 0) {                       // 1: убрать ретину
+      qLevel = 1; pr = 1; renderer.setPixelRatio(1);
+    } else if (qLevel === 1) {                // 2: тени дешевле
+      qLevel = 2;
+      renderer.shadowMap.type = THREE.PCFShadowMap;
+      world.sun.shadow.mapSize.set(1024, 1024);
+      if (world.sun.shadow.map) { world.sun.shadow.map.dispose(); world.sun.shadow.map = null; }
+      scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
+    }
   }
 }
 
@@ -752,7 +890,7 @@ function frame(now) {
     }
     updateHUD(dt);
     audio.update(curRPM, ((keys['KeyW'] || keys['ArrowUp'] || touch.gas) ? 0.85 : 0)
-      + (S.wheelie > 0.1 ? 0.15 : 0), S.v);
+      + (S.wheelie > 0.1 ? 0.15 : 0), S.v, dt, { wheelie: S.wheelie, edge: S.edge });
     adaptQuality(dt);
   } else if (S.mode === 'ride' && window.__mkad?.freeze) {
     updateHUD(dt);
@@ -785,11 +923,13 @@ function frame(now) {
   if (fallen) {
     bike.group.position.set(S.x, -0.28, S.z);
   } else {
-    // точка вращения — пятно контакта заднего колеса (вилли вокруг него)
+    // точка вращения — пятно контакта заднего колеса (вилли вокруг него);
+    // подвеска «дышит»: байк приседает на кочках и при разгоне/торможении
+    const sagVis = (S.suspF + S.suspR) * 0.5;
     _eul.set(bike.group.rotation.x, bike.group.rotation.y, bike.group.rotation.z);
     _quat.setFromEuler(_eul);
     _raW.copy(RA_LOCAL).applyQuaternion(_quat);
-    bike.group.position.set(S.x - _raW.x, -_raW.y + 0.33, S.z - 0.68 - _raW.z);
+    bike.group.position.set(S.x - _raW.x, -_raW.y + 0.33 - sagVis, S.z - 0.68 - _raW.z);
   }
 
   bikeState.v = S.v; bikeState.steer = S.steer; bikeState.lean = S.lean;
@@ -812,7 +952,7 @@ requestAnimationFrame(frame);
 // скрин/тест хуки
 const params = new URLSearchParams(location.hash.slice(1));
 window.__mkad = {
-  S, start: startGame, restart, setSpeed: v => { S.v = v; }, setCam: m => { S.camMode = m; },
+  S, start: startGame, restart, setSpeed: v => { S.v = v; }, setCam: m => { S.camMode = ({ chase: 0, close: 1, helm: 2 })[m] ?? (Number(m) || 0); },
   setZ: z => { S.z = z; }, freeze: false, crashNow: () => crash(),
   bbox: () => {
     const b = new THREE.Box3().setFromObject(bike.group);
@@ -844,6 +984,12 @@ window.__mkad = {
       camMode: S.camMode,
     };
   },
+  setLook: (yaw, pitch) => {   // тестовый хук обзора мышью
+    mLook.yaw = yaw; mLook.pitch = pitch || 0;
+    mLook.locked = true;       // «как будто» курсор захвачен — спин-бэк выключен
+  },
+  lookState: () => ({ yaw: +mLook.yaw.toFixed(3), pitch: +mLook.pitch.toFixed(3), locked: mLook.locked, drag: mLook.drag }),
+  releaseLook: () => { mLook.locked = false; mLook.drag = false; },
   info: () => ({
     calls: renderer.info.render.calls, tris: renderer.info.render.triangles,
     cars: cars.length, oncoming: oncoming.length, mode: S.mode,

@@ -1,4 +1,5 @@
 import * as THREE from './three.module.min.js';
+import { bake } from './bake.js';
 
 // ============================================================
 //  Спортбайк + мотоциклист. Всё из скруглённой геометрии:
@@ -148,6 +149,7 @@ export function buildBike(paintHex = 0x2fa14e, T) {
   steer.rotation.order = 'YXZ';
   steer.position.set(0, 0.92, 0.40);
   steer.rotation.x = -0.42; // вынос (рейк)
+  steer.userData.dynamic = true;
   bike.add(steer);
 
   // трубы вилки
@@ -176,6 +178,7 @@ export function buildBike(paintHex = 0x2fa14e, T) {
   // переднее колесо
   const frontWheel = buildWheel(0.325, rubber, darkMetal, steel, { caliper: [0.075] });
   frontWheel.position.set(0, -0.646, 0);
+  frontWheel.userData.dynamic = true;
   steer.add(frontWheel);
 
   // переднее крыло
@@ -324,6 +327,7 @@ export function buildBike(paintHex = 0x2fa14e, T) {
   // заднее колесо
   const rearWheel = buildWheel(0.325, rubber, darkMetal, steel, { singleDisc: true, sprocket: true, caliper: [0.075] });
   rearWheel.position.set(0, 0.33, -0.68);
+  rearWheel.userData.dynamic = true;
   bike.add(rearWheel);
 
   // подножки
@@ -335,6 +339,7 @@ export function buildBike(paintHex = 0x2fa14e, T) {
 
   // ---------- МОТОЦИКЛИСТ ----------
   const rider = new THREE.Group();
+  rider.userData.dynamic = true;
   bike.add(rider);
   const suit = new THREE.MeshPhysicalMaterial({ color: 0x17181c, roughness: 0.48, metalness: 0.1, clearcoat: 0.5, clearcoatRoughness: 0.3 });
   const suitAccent = new THREE.MeshPhysicalMaterial({ color: paintHex, roughness: 0.42, metalness: 0.3, clearcoat: 0.7, clearcoatRoughness: 0.2 });
@@ -376,6 +381,7 @@ export function buildBike(paintHex = 0x2fa14e, T) {
   // голова + шлем
   const head = new THREE.Group();
   head.position.set(0, 1.27, 0.335);
+  head.userData.dynamic = true;
   const helmet = mesh(new THREE.SphereGeometry(0.135, 26, 20), helmetMat);
   head.add(helmet);
   const helmetStripe = mesh(new THREE.TorusGeometry(0.1352, 0.02, 10, 34), helmetAccent);
@@ -387,8 +393,22 @@ export function buildBike(paintHex = 0x2fa14e, T) {
   head.add(chin);
   rider.add(head);
 
+  // ---------- задний номер (евроформат, мотоциклетный) ----------
+  if (T && T.plates) {
+    const plateMat = new THREE.MeshStandardMaterial({
+      map: T.plates[(Math.random() * T.plates.length) | 0], roughness: 0.55,
+    });
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.185, 0.045), plateMat);
+    plate.position.set(0, 0.70, -1.00);
+    plate.rotation.set(0.28, Math.PI, 0);
+    bike.add(plate);
+  }
+
   // ---------- тени ----------
   bike.traverse(o => { if (o.isMesh) o.castShadow = true; });
+
+  // ---------- печка: все статичные детали → по мешу на материал ----------
+  bake(bike);
 
   // ---------- анимация ----------
   const api = {

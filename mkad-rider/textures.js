@@ -360,18 +360,60 @@ function sign110Canvas() {
   return c;
 }
 
-// ---------- номерной знак ----------
-function plateCanvas(text = 'А 777 МК 77') {
-  const W = 256, H = 64;
+// ---------- номерной знак (европейский формат) ----------
+// синяя полоса ЕС слева с кольцом звёзд + код страны, белый фон,
+// чёрные знаки в стиле DIN. Формат РФ: Б ЦЦЦ ББ РР
+const RU_LETTERS = 'АВЕКМНОРСТУХ';          // буквы, совпадающие с латиницей
+const RU_REGIONS = [77, 97, 99, 177, 197, 199, 777, 750, 790];
+function randomPlateText() {
+  const L = () => RU_LETTERS[(Math.random() * RU_LETTERS.length) | 0];
+  const D = () => String((Math.random() * 10) | 0);
+  return `${L()} ${D()}${D()}${D()} ${L()}${L()} ${RU_REGIONS[(Math.random() * RU_REGIONS.length) | 0]}`;
+}
+
+function star5(ctx, cx, cy, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+    const a2 = a + Math.PI / 5;
+    ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    ctx.lineTo(cx + Math.cos(a2) * r * 0.42, cy + Math.sin(a2) * r * 0.42);
+  }
+  ctx.closePath(); ctx.fill();
+}
+
+function plateCanvas(text = randomPlateText(), countryCode = 'RUS') {
+  const W = 512, H = 112;
   const c = makeCanvas(W, H), ctx = c.getContext('2d');
-  ctx.fillStyle = '#f4f5f2'; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = '#222'; ctx.lineWidth = 4; ctx.strokeRect(2, 2, W - 4, H - 4);
-  ctx.fillStyle = '#111';
-  ctx.font = 'bold 38px "Arial", sans-serif';
+  // белый фон с лёгким градиентом «металла»
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#fbfbf8'); grad.addColorStop(0.5, '#f1f1ec'); grad.addColorStop(1, '#e9e9e3');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+  // синяя полоса ЕС
+  const bw = 66;
+  ctx.fillStyle = '#003399'; ctx.fillRect(0, 0, bw, H);
+  // кольцо из 12 золотых звёзд
+  ctx.fillStyle = '#FFCC00';
+  const cx = bw / 2, cy = H * 0.40, rr = 21;
+  for (let i = 0; i < 12; i++) {
+    const a = i * (Math.PI * 2 / 12) - Math.PI / 2;
+    star5(ctx, cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, 4.6);
+  }
+  // код страны
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 27px "Arial", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(text, W / 2, H / 2 + 2);
+  ctx.fillText(countryCode, cx, H * 0.80);
+  // чёрные знаки (в стиле DIN: узкие, жирные)
+  ctx.fillStyle = '#14161a';
+  ctx.font = '900 76px "Arial Narrow", "Arial", sans-serif';
+  ctx.fillText(text, (bw + W) / 2 + 4, H / 2 + 3);
+  // тонкая рамка
+  ctx.strokeStyle = 'rgba(20,22,26,0.55)'; ctx.lineWidth = 5;
+  ctx.strokeRect(2.5, 2.5, W - 5, H - 5);
   return c;
 }
+
 
 // ---------- надпись на фургоне ----------
 function vanTextCanvas() {
@@ -440,6 +482,13 @@ export function createTextures(renderer) {
 
   const plate = tex(plateCanvas(), { aniso: 4 });
   plate.wrapS = plate.wrapT = THREE.ClampToEdgeWrapping;
+  // пул случайных европейских номеров
+  const plates = [plate];
+  for (let i = 0; i < 11; i++) {
+    const p = tex(plateCanvas(), { aniso: 4 });
+    p.wrapS = p.wrapT = THREE.ClampToEdgeWrapping;
+    plates.push(p);
+  }
   const sign110 = tex(sign110Canvas(), { aniso: 4 });
   sign110.wrapS = sign110.wrapT = THREE.ClampToEdgeWrapping;
   const vanText = tex(vanTextCanvas(), { aniso: 4 });
@@ -447,5 +496,5 @@ export function createTextures(renderer) {
   const truckBox = tex(truckBoxCanvas(), { aniso: maxAniso });
   truckBox.wrapS = truckBox.wrapT = THREE.ClampToEdgeWrapping;
 
-  return { road, roadRough, roadNormal, grass, concrete, grid, cloud, spark, gantries, kmTex, plate, sign110, vanText, truckBox };
+  return { road, roadRough, roadNormal, grass, concrete, grid, cloud, spark, gantries, kmTex, plate, plates, sign110, vanText, truckBox };
 }

@@ -21,7 +21,9 @@
 
   /* ---------- HUD ---------- */
   #hud{position:fixed;inset:0;pointer-events:none;z-index:5}
-  #gauge{position:absolute;right:14px;bottom:12px;width:242px;height:242px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.55))}
+  #gauge{position:absolute;right:14px;bottom:12px;width:242px;height:242px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.55));transition:width .25s, height .25s, right .25s, left .25s, bottom .25s, opacity .25s}
+  /* в шлеме приборка маленькая, в левом нижнем углу — не мешает взгляду */
+  body.helm #gauge{right:auto;left:12px;bottom:8px;width:148px;height:148px;opacity:.94}
   #stats{position:absolute;left:16px;top:14px;display:flex;flex-direction:column;gap:8px}
   .stat{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-left:3px solid var(--green);
     border-radius:10px;padding:7px 14px;min-width:150px;backdrop-filter:blur(4px)}
@@ -96,7 +98,7 @@
     <div class="stat"><span class="lbl">Километр МКАД</span><span class="val" id="kmad">1</span></div>
   </div>
   <div id="bonus"></div>
-  <div id="hint"><b>W</b> газ · <b>S</b> тормоз · <b>A/D</b> руль · <b>Shift</b> вилли · <b>C</b> камера · <b>M</b> звук · <b>P</b> пауза · <b>R</b> заново</div>
+  <div id="hint"><b>W</b> газ · <b>S</b> тормоз · <b>A/D</b> руль · <b>Shift</b> вилли · <b>мышь</b> обзор (клик — захват) · <b>C</b> камера · <b>M</b> звук · <b>P</b> пауза · <b>R</b> заново</div>
 </div>
 
 <div id="title" class="overlay">
@@ -116,9 +118,9 @@
     <button class="btn" id="startBtn">ПОГНАЛИ &nbsp;·&nbsp; ENTER</button>
     <div class="controls">
       <div><b>W / ↑</b> газ</div><div><b>S / ↓</b> тормоз</div>
-      <div><b>A D / ← →</b> руль</div><div><b>Shift</b> вилли (стант!)</div>
-      <div><b>C</b> камера (3 вида)</div><div><b>M</b> звук вкл/выкл</div>
-      <div><b>P</b> пауза</div><div><b>R</b> начать заново</div>
+      <div><b>A D / ← →</b> руль (наклон)</div><div><b>Shift</b> вилли (стант!)</div>
+      <div><b>Мышь</b> обзор · клик — захват курсора</div><div><b>C</b> камера (3 вида)</div>
+      <div><b>M</b> звук вкл/выкл</div><div><b>P</b> пауза · <b>R</b> заново</div>
     </div>
     <div class="footNote">Звук включится после нажатия «Погнали» · на телефоне — кнопки на экране · цвет байка — свотчи выше</div>
   </div>

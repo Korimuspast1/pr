@@ -1,4 +1,5 @@
 import * as THREE from './three.module.min.js';
+import { bake } from './bake.js';
 
 // ============================================================
 //  Машины трафика: скруглённые кузова (экструзия профиля
@@ -173,6 +174,7 @@ export function buildCar(kind, colorHex, T) {
   for (const z of K.wheelZ) for (const sx of [-1, 1]) {
     const w = buildCarWheel(K.wheelR, K.wheelR * 0.62, S.rubber, S.rim);
     w.position.set(sx * (halfW - 0.10), K.wheelR, z);
+    w.userData.dynamic = true;   // вращается — не печём в корпус
     g.add(w);
     wheels.push({ mesh: w, r: K.wheelR });
   }
@@ -196,11 +198,14 @@ export function buildCar(kind, colorHex, T) {
     g.add(arm);
     g.add(mesh(roundedBoxGeo(0.10, 0.07, 0.05, 0.02), S.trim, sx * (halfW + 0.11), K.win[0][1] + 0.10, K.win[0][0] - 0.12));
   }
-  // номера
-  const pf = mesh(new THREE.PlaneGeometry(0.44, 0.11), S.plate, 0, 0.52, K.hlZ + 0.135);
+  // номера (евроформат, случайный номер)
+  const plateMat = new THREE.MeshStandardMaterial({
+    map: T.plates[(Math.random() * T.plates.length) | 0], roughness: 0.6,
+  });
+  const pf = mesh(new THREE.PlaneGeometry(0.50, 0.11), plateMat, 0, 0.52, K.hlZ + 0.135);
   pf.castShadow = false;
   g.add(pf);
-  const pr = mesh(new THREE.PlaneGeometry(0.44, 0.11), S.plate, 0, 0.58, K.tlZ - 0.14);
+  const pr = mesh(new THREE.PlaneGeometry(0.50, 0.11), plateMat, 0, 0.58, K.tlZ - 0.14);
   pr.rotation.y = Math.PI;
   pr.castShadow = false;
   g.add(pr);
@@ -224,7 +229,13 @@ export function buildCar(kind, colorHex, T) {
     g.add(mesh(roundedBoxGeo(0.06, 0.05, 0.06, 0.02), m, sx * (halfW - 0.06), K.tlY, K.tlZ + 0.06));
   }
 
-  return { group: g, wheels, hw: K.hw, hl: K.hl, blinkL, blinkR, kind };
+  // печка: статичные детали сливаются в один меш на материал
+  bake(g);
+
+  return {
+    group: g, wheels, hw: K.hw, hl: K.hl, blinkL, blinkR, kind,
+    setPaint(hex) { bodyMat.color.set(hex); },
+  };
 }
 
 // ---------- фура ----------
@@ -268,11 +279,15 @@ export function buildTruck(colorHex, T) {
   for (const z of axles) for (const sx of [-1, 1]) {
     const w = buildCarWheel(0.45, 0.27, S.rubber, S.rim);
     w.position.set(sx * 0.88, 0.45, z);
+    w.userData.dynamic = true;
     g.add(w);
     wheels.push({ mesh: w, r: 0.45 });
   }
-  // номер
-  const pr = mesh(new THREE.PlaneGeometry(0.44, 0.11), S.plate, 0, 0.8, -5.52);
+  // номер (евроформат)
+  const plateMat = new THREE.MeshStandardMaterial({
+    map: T.plates[(Math.random() * T.plates.length) | 0], roughness: 0.6,
+  });
+  const pr = mesh(new THREE.PlaneGeometry(0.50, 0.11), plateMat, 0, 0.8, -5.52);
   pr.rotation.y = Math.PI;
   g.add(pr);
 
@@ -283,7 +298,12 @@ export function buildTruck(colorHex, T) {
     g.add(mesh(roundedBoxGeo(0.07, 0.06, 0.07, 0.02), m, sx * 1.0, 1.0, 2.36));
   }
 
-  return { group: g, wheels, hw: 1.16, hl: 4.65, blinkL, blinkR, kind: 'truck' };
+  bake(g);
+
+  return {
+    group: g, wheels, hw: 1.16, hl: 4.65, blinkL, blinkR, kind: 'truck',
+    setPaint(hex) { cabMat.color.set(hex); },
+  };
 }
 
 export const CAR_COLORS = [
