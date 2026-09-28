@@ -1,2 +1,66 @@
-donor: MISSING
-target: MISSING
+donor: 64119445 bytes  zip=True
+donor: first bytes = b'PK\x03\x04\x14\x00\x00\x00\x08\x00\xfcbp\\\x9a\x18\x97f\x07\x01\x00\x00\xe0\x06\x00\x00-\x00\x00\x00art/sound/blends/155cc_engine.sfxB'
+donor: 129 entries; first 30:
+    vehicles/yzfr15/yzfr15_suspension_R.jbeam
+    vehicles/yzfr15/yzfr15_frame.jbeam
+    vehicles/yzfr15/yzfr15_engine.jbeam
+    vehicles/yzfr15/yzfr15.jbeam
+    vehicles/yzfr15/sunnyturbo.pc
+    vehicles/yzfr15/stoppieking.pc
+    vehicles/yzfr15/yzfr15_suspension_F.jbeam
+    vehicles/yzfr15/race3.jpg
+    vehicles/yzfr15/race1.pc
+    vehicles/yzfr15/R15textures/YzfR15.materials.json
+    vehicles/yzfr15/R15textures/yamahalogor15_baseColor.png
+    vehicles/yzfr15/R15textures/sc_logo_BaseColor.png
+    vehicles/yzfr15/R15textures/R15silver_BaseColor.jpg
+    vehicles/yzfr15/R15textures/R15Red1_BaseColor.jpg
+    vehicles/yzfr15/R15textures/r15moddedparts2.dae
+    vehicles/yzfr15/R15textures/r15moddedparts.dae
+    vehicles/yzfr15/R15textures/r15mods.materials.json
+    vehicles/yzfr15/R15textures/R15gold_BaseColor.jpg
+    vehicles/yzfr15/R15textures/R15grip_BaseColor.jpg
+    vehicles/yzfr15/R15textures/r15frontfairing.dae
+    vehicles/yzfr15/R15textures/R15Black2_BaseColor.jpg
+    vehicles/yzfr15/R15textures/R15Black1_BaseColor.jpg
+    vehicles/yzfr15/R15textures/r.png
+    vehicles/yzfr15/R15textures/r15fronttank.dae
+    vehicles/yzfr15/R15textures/g.png
+    vehicles/yzfr15/R15textures/r15reartail.dae
+    vehicles/yzfr15/R15textures/brown_burn_BaseColor.png
+    vehicles/yzfr15/R15textures/bolts_BaseColor.png
+    vehicles/yzfr15/R15textures/body.materials.json
+    vehicles/yzfr15/R15textures/carbon_BaseColor.png
+target: 40988329 bytes  zip=True
+target: first bytes = b'PK\x03\x04\x14\x00\x00\x00\x00\x00\xcc{pX\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00art/PK\x03\x04\x14\x00\x00\x00\x00\x00\xcc{pX\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\n\x00\x00\x00'
+target: 155 entries; first 30:
+    art/
+    art/sound/
+    art/sound/blends/
+    art/sound/blends/motocross.sfxBlend2D.json
+    art/sound/engine/
+    art/sound/engine/motocross/
+    vehicles/
+    vehicles/motocross/
+    vehicles/motocross/default.png
+    vehicles/motocross/dirt.materials.json
+    vehicles/motocross/Dirt.pc
+    vehicles/motocross/Dirt.png
+    vehicles/motocross/dummy.dae
+    vehicles/motocross/dummy.jbeam
+    vehicles/motocross/engine.jbeam
+    vehicles/motocross/exhaust.jbeam
+    vehicles/motocross/fork_cover.jbeam
+    vehicles/motocross/frame.jbeam
+    vehicles/motocross/front_mudguard.jbeam
+    vehicles/motocross/front_plastics.jbeam
+    vehicles/motocross/front_support.jbeam
+    vehicles/motocross/front_suspension.jbeam
+    vehicles/motocross/fueltank.jbeam
+    vehicles/motocross/handle.jbeam
+    vehicles/motocross/head.jbeam
+    vehicles/motocross/helmet.dae
+    vehicles/motocross/info.json
+    vehicles/motocross/info_Dirt.json
+    vehicles/motocross/info_Street.json
+    vehicles/motocross/inputmaps/

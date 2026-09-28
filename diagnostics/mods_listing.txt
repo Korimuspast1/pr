@@ -1,17 +1,19 @@
-total 6704
-drwxr-xr-x 2 runner runner    4096 Sep 28 10:57 .
-drwxr-xr-x 7 runner runner    4096 Sep 28 10:25 ..
--rw-r--r-- 1 runner runner     394 Sep 28 10:25 README.md
--rw-r--r-- 1 runner runner     381 Sep 28 10:25 job.json
--rw-r--r-- 1 runner runner  131119 Sep 28 10:41 mod1_donor.bin.network.log
--rw-r--r-- 1 runner runner   73993 Sep 28 10:41 mod1_donor.bin.page.html
--rw-r--r-- 1 runner runner 1171692 Sep 28 10:26 mod1_donor.bin.step01_loaded.png
--rw-r--r-- 1 runner runner 1170020 Sep 28 10:26 mod1_donor.bin.step02_prepared.png
--rw-r--r-- 1 runner runner 1169648 Sep 28 10:41 mod1_donor.bin.step03_final.png
--rw-r--r-- 1 runner runner   51534 Sep 28 10:41 mod1_donor.bin.ui.txt
--rw-r--r-- 1 runner runner  152991 Sep 28 10:57 mod2_target.bin.network.log
--rw-r--r-- 1 runner runner   73943 Sep 28 10:57 mod2_target.bin.page.html
--rw-r--r-- 1 runner runner  923268 Sep 28 10:41 mod2_target.bin.step01_loaded.png
--rw-r--r-- 1 runner runner  923268 Sep 28 10:42 mod2_target.bin.step02_prepared.png
--rw-r--r-- 1 runner runner  923268 Sep 28 10:57 mod2_target.bin.step03_final.png
--rw-r--r-- 1 runner runner   51267 Sep 28 10:57 mod2_target.bin.ui.txt
+total 103012
+drwxr-xr-x 2 runner runner     4096 Sep 28 11:01 .
+drwxr-xr-x 8 runner runner     4096 Sep 28 11:00 ..
+-rw-r--r-- 1 runner runner      394 Sep 28 10:59 README.md
+-rw-r--r-- 1 runner runner      381 Sep 28 10:59 job.json
+-rw-r--r-- 1 runner runner 64119445 Sep 28 11:00 mod1_donor.bin
+-rw-r--r-- 1 runner runner    17345 Sep 28 11:00 mod1_donor.bin.network.log
+-rw-r--r-- 1 runner runner    70356 Sep 28 11:00 mod1_donor.bin.page.html
+-rw-r--r-- 1 runner runner    22401 Sep 28 11:00 mod1_donor.bin.step01_loaded.jpg
+-rw-r--r-- 1 runner runner    22495 Sep 28 11:00 mod1_donor.bin.step02_prepared.jpg
+-rw-r--r-- 1 runner runner    25231 Sep 28 11:00 mod1_donor.bin.step03_final.jpg
+-rw-r--r-- 1 runner runner     4976 Sep 28 11:00 mod1_donor.bin.ui.txt
+-rw-r--r-- 1 runner runner 40988329 Sep 28 11:01 mod2_target.bin
+-rw-r--r-- 1 runner runner    17345 Sep 28 11:01 mod2_target.bin.network.log
+-rw-r--r-- 1 runner runner    70306 Sep 28 11:01 mod2_target.bin.page.html
+-rw-r--r-- 1 runner runner    21651 Sep 28 11:01 mod2_target.bin.step01_loaded.jpg
+-rw-r--r-- 1 runner runner    21705 Sep 28 11:01 mod2_target.bin.step02_prepared.jpg
+-rw-r--r-- 1 runner runner    24477 Sep 28 11:01 mod2_target.bin.step03_final.jpg
+-rw-r--r-- 1 runner runner     4922 Sep 28 11:01 mod2_target.bin.ui.txt
