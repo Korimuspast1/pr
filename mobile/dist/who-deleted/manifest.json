@@ -1,0 +1,1 @@
+{"name":"WhoDeleted","description":"Local delete attribution helper: logs who likely deleted a message (author/mod/you/bulk) and can toast it.","authors":[{"name":"Arena port","id":"0"}],"main":"index.js","vendetta":{"icon":"ic_message_delete"},"hash":"20d7ec9bbb064950659b8e94069304d708b6d2e8a49a1deab9c9d71e4c31d428"}

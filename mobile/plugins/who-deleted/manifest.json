@@ -1,0 +1,7 @@
+{
+  "name": "WhoDeleted",
+  "description": "Local delete attribution helper: logs who likely deleted a message (author/mod/you/bulk) and can toast it.",
+  "authors": [{ "name": "Arena port", "id": "0" }],
+  "main": "src/index.tsx",
+  "vendetta": { "icon": "ic_message_delete" }
+}

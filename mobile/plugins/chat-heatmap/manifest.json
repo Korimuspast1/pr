@@ -1,0 +1,7 @@
+{
+  "name": "ChatHeatmap",
+  "description": "Local chat analytics: activity by hour/day, top users, top words, emoji/media counters.",
+  "authors": [{ "name": "Arena port", "id": "0" }],
+  "main": "src/index.tsx",
+  "vendetta": { "icon": "ic_stats" }
+}

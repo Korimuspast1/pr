@@ -1,0 +1,7 @@
+{
+  "name": "FakeOfflinePlus",
+  "description": "Privacy tools: hide typing, quiet hours, panic mode, and local self-status spoofing.",
+  "authors": [{ "name": "Arena port", "id": "0" }],
+  "main": "src/index.tsx",
+  "vendetta": { "icon": "ic_status_invisible" }
+}
