@@ -1,0 +1,18 @@
+[limewire] opening https://limewire.com/d/tAoZ9#dkMNhZe4Zp
+[limewire] networkidle not reached, continuing
+[limewire] screenshot -> mod1_donor.bin.step01_loaded.png
+[limewire] dismissed overlay via 'Close'
+[limewire] screenshot -> mod1_donor.bin.step02_prepared.png
+[limewire] attempt 1: group 0 item 0 label='Download'
+[limewire] attempt 1: no download event
+[limewire] dismissed overlay via 'Close'
+[limewire] attempt 3: group 5 item 1 label='Download'
+[limewire] attempt 3: no download event
+[limewire] dismissed overlay via 'Close'
+[limewire] attempt 4: group 5 item 2 label='Report This Download'
+[limewire] attempt 4: no download event
+[limewire] dismissed overlay via 'Close'
+[limewire] screenshot -> mod1_donor.bin.step03_final.png
+[limewire] wrote mod1_donor.bin.page.html (73989 chars)
+[limewire] no download captured
+[limewire] FAILED
