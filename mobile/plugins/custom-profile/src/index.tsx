@@ -174,17 +174,27 @@ function patchProfile(profile: any) {
         overrides.premiumSince ??= profile.premiumSince ?? new Date(Date.now() - 1000 * 60 * 60 * 24 * 30);
     }
 
-    const customBadges = getCustomBadges();
-    if (customBadges.length) {
-        const existing = Array.isArray(profile.badges) ? profile.badges : [];
-        const existingIds = new Set(existing.map((b: any) => b?.id));
-        overrides.badges = [
-            ...customBadges.filter(b => !existingIds.has(b.id)),
-            ...existing,
-        ];
-    }
+    // Do not write custom badges into profile.badges here.
+    // Mobile Discord also renders badges through useBadges; injecting in both
+    // places causes every selected badge to appear twice on the profile.
 
     return Object.keys(overrides).length ? copyWithDescriptors(profile, overrides) : profile;
+}
+
+function badgeKey(badge: any): string {
+    return String(badge?.id ?? badge?.badge_id ?? badge?.key ?? badge?.icon ?? badge?.description ?? "");
+}
+
+function mergeBadges(customBadges: any[], existingBadges: any[]) {
+    const seen = new Set<string>();
+    const merged: any[] = [];
+    for (const badge of [...customBadges, ...existingBadges]) {
+        const key = badgeKey(badge);
+        if (key && seen.has(key)) continue;
+        if (key) seen.add(key);
+        merged.push(badge);
+    }
+    return merged;
 }
 
 function installPatches() {
@@ -236,7 +246,7 @@ function installPatches() {
             if (!storage.enabled || !isMe(userId)) return ret;
             const customBadges = getCustomBadges();
             if (!customBadges.length) return ret;
-            return [...customBadges, ...(Array.isArray(ret) ? ret : [])];
+            return mergeBadges(customBadges, Array.isArray(ret) ? ret : []);
         }));
     }
 }
