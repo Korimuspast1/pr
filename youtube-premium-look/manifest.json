@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Premium Look — визуальный YouTube Premium",
+  "short_name": "Premium Look",
+  "version": "1.0.0",
+  "description": "Визуально оформляет YouTube под Premium: логотип «YouTube Premium», золотой аватар, карточку в меню и галочку «верифицирован» как у MrBeast. Только внешний вид — реальные функции не разблокируются.",
+  "author": "Arena Agent",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "premium-look@arena.agent",
+      "strict_min_version": "128.0"
+    }
+  },
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/*", "*://m.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/icon32.png"],
+      "matches": ["*://www.youtube.com/*", "*://m.youtube.com/*"]
+    }
+  ],
+  "action": {
+    "default_title": "Premium Look",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

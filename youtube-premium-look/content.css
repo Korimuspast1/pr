@@ -1,0 +1,182 @@
+/* ============================================================
+   Premium Look — визуальный YouTube Premium (только оформление)
+   Ничего не разблокирует и не отключает: меняется лишь внешний вид.
+
+   Классы на <html> (управляются из content.js):
+     ytpv-on         — расширение включено
+     ytpv-f-logo     — логотип YouTube Premium в шапке
+     ytpv-f-avatar   — золотое кольцо и значок на аватаре
+     ytpv-f-account  — карточка Premium в меню аккаунта
+     ytpv-f-verified — галочка «верифицирован» (как у MrBeast)
+   ============================================================ */
+
+html.ytpv-on {
+  --ytpv-gold: #f2b81e;
+  --ytpv-gold-1: #ffd76b;
+  --ytpv-gold-2: #e3a10e;
+  --ytpv-verified: #606060; /* цвет галочки в светлой теме */
+
+  /* галочка-кружок (тот же путь, что у настоящего бейджа YouTube) */
+  --ytpv-check-circle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E");
+  /* одиночная галочка (белая) для значка на аватаре */
+  --ytpv-check-white: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E");
+}
+
+html.ytpv-on[dark] {
+  --ytpv-verified: #adadad; /* цвет галочки в тёмной теме */
+}
+
+/* ------------------------------------------------------------
+   1. Логотип «YouTube Premium» в шапке
+   ------------------------------------------------------------ */
+.ytpv-logo {
+  display: none;
+}
+
+html.ytpv-on.ytpv-f-logo ytd-logo a > *:not(.ytpv-logo) {
+  display: none !important;
+}
+
+html.ytpv-on.ytpv-f-logo ytd-logo a > .ytpv-logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ytpv-logo > svg {
+  width: 29px;
+  height: 20px;
+  display: block;
+}
+
+.ytpv-logo-word {
+  margin-left: 5px;
+  font-family: "YouTube Sans", "Roboto", Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -1.2px;
+  color: #0f0f0f;
+}
+
+html[dark] .ytpv-logo-word {
+  color: #fff;
+}
+
+/* когда YouTube показывает только иконку (свёрнутое меню) — тоже без текста */
+.ytpv-logo.ytpv-mini .ytpv-logo-word {
+  display: none;
+}
+
+/* ------------------------------------------------------------
+   2. Золотое кольцо + значок Premium на аватаре
+   ------------------------------------------------------------ */
+html.ytpv-on.ytpv-f-avatar ytd-masthead button#avatar-btn,
+html.ytpv-on.ytpv-f-avatar ytd-masthead ytd-topbar-menu-button-renderer:has(img#img) button {
+  position: relative !important;
+}
+
+html.ytpv-on.ytpv-f-avatar ytd-masthead button#avatar-btn img,
+html.ytpv-on.ytpv-f-avatar ytd-masthead ytd-topbar-menu-button-renderer:has(img#img) img {
+  border-radius: 50% !important;
+  box-shadow: 0 0 0 2px var(--ytpv-gold), 0 0 8px rgba(242, 184, 30, 0.65) !important;
+}
+
+html.ytpv-on.ytpv-f-avatar ytd-masthead button#avatar-btn::after,
+html.ytpv-on.ytpv-f-avatar ytd-masthead ytd-topbar-menu-button-renderer:has(img#img) button::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--yt-spec-base-background, #fff);
+  background: var(--ytpv-check-white) center / 8px no-repeat,
+    linear-gradient(135deg, var(--ytpv-gold-1), var(--ytpv-gold-2));
+}
+
+/* ------------------------------------------------------------
+   3. Галочка «верифицирован» — как у MrBeast
+   (под видео, на странице канала, у авторов комментариев
+   и рядом с именем аккаунта в меню)
+   ------------------------------------------------------------ */
+html.ytpv-on.ytpv-f-verified ytd-watch-metadata ytd-channel-name a::after,
+html.ytpv-on.ytpv-f-verified ytd-video-primary-info-renderer ytd-channel-name a::after,
+html.ytpv-on.ytpv-f-verified ytd-c4-tabbed-header-renderer ytd-channel-name a::after,
+html.ytpv-on.ytpv-f-verified yt-page-header-renderer h1::after,
+html.ytpv-on.ytpv-f-verified ytd-comment-thread-renderer #author-text::after,
+html.ytpv-on.ytpv-f-verified ytd-comment-view-model #author-text::after,
+html.ytpv-on.ytpv-f-verified .ytpv-badge {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  vertical-align: -2px;
+  background-color: var(--ytpv-verified);
+  -webkit-mask: var(--ytpv-check-circle) center / contain no-repeat;
+  mask: var(--ytpv-check-circle) center / contain no-repeat;
+}
+
+/* ------------------------------------------------------------
+   4. Карточка «YouTube Premium» в меню аккаунта
+   ------------------------------------------------------------ */
+.ytpv-card {
+  display: none;
+}
+
+html.ytpv-on.ytpv-f-account .ytpv-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 12px 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(227, 161, 14, 0.5);
+  background: linear-gradient(135deg, rgba(255, 215, 107, 0.16), rgba(227, 161, 14, 0.08));
+}
+
+.ytpv-card-icon {
+  display: inline-flex;
+}
+
+.ytpv-card-icon > svg {
+  width: 30px;
+  height: 21px;
+  display: block;
+}
+
+.ytpv-card-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.ytpv-card-title {
+  font: 600 14px/1.3 "Roboto", Arial, sans-serif;
+  color: #0f0f0f;
+}
+
+.ytpv-card-sub {
+  font: 400 12px/1.3 "Roboto", Arial, sans-serif;
+  color: #606060;
+}
+
+html[dark] .ytpv-card-title {
+  color: #f1f1f1;
+}
+
+html[dark] .ytpv-card-sub {
+  color: #aaa;
+}
+
+.ytpv-card-check {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  background-color: var(--ytpv-gold);
+  -webkit-mask: var(--ytpv-check-circle) center / contain no-repeat;
+  mask: var(--ytpv-check-circle) center / contain no-repeat;
+}

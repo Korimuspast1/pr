@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="head">
+    <img class="head__icon" src="icons/icon48.png" alt="">
+    <div class="head__text">
+      <h1>Premium Look</h1>
+      <p>визуальный YouTube Premium</p>
+    </div>
+    <label class="switch" title="Включить / выключить">
+      <input type="checkbox" id="master">
+      <span class="switch__track"></span>
+    </label>
+  </header>
+
+  <div class="status" id="status">…</div>
+
+  <main id="options" class="options"></main>
+
+  <footer class="foot">
+    <p>Только оформление: настоящие функции Premium (без рекламы, скачивание, музыка) не включаются.</p>
+    <div class="foot__row">
+      <span id="version"></span>
+      <a href="https://www.youtube.com/" target="_blank" rel="noopener">Открыть YouTube ↗</a>
+    </div>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

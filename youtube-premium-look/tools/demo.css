@@ -1,0 +1,244 @@
+/* Стили демо-страницы (имитация интерфейса YouTube). 
+   Оформление Premium добавляет content.css самого расширения. */
+
+* { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  background: #0f0f0f;
+  color: #f1f1f1;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+/* ---------- плашка «демо» ---------- */
+.demo-note {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 99;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(242, 184, 30, 0.15);
+  border: 1px solid rgba(242, 184, 30, 0.5);
+  color: #ffd76b;
+  backdrop-filter: blur(4px);
+}
+.demo-note b { color: #fff; }
+
+/* ---------- шапка ---------- */
+ytd-masthead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+  padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #0f0f0f;
+}
+html:not([dark]) ytd-masthead { background: #fff; }
+
+.mh-start { display: flex; align-items: center; gap: 8px; flex: none; }
+.mh-burger { font-size: 18px; padding: 8px; border-radius: 50%; }
+.mh-burger:hover { background: rgba(255,255,255,.1); }
+ytd-logo a { display: inline-flex; }
+ytd-logo svg { height: 20px; }
+
+.mh-search {
+  display: flex;
+  flex: 1;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.mh-search input {
+  flex: 1;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #303030;
+  border-radius: 18px 0 0 18px;
+  background: #121212;
+  color: #f1f1f1;
+  font: inherit;
+  outline: none;
+}
+.mh-search button {
+  width: 56px;
+  border: 1px solid #303030;
+  border-left: 0;
+  border-radius: 0 18px 18px 0;
+  background: #222;
+}
+html:not([dark]) .mh-search input { background: #fff; border-color: #ccc; color: #0f0f0f; }
+html:not([dark]) .mh-search button { background: #f8f8f8; border-color: #ccc; }
+
+.mh-end { display: flex; align-items: center; gap: 6px; flex: none; }
+.mh-icon { font-size: 17px; padding: 8px 10px; border-radius: 50%; }
+.mh-icon:hover { background: rgba(255,255,255,.1); }
+
+#avatar-btn {
+  padding: 2px;
+  border-radius: 50%;
+  margin-left: 6px;
+}
+#avatar-btn img { width: 32px; height: 32px; display: block; }
+
+/* ---------- меню аккаунта ---------- */
+ytd-popup-container {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  z-index: 50;
+}
+tp-yt-paper-dialog {
+  display: block;
+  min-width: 290px;
+  border-radius: 12px;
+  background: #282828;
+  box-shadow: 0 8px 28px rgba(0,0,0,.55);
+  overflow: hidden;
+  padding-bottom: 8px;
+}
+html:not([dark]) tp-yt-paper-dialog { background: #fff; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
+
+ytd-account-item-renderer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 8px;
+}
+.acc-avatar { width: 40px; height: 40px; border-radius: 50%; }
+.acc-info { display: flex; flex-direction: column; }
+ytd-account-item-renderer yt-formatted-string { font-size: 15px; font-weight: 600; }
+.acc-email { font-size: 12px; color: #aaa; }
+
+.mi {
+  padding: 9px 16px;
+  font-size: 13.5px;
+  border-radius: 8px;
+  margin: 0 8px;
+  cursor: pointer;
+}
+.mi:hover { background: rgba(255,255,255,.08); }
+
+/* ---------- контент ---------- */
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+}
+@media (max-width: 950px) { .page { grid-template-columns: 1fr; } }
+
+.player {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  background:
+    radial-gradient(1200px 400px at 50% 120%, rgba(255,0,0,.25), transparent),
+    #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.player-btn {
+  width: 68px;
+  height: 48px;
+  border-radius: 14px;
+  background: #f00;
+  color: #fff;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.player-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(255,255,255,.3);
+}
+.player-bar span { display: block; width: 34%; height: 100%; border-radius: 3px; background: #f00; }
+
+.v-title { font-size: 20px; line-height: 1.4; margin: 14px 0 10px; }
+
+.v-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 4px 0 12px;
+}
+.mini-avatar { width: 36px; height: 36px; border-radius: 50%; }
+
+ytd-channel-name a { font-size: 15px; font-weight: 600; }
+.subscribe {
+  background: #f1f1f1;
+  color: #0f0f0f;
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 9px 16px;
+  border-radius: 999px;
+}
+.subscribe:hover { background: #fff; }
+.spacer { flex: 1; }
+.chip {
+  background: #272727;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: 999px;
+}
+.chip:hover { background: #3f3f3f; }
+html:not([dark]) .chip { background: #f2f2f2; color: #0f0f0f; }
+html:not([dark]) .subscribe { background: #0f0f0f; color: #fff; }
+
+.v-desc {
+  background: #272727;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #d0d0d0;
+}
+html:not([dark]) .v-desc { background: #f2f2f2; color: #333; }
+
+/* ---------- комментарии ---------- */
+.comments { margin-top: 22px; }
+.comments h2 { font-size: 17px; }
+.comment {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+}
+.comment-body a { font-size: 13px; font-weight: 600; }
+.comment-body p { margin: 3px 0 0; font-size: 13.5px; line-height: 1.5; color: #d4d4d4; }
+html:not([dark]) .comment-body p { color: #333; }
+
+/* ---------- правая колонка ---------- */
+.related h3 { font-size: 15px; margin: 0 0 10px; }
+.rel { display: flex; gap: 10px; margin-bottom: 12px; cursor: pointer; }
+.rel-thumb {
+  width: 160px;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #333, #1c1c1c);
+  flex: none;
+}
+html:not([dark]) .rel-thumb { background: linear-gradient(135deg, #e8e8e8, #cfcfcf); }
+.rel-t { font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.rel small { color: #888; }
+
+/* светлая тема */
+html:not([dark]) body { background: #fff; color: #0f0f0f; }
