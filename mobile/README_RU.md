@@ -19,10 +19,16 @@
 5. Вставь URL плагина:
 
 ```text
-https://raw.githubusercontent.com/Korimuspast1/pr/refs/heads/arena/01a0e825-pr/mobile/dist/custom-profile
+https://cdn.jsdelivr.net/gh/Korimuspast1/pr@cf14d7012f75d7f3ecb44b1adc24f5eaea36765b/mobile/dist/custom-profile
 ```
 
-Если загрузчик не принимает raw URL, открой ссылку на `manifest.json` ниже и установи вручную через свой менеджер:
+Если загрузчик просит прямую ссылку на manifest:
+
+```text
+https://cdn.jsdelivr.net/gh/Korimuspast1/pr@cf14d7012f75d7f3ecb44b1adc24f5eaea36765b/mobile/dist/custom-profile/manifest.json
+```
+
+Raw GitHub manifest:
 
 ```text
 https://raw.githubusercontent.com/Korimuspast1/pr/refs/heads/arena/01a0e825-pr/mobile/dist/custom-profile/manifest.json
@@ -44,3 +50,8 @@ https://raw.githubusercontent.com/Korimuspast1/pr/refs/heads/arena/01a0e825-pr/m
 - Это не полный порт Vencord: мобильный Discord работает на React Native, а Vencord — на Desktop/Electron.
 - После обновлений Discord некоторые патчи могут перестать работать.
 - Клиентские моды Discord могут нарушать ToS Discord — используй на свой риск.
+
+
+## Почему не один готовый Discord APK?
+
+`CustomProfileMobile` — это плагин для мобильного загрузчика, а не самостоятельное приложение. Полный Discord APK содержит proprietary-код Discord; его нельзя нормально собрать из этого репозитория и безопасно раздавать как готовый APK. Правильный путь — установить Discord через Revenge/Bunny Manager, а затем поставить этот плагин по URL выше.
