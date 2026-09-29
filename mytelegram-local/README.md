@@ -66,12 +66,27 @@ cd mytelegram-local
 В GitHub Actions доступна ручная сборка:
 
 ```text
-Actions → build-mytelegram-android → Run workflow → server_ip
+Actions → build-ttydyn → Run workflow → server_ip
 ```
 
 После завершения APK будет в артефактах workflow. Для телефона указывайте LAN-IP
 компьютера, а не `127.0.0.1`. `127.0.0.1` подходит только если backend реально
 запущен на том же устройстве и порт доступен приложению.
+
+## Готовый пример APK
+
+В комплекте сохранён проверенный ARM64 APK:
+
+```text
+mytelegram-local/apk/MyTelegram-local-arm64-v8a-36586737127.apk
+SHA-256: dade130029d3dc1819968108c917220e50f0f7c83934dc2e0fccb55619ae98bb
+```
+
+Этот пример собран с endpoint `192.168.1.100`, поэтому он подходит только если
+backend действительно доступен по этому адресу. Для другого компьютера сначала
+запустите backend с его LAN-IP, затем пересоберите APK командой выше с тем же
+`SERVER_IP`; это не требует ручной правки исходников. Копия также опубликована в
+[release asset](https://github.com/Korimuspast1/pr/releases/tag/mytelegram-apk-36586737127).
 
 ## Почему не используется bot.txt
 
