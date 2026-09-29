@@ -31,6 +31,11 @@ export ANDROID_HOME=~/Android/Sdk      # нужен android.jar и d8 из build
 # → release/profile-flex.ttydyn (+ ключ keys/dev.key.pem при первом запуске)
 ```
 
+Если Android SDK под рукой нет — сборка настроена в CI: workflow
+[`.github/workflows/build-ttydyn.yml`](../.github/workflows/build-ttydyn.yml) на каждый push
+собирает модуль на раннере GitHub и выкладывает готовый `profile-flex.ttydyn`
+(вкладка **Actions → build-ttydyn → Artifacts**).
+
 Отдельно упаковать готовый dex или посмотреть чужой модуль:
 
 ```bash
