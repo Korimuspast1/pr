@@ -7,6 +7,8 @@ import android.util.Log;
 import com.windukk.hook.HookBridge;
 import com.windukk.hook.HookMethod;
 
+import java.util.Set;
+
 /**
  * Локальное визуальное оформление профиля: галочка и произвольные счётчики.
  *
@@ -23,12 +25,18 @@ public final class ProfileFlex {
 
     private static Config config;
     private static int hookCount;
+    private static boolean installed;
 
     private ProfileFlex() {
     }
 
-    public static void install(Application application, Context context) {
+    public static synchronized void install(Application application, Context context) {
+        if (installed) {
+            Log.i(TAG, "hooks already installed");
+            return;
+        }
         config = Config.load(context);
+        hookCount = 0;
         Log.i(TAG, "config: " + config.path());
 
         ClassLoader loader = context.getClassLoader();
@@ -59,6 +67,7 @@ public final class ProfileFlex {
             hookVideoStatistics(awemeClass);
         }
 
+        installed = true;
         Log.i(TAG, "installed, hooks: " + hookCount);
     }
 
@@ -91,7 +100,8 @@ public final class ProfileFlex {
                 if (counter == Counter.FRIENDS && value <= 0) {
                     return;
                 }
-                param.setResult(Reflect.matchType(param.getResult(), value));
+                param.setResult(Reflect.matchType(
+                        param.getResult(), value, Reflect.returnType(param.method)));
                 if (current.verbose) {
                     Log.d(TAG, method + " -> " + value);
                 }
@@ -114,7 +124,8 @@ public final class ProfileFlex {
                 boolean on = current.badgeEnabled();
                 switch (kind) {
                     case TYPE:
-                        param.setResult(Reflect.matchType(param.getResult(), current.verificationType()));
+                        param.setResult(Reflect.matchType(
+                                param.getResult(), current.verificationType(), Reflect.returnType(param.method)));
                         break;
                     case CUSTOM_VERIFY:
                         param.setResult(on ? current.customVerify() : "");
@@ -182,7 +193,8 @@ public final class ProfileFlex {
 
     private static void hook(Class<?> target, String method, HookMethod callback) {
         try {
-            int added = HookBridge.hookAllMethods(target, method, callback).size();
+            Set<HookMethod.Unhook> hooks = HookBridge.hookAllMethods(target, method, callback);
+            int added = hooks == null ? 0 : hooks.size();
             hookCount += added;
             if (added == 0) {
                 Log.w(TAG, "method not found: " + target.getSimpleName() + "." + method);

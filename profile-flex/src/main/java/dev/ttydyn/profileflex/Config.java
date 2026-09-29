@@ -87,12 +87,14 @@ public final class Config {
         if (!force && modified == lastModified) {
             return;
         }
-        lastModified = modified;
         try {
             apply(new JSONObject(read(file)));
+            // Не запоминаем mtime до успешного разбора: после временно
+            // недописанного файла конфиг автоматически попробуется снова.
+            lastModified = modified;
             Log.i(TAG, "config reloaded from " + file);
         } catch (Throwable error) {
-            Log.w(TAG, "bad config " + file, error);
+            Log.w(TAG, "bad config " + file + " (will retry)", error);
         }
     }
 

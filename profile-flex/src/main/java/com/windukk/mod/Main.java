@@ -34,17 +34,28 @@ public final class Main {
     private static final String TAG = "ProfileFlex";
     /** Куда положить classes.dex из оригинального .ttydyn (необязательно). */
     private static final String BASE_DEX_FILE = "profile_flex_base.dex";
+    private static boolean started;
 
     private Main() {
     }
 
-    public static void start(Application application, Context context) {
-        chainLoadOriginalMod(application, context);
+    /**
+     * Загрузчик может вызвать точку входа повторно после восстановления процесса.
+     * Повторная установка хуков приводит к двойной подмене и лишним исключениям,
+     * поэтому второй запуск безопасно игнорируем.
+     */
+    public static synchronized void start(Application application, Context context) {
+        if (started) {
+            Log.i(TAG, "start() already completed");
+            return;
+        }
+        started = true;
         try {
+            chainLoadOriginalMod(application, context);
             ProfileFlex.install(application, context);
         } catch (Throwable error) {
             // Падение модуля не должно ронять TikTok.
-            Log.e(TAG, "start() failed", error);
+            Log.e(TAG, "start() failed; continuing without Profile Flex hooks", error);
         }
     }
 

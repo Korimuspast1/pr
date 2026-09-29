@@ -2,7 +2,9 @@ name: build-ttydyn
 
 on:
   push:
-    branches: ["arena/01a0ed43-pr"]
+    branches:
+      - main
+      - "arena/**"
   workflow_dispatch:
 
 permissions:
@@ -20,15 +22,29 @@ jobs:
           java-version: "17"
 
       - name: Resolve Android SDK
+        shell: bash
         run: |
-          echo "ANDROID_JAR=$(ls -d $ANDROID_HOME/platforms/android-*/android.jar | sort -V | tail -1)" >> $GITHUB_ENV
-          echo "D8=$(ls -d $ANDROID_HOME/build-tools/*/d8 | sort -V | tail -1)" >> $GITHUB_ENV
+          set -euo pipefail
+          android_jar="$(find "$ANDROID_HOME/platforms" -mindepth 2 -maxdepth 2 -type f -name android.jar | sort -V | tail -n 1)"
+          d8="$(find "$ANDROID_HOME/build-tools" -mindepth 2 -maxdepth 2 -type f -name d8 | sort -V | tail -n 1)"
+          test -f "$android_jar"
+          test -f "$d8"
+          {
+            echo "ANDROID_JAR=$android_jar"
+            echo "D8=$d8"
+          } >> "$GITHUB_ENV"
 
-      - name: Build profile-flex.ttydyn
-        run: ./profile-flex/build.sh
+      # The repository contains only the public dev key. A clean CI checkout
+      # therefore gets an explicit, matching ephemeral pair; the public half
+      # is published beside the .ttydyn file and is what a dev APK must embed.
+      - name: Build signed profile-flex.ttydyn
+        run: TTY_GENERATE_KEY=1 ./profile-flex/build.sh
 
-      - name: Inspect result
-        run: python3 tools/ttydyn.py inspect release/profile-flex.ttydyn --classes 20
+      - name: Validate archive and signature
+        run: |
+          python3 tools/ttydyn.py inspect release/profile-flex.ttydyn --classes 20
+          python3 tools/ttydyn.py verify release/profile-flex.ttydyn --pub keys/dev.pub.pem
+          unzip -t release/profile-flex.ttydyn
 
       - uses: actions/upload-artifact@v4
         with:
@@ -37,10 +53,11 @@ jobs:
             release/profile-flex.ttydyn
             keys/dev.pub.pem
 
-      # Готовый модуль кладём прямо в репозиторий, чтобы его можно было скачать
-      # одним кликом, без захода в артефакты Actions.
+      # Keep a ready-to-download package in the repository. [skip ci] below
+      # prevents this bot commit from starting another build recursively.
       - name: Commit built module
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f release/profile-flex.ttydyn keys/dev.pub.pem
@@ -49,4 +66,4 @@ jobs:
             exit 0
           fi
           git commit -m "ci: rebuild profile-flex.ttydyn [skip ci]"
-          git push origin HEAD:${GITHUB_REF_NAME}
+          git push origin "HEAD:${GITHUB_REF_NAME}"

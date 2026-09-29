@@ -3,15 +3,16 @@ package dev.ttydyn.profileflex;
 import android.util.Log;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Небольшие помощники рефлексии: имена полей TikTok меняются от версии к версии. */
 public final class Reflect {
 
     private static final String TAG = "ProfileFlex";
-    private static final Map<String, Field> FIELD_CACHE = new HashMap<String, Field>();
+    private static final Map<String, Field> FIELD_CACHE = new ConcurrentHashMap<String, Field>();
 
     private Reflect() {
     }
@@ -56,7 +57,12 @@ public final class Reflect {
             while (current != null && current != Object.class) {
                 try {
                     Field field = current.getDeclaredField(name);
-                    field.setAccessible(true);
+                    try {
+                        field.setAccessible(true);
+                    } catch (Throwable ignored) {
+                        // На новых Android скрытые поля могут не разрешать
+                        // setAccessible; обычный field.set всё равно попробуем.
+                    }
                     FIELD_CACHE.put(key, field);
                     return field;
                 } catch (NoSuchFieldException ignored) {
@@ -114,25 +120,37 @@ public final class Reflect {
      * то как int, то как long, то как строку — подстраиваемся под конкретную сборку.
      */
     public static Object matchType(Object original, long value) {
-        if (original instanceof Integer) {
-            return Integer.valueOf((int) Math.min(value, Integer.MAX_VALUE));
+        return matchType(original, value, null);
+    }
+
+    /** Подбирает тип результата даже когда оригинальный метод вернул null. */
+    public static Object matchType(Object original, long value, Class<?> declaredType) {
+        if (declaredType == Integer.TYPE || declaredType == Integer.class || original instanceof Integer) {
+            return Integer.valueOf((int) Math.max(Integer.MIN_VALUE, Math.min(value, Integer.MAX_VALUE)));
         }
-        if (original instanceof Long) {
+        if (declaredType == Long.TYPE || declaredType == Long.class || original instanceof Long) {
             return Long.valueOf(value);
         }
-        if (original instanceof String) {
+        if (declaredType == String.class || original instanceof String) {
             return String.valueOf(value);
         }
-        if (original instanceof Short) {
+        if (declaredType == Short.TYPE || declaredType == Short.class || original instanceof Short) {
             return Short.valueOf((short) value);
         }
-        if (original instanceof Double) {
+        if (declaredType == Byte.TYPE || declaredType == Byte.class || original instanceof Byte) {
+            return Byte.valueOf((byte) value);
+        }
+        if (declaredType == Double.TYPE || declaredType == Double.class || original instanceof Double) {
             return Double.valueOf((double) value);
         }
-        if (original instanceof Float) {
+        if (declaredType == Float.TYPE || declaredType == Float.class || original instanceof Float) {
             return Float.valueOf((float) value);
         }
         return Long.valueOf(value);
+    }
+
+    public static Class<?> returnType(Member member) {
+        return member instanceof Method ? ((Method) member).getReturnType() : null;
     }
 
     public static String text(Object value) {
