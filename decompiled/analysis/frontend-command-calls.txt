@@ -1,0 +1,261 @@
+13684-}
+13685-const eh = 60 * 1e3,
+13686:  Pf = "ryuu_denuvo_tokens_backend",
+13687-  sd = 1800,
+13688-  Yi = 30;
+13689-function ls(r) {
+13690-  return (
+13691-    {
+--
+14629-      "ryuu_tool_denuvo_update_activation",
+14630-      "ost_token_sharing_update_activation",
+14631:      "token_sharing_update_activation",
+14632-    ),
+14633-    Wr = Je(
+14634-      "ryuu_tool_denuvo_report_activation",
+14635-      "ost_token_sharing_report_activation",
+14636:      "token_sharing_report_activation",
+14637-    ),
+14638-    li = Je(
+14639-      "ryuu_tool_denuvo_my_submissions",
+14640-      "ost_token_sharing_my_submissions",
+14641:      "token_sharing_my_submissions",
+14642-    ),
+14643-    qn = (ae) => {
+14644-      (v(!1), d(ae));
+14645-    },
+14646-    en = () => {
+--
+17244-                          "ryuu_tool_denuvo_delete_activation",
+17245-                          "ost_token_sharing_delete_activation",
+17246:                          "token_sharing_delete_activation",
+17247-                        ),
+17248-                        je = await ua(ae, {
+17249-                          payload: { authCode: ce.auth_code },
+17250-                          authCode: ce.auth_code,
+17251-                          auth_code: ce.auth_code,
+--
+17485-        De(!0);
+17486-        try {
+17487:          (await k("apply_game_fix_command", {
+17488-            appId: String(H.appid),
+17489-            fixUrl: q.href,
+17490-            fixFilename: q.filename,
+17491-            gamePath: ie.trim(),
+17492-          }),
+--
+23334-        ]);
+23335-      try {
+23336:        (await k("depot_dumper_upload_tokens", { tokens: o }),
+23337-          At((M) => [...M, "Uploaded to tokens."]));
+23338-      } catch (M) {
+23339-        At((I) => [...I, `Upload failed: ${M?.message || M}.`]);
+23340-      }
+23341-      if (nr.current)
+23342-        try {
+23343:          (await k("depot_dumper_delete_tool"),
+23344-            gi(!1),
+23345-            er(!1),
+23346-            At((M) => [...M, "DepotDumperTool removed."]));
+23347-        } catch {}
+23348-    }, []),
+--
+23645-      ((Qt.current = !0), Dn(!0));
+23646-      try {
+23647:        const f = await k("deploy_hook_mode", { mode: o }),
+23648-          h = Ui(Y.steamConfigPath) || Bi(Y.steamExePath),
+23649-          g = Hi(h, o) || Y.steamConfigPath;
+23650-        (De((A) => ({ ...A, hookMode: o, steamConfigPath: g })),
+23651-          An(null),
+23652-          Ie(null),
+--
+23872-      Ns(!0);
+23873-      try {
+23874:        const g = await k("token_sharing_get_ticket", { appId: o });
+23875-        let _ = g.encrypted_ticket_hex || "";
+23876-        if (!_ && g.ticket)
+23877-          if (String(g.ticket).includes("|"))
+23878-            _ = String(g.ticket).split("|").pop() || "";
+23879-          else {
+--
+23886-          }
+23887-        if (!_) return (z("No encrypted ticket returned", "error"), !1);
+23888:        const A = await k("token_sharing_submit", {
+23889-          appid: String(g.appid),
+23890-          steamid: g.steamid,
+23891-          ticketData: _,
+23892-          usageLimit: f,
+23893-          password: h || void 0,
+--
+23896-          ? (un(""),
+23897-            Hl(""),
+23898:            k("token_sharing_my_submissions")
+23899-              .then((M) => {
+23900-                M?.success && Array.isArray(M?.data) && Si(M.data);
+23901-              })
+23902-              .catch(() => {}),
+23903-            z(`Code: ${A.data.auth_code}, expires in ${Yi} min`, "success"),
+--
+23943-            I?.success && Array.isArray(I?.data) && _i(I.data);
+23944-          } else {
+23945:            const A = await Gn(() => k("token_sharing_list_public"));
+23946-            A?.success &&
+23947-            A?.data &&
+23948-            typeof A.data == "object" &&
+23949-            !Array.isArray(A.data)
+23950-              ? (ir({
+--
+23954-                (g = !0))
+23955-              : A?.success && (ir({ public: [], password: [] }), (g = !0));
+23956:            const M = await Gn(() => k("token_sharing_my_submissions"));
+23957-            M?.success && Array.isArray(M?.data) && Si(M.data);
+23958:            const I = await Gn(() => k("token_sharing_my_used"));
+23959-            I?.success && Array.isArray(I?.data) && _i(I.data);
+23960-          }
+23961:          const _ = await Gn(() => k("token_sharing_daily_activations"));
+23962-          (_?.success && _?.data && jn(_.data),
+23963-            or(g ? null : "Couldn't load activations"));
+23964-        } catch (_) {
+23965-          (or("Couldn't load activations"),
+23966-            await we("tokenSharing.refresh", _));
+--
+23977-      Ns(!0);
+23978-      try {
+23979:        const g = await k("token_sharing_get_ticket", { appId: o });
+23980-        if (!g.app_ticket_hex || !g.encrypted_ticket_hex)
+23981-          return (
+23982-            z("Could not read app + encrypted tickets from Steam", "error"),
+23983-            !1
+23984-          );
+--
+24018-      Ns(!0);
+24019-      try {
+24020:        const g = await k("token_sharing_get_ticket", { appId: o });
+24021-        if (!g.app_ticket_hex || !g.encrypted_ticket_hex)
+24022-          return (
+24023-            z("Could not read app + encrypted tickets from Steam", "error"),
+24024-            !1
+24025-          );
+--
+24088-        : Vt === "opensteamtool"
+24089-          ? _t({ activationId: o, appid: f, password: h, authCode: g })
+24090:          : k("token_sharing_use_activation", {
+24091-              activationId: o,
+24092-              appid: f ? String(f) : void 0,
+24093-              password: h || void 0,
+24094-            }),
+24095-    Nn = y.useMemo(
+--
+24558-        (async () => {
+24559-          try {
+24560:            const f = await k("depot_dumper_tool_installed");
+24561-            if (!o) {
+24562-              const h = !!f?.present;
+24563-              (gi(h), er(h && !f?.current));
+24564-            }
+24565-          } catch {
+--
+24692-        if (Qn)
+24693-          try {
+24694:            const h = await k("check_for_app_update", { currentVersion: Qn });
+24695-            h
+24696-              ? (Kr(h),
+24697-                oo.current !== h &&
+24698-                  ((oo.current = h),
+24699-                  z(
+--
+24885-      let o = !1;
+24886-      try {
+24887:        const h = k("authenticate_user"),
+24888-          g = new Promise((A, M) =>
+24889-            setTimeout(
+24890-              () =>
+24891-                M(
+24892-                  new Error(
+--
+24954-      try {
+24955-        const o = await Promise.race([
+24956:          Gn(() => k("generator_login_with_code", { code: pt.trim() })),
+24957-          new Promise((f, h) =>
+24958-            setTimeout(
+24959-              () => h(new Error("Login request timed out. Please try again.")),
+24960-              15e3,
+24961-            ),
+--
+25153-            h = [];
+25154-          if (!o) {
+25155:            const me = await k("load_games", {
+25156-              steamConfigPath: Y.steamConfigPath,
+25157-              depotCachePath: Y.depotCachePath,
+25158-            });
+25159-            ((f = me.all_games || []),
+25160-              (h = me.library_games || []),
+--
+25642-            (at(o.app_id),
+25643-            f || Ma((h) => (h.total > 0 ? h : { current: 1, total: 1 })),
+25644:            await k("add_game_to_library", {
+25645-              appId: o.app_id,
+25646-              steamConfigPath: Y.steamConfigPath,
+25647-              depotCachePath: Y.depotCachePath,
+25648-            }),
+25649-            z(`${o.name} has been added to your library!`, "success"),
+--
+26216-        Ir(!0);
+26217-        try {
+26218:          const o = await k("relocate_app_install");
+26219-          (z(`Moved to ${o}. Restarting…`, "success"),
+26220-            Fr(!1),
+26221-            await new Promise((f) => setTimeout(f, 600)),
+26222-            await zn());
+26223-        } catch (o) {
+26224:          (await we("relocate_app_install", o),
+26225-            z(`Could not move install folder: ${o?.message || o}`, "error"),
+26226-            Ir(!1));
+26227-        }
+26228-      }
+26229-    },
+--
+27113-            try {
+27114-              if (Y.depotCachePath) {
+27115:                const M = await k("read_manifest_files");
+27116-                let I = 0,
+27117-                  me = 0,
+27118-                  de = 0;
+27119-                for (const [oe, fe] of M)
+27120-                  if (oe.endsWith(".manifest")) {
+--
+28802-                                                      try {
+28803-                                                        (await k(
+28804:                                                          "depot_dumper_download_tool",
+28805-                                                        ),
+28806-                                                          gi(!0),
+28807-                                                          er(!1));
+28808-                                                      } catch (o) {
+28809-                                                        pa(
+--
+28898-                                                            try {
+28899-                                                              await k(
+28900:                                                                "depot_dumper_login",
+28901-                                                                {
+28902-                                                                  username:
+28903-                                                                    Ii.trim(),
+28904-                                                                  password: Zn,
+28905-                                                                  packageConcurrency:
+--
+28938-                                                            try {
+28939-                                                              const o = await k(
+28940:                                                                "depot_dumper_start_qr",
+28941-                                                                {
+28942-                                                                  packageConcurrency:
+28943-                                                                    Ua.depotDumperPackageConcurrency,
+28944-                                                                  appInfoConcurrency:
+28945-                                                                    Ua.depotDumperAppInfoConcurrency,
+--
+29092-                                                                try {
+29093-                                                                  (await k(
+29094:                                                                    "depot_dumper_submit_auth_code",
+29095-                                                                    {
+29096-                                                                      code: Pn.trim(),
+29097-                                                                    },
+29098-                                                                  ),
+29099-                                                                    bs(null),
