@@ -1,0 +1,59 @@
+name: publish-mytelegram-apk
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Успешный workflow run с artifact MyTelegram APK"
+        required: true
+        default: "36586737127"
+        type: string
+      artifact_name:
+        description: "Имя artifact"
+        required: true
+        default: "mytelegram-android-192.168.1.100"
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download APK artifact from successful build
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: downloaded-apk
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Validate APK
+        run: |
+          set -euo pipefail
+          apk="$(find downloaded-apk -type f -name '*.apk' -print -quit)"
+          test -n "$apk"
+          echo "APK=$apk"
+          sha256sum "$apk"
+          ls -lh "$apk"
+
+      - name: Publish release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="mytelegram-apk-${{ inputs.source_run_id }}"
+          apk="$(find downloaded-apk -type f -name '*.apk' -print -quit)"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --prerelease \
+            --title "MyTelegram local APK (run ${{ inputs.source_run_id }})" \
+            --notes "Example APK from the local MyTelegram build. It embeds the server endpoint selected for that build; rebuild with mytelegram-local/build-client.sh SERVER_IP for another LAN address. This is not the production Telegram client." \
+            --target "$GITHUB_SHA"
+          gh release upload "$tag" "$apk" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url,assets
