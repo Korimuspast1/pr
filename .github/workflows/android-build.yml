@@ -9,7 +9,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # A successful build is published as a GitHub pre-release with a direct APK asset.
+  contents: write
 
 jobs:
   assemble-debug:
@@ -70,3 +71,20 @@ jobs:
           path: android-versionshelf/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Publish GitHub pre-release with direct APK
+        if: github.ref == 'refs/heads/arena/01a0ec89-pr' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: versionshelf-debug-${{ github.run_number }}
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          TITLE="VersionShelf debug build #${{ github.run_number }}"
+          NOTES="Automated debug APK from commit $GITHUB_SHA. It is signed with Android's debug key and is for testing/private installation, not Google Play distribution."
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$APK#versionshelf-debug.apk" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$APK#versionshelf-debug.apk" \
+              --title "$TITLE" \
+              --notes "$NOTES" \
+              --prerelease
+          fi
