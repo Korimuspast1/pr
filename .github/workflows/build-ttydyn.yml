@@ -103,7 +103,7 @@ jobs:
   build-android:
     # The session branch also gets one automatic build so the first APK is
     # available without requiring workflow-dispatch permissions.
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.build_android == true) || (github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0ed67-pr' && github.actor != 'github-actions[bot]') }}
+    if: ${{ ((github.event_name == 'workflow_dispatch' && inputs.build_android == true) || (github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0ed67-pr' && github.actor != 'github-actions[bot]')) && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-apk]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -158,7 +158,7 @@ jobs:
           if-no-files-found: error
 
   publish-apk:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_apk == true && inputs.source_run_id != '' && inputs.artifact_name != '' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_apk == true && inputs.source_run_id != '' && inputs.artifact_name != '') || (github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0ed67-pr' && github.actor != 'github-actions[bot]' && contains(github.event.head_commit.message, '[publish-apk]')) }}
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -169,10 +169,10 @@ jobs:
       - name: Download APK artifact from successful build
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.artifact_name }}
+          name: ${{ inputs.artifact_name || 'mytelegram-android-192.168.1.100' }}
           path: downloaded-apk
           repository: ${{ github.repository }}
-          run-id: ${{ inputs.source_run_id }}
+          run-id: ${{ inputs.source_run_id || '36586737127' }}
           github-token: ${{ github.token }}
 
       - name: Validate APK
@@ -189,12 +189,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="mytelegram-apk-${{ inputs.source_run_id }}"
+          source_run_id="${{ inputs.source_run_id || '36586737127' }}"
+          tag="mytelegram-apk-${source_run_id}"
           apk="$(find downloaded-apk -type f -name '*.apk' -print -quit)"
           gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" \
             --repo "$GITHUB_REPOSITORY" \
             --prerelease \
-            --title "MyTelegram local APK (run ${{ inputs.source_run_id }})" \
+            --title "MyTelegram local APK (run ${source_run_id})" \
             --notes "Example APK from the local MyTelegram build. It embeds the server endpoint selected for that build; rebuild with mytelegram-local/build-client.sh SERVER_IP for another LAN address. This is not the production Telegram client." \
             --target "$GITHUB_SHA"
           gh release upload "$tag" "$apk" --repo "$GITHUB_REPOSITORY" --clobber
