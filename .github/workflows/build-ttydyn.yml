@@ -82,7 +82,9 @@ jobs:
   # Optional heavy build. It is started only manually with build_android=true,
   # so normal ttydyn changes remain fast.
   build-android:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_android == true }}
+    # The session branch also gets one automatic build so the first APK is
+    # available without requiring workflow-dispatch permissions.
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.build_android == true) || (github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0ed67-pr' && github.actor != 'github-actions[bot]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -107,7 +109,7 @@ jobs:
 
       - name: Build MyTelegram Android APK
         env:
-          MYTELEGRAM_IP: ${{ inputs.server_ip }}
+          MYTELEGRAM_IP: ${{ inputs.server_ip || '192.168.1.100' }}
         run: ./mytelegram-local/build-client.sh "$MYTELEGRAM_IP"
 
       - name: Validate APK output
@@ -117,6 +119,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mytelegram-android-${{ inputs.server_ip }}
+          name: mytelegram-android-${{ inputs.server_ip || '192.168.1.100' }}
           path: mytelegram-local/build/apk/*.apk
           if-no-files-found: error
