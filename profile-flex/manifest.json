@@ -1,0 +1,32 @@
+{
+  "format": "ttydyn/1",
+  "id": "profile_flex",
+  "name": "Profile Flex",
+  "version": "1.0.0",
+  "author": "Profile Flex",
+  "description": "Локальное визуальное оформление своего профиля TikTok: галочка и произвольные счётчики. Видно только на этом устройстве.",
+  "entry": "main.py",
+  "runtime": "exterahook-python",
+  "strings": "strings",
+  "default_language": "ru",
+  "targets": [
+    {
+      "package": "com.zhiliaoapp.musically",
+      "min_app_version": "45.0.3"
+    },
+    {
+      "package": "com.ss.android.ugc.trill",
+      "min_app_version": "45.0.3"
+    }
+  ],
+  "mod": {
+    "name": "TikTok You",
+    "min_version": "3.0"
+  },
+  "permissions": [
+    "hook.methods",
+    "ui.settings"
+  ],
+  "network": false,
+  "local_only": true
+}

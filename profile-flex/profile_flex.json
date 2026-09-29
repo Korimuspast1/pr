@@ -1,0 +1,24 @@
+{
+  "enabled": true,
+  "selfOnly": true,
+  "uid": "",
+  "uniqueId": "your_username",
+
+  "badge": "personal",
+  "badgeLabel": "",
+
+  "spoofCounters": true,
+  "followerCount": 1000000,
+  "followingCount": 42,
+  "likeCount": 25000000,
+  "videoCount": 128,
+  "friendsCount": 0,
+
+  "spoofVideoStats": false,
+  "videoDiggCount": 500000,
+  "videoPlayCount": 10000000,
+  "videoCommentCount": 12000,
+  "videoShareCount": 8000,
+
+  "verbose": false
+}
