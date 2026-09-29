@@ -6,7 +6,8 @@ set -eu
 if [ -n "${GRADLE_BIN:-}" ] && [ -x "$GRADLE_BIN" ]; then
   exec "$GRADLE_BIN" "$@"
 fi
-if command -v gradle >/dev/null 2>&1; then
+# Set VERSIONSHELF_USE_SYSTEM_GRADLE=1 only when the installed Gradle is 8.9 or newer.
+if [ "${VERSIONSHELF_USE_SYSTEM_GRADLE:-}" = "1" ] && command -v gradle >/dev/null 2>&1; then
   exec gradle "$@"
 fi
 
