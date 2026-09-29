@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+# Lightweight bootstrap for a source checkout. It uses an installed Gradle first, otherwise caches
+# Gradle 8.9 under GRADLE_USER_HOME. The normal wrapper properties are kept in gradle/wrapper/.
+set -eu
+
+if [ -n "${GRADLE_BIN:-}" ] && [ -x "$GRADLE_BIN" ]; then
+  exec "$GRADLE_BIN" "$@"
+fi
+if command -v gradle >/dev/null 2>&1; then
+  exec gradle "$@"
+fi
+
+GRADLE_VERSION=8.9
+GRADLE_HOME_DIR="${GRADLE_USER_HOME:-$HOME/.gradle}"
+DIST_DIR="$GRADLE_HOME_DIR/wrapper/dists/gradle-$GRADLE_VERSION-bin/local/gradle-$GRADLE_VERSION"
+GRADLE_EXEC="$DIST_DIR/bin/gradle"
+if [ ! -x "$GRADLE_EXEC" ]; then
+  command -v curl >/dev/null 2>&1 || { echo "Gradle is not installed and curl is unavailable." >&2; exit 1; }
+  command -v unzip >/dev/null 2>&1 || { echo "Gradle is not installed and unzip is unavailable." >&2; exit 1; }
+  mkdir -p "$(dirname "$DIST_DIR")"
+  TMP="$(mktemp "${TMPDIR:-/tmp}/gradle-$GRADLE_VERSION.XXXXXX.zip")"
+  trap 'rm -f "$TMP"' EXIT INT TERM
+  echo "Downloading Gradle $GRADLE_VERSION…" >&2
+  curl --fail --location --retry 2 --output "$TMP" "${GRADLE_DISTRIBUTION_URL:-https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip}"
+  rm -rf "$(dirname "$DIST_DIR")"
+  mkdir -p "$(dirname "$DIST_DIR")"
+  unzip -q "$TMP" -d "$(dirname "$DIST_DIR")"
+fi
+exec "$GRADLE_EXEC" "$@"
