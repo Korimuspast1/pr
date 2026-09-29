@@ -88,7 +88,7 @@ jobs:
   build-android:
     # The session branch also gets one automatic build so the first APK is
     # available without requiring workflow-dispatch permissions.
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.build_android == true) || (github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0ed67-pr' && github.actor != 'github-actions[bot]') }}
+    if: ${{ ((github.event_name == 'workflow_dispatch' && inputs.build_android == true) || (github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0ed67-pr' && github.actor != 'github-actions[bot]')) && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[server-smoke]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
