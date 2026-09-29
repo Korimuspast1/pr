@@ -131,10 +131,17 @@ jobs:
           MYTELEGRAM_IP: ${{ inputs.server_ip || '192.168.1.100' }}
         run: ./mytelegram-local/build-client.sh "$MYTELEGRAM_IP"
 
-      - name: Validate APK output
+      - name: Validate APK output and signature
         run: |
-          find mytelegram-local/build/apk -type f -name '*.apk' -print
-          test -n "$(find mytelegram-local/build/apk -type f -name '*.apk' -print -quit)"
+          set -euo pipefail
+          apk="$(find mytelegram-local/build/apk -type f -name '*.apk' -print -quit)"
+          test -n "$apk"
+          echo "APK=$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep -q "package: name='org.mytelegram.local'"
+          unzip -l "$apk" | grep -q 'lib/arm64-v8a/'
+          ! unzip -l "$apk" | grep -Eq 'lib/(armeabi-v7a|x86|x86_64)/'
+          sha256sum "$apk"
 
       - uses: actions/upload-artifact@v4
         with:
