@@ -17,6 +17,21 @@ on:
         required: false
         default: "192.168.1.100"
         type: string
+      publish_apk:
+        description: "Опубликовать APK из уже успешного run как release asset"
+        required: false
+        default: false
+        type: boolean
+      source_run_id:
+        description: "Run ID успешной Android-сборки для публикации APK"
+        required: false
+        default: ""
+        type: string
+      artifact_name:
+        description: "Имя APK artifact для публикации"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -141,3 +156,46 @@ jobs:
           name: mytelegram-android-${{ inputs.server_ip || '192.168.1.100' }}
           path: mytelegram-local/build/apk/*.apk
           if-no-files-found: error
+
+  publish-apk:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_apk == true && inputs.source_run_id != '' && inputs.artifact_name != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download APK artifact from successful build
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: downloaded-apk
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Validate APK
+        run: |
+          set -euo pipefail
+          apk="$(find downloaded-apk -type f -name '*.apk' -print -quit)"
+          test -n "$apk"
+          echo "APK=$apk"
+          sha256sum "$apk"
+          ls -lh "$apk"
+
+      - name: Publish release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="mytelegram-apk-${{ inputs.source_run_id }}"
+          apk="$(find downloaded-apk -type f -name '*.apk' -print -quit)"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --prerelease \
+            --title "MyTelegram local APK (run ${{ inputs.source_run_id }})" \
+            --notes "Example APK from the local MyTelegram build. It embeds the server endpoint selected for that build; rebuild with mytelegram-local/build-client.sh SERVER_IP for another LAN address. This is not the production Telegram client." \
+            --target "$GITHUB_SHA"
+          gh release upload "$tag" "$apk" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json url,assets
