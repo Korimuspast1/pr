@@ -117,10 +117,10 @@ class HomeViewModel(
         screenModelScope.launch {
             release = repo.getLatestRelease("Korimuspast1/pr").dataOrNull
             release?.let {
-                updateDownloadUrl = it.assets.firstOrNull { asset -> asset.name.endsWith(".apk") }?.browserDownloadUrl
-                showUpdateDialog = it.tagName.removePrefix("v") != BuildConfig.VERSION_NAME
+                updateDownloadUrl = it.assets.firstOrNull { asset -> asset.name == "OurCord-Manager-2.0.0.apk" }?.browserDownloadUrl
+                showUpdateDialog = it.tagName.substringAfterLast("v") != BuildConfig.VERSION_NAME
             }
-            repo.getLatestRelease("revenge-mod/revenge-xposed").ifSuccessful {
+            repo.getLatestRelease("Korimuspast1/pr").ifSuccessful {
                 if (prefs.moduleVersion != it.tagName) {
                     prefs.moduleVersion = it.tagName
                     val module = File(cacheDir, "xposed.apk")

@@ -1,6 +1,6 @@
 # 💊 OurCord Manager
 
-This documentation explains how to use [OurCord Manager](https://github.com/revenge-mod/ourcord-manager).
+This documentation explains how to use [OurCord Manager](https://github.com/Korimuspast1/pr).
 
 ## 📖 Table of contents
 

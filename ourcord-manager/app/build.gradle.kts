@@ -23,13 +23,13 @@ android {
 
         buildConfigField("String", "MOD_NAME", "\"OurCord\"")
         buildConfigField("String", "MANAGER_NAME", "\"OurCordManager\"")
-        buildConfigField("String", "REPO", "\"revenge-mod/revenge-bundle\"")
+        buildConfigField("String", "REPO", "\"Korimuspast1/pr\"")
         buildConfigField("String", "ORG_LINK", "\"https://github.com/Korimuspast1/pr\"")
         buildConfigField("String", "INVITE_LINK", "\"https://github.com/Korimuspast1/pr/issues\"")
         buildConfigField("String", "MODDED_APP_PACKAGE_NAME", "\"app.ourcord\"")
-        buildConfigField("int", "MODDED_APP_ICON", "0xFEB23A42")
-        buildConfigField("int", "MODDED_APP_ICON_ALPHA", "0xFFFBB33C")
-        buildConfigField("int", "MODDED_APP_ICON_OTHER", "0xFFD3575E")
+        buildConfigField("int", "MODDED_APP_ICON", "0xFF8B5CF6")
+        buildConfigField("int", "MODDED_APP_ICON_ALPHA", "0xFFA78BFA")
+        buildConfigField("int", "MODDED_APP_ICON_OTHER", "0xFF6D28D9")
 
         buildConfigField("String", "GIT_BRANCH", "\"${getCurrentBranch()}\"")
         buildConfigField("String", "GIT_COMMIT", "\"${getLatestCommit()}\"")

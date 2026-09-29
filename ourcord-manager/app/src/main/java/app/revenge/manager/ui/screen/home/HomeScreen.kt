@@ -115,43 +115,56 @@ class HomeScreen : Screen {
                     .padding(16.dp)
                     .fillMaxWidth()
             ) {
-                AppIcon(
-                    customIcon = prefs.patchIcon,
-                    releaseChannel = prefs.channel,
-                    modifier = Modifier.size(60.dp)
-                )
+                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 24.dp)
+                    ) {
+                        AppIcon(
+                            customIcon = prefs.patchIcon,
+                            releaseChannel = prefs.channel,
+                            modifier = Modifier.size(76.dp)
+                        )
 
-                Text(
-                    text = prefs.appName,
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    AnimatedVisibility(visible = currentVersion != null) {
                         Text(
-                            text = stringResource(
-                                R.string.version_current,
-                                currentVersion.toString()
-                            ),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = LocalContentColor.current.copy(alpha = 0.5f),
+                            text = prefs.appName,
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                        Text(
+                            text = stringResource(R.string.ourcord_hero_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
-                    }
 
-                    val latestLabel =
-                        if (prefs.discordVersion.isNotBlank()) R.string.version_target else R.string.version_latest
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            AnimatedVisibility(visible = currentVersion != null) {
+                                Text(
+                                    text = stringResource(R.string.version_current, currentVersion.toString()),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = LocalContentColor.current.copy(alpha = 0.55f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
 
-                    AnimatedVisibility(visible = latestVersion != null) {
-                        Text(
-                            text = stringResource(latestLabel, latestVersion.toString()),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = LocalContentColor.current.copy(alpha = 0.5f),
-                            textAlign = TextAlign.Center
-                        )
+                            val latestLabel =
+                                if (prefs.discordVersion.isNotBlank()) R.string.version_target else R.string.version_latest
+
+                            AnimatedVisibility(visible = latestVersion != null) {
+                                Text(
+                                    text = stringResource(latestLabel, latestVersion.toString()),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = LocalContentColor.current.copy(alpha = 0.55f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
 

@@ -2,12 +2,6 @@ name: Build OurCord Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - arena/01a0ecf6-pr
-    paths:
-      - "ourcord-manager/**"
-      - ".github/workflows/ourcord-android.yml"
 
 permissions:
   contents: write

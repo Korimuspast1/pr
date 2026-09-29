@@ -22,7 +22,7 @@ Requirements: JDK 17 and Android SDK Platform 34.
 ./gradlew :app:assembleRelease
 ```
 
-Output: `app/build/outputs/apk/release/ourcord-manager-1.3.0.apk`.
+Output: `app/build/outputs/apk/release/ourcord-manager-2.0.0.apk`.
 
 ## Legal and security notice
 
@@ -34,6 +34,6 @@ Never install plugins from untrusted sources. OurCord Manager does not include a
 
 This project is a branded derivative of `revenge-mod/revenge-manager`, itself derived from
 Bunny/Vendetta Manager, and retains the Open Software License 3.0 in [LICENSE](LICENSE).
-The current runtime bundle is fetched from the open-source `revenge-mod/revenge-bundle`
-project until an independently maintained OurCord runtime is published. The LSPatch binaries
-and third-party libraries retain their respective licenses; see the in-app Libraries screen.
+The manager downloads only the OurCord loader published by this repository. The loader embeds
+and updates the repository's own `ourcord-runtime` bundle. LSPatch and third-party libraries
+retain their respective licenses; see the in-app Libraries screen.

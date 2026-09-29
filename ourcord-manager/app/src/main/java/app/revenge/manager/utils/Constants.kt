@@ -5,9 +5,7 @@ import app.ourcord.manager.BuildConfig
 
 object Constants {
     val TEAM_MEMBERS = listOf(
-        TeamMember("Palm", "Lead developer", "palmdevs"),
-        TeamMember("oSumAtrIX", "Developer", "osumatrix"),
-        TeamMember("Nexpid", "Developer", "nexpid"),
+        TeamMember("Korimuspast1", "OurCord project owner", "Korimuspast1"),
     )
 
     // NOTE: This is no longer used
