@@ -38,7 +38,7 @@ javac -source 8 -target 8 -nowarn -encoding UTF-8 \
 
 # Классы-заглушки com.windukk.* существуют в моде — в модуль их класть нельзя.
 echo "==> вырезаем stub-классы"
-rm -rf "$BUILD/classes/com/windukk/hook"
+rm -rf "$BUILD/classes/com/windukk/hook" "$BUILD/classes/com/windukk/stable"
 
 echo "==> d8"
 find "$BUILD/classes" -name '*.class' > "$BUILD/classes.txt"
@@ -50,11 +50,14 @@ if [ ! -f "$TTY_KEY" ]; then
 fi
 
 echo "==> pack"
+# Версия модуля = время последнего коммита: сборка воспроизводима.
+TTY_VERSION="${TTY_VERSION:-$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || date +%s)}"
 python3 "$ROOT/tools/ttydyn.py" pack \
   --dex "$BUILD/classes.dex" \
   --out "$OUT/profile-flex.ttydyn" \
   --variant release \
   --payload-type full \
+  --dynamic-version "$TTY_VERSION" \
   --key "$TTY_KEY"
 
 python3 "$ROOT/tools/ttydyn.py" inspect "$OUT/profile-flex.ttydyn"
