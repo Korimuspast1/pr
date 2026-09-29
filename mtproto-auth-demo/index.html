@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MTProto: создание auth_key — живая демонстрация</title>
+    <meta
+      name="description"
+      content="Интерактивная демонстрация создания ключа авторизации MTProto: req_pq_multi, RSA_PAD, Диффи — Хеллман, AES-256-IGE. Вся криптография считается прямо в браузере."
+    />
+    <link rel="preconnect" href="https://core.telegram.org" />
+    <link rel="stylesheet" href="assets/styles.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232aabee'/%3E%3Cpath d='M20 34.5l24-13-8.5 26-6.5-9-9-4z' fill='%23fff'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div class="glow"></div>
+
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="#top">
+          <span class="brand-mark">MT</span>
+          <span>
+            <strong>auth_key lab</strong>
+            <small>демонстрация рукопожатия MTProto</small>
+          </span>
+        </a>
+        <nav class="header-nav">
+          <a href="#demo">Демонстрация</a>
+          <a href="#theory">Как это устроено</a>
+          <a href="https://core.telegram.org/mtproto/samples-auth_key" target="_blank" rel="noopener">Оригинал ↗</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero wrap">
+        <div class="hero-text">
+          <p class="eyebrow">core.telegram.org / mtproto / samples-auth_key</p>
+          <h1>Как Telegram создаёт <span class="accent">ключ авторизации</span></h1>
+          <p class="lead">
+            Клиент и сервер договариваются о 2048-битном <code>auth_key</code>, который никогда не передаётся по сети.
+            Ниже это происходит по-настоящему: каждое сообщение сериализуется в TL, шифруется RSA_PAD и AES-256-IGE,
+            а числа Диффи — Хеллмана возводятся в степень прямо в вашем браузере.
+          </p>
+          <ul class="tags">
+            <li>req_pq_multi</li>
+            <li>доказательство работы (p × q)</li>
+            <li>RSA_PAD (OAEP+)</li>
+            <li>AES-256-IGE</li>
+            <li>DH 2048 бит</li>
+            <li>SHA1 / SHA256</li>
+          </ul>
+          <div class="controls" id="controls">
+            <button class="btn primary" id="btn-run">▶ Запустить рукопожатие</button>
+            <button class="btn" id="btn-step" disabled>⏭ Следующий шаг</button>
+            <button class="btn ghost" id="btn-reset" disabled>↻ Сбросить</button>
+            <label class="switch">
+              <input type="checkbox" id="chk-auto" checked />
+              <span>Автопрогон</span>
+            </label>
+            <label class="speed">
+              Пауза
+              <input type="range" id="rng-speed" min="200" max="2600" step="200" value="1200" />
+              <output id="out-speed">1.2 с</output>
+            </label>
+          </div>
+          <p class="hint">Подсказка: пробел — следующий шаг. Клик по любому шестнадцатеричному значению копирует его.</p>
+        </div>
+
+        <div class="hero-flow" aria-hidden="true">
+          <div class="peer peer-client" id="peer-client">
+            <div class="peer-icon">📱</div>
+            <div class="peer-name">Клиент</div>
+            <div class="peer-secret" id="peer-client-secret">b — неизвестно</div>
+          </div>
+          <div class="wire">
+            <div class="wire-line"></div>
+            <div class="packet" id="packet"></div>
+            <div class="wire-label" id="wire-label">соединение не установлено</div>
+          </div>
+          <div class="peer peer-server" id="peer-server">
+            <div class="peer-icon">🗄️</div>
+            <div class="peer-name">Сервер</div>
+            <div class="peer-secret" id="peer-server-secret">a — неизвестно</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace wrap" id="demo">
+        <div class="stage">
+          <div class="stage-head">
+            <h2>Протокол по шагам</h2>
+            <div class="progress" id="progress"></div>
+          </div>
+          <div id="steps" class="steps">
+            <div class="placeholder" id="placeholder">
+              <div class="placeholder-icon">🔐</div>
+              <p>
+                Нажмите «Запустить рукопожатие». Демонстрация сгенерирует RSA-ключ сервера, проведёт обмен из четырёх
+                запросов и покажет каждый байт, который уходит в сеть.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <aside class="inspector">
+          <div class="panel">
+            <h3>Состояние сессии</h3>
+            <p class="panel-note">
+              <span class="dot dot-client"></span>знает клиент
+              <span class="dot dot-server"></span>знает сервер
+              <span class="dot dot-both"></span>общее
+            </p>
+            <div id="state-list" class="state-list">
+              <p class="empty">Пока ничего не известно ни одной из сторон.</p>
+            </div>
+          </div>
+          <div class="panel result-panel" id="result-panel" hidden>
+            <h3>Результат</h3>
+            <div id="result-body"></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="theory wrap" id="theory">
+        <h2>Как это устроено</h2>
+        <div class="theory-grid">
+          <article>
+            <h3>1. Временная сессия</h3>
+            <p>
+              Клиент шлёт <code>req_pq_multi</code> с случайным <code>nonce</code>, сервер отвечает своим
+              <code>server_nonce</code>. Эта пара сопровождает все последующие сообщения и в открытом, и в
+              зашифрованном виде — так стороны отличают «свой» обмен от параллельного, устроенного злоумышленником.
+            </p>
+          </article>
+          <article>
+            <h3>2. Доказательство работы</h3>
+            <p>
+              Сервер присылает <code>pq</code> — произведение двух простых (около 63 бит). Клиент обязан разложить его
+              на множители. Для телефона это доли секунды, а для того, кто хочет завалить сервер запросами, — заметные
+              расходы.
+            </p>
+          </article>
+          <article>
+            <h3>3. RSA_PAD вместо «голого» RSA</h3>
+            <p>
+              Структура <code>p_q_inner_data_dc</code> с секретным <code>new_nonce</code> дополняется до 192 байт,
+              разворачивается задом наперёд, шифруется AES-IGE на одноразовом ключе и лишь затем возводится в степень
+              по модулю RSA. Это вариант OAEP+, он лишает RSA детерминированности и устойчив к подмене блоков.
+            </p>
+          </article>
+          <article>
+            <h3>4. Аутентификация сервера</h3>
+            <p>
+              Ответ <code>server_DH_params_ok</code> зашифрован ключом, выведенным из <code>new_nonce</code> и
+              <code>server_nonce</code>. Прочитать его может только владелец приватного RSA-ключа, который смог достать
+              <code>new_nonce</code>. Никаких сертификатов — доказательством служит сам факт расшифровки.
+            </p>
+          </article>
+          <article>
+            <h3>5. Диффи — Хеллман</h3>
+            <p>
+              Сервер даёт <code>g</code>, <code>dh_prime</code> и <code>g_a</code>, клиент отвечает <code>g_b</code>.
+              Обе стороны считают <code>auth_key = g^(ab) mod dh_prime</code>. Клиент обязан проверить, что
+              <code>dh_prime</code> — безопасное простое, а <code>g_a</code> не вырождено: иначе подменённый сервер мог
+              бы загнать ключ в маленькую подгруппу.
+            </p>
+          </article>
+          <article>
+            <h3>6. Что остаётся</h3>
+            <p>
+              После <code>dh_gen_ok</code> стороны забывают всё временное и хранят <code>auth_key</code> (2048 бит),
+              его идентификатор <code>auth_key_id</code> — 64 младших бита SHA1 — и первую
+              <code>server_salt</code>. Дальше начинается обычная зашифрованная сессия MTProto 2.0.
+            </p>
+          </article>
+        </div>
+
+        <div class="disclaimer">
+          <h3>Честное предупреждение</h3>
+          <p>
+            Это учебная модель, а не клиент Telegram. Браузер не может открыть TCP-соединение с дата-центром, поэтому
+            вторая сторона рукопожатия — «сервер» — работает тут же, в соседнем модуле, и генерирует собственную пару
+            RSA (приватные ключи настоящих серверов Telegram, разумеется, никому не известны). Всё остальное —
+            сериализация TL, RSA_PAD, AES-256-IGE, факторизация, Диффи — Хеллман, SHA1/SHA256, проверки безопасности —
+            выполняется по-настоящему и совпадает с документацией. Реализация AES-IGE проверена на векторе из
+            официального примера Telegram.
+          </p>
+          <p class="links">
+            Первоисточники:
+            <a href="https://core.telegram.org/mtproto/samples-auth_key" target="_blank" rel="noopener">Auth key generation example</a>,
+            <a href="https://core.telegram.org/mtproto/auth_key" target="_blank" rel="noopener">Creating an Authorization Key</a>,
+            <a href="https://core.telegram.org/schema/mtproto" target="_blank" rel="noopener">MTProto TL-schema</a>.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <span>Вся криптография считается локально, ничего не отправляется наружу.</span>
+        <span class="muted">auth_key lab</span>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast"></div>
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>

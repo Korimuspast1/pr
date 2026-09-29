@@ -1,0 +1,15 @@
+{
+  "name": "mtproto-auth-key-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Интерактивная демонстрация создания ключа авторизации MTProto (core.telegram.org/mtproto/samples-auth_key)",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 3000 --bind 0.0.0.0",
+    "test": "node test/aes.test.mjs && node test/handshake.test.mjs && node test/ui.smoke.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
