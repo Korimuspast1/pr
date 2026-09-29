@@ -107,7 +107,7 @@ class MainActivity : Activity() {
         content.addView(countLine)
         search = EditText(this).apply {
             hint = "Поиск по названию или пакету"
-            hintTextColor = DIM
+            setHintTextColor(DIM)
             setTextColor(WHITE)
             textSize = 15f
             setSingleLine(true)
@@ -338,7 +338,7 @@ class MainActivity : Activity() {
 
         val customUrl = EditText(this).apply {
             hint = "https://example.org/catalog.json"
-            hintTextColor = DIM
+            setHintTextColor(DIM)
             setTextColor(WHITE)
             textSize = 14f
             setSingleLine(true)
@@ -500,12 +500,12 @@ class MainActivity : Activity() {
         const val PREF_URL = "catalogue_url"
         const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-        const val BLACK = Color.rgb(11, 11, 11)
-        const val INK = Color.rgb(19, 19, 19)
-        const val CARD = Color.rgb(24, 24, 24)
-        const val STROKE = Color.rgb(54, 54, 54)
-        const val WHITE = Color.rgb(245, 245, 242)
-        const val MUTED = Color.rgb(171, 171, 167)
-        const val DIM = Color.rgb(126, 126, 122)
+        val BLACK = Color.rgb(11, 11, 11)
+        val INK = Color.rgb(19, 19, 19)
+        val CARD = Color.rgb(24, 24, 24)
+        val STROKE = Color.rgb(54, 54, 54)
+        val WHITE = Color.rgb(245, 245, 242)
+        val MUTED = Color.rgb(171, 171, 167)
+        val DIM = Color.rgb(126, 126, 122)
     }
 }
