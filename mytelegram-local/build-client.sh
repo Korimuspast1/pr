@@ -35,7 +35,7 @@ python3 "$HERE/patch-client.py" "$SOURCE" "$SERVER_IP"
 cd "$SOURCE"
 chmod +x ./gradlew
 # The upstream project needs Android SDK 35 and NDK 21.4.7075529.
-./gradlew :TMessagesProj_App:assembleAfatRelease --no-daemon --stacktrace
+./gradlew :TMessagesProj_App:assembleAfatRelease --no-daemon --max-workers=2 --stacktrace
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
