@@ -7,6 +7,7 @@ import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -16,6 +17,7 @@ import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -62,8 +64,21 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 
+    @Suppress("DEPRECATION")
     private fun buildScreen(): View {
-        val root = FrameLayout(this).apply { setBackgroundColor(BLACK) }
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(BLACK)
+            // Reserve the status/navigation-bar area even on Android 15 edge-to-edge devices.
+            setOnApplyWindowInsetsListener { view, insets ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val bars = insets.getInsets(WindowInsets.Type.systemBars())
+                    view.setPadding(0, bars.top, 0, bars.bottom)
+                } else {
+                    view.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+                }
+                insets
+            }
+        }
         val scroll = ScrollView(this).apply {
             isFillViewport = true
             clipToPadding = false
