@@ -50,7 +50,6 @@ import app.ourcord.manager.domain.manager.PreferenceManager
 import app.ourcord.manager.ui.screen.libraries.LibrariesScreen
 import app.ourcord.manager.ui.widgets.about.LinkItem
 import app.ourcord.manager.ui.widgets.about.ListItem
-import app.ourcord.manager.ui.widgets.about.UserEntry
 import app.ourcord.manager.utils.*
 import org.koin.androidx.compose.get
 
@@ -183,7 +182,7 @@ class AboutScreen : Screen {
                 }
 
                 Text(
-                    text = stringResource(R.string.label_special_thanks),
+                    text = stringResource(R.string.label_ourcord_project),
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(16.dp),
                     color = MaterialTheme.colorScheme.primary
@@ -193,60 +192,26 @@ class AboutScreen : Screen {
                 ) {
                     ElevatedCard {
                         ListItem(
-                            text = "Pylix",
-                            subtext = "Past developer of Bunny",
-                            imageUrl = "https://github.com/pylixonly.png",
-                            onClick = {
-                                uriHandler.openUri("https://github.com/pylixonly")
-                            }
+                            text = stringResource(R.string.project_private_title),
+                            subtext = stringResource(R.string.project_private_description)
+                        )
+                        Divider(
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
                         ListItem(
-                            text = "Fiery",
-                            subtext = "Past developer of the iOS tweak",
-                            imageUrl = "https://github.com/FieryFlames.png",
-                            onClick = {
-                                uriHandler.openUri("https://github.com/FieryFlames")
-                            }
+                            text = stringResource(R.string.project_runtime_title),
+                            subtext = stringResource(R.string.project_runtime_description)
+                        )
+                        Divider(
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
                         ListItem(
-                            text = "Maisy",
-                            subtext = "Past developer of Vendetta",
-                            imageUrl = "https://github.com/maisymoe.png",
-                            onClick = {
-                                uriHandler.openUri("https://github.com/maisymoe")
-                            }
-                        )
-                        ListItem(
-                            text = "Wing",
-                            subtext = "Past developer of Manager",
-                            imageUrl = "https://github.com/wingio.png",
-                            onClick = {
-                                uriHandler.openUri("https://github.com/wingio")
-                            }
-                        )
-                        ListItem(
-                            text = "Kasi",
-                            subtext = "Past developer of the Xposed Module",
-                            imageUrl = "https://github.com/redstonekasi.png",
-                            onClick = {
-                                uriHandler.openUri("https://github.com/redstonekasi")
-                            }
-                        )
-                        ListItem(
-                            text = "rushii",
-                            subtext = "Developer of the installer, zip library, and a portions of patching",
-                            imageUrl = "https://github.com/rushiiMachine.png",
-                            onClick = {
-                                uriHandler.openUri("https://github.com/rushiiMachine")
-                            }
-                        )
-                        ListItem(
-                            text = "Xinto",
-                            subtext = "Developer of the preference manager",
-                            imageUrl = "https://github.com/X1nto.png",
-                            onClick = {
-                                uriHandler.openUri("https://github.com/X1nto")
-                            }
+                            text = stringResource(R.string.project_diagnostics_title),
+                            subtext = stringResource(R.string.project_diagnostics_description)
                         )
                     }
                 }

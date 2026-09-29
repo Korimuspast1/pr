@@ -48,10 +48,11 @@ private fun runOurCordScripts(scope: InjectorScope, preloadsDir: File, mainScrip
             scope.runFile(f.absolutePath)
         }
 
-        if (mainScript.exists()) {
+        if (mainScript.exists() && mainScript.length() > 1024L) {
             log.i("Loading downloaded bundle: ${mainScript.absolutePath}")
             scope.runFile(mainScript.absolutePath)
         } else {
+            if (mainScript.exists()) log.w("Downloaded bundle is empty or damaged; using embedded runtime")
             log.i("Downloaded bundle missing; falling back to ${OurCordConstants.FALLBACK_BUNDLE_ASSET}")
             scope.runAsset(OurCordConstants.FALLBACK_BUNDLE_ASSET)
         }

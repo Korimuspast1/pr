@@ -69,16 +69,16 @@ jobs:
         run: |
           mkdir -p release-v2
           cp ourcord-loader/app/build/outputs/apk/debug/app-debug.apk release-v2/OurCord-Loader.apk
-          cp ourcord-manager/app/build/outputs/apk/release/*.apk release-v2/OurCord-Manager-2.0.0.apk
+          cp ourcord-manager/app/build/outputs/apk/release/*.apk release-v2/OurCord-Manager-2.0.1.apk
           cp ourcord-runtime/dist/ourcord.js release-v2/ourcord.js
           cp ourcord-runtime/dist/ourcord.min.js release-v2/ourcord.min.js
           cd release-v2
-          sha256sum OurCord-Loader.apk OurCord-Manager-2.0.0.apk ourcord.js ourcord.min.js > SHA256SUMS.txt
+          sha256sum OurCord-Loader.apk OurCord-Manager-2.0.1.apk ourcord.js ourcord.min.js > SHA256SUMS.txt
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OurCord-complete-2.0.0
+          name: OurCord-complete-2.0.1
           path: release-v2/*
           if-no-files-found: error
 
@@ -86,12 +86,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view ourcord-v2.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload ourcord-v2.0.0 release-v2/* --clobber --repo "$GITHUB_REPOSITORY"
+          if gh release view ourcord-v2.0.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload ourcord-v2.0.1 release-v2/* --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create ourcord-v2.0.0 release-v2/* \
+            gh release create ourcord-v2.0.1 release-v2/* \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "OurCord 2.0.0 — complete client stack" \
-              --notes "OurCord 2.0 contains its own branded manager, Android loader and JavaScript runtime. The manager downloads Discord split APKs, injects only the OurCord loader, signs the result locally and launches Android's installer. Discord APK is not redistributed. Android 9+ is required for the manager. Modified clients may violate Discord Terms of Service."
+              --title "OurCord 2.0.1 — complete client stack" \
+              --notes "OurCord 2.0.1 contains its own branded manager, Android loader and JavaScript runtime. The manager downloads Discord split APKs, injects only the OurCord loader, signs the result locally and launches Android's installer. Discord APK is not redistributed. Android 9+ is required for the manager. Modified clients may violate Discord Terms of Service."
           fi

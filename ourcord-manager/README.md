@@ -22,7 +22,7 @@ Requirements: JDK 17 and Android SDK Platform 34.
 ./gradlew :app:assembleRelease
 ```
 
-Output: `app/build/outputs/apk/release/ourcord-manager-2.0.0.apk`.
+Output: `app/build/outputs/apk/release/ourcord-manager-2.0.1.apk`.
 
 ## Legal and security notice
 

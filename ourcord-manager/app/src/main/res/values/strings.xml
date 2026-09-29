@@ -163,7 +163,13 @@
     <string name="label_github">GitHub</string>
     <string name="label_discord">Discord</string>
     <string name="label_team">Team</string>
-    <string name="label_special_thanks">Special thanks</string>
+    <string name="label_ourcord_project">OurCord Project</string>
+    <string name="project_private_title">Local and private patching</string>
+    <string name="project_private_description">APK signing happens on your device. OurCord never asks for or collects your Discord token.</string>
+    <string name="project_runtime_title">Independent OurCord runtime</string>
+    <string name="project_runtime_description">The manager injects the OurCord loader and bundle published by this repository.</string>
+    <string name="project_diagnostics_title">Built-in diagnostics</string>
+    <string name="project_diagnostics_description">Installer logs can be viewed, copied, and shared when a patch fails.</string>
     <string name="label_translate">Translate</string>
 
     <string name="battery_opt_title">Battery Optimization</string>

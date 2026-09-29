@@ -37,7 +37,7 @@ object OurCordUpdater {
     private const val ETAG_PATH = "etag.txt"
     private const val CONFIG_PATH = "loader.json"
     private const val DEFAULT_BUNDLE_URL =
-        "https://github.com/Korimuspast1/pr/releases/download/ourcord-v2.0.0/ourcord.min.js"
+        "https://github.com/Korimuspast1/pr/releases/download/ourcord-v2.0.1/ourcord.min.js"
 
     private val log = logger("ourcordUpdater")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

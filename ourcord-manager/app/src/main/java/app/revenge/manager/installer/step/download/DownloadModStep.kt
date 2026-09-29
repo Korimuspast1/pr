@@ -8,7 +8,7 @@ import java.io.File
 /**
  * Downloads the OurCord XPosed module
  *
- * https://github.com/Korimuspast1/pr/releases/tag/ourcord-v2.0.0
+ * https://github.com/Korimuspast1/pr/releases/tag/ourcord-v2.0.1
  */
 @Stable
 class DownloadModStep(
@@ -17,7 +17,7 @@ class DownloadModStep(
 
     override val nameRes = R.string.step_dl_mod
 
-    override val downloadFullUrl: String = "https://github.com/Korimuspast1/pr/releases/download/ourcord-v2.0.0/OurCord-Loader.apk"
+    override val downloadFullUrl: String = "https://github.com/Korimuspast1/pr/releases/download/ourcord-v2.0.1/OurCord-Loader.apk"
     override val destination = preferenceManager.moduleLocation
     override val workingCopy = workingDir.resolve("xposed.apk")
 
