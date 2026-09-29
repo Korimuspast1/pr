@@ -34,8 +34,9 @@ jobs:
           cache: gradle
           cache-dependency-path: ourcord-manager/**/*.gradle*
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install Android SDK components
+        run: |
+          echo "y" | sdkmanager "platforms;android-34" "build-tools;34.0.0" >/dev/null
 
       - name: Build signed release APK
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
