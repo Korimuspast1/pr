@@ -1,0 +1,13 @@
+{
+  "name": "deepseek-v3-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A polished local web interface for DeepSeek V3 via the OpenAI-compatible API.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f7fb" />
+    <meta name="description" content="DeepSeek V3 Studio — локальный интерфейс для общения с моделью." />
+    <title>DeepSeek V3 Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div>
+            <div class="brand-name">deepseek</div>
+            <div class="brand-product">V3 studio</div>
+          </div>
+        </div>
+
+        <button class="new-chat-button" id="newChatButton" type="button">
+          <span class="plus-icon" aria-hidden="true">+</span>
+          <span>Новый диалог</span>
+          <kbd>⌘ K</kbd>
+        </button>
+
+        <nav class="primary-nav" aria-label="Основная навигация">
+          <button class="nav-item active" type="button"><span class="nav-icon chat-icon" aria-hidden="true"></span>Чат</button>
+          <button class="nav-item" type="button" id="libraryButton"><span class="nav-icon library-icon" aria-hidden="true"></span>Библиотека <span class="coming-soon">скоро</span></button>
+        </nav>
+
+        <div class="history-heading"><span>Последние диалоги</span><button id="clearHistoryButton" class="icon-button subtle" aria-label="Очистить историю" title="Очистить историю">•••</button></div>
+        <div class="history-list" id="historyList"></div>
+        <div class="sidebar-spacer"></div>
+
+        <div class="connection-card">
+          <div class="connection-topline"><span class="status-dot" id="connectionDot"></span><span id="connectionLabel">Демо-режим</span><button class="icon-button subtle" id="settingsButton" aria-label="Настройки" title="Настройки">⚙</button></div>
+          <div class="connection-copy" id="connectionCopy">Подключите API-ключ, чтобы общаться с моделью.</div>
+          <button class="text-link" id="connectionAction" type="button">Открыть настройки <span>→</span></button>
+        </div>
+
+        <div class="profile-row">
+          <div class="avatar">A</div>
+          <div class="profile-meta"><strong>Ваше рабочее место</strong><span>Локальная сессия</span></div>
+          <button class="icon-button subtle" aria-label="Меню профиля">•••</button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <button class="mobile-menu icon-button" id="mobileMenuButton" aria-label="Открыть меню">☰</button>
+          <div class="model-breadcrumb"><span class="crumb-muted">Модели</span><span class="crumb-chevron">/</span><strong>DeepSeek V3</strong><span class="live-pill"><i></i> online</span></div>
+          <div class="topbar-actions">
+            <button class="top-action" id="shareButton" type="button"><span class="share-icon" aria-hidden="true"></span><span>Поделиться</span></button>
+            <button class="icon-button" id="topSettingsButton" aria-label="Настройки" title="Настройки">⚙</button>
+          </div>
+        </header>
+
+        <section class="chat-stage" id="chatStage">
+          <div class="welcome-view" id="welcomeView">
+            <div class="eyebrow"><span class="eyebrow-line"></span> DeepSeek V3 · 671B parameters <span class="eyebrow-line"></span></div>
+            <h1>Встречайте новый<br /><em>способ думать.</em></h1>
+            <p class="welcome-copy">Ответы, идеи и код — в одном спокойном рабочем пространстве.</p>
+            <div class="suggestions" id="suggestions">
+              <button class="suggestion-card" type="button" data-prompt="Объясни простыми словами, как работает Mixture-of-Experts в DeepSeek V3."><span class="suggestion-icon purple">✦</span><span><strong>Объяснить концепцию</strong><small>Сложное — простыми словами</small></span><span class="arrow">↗</span></button>
+              <button class="suggestion-card" type="button" data-prompt="Напиши чистую функцию на JavaScript, которая группирует массив объектов по ключу, и объясни решение."><span class="suggestion-icon blue">⌘</span><span><strong>Помочь с кодом</strong><small>От идеи до рабочего решения</small></span><span class="arrow">↗</span></button>
+              <button class="suggestion-card" type="button" data-prompt="Составь лаконичный план изучения современных языковых моделей на 30 дней."><span class="suggestion-icon orange">◒</span><span><strong>Составить план</strong><small>Структура для следующего шага</small></span><span class="arrow">↗</span></button>
+            </div>
+          </div>
+
+          <div class="messages-view" id="messagesView" aria-live="polite"></div>
+        </section>
+
+        <div class="composer-wrap">
+          <div class="composer-shell" id="composerShell">
+            <div class="composer-tools">
+              <button class="round-tool" id="attachButton" type="button" aria-label="Добавить файл" title="Добавить файл">+</button>
+              <span class="tool-hint">Добавить файл</span>
+            </div>
+            <textarea id="messageInput" rows="1" placeholder="Напишите сообщение..." aria-label="Сообщение"></textarea>
+            <div class="composer-footer">
+              <div class="mode-switcher"><button class="mode-button selected" id="chatModeButton" type="button"><span class="mode-spark">✦</span> Быстрый ответ</button><button class="mode-button" id="thinkModeButton" type="button"><span class="mode-think">◉</span> DeepThink <span class="beta-tag">β</span></button></div>
+              <div class="composer-right"><span class="shortcut-hint">Enter ↵</span><button class="send-button" id="sendButton" type="button" aria-label="Отправить сообщение"><span>↑</span></button></div>
+            </div>
+          </div>
+          <div class="composer-note">DeepSeek может ошибаться. Проверяйте важную информацию.</div>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <div class="modal-backdrop" id="settingsModal" aria-hidden="true">
+      <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="panel-heading"><div><span class="panel-kicker">CONFIGURATION</span><h2 id="settingsTitle">Настройки студии</h2></div><button class="close-button" id="closeSettingsButton" type="button" aria-label="Закрыть">×</button></div>
+        <div class="settings-status" id="settingsStatus"><span class="status-dot"></span><div><strong>Демо-режим активен</strong><p>Интерфейс работает локально. API-ключ можно добавить на сервере.</p></div></div>
+        <div class="setting-group"><label for="modelSelect">Модель</label><div class="select-wrap"><select id="modelSelect"><option value="deepseek-chat">deepseek-chat · V3</option><option value="deepseek-reasoner">deepseek-reasoner · R1</option></select><span>⌄</span></div></div>
+        <div class="setting-group"><div class="label-row"><label for="temperatureRange">Температура</label><output id="temperatureValue">0.7</output></div><input id="temperatureRange" type="range" min="0" max="1.5" step="0.1" value="0.7" /><div class="range-labels"><span>Точнее</span><span>Креативнее</span></div></div>
+        <div class="setting-group"><div class="label-row"><label for="tokensInput">Максимум токенов</label><span class="input-suffix">tokens</span></div><input class="number-input" id="tokensInput" type="number" min="64" max="8192" step="64" value="2048" /></div>
+        <div class="server-note"><span class="note-icon">i</span><p>Ключ API не хранится в браузере. Укажите <code>DEEPSEEK_API_KEY</code> в <code>.env</code> и перезапустите сервер.</p></div>
+        <div class="panel-actions"><button class="secondary-button" id="resetSettingsButton" type="button">Сбросить</button><button class="primary-button" id="saveSettingsButton" type="button">Сохранить настройки</button></div>
+      </section>
+    </div>
+
+    <input type="file" id="fileInput" hidden multiple />
+    <script src="/app.js" defer></script>
+  </body>
+</html>
