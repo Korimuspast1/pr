@@ -27,7 +27,6 @@ concurrency:
 
 jobs:
   build:
-    if: ${{ !(github.event_name == 'push' && (contains(github.event.head_commit.message, '[publish-apk]') || contains(github.event.head_commit.message, '[build-apk]'))) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +88,7 @@ jobs:
   build-android:
     # The session branch also gets one automatic build so the first APK is
     # available without requiring workflow-dispatch permissions.
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.build_android == true) || (github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0ed67-pr' && github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[publish-apk]')) }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.build_android == true) || (github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0ed67-pr' && github.actor != 'github-actions[bot]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -149,42 +148,3 @@ jobs:
           name: mytelegram-android-${{ inputs.server_ip || '192.168.1.100' }}
           path: mytelegram-local/build/apk/*.apk
           if-no-files-found: error
-
-      - name: Commit APK deliverable from maintenance build
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[build-apk]') }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          apk="$(find mytelegram-local/build/apk -type f -name '*.apk' -print -quit)"
-          test -n "$apk"
-          mkdir -p mytelegram-local/apk
-          rm -f mytelegram-local/apk/*.apk
-          apk_name="MyTelegram-local-arm64-v8a-${GITHUB_RUN_ID}.apk"
-          cp "$apk" "mytelegram-local/apk/$apk_name"
-          sha256="$(sha256sum "mytelegram-local/apk/$apk_name" | awk '{print $1}')"
-          size="$(stat -c '%s' "mytelegram-local/apk/$apk_name")"
-          APK_NAME="$apk_name" SHA256="$sha256" SIZE="$size" python3 - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-
-          path = Path("mytelegram-local/README.md")
-          text = path.read_text(encoding="utf-8")
-          block = (
-              "APK для текущего endpoint публикуется в артефактах workflow после проверки `apksigner`.\n"
-              f"Готовый файл в репозитории: `{os.environ['APK_NAME']}` "
-              f"({os.environ['SIZE']} байт); SHA-256: `{os.environ['SHA256']}`."
-          )
-          marker = r"APK для текущего\s+endpoint публикуется в артефактах workflow после проверки `apksigner`\."
-          text, count = re.subn(marker, block, text, count=1)
-          if count != 1:
-              raise SystemExit("README APK marker not found")
-          path.write_text(text, encoding="utf-8")
-          PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f mytelegram-local/apk/*.apk mytelegram-local/README.md
-          git commit -m "ci: publish validated MyTelegram APK [skip ci]"
-          git -c http.extraheader="AUTHORIZATION: bearer $GITHUB_TOKEN" push origin "HEAD:${GITHUB_REF_NAME}"
-
