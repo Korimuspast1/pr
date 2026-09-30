@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   build:
-    if: ${{ !(github.event_name == 'push' && contains(github.event.head_commit.message, '[publish-apk]')) }}
+    if: ${{ !(github.event_name == 'push' && (contains(github.event.head_commit.message, '[publish-apk]') || contains(github.event.head_commit.message, '[build-apk]'))) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -150,34 +150,19 @@ jobs:
           path: mytelegram-local/build/apk/*.apk
           if-no-files-found: error
 
-  # One-time publisher for the already validated APK from the long Android run.
-  # It is activated only by the explicit [publish-apk] maintenance commit.
-  publish-mytelegram-apk:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/arena/01a0ed67-pr' && contains(github.event.head_commit.message, '[publish-apk]') }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download validated Android artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Commit APK deliverable from maintenance build
+        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[build-apk]') }}
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/mytelegram-apk"
-          gh run download 36645825215 \
-            --repo "$GITHUB_REPOSITORY" \
-            --name "mytelegram-android-192.168.1.100" \
-            --dir "$RUNNER_TEMP/mytelegram-apk"
-          apk="$(find "$RUNNER_TEMP/mytelegram-apk" -type f -name '*.apk' -print -quit)"
+          apk="$(find mytelegram-local/build/apk -type f -name '*.apk' -print -quit)"
           test -n "$apk"
-          echo "Downloaded $apk"
           mkdir -p mytelegram-local/apk
           rm -f mytelegram-local/apk/*.apk
-          cp "$apk" mytelegram-local/apk/MyTelegram-local-arm64-v8a-36645825215.apk
-
-          sha256="$(sha256sum mytelegram-local/apk/MyTelegram-local-arm64-v8a-36645825215.apk | awk '{print $1}')"
-          size="$(stat -c '%s' mytelegram-local/apk/MyTelegram-local-arm64-v8a-36645825215.apk)"
-          SHA256="$sha256" SIZE="$size" python3 - <<'PY'
+          apk_name="MyTelegram-local-arm64-v8a-${GITHUB_RUN_ID}.apk"
+          cp "$apk" "mytelegram-local/apk/$apk_name"
+          sha256="$(sha256sum "mytelegram-local/apk/$apk_name" | awk '{print $1}')"
+          size="$(stat -c '%s' "mytelegram-local/apk/$apk_name")"
+          APK_NAME="$apk_name" SHA256="$sha256" SIZE="$size" python3 - <<'PY'
           import os
           import re
           from pathlib import Path
@@ -186,30 +171,18 @@ jobs:
           text = path.read_text(encoding="utf-8")
           block = (
               "APK для текущего endpoint публикуется в артефактах workflow после проверки `apksigner`.\n"
-              f"Готовый файл в репозитории: `MyTelegram-local-arm64-v8a-36645825215.apk` "
+              f"Готовый файл в репозитории: `{os.environ['APK_NAME']}` "
               f"({os.environ['SIZE']} байт); SHA-256: `{os.environ['SHA256']}`."
           )
-          pattern = re.escape("APK для текущего endpoint публикуется в артефактах workflow после проверки `apksigner`.")
-          text, count = re.subn(pattern, block, text, count=1)
+          marker = "APK для текущего endpoint публикуется в артефактах workflow после проверки `apksigner`."
+          text, count = re.subn(re.escape(marker), block, text, count=1)
           if count != 1:
               raise SystemExit("README APK marker not found")
           path.write_text(text, encoding="utf-8")
           PY
-
-      - name: Validate downloaded APK before publishing
-        run: |
-          set -euo pipefail
-          apk="mytelegram-local/apk/MyTelegram-local-arm64-v8a-36645825215.apk"
-          command -v aapt >/dev/null 2>&1 || true
-          unzip -l "$apk" | grep -q 'lib/arm64-v8a/'
-          ! unzip -l "$apk" | grep -Eq 'lib/(armeabi-v7a|x86|x86_64)/'
-          sha256sum "$apk"
-
-      - name: Commit APK deliverable
-        run: |
-          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f mytelegram-local/apk/*.apk mytelegram-local/README.md
           git commit -m "ci: publish validated MyTelegram APK [skip ci]"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+
