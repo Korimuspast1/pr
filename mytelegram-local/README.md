@@ -78,8 +78,8 @@ Actions → build-ttydyn → Run workflow → server_ip
 
 Клиент собирается с отдельным Android package id `org.mytelegram.local` и
 названием `MyTelegram Local`. Поэтому он может быть установлен рядом с
-официальным Telegram и не маскируется под его обновление. APK для текущего
-endpoint публикуется в артефактах workflow после проверки `apksigner`.
+официальным Telegram и не маскируется под его обновление. APK для текущего endpoint публикуется в артефактах workflow после проверки `apksigner`.
+Готовый файл в репозитории: `MyTelegram-local-arm64-v8a-36662131711.apk` (49719268 байт); SHA-256: `ea2a5f650bdd0caf9a695f2bc0aeaa48794ae4a2593add43f5f39e6121818158`.
 
 ## Почему не используется bot.txt
 
