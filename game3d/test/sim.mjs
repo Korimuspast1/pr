@@ -42,7 +42,7 @@ const app = {
     }
     if (!best) { if (dir.y < 0) { const t = -origin.y / dir.y; world.decal(origin.x + dir.x * t, origin.z + dir.z * t, 0.1, 0.5); } return; }
     best.h.applyHit(best.l, {
-      type: 'bullet', dmg: def.dmg * 0.8, struct: def.dmg * def.structMul * 0.8, cut: 0.55,
+      type: 'bullet', dmg: def.dmg * 0.8, struct: def.structMul * 0.8, cut: 0.55,
       bleedMul: def.bleedMul, knock: def.dmg * 1.6, point: best.p, dir, attacker: shooter,
     });
   },
@@ -200,7 +200,7 @@ console.log('\n[7] голова');
   app.humans.push(H);
   let guard = 0;
   while (H.alive && guard < 4) {
-    H.applyHit('head', { type: 'bullet', dmg: 78, struct: 14, cut: 0.55, bleedMul: 1.7, knock: 150,
+    H.applyHit('head', { type: 'bullet', dmg: 78, struct: 0.99, cut: 0.55, bleedMul: 1.7, knock: 150,
       point: { ...H.pts.head }, dir: { x: 0, y: 0, z: 1 } });
     guard++;
   }
@@ -247,6 +247,51 @@ console.log('\n[9] инспектор');
   ok(info.limbs.every((l) => typeof l.name === 'string' && l.name.length > 0), 'у конечностей есть названия');
   ok(info.limbs.some((l) => l.severed) || true, 'статус конечностей читается');
   ok(!Number.isNaN(info.blood), 'кровь числовая', String(info.blood.toFixed(0)));
+}
+
+/* ------------------------------------------------------------------ */
+console.log('\n[10] карта: коллизии и спавн');
+{
+  ok(world.colliders.length > 60, 'у карты есть коллайдеры', `${world.colliders.length}`);
+  ok(world.spawnPoints.length >= 6, 'точки спавна размечены', `${world.spawnPoints.length}`);
+  ok(world.lamps.length >= 6, 'на карте есть освещение', `${world.lamps.length} ламп`);
+
+  // a wall is solid, the open middle of the yard is not
+  ok(world.blocked(-10, -31, 0.4), 'в стене стоять нельзя');
+  ok(world.blocked(-20.6, 10, 0.4), 'забор склада не пропускает');
+  let free = null;
+  for (let x = -16; x <= 16 && !free; x += 1) {
+    for (let z = -14; z <= 22 && !free; z += 1) if (!world.blocked(x, z, 0.4)) free = { x, z };
+  }
+  ok(!!free, 'во дворе есть свободное место', free ? `${free.x}, ${free.z}` : '');
+  ok(!world.blocked(free.x, free.z, 0.3), 'свободная точка действительно свободна');
+
+  // every spawn point has to be walkable
+  const badSpawns = world.spawnPoints.filter((p) => world.blocked(p.x, p.z, 0.45));
+  ok(badSpawns.length === 0, 'все точки спавна свободны', `плохих: ${badSpawns.length}`);
+
+  // a body point pushed into a wall is pushed back out
+  const p = { x: -10, y: 1.2, z: -31 };
+  const before = world.blocked(p.x, p.z, 0.1);
+  world.resolvePoint(p, 0.3);
+  ok(before && !world.blocked(p.x, p.z, 0.1), 'точка выдавлена из стены', `${p.x.toFixed(2)}, ${p.z.toFixed(2)}`);
+
+  // a person chasing someone past the north fence must not walk through it
+  const prey = new Human(app, { x: 2.0, z: -24, weapon: 'fists', ai: false, name: 'Приманка' });
+  const W = new Human(app, { x: 2.0, z: -14.0, weapon: 'machete', ai: true, name: 'Стена' });
+  app.humans.push(prey, W);
+  prey.ai.enabled = false;
+  W.ai.target = prey;
+  W.weapon = { id: 'fists', kind: 'melee', dmg: 0, structDmg: 0, cut: 0, mz: 0.1, swingTime: 0.3, bleedMul: 1, knock: 0 };
+  for (let i = 0; i < 300; i++) {
+    prey.ai.enabled = false;
+    prey.x = 2.0; prey.z = -24;
+    W.ai.target = prey;
+    W.ai.retarget = 99;
+    W.update(1 / 60, app);
+  }
+  ok(W.z > -17.7, 'человек не прошёл сквозь забор', `z=${W.z.toFixed(2)}`);
+  app.humans.length = 0;
 }
 
 /* ------------------------------------------------------------------ */

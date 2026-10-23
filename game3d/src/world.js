@@ -1,4 +1,5 @@
 import * as THREE from '../vendor/three.module.js';
+import { buildMap, queryColliders } from './map.js';
 import { rand, randInt, pick, chance, clamp, hash01, TAU, v3 } from './util3.js';
 
 const BLOOD = [0x8a0e14, 0x6f070c, 0x9d1219, 0x5c0409, 0x7e0b11];
@@ -38,8 +39,13 @@ export class World {
     this.time = 0;
 
     this.buildSky();
-    this.buildGround();
-    this.buildProps();
+    this.map = buildMap(scene);
+    this.colliders = this.map.colliders;
+    this.spawnPoints = this.map.spawnPoints;
+    this.bounds = this.map.bounds;
+    this.lamps = this.map.lamps;
+    this.fires = this.map.fires;
+    this._near = [];
     this.buildLights();
     this.buildBlood();
     this.buildTracers();
@@ -87,145 +93,41 @@ export class World {
     this.scene.fog = new THREE.FogExp2(0x0b111a, 0.026);
   }
 
-  buildGround() {
-    const size = 200;
-    const c = canvasEl(512, 512);
-    const g = ctx2d(c);
-    if (g) {
-    g.fillStyle = '#2b2b2d';
-    g.fillRect(0, 0, 512, 512);
-    // asphalt noise
-    for (let i = 0; i < 26000; i++) {
-      const v = 30 + Math.random() * 30;
-      g.fillStyle = `rgba(${v},${v},${v + 2},${0.25 + Math.random() * 0.5})`;
-      g.fillRect(Math.random() * 512, Math.random() * 512, 1 + Math.random() * 2, 1 + Math.random() * 2);
-    }
-    // cracks
-    g.strokeStyle = 'rgba(12,12,14,0.55)';
-    for (let i = 0; i < 26; i++) {
-      let x = Math.random() * 512, y = Math.random() * 512;
-      g.lineWidth = 0.6 + Math.random() * 1.4;
-      g.beginPath();
-      g.moveTo(x, y);
-      for (let s = 0; s < 7; s++) {
-        x += (Math.random() - 0.5) * 60;
-        y += (Math.random() - 0.5) * 60;
-        g.lineTo(x, y);
-      }
-      g.stroke();
-    }
-    // faded road paint
-    g.fillStyle = 'rgba(215,205,150,0.10)';
-    g.fillRect(0, 244, 512, 10);
-    g.fillStyle = 'rgba(215,205,150,0.07)';
-    for (let x = 0; x < 512; x += 90) g.fillRect(x, 248, 46, 3);
-    }
-    let tex = null;
-    if (g) {
-      tex = new THREE.CanvasTexture(c);
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(14, 14);
-      tex.anisotropy = 8;
-    }
+  /* ---------------- collisions ---------------- */
 
-    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.97, metalness: 0.02, color: tex ? 0xbfc2c8 : 0x55575c });
-    const geo = new THREE.PlaneGeometry(size, size);
-    const ground = new THREE.Mesh(geo, mat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    this.ground = ground;
-    this.scene.add(ground);
-
-    // a slightly raised concrete platform in the middle
-    const slab = new THREE.Mesh(
-      new THREE.CylinderGeometry(6.5, 6.7, 0.12, 48),
-      new THREE.MeshStandardMaterial({ color: 0x8b8d90, roughness: 0.95 })
-    );
-    slab.position.y = -0.06;   // sunk in: feet stay on ground level
-    slab.receiveShadow = true;
-    this.scene.add(slab);
+  queryColliders(x, z, r) {
+    return queryColliders(this.map.grid, x, z, r, this._near);
   }
 
-  buildProps() {
-    const group = new THREE.Group();
-    this.scene.add(group);
+  // true when a standing body of radius r would overlap something solid
+  blocked(x, z, r = 0.32) {
+    const list = queryColliders(this.map.grid, x, z, r, this._near);
+    for (const c of list) {
+      if (c.y0 > 1.7) continue;
+      if (x + r > c.x0 && x - r < c.x1 && z + r > c.z0 && z - r < c.z1) return true;
+    }
+    return false;
+  }
 
-    const conc = new THREE.MeshStandardMaterial({ color: 0x9a9a96, roughness: 0.95 });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x4c4f55, roughness: 0.85, metalness: 0.3 });
-    const rust = new THREE.MeshStandardMaterial({ color: 0x7a4a32, roughness: 0.8, metalness: 0.35 });
-    const wood = new THREE.MeshStandardMaterial({ color: 0x6b4c30, roughness: 0.95 });
-
-    const addBox = (w, h, d, x, y, z, mat, ry = 0) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-      m.position.set(x, y, z);
-      m.rotation.y = ry;
-      m.castShadow = true;
-      m.receiveShadow = true;
-      group.add(m);
-      return m;
-    };
-
-    // broken perimeter walls
-    for (let i = 0; i < 26; i++) {
-      const a = (i / 26) * TAU + rand(-0.05, 0.05);
-      const r = 26 + rand(-2, 3);
-      const h = rand(1.2, 3.4);
-      const w = rand(2.2, 4.6);
-      addBox(w, h, 0.7, Math.sin(a) * r, h / 2, Math.cos(a) * r, conc, a + Math.PI / 2);
-      if (chance(0.4)) addBox(w * rand(0.3, 0.6), rand(0.6, 1.6), 0.7, Math.sin(a) * r + rand(-2, 2), 0.5, Math.cos(a) * r + rand(-2, 2), conc, a);
+  // pushes a point out of solid geometry (walls, cars, crates…)
+  resolvePoint(p, radius) {
+    const list = queryColliders(this.map.grid, p.x, p.z, radius + 0.15, this._near);
+    let hit = false;
+    for (const c of list) {
+      if (p.y - radius > c.y1 || p.y + radius < c.y0) continue;
+      const x0 = c.x0 - radius, x1 = c.x1 + radius;
+      const z0 = c.z0 - radius, z1 = c.z1 + radius;
+      if (p.x <= x0 || p.x >= x1 || p.z <= z0 || p.z >= z1) continue;
+      const dxl = p.x - x0, dxr = x1 - p.x;
+      const dzl = p.z - z0, dzr = z1 - p.z;
+      const m = Math.min(dxl, dxr, dzl, dzr);
+      if (m === dxl) p.x = x0;
+      else if (m === dxr) p.x = x1;
+      else if (m === dzl) p.z = z0;
+      else p.z = z1;
+      hit = true;
     }
-    // rubble
-    for (let i = 0; i < 90; i++) {
-      const a = rand(0, TAU);
-      const r = rand(8, 26);
-      const s = rand(0.18, 0.72);
-      addBox(s * rand(0.8, 2), s, s * rand(0.8, 2), Math.sin(a) * r, s / 2, Math.cos(a) * r, chance(0.5) ? conc : dark, rand(0, TAU));
-    }
-    // crates and barrels near the centre
-    const spots = [[-5.5, -3.2], [5.8, -4.4], [-6.4, 4.1], [6.2, 3.6], [0, -7.6], [-3.2, 6.8]];
-    for (const [x, z] of spots) {
-      if (chance(0.5)) {
-        addBox(0.8, 0.8, 0.8, x, 0.4, z, wood, rand(0, TAU));
-        if (chance(0.5)) addBox(0.7, 0.7, 0.7, x + rand(-0.2, 0.2), 1.15, z + rand(-0.2, 0.2), wood, rand(0, TAU));
-      } else {
-        const b = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.92, 14), rust);
-        b.position.set(x, 0.46, z);
-        b.castShadow = b.receiveShadow = true;
-        group.add(b);
-      }
-    }
-    // street lamps (one works)
-    for (const [x, z, on] of [[-9, -9, true], [9, -8, false], [-8, 9, false]]) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 5.2, 8), dark);
-      pole.position.set(x, 2.6, z);
-      pole.castShadow = true;
-      group.add(pole);
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.08), dark);
-      arm.position.set(x + 0.55, 5.1, z);
-      group.add(arm);
-      const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.12, 0.28),
-        new THREE.MeshStandardMaterial({ color: 0x2a2a2a, emissive: on ? 0xffd79a : 0x000000, emissiveIntensity: on ? 1.6 : 0 }));
-      lamp.position.set(x + 1.1, 5.02, z);
-      group.add(lamp);
-      if (on) {
-        const l = new THREE.PointLight(0xffc987, 22, 16, 2);
-        l.position.set(x + 1.1, 4.9, z);
-        this.scene.add(l);
-      }
-    }
-    // dead trees
-    for (const [x, z] of [[-13, 2], [12, 7], [4, -13]]) {
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 3.2, 7), new THREE.MeshStandardMaterial({ color: 0x3a3029, roughness: 1 }));
-      trunk.position.set(x, 1.6, z);
-      trunk.castShadow = true;
-      group.add(trunk);
-      for (let b = 0; b < 4; b++) {
-        const br = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, rand(0.9, 1.6), 6), trunk.material);
-        br.position.set(x + rand(-0.4, 0.4), 2.3 + rand(0, 0.8), z + rand(-0.4, 0.4));
-        br.rotation.set(rand(-0.8, 0.8), rand(0, TAU), rand(-0.8, 0.8));
-        group.add(br);
-      }
-    }
+    return hit;
   }
 
   buildLights() {
@@ -513,6 +415,18 @@ export class World {
 
   update(dt) {
     this.time += dt;
+
+    // lamps hum, fires flicker
+    if (this.lamps) {
+      for (const l of this.lamps) {
+        l.light.intensity = l.base * (0.94 + Math.sin(this.time * 7 + l.phase) * 0.03 + Math.random() * 0.04);
+      }
+    }
+    if (this.fires) {
+      for (const f of this.fires) {
+        f.light.intensity = f.base * (0.72 + Math.sin(this.time * 9 + f.phase) * 0.18 + Math.random() * 0.16);
+      }
+    }
 
     // particles
     let visible = 0;

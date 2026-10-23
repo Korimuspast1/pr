@@ -304,7 +304,7 @@ class App {
     const showGun = isShoot && def.kind === 'gun';
     const showBlade = this.tool === 'cut';
     if (!showGun && !showBlade) return;
-    const model = makeWeaponMesh(showGun ? def : def);
+    const model = makeWeaponMesh(def);
     // add a simple hand so it does not float
     const hand = new THREE.Mesh(
       new THREE.SphereGeometry(0.05, 10, 8),
@@ -329,7 +329,7 @@ class App {
   fpMuzzleWorld() {
     if (!this.fpModel) return this.camera.position.clone().add(new THREE.Vector3(0, 0, -1));
     const def = this.fpDef || WEAPON_BY_ID[this.weaponId];
-    const len = def.kind === 'gun' ? def.len * 0.018 + 0.3 : 0.35;
+    const len = def.kind === 'gun' ? def.mz * 0.9 : def.mz * 0.85;
     const v = new THREE.Vector3(0, 0, len);
     this.fpModel.localToWorld(v);
     return v;
@@ -423,10 +423,9 @@ class App {
 
   panCamera(dx, dz) {
     const s = Math.sin(this.cam.yaw), c = Math.cos(this.cam.yaw);
-    this.cam.target.x += dx * c + dz * s;
-    this.cam.target.z += -dx * s + dz * c;
-    this.cam.target.x = clamp(this.cam.target.x, -24, 24);
-    this.cam.target.z = clamp(this.cam.target.z, -24, 24);
+    const b = this.world.bounds || { minX: -24, maxX: 24, minZ: -24, maxZ: 24 };
+    this.cam.target.x = clamp(this.cam.target.x + dx * c + dz * s, b.minX + 1, b.maxX - 1);
+    this.cam.target.z = clamp(this.cam.target.z - dx * s + dz * c, b.minZ + 1, b.maxZ - 1);
   }
 
   updateCamera(dt = 0) {
@@ -761,10 +760,11 @@ class App {
   /* ================================================================ */
 
   spawnInitial() {
-    this.spawnHuman(-1.6, 0.6, { weapon: 'knife', ai: false });
-    this.spawnHuman(1.8, -0.4, { weapon: 'machete', ai: false });
-    this.spawnHuman(0.2, 2.4, { weapon: 'fists', ai: false });
-    this.spawnHuman(-3.2, -2.2, { weapon: 'pistol', ai: false });
+    const pts = this.world.spawnPoints || [{ x: -1.6, z: 0.6 }, { x: 1.8, z: -0.4 }];
+    const gear = ['knife', 'machete', 'fists', 'pistol'];
+    for (let i = 0; i < Math.min(4, pts.length); i++) {
+      this.spawnHuman(pts[i].x, pts[i].z, { weapon: gear[i], ai: false });
+    }
   }
 
   spawnHuman(x, z, opts = {}) {
@@ -774,9 +774,16 @@ class App {
       else return null;
     }
     const armed = opts.weapon || (opts.armed ? pick(['pistol', 'smg', 'shotgun', 'rifle', 'knife', 'machete', 'katana', 'axe']) : pick(['fists', 'fists', 'knife', 'machete']));
+    // never drop someone inside a wall
+    let sx = x, sz = z;
+    if (this.world.blocked && this.world.blocked(sx, sz, 0.45)) {
+      const free = (this.world.spawnPoints || []).find((p) => !this.world.blocked(p.x, p.z, 0.45));
+      if (free) { sx = free.x; sz = free.z; }
+      else { sx += rand(-1.2, 1.2); sz += rand(-1.2, 1.2); }
+    }
     const h = new Human(this, {
-      x: clamp(x, -25, 25),
-      z: clamp(z, -25, 25),
+      x: clamp(sx, -32, 32),
+      z: clamp(sz, -32, 32),
       weapon: armed,
       ai: opts.ai != null ? opts.ai : this.aiAggro,
       name: opts.name || pick(NAMES_LIST),
