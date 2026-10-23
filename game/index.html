@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Песочница Крови — 2D pixel gore sandbox</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: radial-gradient(circle at 50% 35%, #23242c 0%, #121317 55%, #08090c 100%);
+    overflow: hidden;
+    font-family: "Courier New", monospace;
+  }
+  #wrap {
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display: block;
+    cursor: crosshair;
+    border: 1px solid rgba(130,120,100,0.18);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.75), 0 0 0 6px rgba(0,0,0,0.35);
+    background: #0b0c10;
+    touch-action: none;
+  }
+  #loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #b9ad94; font-size: 13px; letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="game" width="512" height="288"></canvas>
+  </div>
+  <div id="loading">ЗАГРУЗКА...</div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

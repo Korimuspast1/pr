@@ -1,0 +1,12 @@
+{
+  "name": "blood-sandbox",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "2D pixel gore sandbox — ragdolls, severed limbs, blood simulation, realistic ballistics",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "test": "node test/headless.mjs"
+  }
+}
