@@ -318,6 +318,7 @@ class App {
     arm.rotation.x = Math.PI / 2;
     arm.position.set(0, -0.03, -0.28);
     model.add(hand, arm);
+    model.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
     model.rotation.y = Math.PI;
     model.scale.setScalar(showGun ? 0.9 : 0.85);
     this.fpGroup.add(model);
