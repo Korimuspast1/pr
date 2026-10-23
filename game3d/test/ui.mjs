@@ -117,6 +117,17 @@ const hit = app.pickHuman();
 ok(!!hit, 'прицел находит человека', hit ? hit.limb : 'нет');
 ok(hit && hit.human === victim, 'найден именно он');
 
+// point a human right under the cursor and return his screen position
+const aimAtHuman = (h) => {
+  app.cam.target = new (app.camera.position.constructor)(h.pts.chest.x, 1.05, h.pts.chest.z);
+  app.cam.yaw = 0; app.cam.pitch = 0.2; app.cam.dist = 3.4;
+  app.updateCamera(0);
+  app.camera.updateMatrixWorld();
+  const V = app.camera.position.constructor;
+  const v = new V(h.pts.chest.x, h.pts.chest.y, h.pts.chest.z).project(app.camera);
+  return { x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight };
+};
+
 console.log('\n[UI] резка');
 app.setTool('cut');
 const hp0 = victim.health;
@@ -125,6 +136,37 @@ for (let i = 0; i < 40 && victim.alive; i++) { app.doCut(true); hits++; }
 ok(hits > 0, 'резка срабатывает');
 ok(victim.health < hp0, 'здоровье падает', `${hp0.toFixed(0)} → ${victim.health.toFixed(0)}`);
 ok(victim.limbs.some((l) => l.wounds.length > 0), 'раны появились');
+
+console.log('\n[UI] рэгдолл, куски и захват');
+const rag = app.humans[1] || victim;
+const ragPos = aimAtHuman(rag);
+ev('pointermove', ragPos.x, ragPos.y);
+app.setTool('grab');
+ev('pointerdown', ragPos.x, ragPos.y);
+ok(!!app.grab, 'тело схвачено курсором');
+if (app.grab) {
+  const p0 = { ...app.grab.point };
+  ev('pointermove', ragPos.x + 90, ragPos.y - 50);
+  frames(12);
+  const p1 = app.grab.point;
+  const moved = Math.hypot(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z);
+  ok(moved > 0.05, 'тело тянется за курсором', moved.toFixed(2) + ' м');
+  ev('pointerup', ragPos.x + 90, ragPos.y - 50);
+  ok(!app.grab, 'отпускание работает');
+  ok(!rag.pts.chest.held, 'точка больше не удерживается');
+}
+
+// sever an arm and let the detached piece fall
+const sev = app.humans[2] || rag;
+sev.sever(sev.limb('armN_u'), { dir: { x: 0.2, y: 0.3, z: 1 } });
+const pieces = app.debris.filter((d) => d.kind === 'limb');
+ok(pieces.length > 0, 'оторванная рука стала объектом', String(pieces.length));
+const dm = pieces[0].mesh;
+frames(180);
+const dp = dm.position;
+ok(Number.isFinite(dp.x) && Number.isFinite(dp.y) && Number.isFinite(dp.z), 'обломок с физикой');
+ok(dp.y > -0.2 && dp.y < 3, 'обломок лежит у земли', `y=${dp.y.toFixed(2)}`);
+ok(app.debris.every((d) => !d.mesh || (Number.isFinite(d.mesh.position.x) && Number.isFinite(d.mesh.position.y))), 'все обломки валидны');
 
 console.log('\n[UI] инспектор');
 app.setTool('inspect');
