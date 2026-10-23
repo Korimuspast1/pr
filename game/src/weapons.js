@@ -1,257 +1,438 @@
-import { GROUND_Y, VIEW_W, TAU, rand, clamp, chance, pick, segSegClosest } from './util.js';
+import { GROUND_Y, VIEW_W, TAU, clamp, rand, chance, pick, segSegClosest, roundRect, shade } from './util.js';
 
-// Palette characters for the little pixel-art sprites.
-const PAL = {
-  '.': null,
-  D: '#1b1c21', // outline
-  L: '#4a4f58', // metal
-  M: '#717783', // metal highlight
-  S: '#9aa1ad', // shine
-  W: '#6b4326', // wood
-  w: '#8a5a33', // wood light
-  G: '#2b2520', // grip
-  Y: '#c9a227', // brass
-  R: '#7d1f1f', // red accent
-  K: '#0f1013',
-};
+/* ------------------------------------------------------------------ */
+/*  CATALOG                                                            */
+/* ------------------------------------------------------------------ */
 
-function parseArt(rows) {
-  const out = [];
-  for (let y = 0; y < rows.length; y++) {
-    for (let x = 0; x < rows[y].length; x++) {
-      const c = PAL[rows[y][x]];
-      if (c) out.push({ x, y, c });
-    }
-  }
-  return out;
-}
-
-/* --------------------------------------------------------------------- */
-/*  WEAPON CATALOG                                                        */
-/* --------------------------------------------------------------------- */
-
-function makeWeapon(def) {
-  def.art = def.grid ? parseArt(def.grid) : [];
-  def.artW = def.grid ? Math.max(...def.grid.map((r) => r.length)) : 0;
-  def.artH = def.grid ? def.grid.length : 0;
-  return def;
-}
+const melee = (o) => ({ kind: 'melee', reach: o.bladeLen, ...o });
+const gun = (o) => ({ kind: 'gun', ...o });
 
 export const WEAPONS = [
-  makeWeapon({
-    id: 'fists', name: 'Кулаки', kind: 'melee', icon: 'fist',
-    dmg: 9, structDmg: 0.012, cut: 0.0, bladeLen: 4, bladeW: 2, hilt: 1.5,
-    swingTime: 0.3, bleedMul: 0.35, knock: 70, grip: { x: 1, y: 1 },
-    grid: [
-      '....',
-      '.DD.',
-      'DSMD',
-      '.DD.',
-    ],
+  melee({
+    id: 'fists', name: 'Кулаки', short: 'Кулаки', icon: 'fist',
+    dmg: 9, structDmg: 0.012, cut: 0.0, bladeLen: 4, bladeW: 1.6, hilt: 1.5,
+    swingTime: 0.32, bleedMul: 0.35, knock: 80, color: '#c98d63',
   }),
-  makeWeapon({
-    id: 'knife', name: 'Нож', kind: 'melee', icon: 'knife',
-    dmg: 34, structDmg: 0.1, cut: 0.85, bladeLen: 10, bladeW: 1.3, hilt: 3,
-    swingTime: 0.28, bleedMul: 1.15, knock: 60, grip: { x: 2, y: 2.5 },
-    grid: [
-      '.............',
-      '..DDDDDDDDSSS',
-      '.DWWDMMMMMMSS',
-      '.DwWDMMMMMMMS',
-      '..DDDDDDDDSSS',
-      '.............',
-    ],
+  melee({
+    id: 'knife', name: 'Нож', short: 'Нож', icon: 'knife',
+    dmg: 34, structDmg: 0.1, cut: 0.85, bladeLen: 10, bladeW: 1.5, hilt: 3.2,
+    swingTime: 0.28, bleedMul: 1.15, knock: 60, guard: 0.9, curve: 0.3,
   }),
-  makeWeapon({
-    id: 'machete', name: 'Мачете', kind: 'melee', icon: 'knife',
-    dmg: 54, structDmg: 0.19, cut: 0.95, bladeLen: 19, bladeW: 2.2, hilt: 4,
-    swingTime: 0.36, bleedMul: 1.3, knock: 100, grip: { x: 2, y: 3 },
-    grid: [
-      '..................',
-      '..DDDDDDDDDDDDDSSS',
-      '.DWWDMMMMMMMMMMSSS',
-      '.DWWDMMMMMMMMMMSSS',
-      '.DwWDDDDDDDDDDDSSS',
-      '..DD..............',
-      '..................',
-    ],
+  melee({
+    id: 'machete', name: 'Мачете', short: 'Мачете', icon: 'machete',
+    dmg: 56, structDmg: 0.19, cut: 0.95, bladeLen: 20, bladeW: 2.4, hilt: 4.2,
+    swingTime: 0.36, bleedMul: 1.3, knock: 110, guard: 0, curve: 0.9, wide: 1,
   }),
-  makeWeapon({
-    id: 'katana', name: 'Катана', kind: 'melee', icon: 'knife',
-    dmg: 70, structDmg: 0.27, cut: 1.0, bladeLen: 25, bladeW: 1.5, hilt: 5,
-    swingTime: 0.34, bleedMul: 1.45, knock: 95, grip: { x: 3, y: 2 },
-    grid: [
-      '............................',
-      '..DDDDDDDDDDDDDDDDDDDDDDDSSS',
-      '.DKKKDSSSSSSSSSSSSSSSSSSSSSS',
-      '.DKKKDSSSSSSSSSSSSSSSSSSSSSS',
-      '..DDDDDDDDDDDDDDDDDDDDDDDSSS',
-      '............................',
-    ],
+  melee({
+    id: 'axe', name: 'Топор', short: 'Топор', icon: 'axe',
+    dmg: 80, structDmg: 0.46, cut: 0.25, bladeLen: 17, bladeW: 3.8, hilt: 12,
+    swingTime: 0.48, bleedMul: 0.8, knock: 210, guard: 0, axe: true,
   }),
-  makeWeapon({
-    id: 'axe', name: 'Топор', kind: 'melee', icon: 'axe',
-    dmg: 78, structDmg: 0.46, cut: 0.25, bladeLen: 15, bladeW: 4, hilt: 4,
-    swingTime: 0.46, bleedMul: 0.8, knock: 200, grip: { x: 2.5, y: 5.5 },
-    grid: [
-      '..................',
-      '..................',
-      '.......DDDDDDDSS..',
-      '......DMMMMMMMMS..',
-      '..DDDDDMMMMMMMMS..',
-      '.DWWWWDMMMMMMMMS..',
-      '.DWwWWDDDDDDDDSS..',
-      '.DWWWWD...........',
-      '..DDDDD...........',
-      '..................',
-    ],
+  melee({
+    id: 'katana', name: 'Катана', short: 'Катана', icon: 'katana',
+    dmg: 72, structDmg: 0.27, cut: 1.0, bladeLen: 27, bladeW: 1.35, hilt: 5.4,
+    swingTime: 0.34, bleedMul: 1.45, knock: 95, guard: 1.6, curve: 1.7, tsuba: true,
   }),
-  makeWeapon({
-    id: 'pistol', name: 'Пистолет', kind: 'gun', icon: 'pistol',
-    ammo: '9mm', magSize: 12, rpm: 330, auto: false, dmg: 24, pellets: 1,
+  gun({
+    id: 'pistol', name: 'Пистолет', short: 'Пистолет', icon: 'pistol', ammo: '9mm',
+    magSize: 12, rpm: 340, auto: false, dmg: 24, pellets: 1,
     spread: 0.022, movingSpread: 0.055, recoil: 0.055, shake: 3.2,
     speed: 1750, reloadTime: 1.55, casing: true, tracer: false, pierce: 0,
-    flash: 6, sound: 'pistol', structMul: 0.055, bleedMul: 1.2,
-    grid: [
-      '............',
-      '..DDDDDDDD..',
-      '.DSSSSSSSSD.',
-      '.DMMMMMMMLD.',
-      '.DLLLLLLLLD.',
-      '..DDDDDDDD..',
-      '..GGG..DD...',
-      '.DGGGD.DD...',
-      '.DGGGD.....',
-      '.DGGGD.....',
-      '..DDD......',
-    ],
-    grip: { x: 3.5, y: 5 },
-    muzzle: { x: 11, y: 2.5 },
+    flash: 6, sound: 'pistol', structMul: 0.055, bleedMul: 1.2, len: 10,
+    muzzle: { x: 10, y: -2.1 },
   }),
-  makeWeapon({
-    id: 'smg', name: 'ПП-19 «Вихрь»', kind: 'gun', icon: 'smg',
-    ammo: '9mm', magSize: 30, rpm: 760, auto: true, dmg: 18, pellets: 1,
+  gun({
+    id: 'smg', name: 'ПП «Вихрь»', short: 'ПП', icon: 'smg', ammo: '9mm',
+    magSize: 30, rpm: 760, auto: true, dmg: 18, pellets: 1,
     spread: 0.03, movingSpread: 0.075, recoil: 0.032, shake: 2.2,
     speed: 1900, reloadTime: 1.9, casing: true, tracer: true, pierce: 0,
-    flash: 6, sound: 'smg', structMul: 0.045, bleedMul: 1.1,
-    grid: [
-      '..............',
-      '.DDDDDDDDDDD..',
-      '.DSSSSSSSSSSD.',
-      '.DMMMMMMMLLLLD',
-      '.DLLLLLLLDDDD.',
-      '..DDDDDDD.....',
-      '..DGGGGD..YY..',
-      '.DGGGGGGD.YY..',
-      '.DGKKKGGD.....',
-      '.DGYGGGD......',
-      '..DGGGD.......',
-      '...DDD........',
-    ],
-    grip: { x: 5, y: 6 },
-    muzzle: { x: 13.5, y: 2.5 },
+    flash: 6, sound: 'smg', structMul: 0.045, bleedMul: 1.1, len: 17,
+    muzzle: { x: 17, y: -2.2 },
   }),
-  makeWeapon({
-    id: 'shotgun', name: 'Дробовик', kind: 'gun', icon: 'shotgun',
-    ammo: '12g', magSize: 6, rpm: 78, auto: false, dmg: 16, pellets: 9,
+  gun({
+    id: 'shotgun', name: 'Дробовик', short: 'Дробовик', icon: 'shotgun', ammo: '12g',
+    magSize: 6, rpm: 80, auto: false, dmg: 16, pellets: 9,
     spread: 0.15, movingSpread: 0.1, recoil: 0.16, shake: 7,
     speed: 1550, reloadTime: 2.6, casing: true, tracer: false, pierce: 0,
-    flash: 10, sound: 'shotgun', structMul: 0.05, bleedMul: 1.4, shellByShell: true,
-    grid: [
-      '....................',
-      '.DDDDDDDDDDDDDDDD...',
-      '.DWWWWWWWWWWWWWWD...',
-      '.DSSSSSSSSSSSSSSD...',
-      '.DWWWWWWWWWWWWWWD...',
-      '..DDDDDDDDDDDDDD....',
-      '...DWWWWWD....YYY...',
-      '...DWWWWWD...YYYY...',
-      '...DWwWWWD..DYYYD...',
-      '...DWWWWWD..DDDD....',
-      '....DDDDD...........',
-    ],
-    grip: { x: 8, y: 7 },
-    muzzle: { x: 19, y: 2.8 },
+    flash: 10, sound: 'shotgun', structMul: 0.05, bleedMul: 1.4, len: 25,
+    muzzle: { x: 25, y: -2.4 },
   }),
-  makeWeapon({
-    id: 'rifle', name: 'СВД', kind: 'gun', icon: 'rifle',
-    ammo: '762', magSize: 10, rpm: 55, auto: false, dmg: 72, pellets: 1,
+  gun({
+    id: 'rifle', name: 'Снайперская СВД', short: 'СВД', icon: 'rifle', ammo: '7.62',
+    magSize: 10, rpm: 55, auto: false, dmg: 74, pellets: 1,
     spread: 0.006, movingSpread: 0.16, recoil: 0.13, shake: 6.5,
     speed: 2900, reloadTime: 2.9, casing: true, tracer: true, pierce: 1,
-    flash: 9, sound: 'rifle', structMul: 0.17, bleedMul: 1.7,
-    grid: [
-      '..........................',
-      '...DDDDDDDDDDDDDDDDDDDD...',
-      '..DWWWWWWWWWWWWWWWWWWWWD..',
-      '..DSSSSSSSSSSSSSSSSSSSSD..',
-      '...DDDDDDDDDDDDSDDDDDDDD..',
-      '......DWWWWD...SDDD.......',
-      '..YY..DWwWWD..DSD.........',
-      '.DYYD.DWWWWD.DSD..........',
-      '.DYYD.DWWWWDDSD...........',
-      '..YY..DDDDDDDD............',
-      '......................',
-    ],
-    grip: { x: 8.5, y: 7 },
-    muzzle: { x: 25.5, y: 2.5 },
+    flash: 9, sound: 'rifle', structMul: 0.17, bleedMul: 1.7, len: 29,
+    muzzle: { x: 29, y: -2.2 },
   }),
 ];
 
 export const WEAPON_BY_ID = Object.fromEntries(WEAPONS.map((w) => [w.id, w]));
+export const MELEE_IDS = ['fists', 'knife', 'machete', 'axe', 'katana'];
+export const GUN_IDS = ['pistol', 'smg', 'shotgun', 'rifle'];
 
-// Order shown in the bottom hotbar.
-export const BAR = ['knife', 'machete', 'axe', 'katana', 'pistol', 'smg', 'shotgun', 'rifle'];
+/* ------------------------------------------------------------------ */
+/*  VECTOR SPRITES                                                     */
+/* ------------------------------------------------------------------ */
 
-/* --------------------------------------------------------------------- */
-/*  DRAWING                                                               */
-/* --------------------------------------------------------------------- */
+const STEEL_LIGHT = '#e4e9ef';
+const STEEL = '#aab3bf';
+const STEEL_DARK = '#6b7480';
+const WOOD = '#6f4b2c';
+const WOOD_LIGHT = '#8a6039';
+const DARK = '#23262c';
+const POLY = '#2b2e34';
 
-export function drawWeapon(ctx, def, x, y, angle, scale = 1, flashTimer = 0) {
-  ctx.save();
-  ctx.translate(Math.round(x), Math.round(y));
-  ctx.rotate(angle);
-  if (def.kind === 'gun') {
-    ctx.translate(-(def.grip ? def.grip.x : 2) * scale, -(def.grip ? def.grip.y : 2) * scale);
-    const px = 1 / scale;
-    for (const p of def.art) {
-      ctx.fillStyle = p.c;
-      ctx.fillRect(p.x * scale, p.y * scale, scale + 0.3, scale + 0.3);
-    }
-    // Muzzle flash
-    if (flashTimer > 0) {
-      const gx = def.grip ? def.grip.x : 2, gy = def.grip ? def.grip.y : 2;
-      const mx = (def.muzzle.x - gx + 0.6) * scale, my = (def.muzzle.y - gy) * scale;
-      const a = clamp(flashTimer / 0.055, 0, 1);
-      ctx.globalAlpha = a;
-      ctx.fillStyle = '#ffe9a8';
+function metal(ctx, x0, y0, x1, y1) {
+  const g = ctx.createLinearGradient(x0, y0, x0, y1);
+  g.addColorStop(0, '#f2f5f8');
+  g.addColorStop(0.35, STEEL);
+  g.addColorStop(0.75, STEEL_DARK);
+  g.addColorStop(1, '#4a515b');
+  return g;
+}
+
+function drawGrip(ctx, len, halfH = 1.05, color = '#3a2a1e') {
+  roundRect(ctx, -len, -halfH, len + 1.2, halfH * 2, halfH * 0.9);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(10,8,8,0.55)';
+  ctx.lineWidth = 0.35;
+  ctx.stroke();
+  // wrap lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  for (let x = -len + 0.8; x < 0; x += Math.max(0.9, len / 4)) {
+    ctx.beginPath();
+    ctx.moveTo(x, -halfH);
+    ctx.lineTo(x + 0.5, halfH);
+    ctx.stroke();
+  }
+}
+
+function drawBladeShape(ctx, def, bloody = 0) {
+  const bl = def.bladeLen;
+  const bw = def.bladeW;
+  const curve = def.curve || 0;
+  const wide = def.wide ? 1.35 : 1;
+
+  ctx.beginPath();
+  ctx.moveTo(0.6, -bw * wide);
+  ctx.quadraticCurveTo(bl * 0.62, -bw * wide * 0.92 - curve * 0.5, bl * 0.97, -bw * 0.22 - curve);
+  ctx.quadraticCurveTo(bl * 1.03, -bw * 0.05, bl * 0.97, bw * 0.1 - curve);
+  ctx.quadraticCurveTo(bl * 0.6, bw * wide * 0.86 - curve * 0.5, 0.6, bw * wide * 0.92);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, -bw * wide, 0, bw * wide);
+  g.addColorStop(0, STEEL_LIGHT);
+  g.addColorStop(0.45, STEEL);
+  g.addColorStop(1, STEEL_DARK);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(20,24,30,0.55)';
+  ctx.lineWidth = 0.3;
+  ctx.stroke();
+
+  // cutting edge highlight
+  ctx.beginPath();
+  ctx.moveTo(1.2, bw * wide * 0.55);
+  ctx.quadraticCurveTo(bl * 0.62, bw * wide * 0.5 - curve * 0.5, bl * 0.95, -curve);
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 0.3;
+  ctx.stroke();
+
+  // blood film
+  if (bloody > 0.02) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.85, bloody);
+    ctx.fillStyle = '#7d0a10';
+    ctx.beginPath();
+    ctx.moveTo(1, -bw * wide * 0.2);
+    ctx.quadraticCurveTo(bl * 0.7, -bw * wide * 0.4 - curve * 0.5, bl * 0.96, -curve);
+    ctx.quadraticCurveTo(bl * 0.6, bw * wide * 0.7 - curve * 0.5, 1, bw * wide * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    // drips
+    for (let i = 0; i < 3; i++) {
+      const x = bl * (0.25 + i * 0.24);
       ctx.beginPath();
-      const len = def.flash * rand(0.85, 1.15);
-      ctx.moveTo(mx, my - 1.6); ctx.lineTo(mx + len, my - 0.4);
-      ctx.lineTo(mx + len * 0.75, my + 0.2); ctx.lineTo(mx + len, my + 1.8);
-      ctx.lineTo(mx, my + 1.8); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#fff8dd';
-      ctx.fillRect(mx, my - 1, len * 0.45, 2.5);
+      ctx.ellipse(x, bw * wide * 0.55 + (i % 2) * 0.6, 0.35, 0.9, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+export function drawMelee(ctx, def, bloody = 0) {
+  if (def.id === 'fists') {
+    ctx.fillStyle = '#c98d63';
+    ctx.beginPath();
+    ctx.arc(1.6, 0, 2.2, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = '#8c5e3d';
+    ctx.lineWidth = 0.4;
+    ctx.stroke();
+    return;
+  }
+  if (def.axe) {
+    // handle
+    roundRect(ctx, -4, -0.95, def.bladeLen + 4.4, 1.9, 0.9);
+    ctx.fillStyle = WOOD;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(20,14,10,0.5)';
+    ctx.lineWidth = 0.3;
+    ctx.stroke();
+    ctx.fillStyle = WOOD_LIGHT;
+    ctx.fillRect(def.bladeLen * 0.2, -0.35, def.bladeLen * 0.55, 0.7);
+    // head
+    ctx.save();
+    ctx.translate(def.bladeLen - 1.2, 0);
+    ctx.beginPath();
+    ctx.moveTo(-2.4, -1.1);
+    ctx.lineTo(1.4, -4.4);
+    ctx.quadraticCurveTo(4.6, -3.2, 4.9, 0);
+    ctx.quadraticCurveTo(4.6, 3.2, 1.4, 4.4);
+    ctx.lineTo(-2.4, 1.1);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, -4.4, 0, 4.4);
+    g.addColorStop(0, STEEL_LIGHT);
+    g.addColorStop(0.5, STEEL);
+    g.addColorStop(1, STEEL_DARK);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(20,24,30,0.6)';
+    ctx.lineWidth = 0.3;
+    ctx.stroke();
+    if (bloody > 0.05) {
+      ctx.globalAlpha = Math.min(0.85, bloody);
+      ctx.fillStyle = '#7d0a10';
+      ctx.beginPath();
+      ctx.ellipse(3.6, 0.4, 1.5, 3.1, 0, 0, TAU);
+      ctx.fill();
       ctx.globalAlpha = 1;
     }
-  } else {
-    // Melee art is laid out horizontally with the handle on the left.
-    if (def.art.length) {
-      for (const p of def.art) {
-        ctx.fillStyle = p.c;
-        ctx.fillRect(p.x * scale, p.y * scale, scale + 0.3, scale + 0.3);
-      }
-    }
-    if (def.id === 'fists') {
-      ctx.fillStyle = '#c78e6a';
-      ctx.fillRect(-1, -2, 4, 4);
-    }
+    ctx.restore();
+    return;
   }
+
+  drawGrip(ctx, def.hilt, def.id === 'katana' ? 1.15 : 1.0, def.id === 'katana' ? '#1e2530' : '#3a2a1e');
+  if (def.tsuba) {
+    ctx.fillStyle = '#2b2f36';
+    ctx.beginPath();
+    ctx.ellipse(0.9, 0, 0.9, 3.1, 0, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = '#8a8f96';
+    ctx.lineWidth = 0.3;
+    ctx.stroke();
+  } else if (def.guard) {
+    roundRect(ctx, 0.0, -def.bladeW - 1.5, 1.1, def.bladeW * 2 + 3, 0.4);
+    ctx.fillStyle = '#4c5158';
+    ctx.fill();
+  }
+  drawBladeShape(ctx, def, bloody);
+}
+
+function gunMetal(ctx, y0, y1) {
+  const g = ctx.createLinearGradient(0, y0, 0, y1);
+  g.addColorStop(0, '#5a616b');
+  g.addColorStop(0.4, '#3b4049');
+  g.addColorStop(1, '#22252b');
+  return g;
+}
+
+export function drawGun(ctx, def, flashT = 0, flashScale = 1) {
+  const L = def.len;
+  ctx.lineJoin = 'round';
+  const stroke = (c = 'rgba(0,0,0,0.45)') => { ctx.strokeStyle = c; ctx.lineWidth = 0.3; ctx.stroke(); };
+
+  if (def.id === 'pistol') {
+    // slide
+    roundRect(ctx, -2.2, -3.6, L + 1.4, 3.4, 1.1);
+    ctx.fillStyle = gunMetal(ctx, -3.6, -0.2);
+    ctx.fill(); stroke();
+    // barrel tip
+    roundRect(ctx, L - 1.2, -3.0, 1.8, 2.2, 0.5);
+    ctx.fillStyle = '#15171b';
+    ctx.fill();
+    // frame
+    ctx.beginPath();
+    ctx.moveTo(-1.2, -0.4);
+    ctx.lineTo(L - 2.6, -0.4);
+    ctx.lineTo(L - 3.4, 1.2);
+    ctx.lineTo(-1.2, 1.2);
+    ctx.closePath();
+    ctx.fillStyle = POLY;
+    ctx.fill();
+    // grip
+    ctx.beginPath();
+    ctx.moveTo(-1.6, -0.4);
+    ctx.lineTo(2.6, -0.4);
+    ctx.lineTo(1.6, 7.0);
+    ctx.lineTo(-2.8, 7.0);
+    ctx.closePath();
+    ctx.fillStyle = '#31343a';
+    ctx.fill(); stroke();
+    // trigger guard
+    ctx.beginPath();
+    ctx.arc(3.4, 2.2, 2.1, -0.2, Math.PI * 0.95);
+    ctx.strokeStyle = '#2a2d33';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    // sights
+    ctx.fillStyle = '#8d949e';
+    ctx.fillRect(L - 1.4, -4.2, 0.9, 0.9);
+    ctx.fillRect(-1.6, -4.2, 0.9, 0.9);
+  } else if (def.id === 'smg') {
+    roundRect(ctx, -4.5, -4.6, L + 2, 4.2, 1.2);
+    ctx.fillStyle = gunMetal(ctx, -4.6, -0.4);
+    ctx.fill(); stroke();
+    roundRect(ctx, L - 2.5, -3.4, 3.4, 2.0, 0.6);
+    ctx.fillStyle = '#16181c';
+    ctx.fill();
+    // stock
+    ctx.beginPath();
+    ctx.moveTo(-4.2, -3.6);
+    ctx.lineTo(-8.5, -1.6);
+    ctx.lineTo(-8.5, 0.4);
+    ctx.lineTo(-4.2, -0.9);
+    ctx.closePath();
+    ctx.fillStyle = POLY;
+    ctx.fill(); stroke();
+    // grip
+    roundRect(ctx, -1.6, -0.6, 3.6, 6.2, 1);
+    ctx.fillStyle = '#2b2e34';
+    ctx.fill(); stroke();
+    // mag
+    ctx.save();
+    ctx.translate(5.2, 1.4);
+    ctx.rotate(0.12);
+    roundRect(ctx, -1.5, 0, 3.2, 7.2, 0.8);
+    ctx.fillStyle = '#25282d';
+    ctx.fill(); stroke();
+    ctx.restore();
+    // rail
+    ctx.fillStyle = '#4d535c';
+    ctx.fillRect(1.4, -5.1, 6.5, 0.7);
+  } else if (def.id === 'shotgun') {
+    // stock
+    ctx.beginPath();
+    ctx.moveTo(-4.5, -3.4);
+    ctx.lineTo(-11.5, -1.6);
+    ctx.lineTo(-11.5, 2.2);
+    ctx.lineTo(-4.5, 1.4);
+    ctx.closePath();
+    ctx.fillStyle = WOOD;
+    ctx.fill(); stroke();
+    // receiver
+    roundRect(ctx, -4.5, -3.8, 12, 4.0, 1.0);
+    ctx.fillStyle = '#33373d';
+    ctx.fill(); stroke();
+    // barrel
+    roundRect(ctx, 7, -3.5, L - 7, 1.9, 0.7);
+    ctx.fillStyle = gunMetal(ctx, -3.5, -1.6);
+    ctx.fill(); stroke();
+    // pump / forend
+    roundRect(ctx, 10.5, -1.1, 5.2, 2.6, 0.8);
+    ctx.fillStyle = WOOD_LIGHT;
+    ctx.fill(); stroke('rgba(0,0,0,0.35)');
+    // grip
+    roundRect(ctx, -1.4, -0.4, 3.2, 5.4, 0.9);
+    ctx.fillStyle = WOOD;
+    ctx.fill(); stroke();
+    // trigger guard
+    ctx.beginPath();
+    ctx.arc(3.6, 1.8, 1.8, 0, Math.PI);
+    ctx.strokeStyle = '#2a2d33';
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+  } else if (def.id === 'rifle') {
+    // stock
+    ctx.beginPath();
+    ctx.moveTo(-4.5, -3.6);
+    ctx.lineTo(-11.0, -2.2);
+    ctx.lineTo(-11.0, 2.6);
+    ctx.lineTo(-4.5, 1.6);
+    ctx.closePath();
+    ctx.fillStyle = WOOD;
+    ctx.fill(); stroke();
+    // body
+    roundRect(ctx, -5, -3.8, 15, 3.8, 0.9);
+    ctx.fillStyle = WOOD;
+    ctx.fill(); stroke();
+    // receiver
+    roundRect(ctx, 8, -3.9, 7.5, 3.6, 0.8);
+    ctx.fillStyle = '#33373d';
+    ctx.fill(); stroke();
+    // barrel
+    roundRect(ctx, 14, -3.4, L - 14, 1.5, 0.5);
+    ctx.fillStyle = gunMetal(ctx, -3.4, -1.9);
+    ctx.fill(); stroke();
+    // muzzle brake
+    roundRect(ctx, L - 2.2, -3.7, 2.6, 2.2, 0.5);
+    ctx.fillStyle = '#22262b';
+    ctx.fill();
+    // scope
+    roundRect(ctx, 7.5, -8.2, 9.5, 2.4, 1.1);
+    ctx.fillStyle = '#1d2025';
+    ctx.fill(); stroke('rgba(0,0,0,0.5)');
+    ctx.fillStyle = 'rgba(120,170,190,0.55)';
+    ctx.beginPath(); ctx.arc(16.6, -7.0, 1.0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3a3f47';
+    ctx.fillRect(9, -6.0, 1.2, 2.4);
+    ctx.fillRect(14.4, -6.0, 1.2, 2.4);
+    // magazine
+    ctx.save();
+    ctx.translate(9.6, 1.2);
+    ctx.rotate(0.22);
+    roundRect(ctx, -1.5, 0, 3.0, 5.4, 0.7);
+    ctx.fillStyle = '#2a2d33';
+    ctx.fill(); stroke();
+    ctx.restore();
+    // grip
+    roundRect(ctx, -0.6, -0.4, 3.0, 5.0, 0.8);
+    ctx.fillStyle = WOOD;
+    ctx.fill(); stroke();
+  }
+
+  // muzzle flash
+  if (flashT > 0) {
+    const mx = def.muzzle.x, my = def.muzzle.y;
+    const a = clamp(flashT / 0.055, 0, 1);
+    const len = (def.flash || 6) * rand(0.85, 1.15) * (flashScale || 1);
+    ctx.save();
+    ctx.globalAlpha = a;
+    const g = ctx.createRadialGradient(mx, my, 0, mx, my, len * 0.9);
+    g.addColorStop(0, 'rgba(255,255,235,1)');
+    g.addColorStop(0.35, 'rgba(255,214,130,0.9)');
+    g.addColorStop(1, 'rgba(255,150,40,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(mx, my, len * 0.9, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,246,214,0.95)';
+    ctx.beginPath();
+    ctx.moveTo(mx, my - 1.4);
+    ctx.lineTo(mx + len * 0.95, my - 0.3);
+    ctx.lineTo(mx + len * 0.7, my + 0.1);
+    ctx.lineTo(mx + len * 1.0, my + 1.5);
+    ctx.lineTo(mx, my + 1.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+export function drawWeapon(ctx, def, x, y, angle, scale = 1, flashT = 0, bloody = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(scale, scale);
+  if (def.kind === 'gun') drawGun(ctx, def, flashT, scale);
+  else drawMelee(ctx, def, bloody);
   ctx.restore();
 }
 
-/* --------------------------------------------------------------------- */
-/*  COMBAT / PROJECTILES                                                  */
-/* --------------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+/*  COMBAT                                                             */
+/* ------------------------------------------------------------------ */
 
 export class Combat {
   constructor(game) {
@@ -259,7 +440,8 @@ export class Combat {
     this.bullets = [];
     this.impacts = [];
     this.flashes = [];
-    this.hitmarkers = []; // world-space little X marks
+    this.hitmarkers = [];
+    this.trails = [];
   }
 
   clear() {
@@ -267,94 +449,77 @@ export class Combat {
     this.impacts.length = 0;
     this.flashes.length = 0;
     this.hitmarkers.length = 0;
+    this.trails.length = 0;
   }
 
   muzzleWorld(shooter, def, angle) {
+    const hand = shooter.handPos();
+    const ca = Math.cos(angle), sa = Math.sin(angle);
     const mx = def.muzzle ? def.muzzle.x : 8;
     const my = def.muzzle ? def.muzzle.y : 0;
-    const gripX = def.grip ? def.grip.x : 2;
-    const gripY = def.grip ? def.grip.y : 2;
-    // Grip is placed at the shooter's hand.
-    const hand = shooter.handPos(angle, true);
-    const ca = Math.cos(angle), sa = Math.sin(angle);
-    const lx = mx - gripX, ly = my - gripY;
-    return {
-      x: hand.x + ca * lx - sa * ly,
-      y: hand.y + sa * lx + ca * ly,
-      hand,
-    };
+    return { x: hand.x + ca * mx - sa * my, y: hand.y + sa * mx + ca * my };
   }
 
+  // Fired by an NPC holding a gun.
   fire(shooter, def, angle) {
-    const game = this.game;
     const m = this.muzzleWorld(shooter, def, angle);
+    // NPCs are soldiers, not aimbots
+    this.fireFromPoint(m.x, m.y, angle, def, { kicker: shooter, extraSpread: 0.02, dmgMul: 0.8 });
+    shooter.kick(def);
+    this.game.shake(def.shake);
+    if (def.casing && shooter) {
+      const perp = angle - Math.PI / 2;
+      this.game.gore.shell(m.x, m.y,
+        Math.cos(perp) * rand(25, 70) + rand(-15, 15),
+        Math.sin(perp) * rand(25, 70) - rand(30, 90));
+    }
+  }
 
-    const spreadBase = def.spread + (shooter.extraSpread || 0);
+  // Fired by the sandbox tools / off-screen shooter.
+  fireFromPoint(x, y, angle, def, opts = {}) {
+    const game = this.game;
+    const spreadBase = def.spread + (opts.extraSpread || 0);
+    const dmgMul = opts.dmgMul || 1;
     for (let i = 0; i < def.pellets; i++) {
-      const spread = angle + rand(-spreadBase, spreadBase) + (shooter.aimWobble || 0);
-      const sp = def.speed * rand(0.94, 1.06);
+      const sp = angle + rand(-spreadBase, spreadBase);
+      const speed = def.speed * rand(0.94, 1.06);
       this.bullets.push({
-        x: m.x, y: m.y, px: m.x, py: m.y,
-        vx: Math.cos(spread) * sp,
-        vy: Math.sin(spread) * sp,
-        dmg: def.dmg * (def.pellets > 1 ? rand(0.7, 1.2) : 1),
-        structMul: def.structMul, bleedMul: def.bleedMul,
+        x, y, px: x, py: y,
+        vx: Math.cos(sp) * speed,
+        vy: Math.sin(sp) * speed,
+        dmg: def.dmg * dmgMul * (def.pellets > 1 ? rand(0.7, 1.2) : 1),
+        structMul: def.structMul,
+        bleedMul: def.bleedMul,
         pierce: def.pierce || 0,
         tracer: def.tracer || def.pellets > 1,
-        life: 1.6,
+        life: 2.0,
         trail: [],
       });
     }
-    // Muzzle smoke + sparks
-    const ca = Math.cos(angle), sa = Math.sin(angle);
-    game.gore.dust(m.x, m.y, def.pellets > 1 ? 8 : 4, '#9c9a94');
-    game.gore.spark(m.x, m.y, ca, sa, def.pellets > 1 ? 7 : 3);
-    this.flashes.push({ x: m.x, y: m.y, a: angle, t: 0.055, size: def.flash, muzzle: m, def });
-    if (def.casing && game.player === shooter) {
-      game.audio.casing();
-    }
-    if (def.shellByShell) {
-      game.audio.noise({ dur: 0.12, gain: 0.14, freq: 800, freqEnd: 200, delay: 0.12 });
-    }
-
-    shooter.kick(def);
-    game.shake(def.shake);
+    game.gore.dust(x, y, def.pellets > 1 ? 8 : 4, '#9c9a94');
+    game.gore.spark(x, y, Math.cos(angle), Math.sin(angle), def.pellets > 1 ? 7 : 3);
+    this.flashes.push({ x, y, a: angle, t: 0.06, size: def.flash, def });
     game.audio.shot(def.sound);
-
-    // Shell ejection
-    const perpA = angle - Math.PI / 2;
-    game.gore.shell(
-      m.x - ca * 4, m.y - sa * 4,
-      Math.cos(perpA) * rand(25, 70) + rand(-15, 15),
-      Math.sin(perpA) * rand(25, 70) - rand(30, 90)
-    );
+    game.shake(def.shake * 0.8);
   }
 
-  /* --- melee ---------------------------------------------------------- */
-
   bladeWorld(shooter, def, angle, reachMul = 1) {
-    const hand = shooter.handPos(angle, false);
+    const hand = shooter.handPos();
     const hx = hand.x + Math.cos(angle) * def.hilt;
     const hy = hand.y + Math.sin(angle) * def.hilt;
     const len = def.bladeLen * reachMul;
-    return {
-      ax: hx, ay: hy,
-      bx: hx + Math.cos(angle) * len,
-      by: hy + Math.sin(angle) * len,
-    };
+    return { ax: hx, ay: hy, bx: hx + Math.cos(angle) * len, by: hy + Math.sin(angle) * len };
   }
 
-  // Swept blade test between two blade positions. Returns list of hits.
   meleeSweep(shooter, def, prev, cur, swingSpeed, hitSet) {
     const game = this.game;
     const hits = [];
-    for (const e of game.entities) {
+    for (const e of game.humans) {
       if (e === shooter) continue;
       for (const limb of e.limbs) {
         if (limb.severed || limb.parentSevered) continue;
         if (hitSet && hitSet.has(limb.id)) continue;
         const a = limb.a, b = limb.b || limb.a;
-        // sample 3 interpolated blade positions to avoid tunnelling
         for (let s = 0; s <= 3; s++) {
           const t = s / 3;
           const ax = prev.ax + (cur.ax - prev.ax) * t;
@@ -363,29 +528,22 @@ export class Combat {
           const by = prev.by + (cur.by - prev.by) * t;
           const res = segSegClosest(ax, ay, bx, by, a.x, a.y, b.x, b.y);
           if (res.d <= limb.radius + def.bladeW * 0.7) {
-            const angleOffset = Math.abs(res.s - 0.55);
-            const power = clamp(1.15 - angleOffset * 0.8, 0.45, 1.15) * clamp(swingSpeed / 9, 0.5, 1.35);
+            const power = clamp(1.15 - Math.abs(res.s - 0.55) * 0.8, 0.45, 1.15) * clamp(swingSpeed / 9, 0.5, 1.35);
             const key = limb.id + ':' + Math.round(res.x) + ':' + Math.round(res.y);
             if (hits.some((h) => h.key === key)) continue;
-            if (hitSet) hitSet.add(limb.id);
-            hits.push({
-              key, entity: e, limb,
-              x: res.x, y: res.y,
-              power,
-              bladeAngle: Math.atan2(by - ay, bx - ax),
+            hits.push({ key, entity: e, limb, x: res.x, y: res.y, power,
               dirx: Math.cos(Math.atan2(by - ay, bx - ax)),
-              diry: Math.sin(Math.atan2(by - ay, bx - ax)),
-            });
+              diry: Math.sin(Math.atan2(by - ay, bx - ax)) });
           }
         }
       }
     }
     for (const h of hits) {
-      const dmg = def.dmg * h.power;
-      const struct = def.structDmg * h.power;
+      if (hitSet) hitSet.add(h.limb.id);
       h.entity.applyHit(h.limb, {
         type: def.cut > 0.5 ? 'slash' : 'blunt',
-        dmg, struct,
+        dmg: def.dmg * h.power,
+        struct: def.structDmg * h.power,
         cut: def.cut * h.power,
         bleedMul: def.bleedMul,
         knock: def.knock * h.power,
@@ -397,7 +555,7 @@ export class Combat {
       });
       game.gore.spray(h.x, h.y, h.dirx, h.diry, {
         count: Math.round(4 + 9 * h.power), speed: 90 + 130 * h.power,
-        size: 1.7, spread: 0.7, mistChance: 0.35,
+        size: 1.5, spread: 0.7, mistChance: 0.35,
       });
       game.hitmarker(h.x, h.y);
       game.audio.cut();
@@ -405,22 +563,19 @@ export class Combat {
     return hits;
   }
 
-  /* --- projectile update ---------------------------------------------- */
-
   update(dt, game) {
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
       b.life -= dt;
       if (b.life <= 0) { this.bullets.splice(i, 1); continue; }
 
-      // Air drag + drop (very light for bullets, heavy for pellets).
       const drag = b.tracer ? 0.1 : 0.05;
       b.vx -= b.vx * drag * dt;
       b.vy -= b.vy * drag * dt;
       b.vy += 115 * dt;
 
       const dist = Math.hypot(b.vx, b.vy) * dt;
-      const steps = Math.max(1, Math.ceil(dist / 5));
+      const steps = Math.max(1, Math.ceil(dist / 4));
       let dead = false;
 
       for (let s = 0; s < steps && !dead; s++) {
@@ -428,22 +583,13 @@ export class Combat {
         b.x += (b.vx * dt) / steps;
         b.y += (b.vy * dt) / steps;
 
-        // near-miss whizz for the player
-        const pl = game.player;
-        if (pl.alive) {
-          const d = Math.hypot(pl.pts.chest.x - b.x, pl.pts.chest.y - b.y);
-          if (d < 16 && !b.whizzed) { b.whizzed = true; game.audio.wizz(); }
-        }
-
-        // Entities first
         let best = null;
-        for (const e of game.entities) {
+        for (const e of game.humans) {
           for (const limb of e.limbs) {
             if (limb.severed) continue;
             const a = limb.a, c = limb.b || limb.a;
             const res = segSegClosest(b.px, b.py, b.x, b.y, a.x, a.y, c.x, c.y);
             if (res.d <= limb.radius + 0.4) {
-              // distance along the bullet path
               const along = Math.hypot(res.x - b.px, res.y - b.py);
               if (!best || along < best.along) best = { limb, e, along, x: res.x, y: res.y };
             }
@@ -452,26 +598,21 @@ export class Combat {
 
         if (best) {
           const hit = best;
-          if (hit.e.alive || hit.limb.mass) {
-            hit.e.applyHit(hit.limb, {
-              type: 'bullet',
-              dmg: b.dmg,
-              struct: b.dmg * b.structMul,
-              cut: 0.25,
-              bleedMul: b.bleedMul,
-              knock: b.dmg * 2.2,
-              at: { x: hit.x, y: hit.y },
-              dir: { x: b.vx, y: b.vy },
-              attacker: game.player,
-              bullet: true,
-            });
-            if (hit.e.alive && b.dmg > 20) game.hitmarker(hit.x, hit.y);
-            game.gore.mist(hit.x, hit.y, b.vx, b.vy, 5, 0.7, 1.1);
-            game.audio.flesh();
-          } else {
-            game.gore.mist(hit.x, hit.y, b.vx, b.vy, 3, 0.8, 0.8);
-          }
-          this.spawnImpact(hit.x, hit.y, 'flesh', b);
+          hit.e.applyHit(hit.limb, {
+            type: 'bullet',
+            dmg: b.dmg,
+            struct: b.dmg * b.structMul,
+            cut: 0.25,
+            bleedMul: b.bleedMul,
+            knock: b.dmg * 2.2,
+            at: { x: hit.x, y: hit.y },
+            dir: { x: b.vx, y: b.vy },
+            bullet: true,
+          });
+          if (b.dmg > 20) game.hitmarker(hit.x, hit.y);
+          game.gore.mist(hit.x, hit.y, b.vx, b.vy, 5, 0.7, 1.1);
+          game.audio.flesh();
+          this.impacts.push({ x: hit.x, y: hit.y, type: 'flesh', t: 0.12, a: Math.atan2(b.vy, b.vx) });
           if (b.pierce > 0) {
             b.pierce--;
             b.dmg *= 0.65;
@@ -483,24 +624,21 @@ export class Combat {
           }
         }
 
-        // Ground
         if (!dead && b.y >= GROUND_Y) {
-          this.spawnImpact(b.x, GROUND_Y, 'ground', b);
+          this.impacts.push({ x: b.x, y: GROUND_Y, type: 'ground', t: 0.12, a: Math.atan2(b.vy, b.vx) });
           game.gore.dust(b.x, GROUND_Y - 1, 5, '#6d6355');
-          game.gore.mark(b.x, GROUND_Y + rand(0, 6), '#2b241d', rand(0.7, 1.4));
-          if (Math.random() < 0.25) game.gore.splatGround(b.x + rand(-4, 4), GROUND_Y, rand(1, 2.4), 0.3);
+          game.gore.mark(b.x, GROUND_Y + rand(0, 6), '#2b241d', rand(0.6, 1.2));
+          if (Math.random() < 0.25) game.gore.splatGround(b.x + rand(-4, 4), GROUND_Y, rand(0.8, 2.0), 0.3);
           game.audio.impact();
           dead = true;
           break;
         }
 
-        if (b.x < -30 || b.x > VIEW_W + 30 || b.y < -80) { dead = true; break; }
+        if (b.x < -80 || b.x > VIEW_W + 80 || b.y < -120) { dead = true; break; }
       }
 
-      // trail history (for tracers)
       b.trail.push({ x: b.x, y: b.y });
       if (b.trail.length > 3) b.trail.shift();
-
       if (dead) this.bullets.splice(i, 1);
     }
 
@@ -518,56 +656,31 @@ export class Combat {
     }
   }
 
-  spawnImpact(x, y, type, b) {
-    this.impacts.push({
-      x, y, type, t: 0.12,
-      a: Math.atan2(b.vy, b.vx),
-    });
-  }
-
   drawUnder(ctx) {
-    // tracers and bullets
     for (const b of this.bullets) {
       const speed = Math.hypot(b.vx, b.vy);
-      const len = clamp(speed * 0.012, 4, 26);
+      const len = clamp(speed * 0.014, 5, 34);
       const a = Math.atan2(b.vy, b.vx);
       const x2 = b.x - Math.cos(a) * len, y2 = b.y - Math.sin(a) * len;
-      ctx.strokeStyle = b.tracer ? 'rgba(255,214,140,0.85)' : 'rgba(255,240,200,0.55)';
-      ctx.lineWidth = b.tracer ? 1.4 : 1;
+      ctx.strokeStyle = b.tracer ? 'rgba(255,206,130,0.85)' : 'rgba(255,240,205,0.5)';
+      ctx.lineWidth = b.tracer ? 1.3 : 0.9;
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(x2 | 0, y2 | 0);
-      ctx.lineTo(b.x | 0, b.y | 0);
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(b.x, b.y);
       ctx.stroke();
       if (b.tracer) {
-        ctx.fillStyle = 'rgba(255,255,220,0.9)';
-        ctx.fillRect((b.x - 0.6) | 0, (b.y - 0.6) | 0, 2, 2);
+        ctx.fillStyle = 'rgba(255,252,225,0.95)';
+        ctx.beginPath(); ctx.arc(b.x, b.y, 1.2, 0, TAU); ctx.fill();
       }
     }
-    // muzzle flashes
-    for (const f of this.flashes) {
-      const a = clamp(f.t / 0.055, 0, 1);
-      ctx.globalAlpha = a;
-      ctx.fillStyle = '#ffe9a8';
-      const cx = f.muzzle.x, cy = f.muzzle.y;
-      const ca = Math.cos(f.a), sa = Math.sin(f.a);
-      const size = f.size || 6;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - 2);
-      ctx.lineTo(cx + ca * size * 1.6, cy + sa * size * 1.6 - 1);
-      ctx.lineTo(cx + ca * size * 0.8, cy + sa * size * 0.8 + 3);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillRect(cx - 1, cy - 1, 3, 3);
-      ctx.globalAlpha = 1;
-    }
-    // impact puffs
+
     for (const im of this.impacts) {
       const a = clamp(im.t / 0.12, 0, 1);
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = a * 0.9;
       ctx.fillStyle = im.type === 'flesh' ? '#6d0a0d' : '#5c5346';
       ctx.beginPath();
-      ctx.arc(im.x, im.y, 3 + (1 - a) * 5, 0, TAU);
+      ctx.arc(im.x, im.y, 2 + (1 - a) * 5, 0, TAU);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
@@ -577,14 +690,14 @@ export class Combat {
     for (const h of this.hitmarkers) {
       const a = clamp(h.t / 0.3, 0, 1);
       ctx.globalAlpha = a;
-      ctx.strokeStyle = '#ffd7d7';
-      ctx.lineWidth = 1;
-      const s = 3;
+      ctx.strokeStyle = '#ffd9d9';
+      ctx.lineWidth = 1.1;
+      const s = 3.2;
       ctx.beginPath();
-      ctx.moveTo(h.x - s, h.y - s); ctx.lineTo(h.x - 1, h.y - 1);
-      ctx.moveTo(h.x + s, h.y - s); ctx.lineTo(h.x + 1, h.y - 1);
-      ctx.moveTo(h.x - s, h.y + s); ctx.lineTo(h.x - 1, h.y + 1);
-      ctx.moveTo(h.x + s, h.y + s); ctx.lineTo(h.x + 1, h.y + 1);
+      ctx.moveTo(h.x - s, h.y - s); ctx.lineTo(h.x - 1.2, h.y - 1.2);
+      ctx.moveTo(h.x + s, h.y - s); ctx.lineTo(h.x + 1.2, h.y - 1.2);
+      ctx.moveTo(h.x - s, h.y + s); ctx.lineTo(h.x - 1.2, h.y + 1.2);
+      ctx.moveTo(h.x + s, h.y + s); ctx.lineTo(h.x + 1.2, h.y + 1.2);
       ctx.stroke();
       ctx.globalAlpha = 1;
     }

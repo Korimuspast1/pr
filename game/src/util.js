@@ -1,7 +1,11 @@
-// Small math / helper library used across the game.
-export const VIEW_W = 512;
-export const VIEW_H = 288;
-export const GROUND_Y = 238;
+// Shared math / helpers.
+export const VIEW_W = 640;
+export const VIEW_H = 360;
+export const GROUND_Y = 302;
+
+// The canvas is rendered at 2x and smoothed, so everything looks like clean
+// vector art instead of chunky pixels.
+export const RENDER_SCALE = 2;
 
 export const TAU = Math.PI * 2;
 
@@ -34,10 +38,6 @@ export function approachAngle(a, b, maxStep) {
   return a + clamp(d, -maxStep, maxStep);
 }
 
-export const easeOut = (t) => 1 - (1 - t) * (1 - t);
-export const easeIn = (t) => t * t;
-
-// Closest point on segment AB to point P.
 export function closestOnSeg(px, py, ax, ay, bx, by) {
   const abx = bx - ax, aby = by - ay;
   const len2 = abx * abx + aby * aby || 1e-6;
@@ -51,8 +51,7 @@ export function segPointDist(px, py, ax, ay, bx, by) {
   return { d: Math.hypot(px - c.x, py - c.y), t: c.t, x: c.x, y: c.y };
 }
 
-// Closest approach between two segments. Returns {d, s, t, x, y} where s is the
-// parameter along AB and t along CD.
+// Closest approach between two segments.
 export function segSegClosest(ax, ay, bx, by, cx, cy, dx, dy) {
   const ux = bx - ax, uy = by - ay;
   const vx = dx - cx, vy = dy - cy;
@@ -83,8 +82,33 @@ export function segSegClosest(ax, ay, bx, by, cx, cy, dx, dy) {
   return { d: Math.hypot(px - qx, py - qy), s, t, x: (px + qx) / 2, y: (py + qy) / 2 };
 }
 
-// Deterministic pseudo random from an integer seed.
+// Rounded rectangle path helper.
+export function roundRect(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.lineTo(x + w - rr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+  ctx.lineTo(x + w, y + h - rr);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+  ctx.lineTo(x + rr, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+  ctx.lineTo(x, y + rr);
+  ctx.quadraticCurveTo(x, y, x + rr, y);
+  ctx.closePath();
+}
+
+export function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+export function shade(hex, f) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgb(${clamp(Math.round(r * f), 0, 255)},${clamp(Math.round(g * f), 0, 255)},${clamp(Math.round(b * f), 0, 255)})`;
+}
+
 export function hash01(n) {
-  let x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 }

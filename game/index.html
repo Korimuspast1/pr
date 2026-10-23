@@ -3,41 +3,47 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Песочница Крови — 2D pixel gore sandbox</title>
+<title>Песочница — кровавый 2D sandbox</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0; height: 100%;
-    background: radial-gradient(circle at 50% 35%, #23242c 0%, #121317 55%, #08090c 100%);
+    background:
+      radial-gradient(1200px 600px at 50% 30%, #232a36 0%, #14171f 55%, #080a0e 100%);
     overflow: hidden;
-    font-family: "Courier New", monospace;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   }
   #wrap {
     width: 100vw; height: 100vh;
     display: flex; align-items: center; justify-content: center;
   }
   canvas {
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
     display: block;
     cursor: crosshair;
-    border: 1px solid rgba(130,120,100,0.18);
-    box-shadow: 0 24px 80px rgba(0,0,0,0.75), 0 0 0 6px rgba(0,0,0,0.35);
-    background: #0b0c10;
+    border-radius: 6px;
+    box-shadow:
+      0 30px 90px rgba(0,0,0,0.75),
+      0 0 0 1px rgba(150,170,200,0.18),
+      0 0 0 8px rgba(0,0,0,0.35);
+    background: #0a0c11;
     touch-action: none;
+    image-rendering: auto;
   }
-  #loading {
-    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: #b9ad94; font-size: 13px; letter-spacing: 2px;
+  #hint {
+    position: fixed; left: 0; right: 0; bottom: 6px;
+    text-align: center;
+    font-size: 11px; letter-spacing: 0.4px;
+    color: rgba(160,175,200,0.35);
+    pointer-events: none;
   }
 </style>
 </head>
 <body>
   <div id="wrap">
-    <canvas id="game" width="512" height="288"></canvas>
+    <canvas id="game" width="1280" height="720"></canvas>
   </div>
-  <div id="loading">ЗАГРУЗКА...</div>
+  <div id="hint">Песочница · рэгдолл · кровь · баллистика</div>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
