@@ -433,9 +433,28 @@ async function procList() {
  * Uses curl (system CA store — the sandbox sits behind a TLS-inspecting proxy
  * that Node's bundled root certificates do not trust).
  */
+const SELF_HOSTS = [/(^|\.)arena\.site$/i, /(^|\.)e2b\.app$/i, /(^|\.)e2b\.dev$/i];
+
 async function proxyFetch(target, opts = {}) {
   const u = new URL(target);
   if (!/^https?:$/.test(u.protocol)) throw new Error('только http/https');
+  // Свой же превью-домен через curl недоступен: его обслуживает Cloudflare,
+  // который не пустит запрос обратно. Отвечаем локально.
+  if (SELF_HOSTS.some((re) => re.test(u.hostname)) || u.hostname === os.hostname()) {
+    const localPath = u.pathname + u.search;
+    const local = await fetch(`http://127.0.0.1:${PORT}${localPath}`);
+    const buf = Buffer.from(await local.arrayBuffer());
+    return {
+      ok: local.ok,
+      status: local.status,
+      url: target,
+      contentType: local.headers.get('content-type') || '',
+      truncated: false,
+      bytes: buf.length,
+      text: buf.subarray(0, 320 * 1024).toString('utf8'),
+      local: true,
+    };
+  }
 
   const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'wx-fetch-'));
   const bodyPath = path.join(tmp, 'body');

@@ -50,6 +50,29 @@ function sanitize(html, baseUrl) {
 }
 
 const sameOrigin = (u) => { try { return new URL(u).origin === location.origin; } catch { return false; } };
+
+/**
+ * Адреса, которые ведут на саму песочницу (превью-домен или текущий origin).
+ * Их нельзя тянуть через curl: Cloudflare, обслуживающий этот домен, вернёт 502.
+ * Такие страницы открываем локально, прямо из приложения.
+ */
+const PREVIEW_DOMAINS = [/(^|\.)arena\.site$/i, /(^|\.)e2b\.app$/i, /(^|\.)e2b\.dev$/i];
+
+function localPathFor(raw) {
+  let u;
+  try { u = new URL(raw, location.href); } catch { return null; }
+  if (u.origin === location.origin) return u.pathname + u.search;
+  const host = u.hostname;
+  if (PREVIEW_DOMAINS.some((re) => re.test(host))) return u.pathname + u.search;
+  // тот же песочный id, но с другим портом — тоже локально
+  try {
+    const me = new URL(location.href);
+    if (me.hostname.split('.')[0].replace(/^\d+-/, '') === host.split('.')[0].replace(/^\d+-/, '')) {
+      return u.pathname + u.search;
+    }
+  } catch {}
+  return null;
+}
 const pretty = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
 const favicon = (u) => {
   try { return new URL(u).origin + '/favicon.ico'; } catch { return null; }
@@ -210,8 +233,9 @@ export default {
       if (!url) return;
 
       if (url === 'about:blank') { renderStart(tab.page); tab.url = ''; tab.title = 'Новая вкладка'; paintTabs(); return; }
-      if (sameOrigin(url) && !url.includes('/api/') && !url.includes('/x/')) {
-        window.open(url, '_blank', 'noopener');
+      const localPath = localPathFor(url);
+      if (localPath) {
+        await loadLocal(localPath, url, tab, { push, source });
         return;
       }
 
@@ -254,7 +278,7 @@ export default {
               e.preventDefault();
               const href = a.getAttribute('href');
               if (!href) return;
-              if (sameOrigin(href)) return window.open(href, '_blank', 'noopener');
+              if (localPathFor(href)) return navigate(href, tab);
               navigate(href, tab);
             });
           });
@@ -295,7 +319,7 @@ export default {
           <div style="margin-top:14px;color:var(--faint);font-size:.85em;max-width:560px">
             ${transient
               ? 'Превью-шлюз (Cloudflare) ответил 502 — это ограничение частоты запросов, а не проблема сайта. Нажми «Повторить»; приложение само делает паузу и снижает темп опросов.'
-              : 'Сандбокс ходит в интернет только к github.com, registry.npmjs.org, pypi.org и т. п. Проверь адрес или открой локальную страницу (/api/stats).'}
+              : `Сандбокс может открыть только github.com, registry.npmjs.org, pypi.org и подобные хосты. Адрес самой песочницы открывается локально — просто введи его ещё раз (или /api/stats).`}
           </div>
           <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
             <button class="btn primary" data-retry>Повторить</button>
@@ -309,6 +333,92 @@ export default {
           statusEl.textContent = 'ошибка';
           win.setTitle('Браузер — ошибка');
         }
+      } finally {
+        paintTabs();
+      }
+    }
+
+    /**
+     * Открывает страницу самой песочницы без выхода в интернет:
+     * /api/* отвечает JSON, остальное — статика из этого же приложения.
+     */
+    async function loadLocal(localPath, shownUrl, tab, { push = true, source = false } = {}) {
+      tab.loading = true;
+      tab.status = 'локальная страница…';
+      if (tab === activeTab()) { statusEl.textContent = 'локальная страница…'; metaEl.textContent = ''; }
+      paintTabs();
+      try {
+        const res = await fetch(localPath, { cache: 'no-store', credentials: 'same-origin' });
+        const text = await res.text();
+        const type = (res.headers.get('content-type') || '').toLowerCase();
+        if (push) {
+          tab.stack = tab.stack.slice(0, tab.index + 1);
+          tab.stack.push(shownUrl);
+          tab.index = tab.stack.length - 1;
+        }
+        tab.url = shownUrl;
+        tab.loading = false;
+
+        if (localPath === '/' || localPath.startsWith('/index')) {
+          // сама оболочка десктопа — показываем аккуратную локальную страницу
+          tab.page.innerHTML = `
+            <div class="browser-start">
+              <h2 style="color:#fff;margin:0">sandbox.local</h2>
+              <div style="color:var(--faint);font-size:.85em">
+                Это адрес самой песочницы. Он открыт локально, без выхода в интернет —
+                поэтому Cloudflare не отвечает 502.
+              </div>
+              <div class="bm-grid">
+                <button class="bm-card" data-local="/api/stats">${iconHTML('cpu', 17)}<span>Состояние<small>/api/stats</small></span></button>
+                <button class="bm-card" data-local="/api/proc">${iconHTML('monitor', 17)}<span>Процессы<small>/api/proc</small></span></button>
+                <button class="bm-card" data-local="/api/ping">${iconHTML('network', 17)}<span>Пинг<small>/api/ping</small></span></button>
+                <button class="bm-card" data-local="/api/files?path=/home/user/pr">${iconHTML('files', 17)}<span>Файлы<small>/api/files</small></span></button>
+              </div>
+            </div>`;
+          tab.page.querySelectorAll('[data-local]').forEach((b) => {
+            b.onclick = () => navigate(location.origin + b.dataset.local, tab);
+          });
+          tab.title = 'sandbox.local';
+        } else if (source) {
+          tab.page.innerHTML = `<pre style="margin:0"><code>${esc(text)}</code></pre>`;
+          tab.title = `view-source: ${pretty(shownUrl)}`;
+        } else if (type.includes('json') || /^\s*[[{]/.test(text)) {
+          let out = text;
+          try { out = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+          tab.page.innerHTML = `<pre style="margin:0"><code>${esc(out)}</code></pre>`;
+          tab.title = `${localPath} — локальный API`;
+        } else if (type.includes('html')) {
+          const clean = sanitize(text, shownUrl);
+          tab.page.innerHTML = clean.body || '<div class="empty">Пустая страница</div>';
+          tab.title = clean.title || localPath;
+          tab.page.querySelectorAll('a[href]').forEach((a) => {
+            a.addEventListener('click', (e) => {
+              e.preventDefault();
+              const href = a.getAttribute('href');
+              if (href) navigate(href, tab);
+            });
+          });
+        } else {
+          tab.page.innerHTML = `<pre style="margin:0"><code>${esc(text.slice(0, 200000))}</code></pre>`;
+          tab.title = localPath;
+        }
+
+        tab.status = `локально · HTTP ${res.status}`;
+        tab.meta = `${humanSize(new Blob([text]).size)} · ${(type || 'unknown').split(';')[0]}`;
+        if (tab === activeTab()) {
+          urlbar.value = shownUrl;
+          statusEl.textContent = tab.status;
+          metaEl.textContent = tab.meta;
+          win.setTitle(`${tab.title} — браузер`);
+        }
+        tab.page.scrollTop = 0;
+      } catch (e) {
+        tab.loading = false;
+        tab.page.innerHTML = `<div class="empty"><div>
+          <div style="color:var(--red);font-weight:600;margin-bottom:8px">Не удалось открыть локальную страницу</div>
+          <div style="font-family:var(--mono);font-size:.85em;color:var(--dim);max-width:560px">${esc(e.message || e)}</div>
+        </div></div>`;
+        if (tab === activeTab()) statusEl.textContent = 'ошибка';
       } finally {
         paintTabs();
       }
