@@ -286,6 +286,17 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
+let cssCache = { at: 0, css: '' };
+function inlineCss() {
+  if (Date.now() - cssCache.at < 3000) return cssCache.css;
+  try {
+    cssCache = { at: Date.now(), css: fs.readFileSync(path.join(PUBLIC, 'style.css'), 'utf8') };
+  } catch {
+    cssCache = { at: Date.now(), css: '' };
+  }
+  return cssCache.css;
+}
+
 async function serveStatic(res, urlPath) {
   const rel = urlPath === '/' ? 'index.html' : urlPath.replace(/^\/+/, '');
   const file = path.join(PUBLIC, rel);
@@ -294,10 +305,20 @@ async function serveStatic(res, urlPath) {
     return;
   }
   try {
-    const buf = await fsp.readFile(file);
+    let buf = await fsp.readFile(file);
+    if (rel === 'index.html') {
+      // Ship the stylesheet inline: some preview proxies rewrite or block
+      // asset responses, which leaves the desktop completely unstyled.
+      const html = buf.toString('utf8').replace(
+        /<link rel="stylesheet" href="\/style\.css"\s*\/?>/,
+        `<style id="inline-css">${inlineCss()}</style>`
+      );
+      buf = Buffer.from(html, 'utf8');
+    }
     res.writeHead(200, {
       'content-type': MIME[path.extname(file)] || 'application/octet-stream',
-      'cache-control': 'no-cache',
+      'cache-control': rel === 'index.html' ? 'no-store, max-age=0' : 'no-cache',
+      'x-content-type-options': 'nosniff',
     });
     res.end(buf);
   } catch {
@@ -439,6 +460,130 @@ async function proxyFetch(target, opts = {}) {
   }
 }
 
+
+/* ------------------------------------------------------------ pty sessions */
+
+const ptys = new Map();
+let ptySeq = 0;
+const PTY_MAX = 24;
+
+function ptyOpen({ root = false, cols = 120, rows = 32 } = {}) {
+  if (ptys.size >= PTY_MAX) throw new Error('слишком много терминалов, закрой лишние');
+  for (const [id, s] of ptys) {
+    if (s.dead && Date.now() - s.at > 20000) { ptys.delete(id); }
+  }
+  const id = 'pty' + ++ptySeq;
+  const args = [path.join(__dirname, 'pty-bridge.py')];
+  const cmd = root ? 'sudo' : 'python3';
+  const argv = root ? ['-n', 'python3', ...args] : args;
+
+  const child = spawn(cmd, argv, {
+    cwd: state.cwd,
+    env: {
+      ...process.env,
+      PTY_SHELL: '/bin/bash',
+      PTY_COLS: String(cols),
+      PTY_ROWS: String(rows),
+      TERM: 'xterm-256color',
+      LANG: process.env.LANG || 'C.UTF-8',
+    },
+    stdio: ['pipe', 'pipe', 'pipe'],
+    detached: true,
+  });
+
+  const session = { id, child, buf: '', offset: 0, root: !!root, dead: false, at: Date.now(), waiters: [] };
+  const LIMIT = 400 * 1024;
+
+  const push = (d) => {
+    session.buf += d.toString('binary');
+    if (session.buf.length > LIMIT) {
+      const cut = session.buf.length - LIMIT;
+      session.buf = session.buf.slice(cut);
+      session.offset += cut;
+    }
+    session.at = Date.now();
+    const waiters = session.waiters.splice(0);
+    for (const w of waiters) w();
+  };
+
+  child.stdout.on('data', push);
+  child.stderr.on('data', (d) => push(d));
+  child.on('close', () => {
+    session.dead = true;
+    session.at = Date.now();
+    push(Buffer.from('\r\n\x1b[90m[сессия завершена]\x1b[0m\r\n'));
+  });
+  child.on('error', (e) => {
+    session.dead = true;
+    push(Buffer.from(`\r\n\x1b[31m${e.message}\x1b[0m\r\n`));
+  });
+
+  ptys.set(id, session);
+  return { id, root: session.root, cwd: state.cwd };
+}
+
+/** Long-poll: returns everything after `from`, waiting up to `wait` ms. */
+function ptyRead(id, from, wait = 18000) {
+  const s = ptys.get(id);
+  if (!s) return Promise.resolve({ error: 'нет такой сессии' });
+  const fromIdx = Math.max(0, Number(from) - s.offset);
+  const slice = () => {
+    const start = Math.min(Math.max(0, fromIdx), s.buf.length);
+    return {
+      data: s.buf.slice(start),
+      offset: s.offset + s.buf.length,
+      dead: s.dead,
+    };
+  };
+  const first = slice();
+  if (first.data.length || first.dead) return Promise.resolve(first);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      s.waiters = s.waiters.filter((w) => w !== done);
+      resolve(slice());
+    }, wait);
+    const done = () => {
+      clearTimeout(timer);
+      resolve(slice());
+    };
+    s.waiters.push(done);
+  });
+}
+
+function ptyWrite(id, data) {
+  const s = ptys.get(id);
+  if (!s || s.dead) return false;
+  try {
+    s.child.stdin.write(Buffer.from(data, 'binary'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function ptyResize(id, cols, rows) {
+  const s = ptys.get(id);
+  if (!s || s.dead) return false;
+  try {
+    s.child.stdin.write(Buffer.from(`\u0001R${cols},${rows}\u0001`, 'binary'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function ptyClose(id) {
+  const s = ptys.get(id);
+  if (!s) return false;
+  try {
+    process.kill(-s.child.pid, 'SIGKILL');
+  } catch {
+    try { s.child.kill('SIGKILL'); } catch {}
+  }
+  ptys.delete(id);
+  return true;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const name = routeName(url.pathname);
@@ -504,6 +649,44 @@ const server = http.createServer(async (req, res) => {
       } catch (e) {
         return json(res, { error: String(e.message || e) }, 400);
       }
+    }
+
+    if (name === 'ptyopen') {
+      const body = await params(req, url);
+      try {
+        return json(res, ptyOpen({
+          root: body.root === true || body.root === 'true',
+          cols: Number(body.cols) || 120,
+          rows: Number(body.rows) || 32,
+        }));
+      } catch (e) {
+        return json(res, { error: String(e.message || e) }, 400);
+      }
+    }
+
+    if (name === 'ptyread') {
+      const body = await params(req, url);
+      const id = body.id || url.searchParams.get('id');
+      const from = body.from ?? url.searchParams.get('from') ?? 0;
+      const wait = Math.min(20000, Number(body.wait ?? url.searchParams.get('wait')) || 18000);
+      return json(res, await ptyRead(id, from, wait));
+    }
+
+    if (name === 'ptywrite') {
+      const body = await params(req, url);
+      const ok = ptyWrite(body.id || url.searchParams.get('id'), body.data || '');
+      return json(res, { ok });
+    }
+
+    if (name === 'ptyresize') {
+      const body = await params(req, url);
+      const ok = ptyResize(body.id, Number(body.cols), Number(body.rows));
+      return json(res, { ok });
+    }
+
+    if (name === 'ptyclose') {
+      const body = await params(req, url);
+      return json(res, { ok: ptyClose(body.id || url.searchParams.get('id')) });
     }
 
     if (name === 'read') {

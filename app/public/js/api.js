@@ -89,6 +89,12 @@ export const api = {
   proc: () => call('proc'),
   killproc: (pid, opts = {}) => call('killproc', { pid, signal: opts.signal || 'TERM', root: opts.root }),
   fetchUrl: (url) => call('fetch', { url }, 25000),
+  // ── real PTY session (xterm.js terminal) ─────────────────────────────
+  ptyOpen: (opts = {}) => call('ptyopen', { root: !!opts.root, cols: opts.cols || 120, rows: opts.rows || 32 }, 15000),
+  ptyRead: (id, from, wait = 18000) => call('ptyread', { id, from, wait }, wait + 8000),
+  ptyWrite: (id, data) => call('ptywrite', { id, data }, 15000),
+  ptyResize: (id, cols, rows) => call('ptyresize', { id, cols, rows }, 15000),
+  ptyClose: (id) => call('ptyclose', { id }, 10000),
   downloadUrl: (path, inline = false) =>
     `/api/download?path=${encodeURIComponent(path)}${inline ? '&inline=1' : ''}`,
 };

@@ -3,7 +3,7 @@
 import { createDesktop } from './desktop.js';
 import { applyTheme, state, WALLPAPERS, on } from './store.js';
 
-import terminal from './apps/terminal.js';
+import terminal, { rootTerminal } from './apps/terminal.js';
 import files from './apps/files.js';
 import browser from './apps/browser.js';
 import editor from './apps/editor.js';
@@ -15,7 +15,7 @@ import notes from './apps/notes.js';
 import archives from './apps/archives.js';
 import disk from './apps/disk.js';
 
-const apps = [terminal, files, browser, editor, notes, viewer, calculator, monitor, disk, archives, settings];
+const apps = [terminal, rootTerminal, files, browser, editor, notes, viewer, calculator, monitor, disk, archives, settings];
 
 applyTheme();
 
