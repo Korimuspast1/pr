@@ -362,10 +362,16 @@ export class Renderer {
           case GLASSBLOCK:
             if ((cx + cy) % 3 === 0) { r *= 0.9; gg *= 0.95; b *= 0.96; }
             break;
-          case SOIL:
+          case SOIL: {
             if (pat === 0) { r *= 0.86; gg *= 0.84; b *= 0.82; }
             else if (pat === 2) { r *= 1.06; gg *= 1.04; b *= 1.02; }
+            // soft geological strata so the cross-section is not flat brown
+            const band = ((cy + ((cx / 40) | 0)) % 13);
+            if (band === 0) { r *= 0.82; gg *= 0.8; b *= 0.8; }
+            else if (band === 6) { r *= 1.1; gg *= 1.05; b *= 0.97; }
+            if (pat === 3 && ((cx * 5 + cy * 3) % 11 === 0)) { r *= 0.62; gg *= 0.6; b *= 0.58; }
             break;
+          }
           case ROCK:
             if (pat === 1) { r *= 1.1; gg *= 1.1; b *= 1.1; }
             break;

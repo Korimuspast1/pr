@@ -102,11 +102,12 @@ export class Game {
     for (const [x, y] of this.spawns) this.citizens.spawn(x, y);
     this.stats.people = this.citizens.countAlive();
     this.world.recomputeSupport();
-    // camera on the middle of the map, street near the bottom of the screen
-    this.cam.zoom = 0.44;
+    // camera on the middle of the map: the street sits at ~64% height so both the
+    // facades above and the soil cross-section below stay in frame
+    this.cam.zoom = 0.42;
     const groundPx = this.world.groundY * this.cell;
     this.cam.x = (MAP_W * this.cell) / 2 - this.canvas.width / 2 / this.cam.zoom;
-    this.cam.y = groundPx - this.canvas.height * 0.8 / this.cam.zoom;
+    this.cam.y = groundPx - this.canvas.height * 0.64 / this.cam.zoom;
     this.clampCamera();
     if (this.ui) this.ui.onMapLoaded(this);
   }

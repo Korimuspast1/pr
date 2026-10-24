@@ -260,10 +260,9 @@ export class World {
   }
 
   // A whole storey: partitions, several flats, window bands.
-  furnishFloor(x0, y0, w, h, wallMat) {
+  furnishFloor(x0, y0, w, h, wallMat, step = 6) {
     if (w < 6 || h < 4) return;
     const P = PAL;
-    const step = 6;
     // partitions first (they are part of the fit-out, painted on structure)
     for (let px = x0 + step; px < x0 + w - 2; px += step) {
       const pc = mixCol(0xf1ece0, 0x8c8474, 0.18);
@@ -331,7 +330,7 @@ export class World {
         this.setPainted(wx, y - 1, mat, PAL.panelTrim);
         this.setPainted(wx + 1, y - 1, mat, PAL.panelTrim);
       }
-      this.furnishFloor(x + 2, y, width - 4, floorH, PLASTIC);
+      this.furnishFloor(x + 2, y, width - 4, floorH, PLASTIC, 5 + ((this.rnd() * 3) | 0));
     }
 
     // load-bearing columns, drawn after the fit-out so nothing cuts them
@@ -394,7 +393,7 @@ export class World {
         this.setPainted(wx, y - 4, wall, PAL.awningWhite);
         this.setPainted(wx + 1, y - 4, wall, PAL.awningWhite);
       }
-      this.furnishFloor(x + t, y, width - t * 2, floorH, wall);
+      this.furnishFloor(x + t, y, width - t * 2, floorH, wall, 5 + ((this.rnd() * 3) | 0));
     }
 
     // front door with a small porch canopy

@@ -108,10 +108,29 @@ export function buildCity() {
   world.rect(87, GY + 15, 2, 10, CONCRETE);
   for (let x = 98; x < 202; x += 13) world.rect(x, GY + 15, 2, 9, STEEL);
   world.rect(96, GY + 24, 108, 2, STEEL);   // rails
+  // metro train standing in the tunnel: body, glazing bands and doors
+  const trainY = GY + 19;
+  for (let c = 0; c < 3; c++) {
+    const tx = 112 + c * 26;
+    world.rect(tx, trainY, 25, 5, STEEL, 0, c === 1 ? PAL.carYellow : PAL.carBlue);
+    for (let wx = tx + 2; wx < tx + 23; wx += 3) {
+      world.setPainted(wx, trainY + 1, STEEL, PAL.glassCar);
+      world.setPainted(wx + 1, trainY + 1, STEEL, PAL.glassCar);
+    }
+    world.setPainted(tx + 12, trainY + 2, STEEL, PAL.awningWhite);
+    world.setPainted(tx + 13, trainY + 2, STEEL, PAL.awningWhite);
+  }
+  // tunnel service lamps under the ceiling
+  for (let lx = 100; lx < 202; lx += 16) world.paint(lx, GY + 15, PAL.lamp);
+
   const garage = basement(world, 300, GY + 8, 70, 22);
   world.rect(306, GY + 12, 58, 14, EMPTY);
   for (let cxx = 312; cxx < 362; cxx += 10) world.rect(cxx, GY + 10, 1, 20, CONCRETE);
   world.rect(300, GY + 15, 6, 7, EMPTY);
+  // parked cars inside the garage
+  car(world, 312, GY + 28, 1);
+  car(world, 334, GY + 28, 3);
+  car(world, 350, GY + 28, 2);
   for (let x = 310; x < 364; x += 12) world.rect(x, GY + 12, 2, 16, CONCRETE);
 
   const towers = [];
@@ -132,7 +151,7 @@ export function buildCity() {
     const facade = facades[fi++ % facades.length];
     if (s.style === 'tower') {
       towers.push(world.stampTower(x, GY, s.w, s.h, {
-        mat: s.mat, glass: s.glass, floorH: 6, colStep: 7, facade,
+        mat: s.mat, glass: s.glass, floorH: 6, colStep: 5, facade,
       }));
     } else {
       towers.push(world.stampHouse(x, GY, s.w, s.floors, {
@@ -162,7 +181,7 @@ export function buildCity() {
     const facade = facades[fi++ % facades.length];
     if (s.style === 'tower') {
       towers.push(world.stampTower(x2, GY, s.w, s.h, {
-        mat: s.mat, glass: s.glass, floorH: 6, colStep: 7, facade,
+        mat: s.mat, glass: s.glass, floorH: 6, colStep: 5, facade,
       }));
     } else {
       towers.push(world.stampHouse(x2, GY, s.w, s.floors, {
