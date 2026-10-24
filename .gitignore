@@ -1,3 +1,11 @@
-# Python bytecode generated while validating the Elyx source
+# Python bytecode generated while validating the Elyx source and utility
 __pycache__/
 *.py[cod]
+
+# Default destination for UE Audio Extractor
+/UE_Audio_Extracted/
+
+# PyInstaller output created by the optional Windows executable builder
+/build/
+/dist/
+*.spec
