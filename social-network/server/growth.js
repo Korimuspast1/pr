@@ -9,72 +9,72 @@ const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
 const BOT_PROFILES = [
-  { username: 'anna_sun', displayName: 'Анна', bio: 'Кофе, книги и утренние прогулки ☕', avatarColor: '#e07a5f' },
-  { username: 'max_road', displayName: 'Максим', bio: 'Фотографирую города. Люблю поезда 🚆', avatarColor: '#3d405b' },
-  { username: 'lena_cook', displayName: 'Лена', bio: 'Готовлю всё подряд, рецепты в ленте 🍝', avatarColor: '#81b29a' },
-  { username: 'ivan_code', displayName: 'Иван', bio: 'Пишу код и иногда сплю 💻', avatarColor: '#f2cc8f' },
-  { username: 'mila_art', displayName: 'Мила', bio: 'Рисую акварелью и говорю о цвете 🎨', avatarColor: '#9d4edd' },
-  { username: 'dan_sport', displayName: 'Данил', bio: 'Бег по утрам, зал по вечерам 🏃', avatarColor: '#2a9d8f' },
-  { username: 'olga_plants', displayName: 'Ольга', bio: 'Мои растения важнее мебели 🌿', avatarColor: '#6a994e' },
-  { username: 'sasha_music', displayName: 'Саша', bio: 'Слушаю всё, играю на гитаре 🎸', avatarColor: '#bc4749' },
-  { username: 'kate_travel', displayName: 'Катя', bio: 'Живу в дороге уже три года ✈️', avatarColor: '#118ab2' },
-  { username: 'artem_films', displayName: 'Артём', bio: 'Смотрю кино и пишу короткие рецензии 🎬', avatarColor: '#577590' },
-  { username: 'nina_books', displayName: 'Нина', bio: 'Читаю по книге в неделю 📚', avatarColor: '#b56576' },
-  { username: 'pavel_bike', displayName: 'Павел', bio: 'Велосипед — лучший транспорт 🚲', avatarColor: '#ffb703' },
-  { username: 'yana_design', displayName: 'Яна', bio: 'Дизайн, шрифты и пустой кофе ✏️', avatarColor: '#fb8500' },
-  { username: 'roma_space', displayName: 'Рома', bio: 'Звёзды, телескопы и космос 🔭', avatarColor: '#264653' },
-  { username: 'vika_yoga', displayName: 'Вика', bio: 'Йога, дыхание и тишина 🧘', avatarColor: '#e76f51' },
-  { username: 'tim_games', displayName: 'Тимур', bio: 'Инди-игры и ностальгия по 2008 году 🎮', avatarColor: '#4361ee' },
-  { username: 'sofia_pets', displayName: 'София', bio: 'Два кота и один ноутбук 🐱', avatarColor: '#f72585' },
-  { username: 'egor_moto', displayName: 'Егор', bio: 'Мотоцикл, гаражи и ремонт 🏍️', avatarColor: '#07beb8' },
-  { username: 'alina_photo', displayName: 'Алина', bio: 'Свет важнее камеры 📷', avatarColor: '#8338ec' },
-  { username: 'kirill_tech', displayName: 'Кирилл', bio: 'Новости технологий без хайпа 🧠', avatarColor: '#3a0ca3' },
-  { username: 'polina_food', displayName: 'Полина', bio: 'Ем и рассказываю 🍣', avatarColor: '#ff006e' },
-  { username: 'denis_city', displayName: 'Денис', bio: 'Архитектура и районы, которые мы не замечаем 🏙️', avatarColor: '#1b4332' },
-  { username: 'ksenia_fit', displayName: 'Ксения', bio: 'Здоровый завтрак — это не скучно 🥑', avatarColor: '#52b788' },
-  { username: 'oleg_chess', displayName: 'Олег', bio: 'Шахматы каждый день ♟️', avatarColor: '#495057' },
-  { username: 'zhenya_fish', displayName: 'Женя', bio: 'Рыбалка, озёра и тишина 🎣', avatarColor: '#0077b6' },
-  { username: 'tanya_diary', displayName: 'Таня', bio: 'Личный дневник, открытый для всех 📖', avatarColor: '#d62828' },
-  { username: 'boris_history', displayName: 'Борис', bio: 'Истории, которых не было в школе 🏛️', avatarColor: '#6d6875' },
-  { username: 'alex_startup', displayName: 'Алекс', bio: 'Строю маленькие продукты и учусь на ошибках 🚀', avatarColor: '#386641' },
-  { username: 'masha_vinyl', displayName: 'Маша', bio: 'Винил, шум дождя и старые плёнки 💿', avatarColor: '#9b2226' },
-  { username: 'igor_garden', displayName: 'Игорь', bio: 'Огород на балконе — это серьёзно 🥕', avatarColor: '#588157' },
-  { username: 'ruslan_run', displayName: 'Руслан', bio: 'Марафоны и кроссовки, которые жалко носить 👟', avatarColor: '#0096c7' },
+  { username: 'anna_sun', displayName: 'Анна', bio: 'Кофе, книги и утренние прогулки', avatarColor: '#e07a5f' },
+  { username: 'max_road', displayName: 'Максим', bio: 'Фотографирую города. Люблю поезда', avatarColor: '#3d405b' },
+  { username: 'lena_cook', displayName: 'Лена', bio: 'Готовлю всё подряд, рецепты в ленте', avatarColor: '#81b29a' },
+  { username: 'ivan_code', displayName: 'Иван', bio: 'Пишу код и иногда сплю', avatarColor: '#f2cc8f' },
+  { username: 'mila_art', displayName: 'Мила', bio: 'Рисую акварелью и говорю о цвете', avatarColor: '#9d4edd' },
+  { username: 'dan_sport', displayName: 'Данил', bio: 'Бег по утрам, зал по вечерам', avatarColor: '#2a9d8f' },
+  { username: 'olga_plants', displayName: 'Ольга', bio: 'Мои растения важнее мебели', avatarColor: '#6a994e' },
+  { username: 'sasha_music', displayName: 'Саша', bio: 'Слушаю всё, играю на гитаре', avatarColor: '#bc4749' },
+  { username: 'kate_travel', displayName: 'Катя', bio: 'Живу в дороге уже три года', avatarColor: '#118ab2' },
+  { username: 'artem_films', displayName: 'Артём', bio: 'Смотрю кино и пишу короткие рецензии', avatarColor: '#577590' },
+  { username: 'nina_books', displayName: 'Нина', bio: 'Читаю по книге в неделю', avatarColor: '#b56576' },
+  { username: 'pavel_bike', displayName: 'Павел', bio: 'Велосипед — лучший транспорт', avatarColor: '#ffb703' },
+  { username: 'yana_design', displayName: 'Яна', bio: 'Дизайн, шрифты и пустой кофе', avatarColor: '#fb8500' },
+  { username: 'roma_space', displayName: 'Рома', bio: 'Звёзды, телескопы и космос', avatarColor: '#264653' },
+  { username: 'vika_yoga', displayName: 'Вика', bio: 'Йога, дыхание и тишина', avatarColor: '#e76f51' },
+  { username: 'tim_games', displayName: 'Тимур', bio: 'Инди-игры и ностальгия по 2008 году', avatarColor: '#4361ee' },
+  { username: 'sofia_pets', displayName: 'София', bio: 'Два кота и один ноутбук', avatarColor: '#f72585' },
+  { username: 'egor_moto', displayName: 'Егор', bio: 'Мотоцикл, гаражи и ремонт', avatarColor: '#07beb8' },
+  { username: 'alina_photo', displayName: 'Алина', bio: 'Свет важнее камеры', avatarColor: '#8338ec' },
+  { username: 'kirill_tech', displayName: 'Кирилл', bio: 'Новости технологий без хайпа', avatarColor: '#3a0ca3' },
+  { username: 'polina_food', displayName: 'Полина', bio: 'Ем и рассказываю', avatarColor: '#ff006e' },
+  { username: 'denis_city', displayName: 'Денис', bio: 'Архитектура и районы, которые мы не замечаем', avatarColor: '#1b4332' },
+  { username: 'ksenia_fit', displayName: 'Ксения', bio: 'Здоровый завтрак — это не скучно', avatarColor: '#52b788' },
+  { username: 'oleg_chess', displayName: 'Олег', bio: 'Шахматы каждый день', avatarColor: '#495057' },
+  { username: 'zhenya_fish', displayName: 'Женя', bio: 'Рыбалка, озёра и тишина', avatarColor: '#0077b6' },
+  { username: 'tanya_diary', displayName: 'Таня', bio: 'Личный дневник, открытый для всех', avatarColor: '#d62828' },
+  { username: 'boris_history', displayName: 'Борис', bio: 'Истории, которых не было в школе', avatarColor: '#6d6875' },
+  { username: 'alex_startup', displayName: 'Алекс', bio: 'Строю маленькие продукты и учусь на ошибках', avatarColor: '#386641' },
+  { username: 'masha_vinyl', displayName: 'Маша', bio: 'Винил, шум дождя и старые плёнки', avatarColor: '#9b2226' },
+  { username: 'igor_garden', displayName: 'Игорь', bio: 'Огород на балконе — это серьёзно', avatarColor: '#588157' },
+  { username: 'ruslan_run', displayName: 'Руслан', bio: 'Марафоны и кроссовки, которые жалко носить', avatarColor: '#0096c7' },
 ];
 
 const POST_TEXTS = [
-  'Доброе утро! Первый кофе уже в руке, день обещает быть хорошим ☕',
+  'Доброе утро! Первый кофе уже в руке, день обещает быть хорошим',
   'Сегодня наконец-то дописал то, что откладывал две недели. Чувствую себя счастливым.',
   'Кто знает хороший способ не забывать пить воду во время работы? Пробую таймер.',
-  'Гуляли вечером по набережной. Закат был такой, что даже телефон не хотелось доставать 🌅',
-  'Новый рецепт: паста с лимоном и шпинатом. Быстро, вкусно, почти без посуды 🍝',
+  'Гуляли вечером по набережной. Закат был такой, что даже телефон не хотелось доставать',
+  'Новый рецепт: паста с лимоном и шпинатом. Быстро, вкусно, почти без посуды',
   'Если бы я мог выбрать суперсилу, это была бы способность всегда находить свободную розетку.',
   'Прочитал книгу за выходные. Рекомендую всем, кто любит медленные истории.',
-  'Растение на подоконнике наконец выпустило новый лист! Маленькая, но победа 🌱',
+  'Растение на подоконнике наконец выпустило новый лист! Маленькая, но победа',
   'Сегодня проверил старые фотографии. Это было лето, которого мне очень не хватает.',
   'Какие у вас любимые сериалы этой осенью? Нужно что-то, чтобы смотреть под плед.',
-  'Попробовал бегать по утрам три недели подряд. Оказалось, что я почти полюбил это 🏃',
+  'Попробовал бегать по утрам три недели подряд. Оказалось, что я почти полюбил это',
   'Маленький вопрос: вы читаете бумажные книги или всё в телефоне?',
-  'Обновил свой плейлист для поездок. Если любите инди-рок, зацените 🎧',
+  'Обновил свой плейлист для поездок. Если любите инди-рок, зацените',
   'Скучный день, но в нём есть одна хорошая новость: ужин будет вкусным.',
-  'Сделал скриншот звёздного неба. Вышло не очень, зато атмосферно ✨',
+  'Сделал скриншот звёздного неба. Вышло не очень, зато атмосферно',
   'Заметил, что самые полезные разговоры случаются в очереди в кофейне.',
   'Небольшой совет: пишите мысли на бумаге до того, как откроете ленту.',
   'Сегодня видел, как уличный музыкант играл для одного слушателя. Это было красиво.',
-  'Сплю слишком мало, зато много думаю. Баланс пока не найден 😅',
-  'Дождь за окном, чай, плед. Вот и вся моя программа на вечер 🌧️',
+  'Сплю слишком мало, зато много думаю. Баланс пока не найден',
+  'Дождь за окном, чай, плед. Вот и вся моя программа на вечер',
   'Кто-нибудь был в новом музее в центре? Стоит ли идти в будний день?',
-  'Выбрал новую ручку для блокнота, и почерк внезапно стал красивее ✒️',
+  'Выбрал новую ручку для блокнота, и почерк внезапно стал красивее',
   'Нашёл в шкафу старую кассету. Интересно, что на ней записано.',
-  'Пару часов провёл без телефона — и понял, что мир никуда не делся 📵',
+  'Пару часов провёл без телефона — и понял, что мир никуда не делся',
   'Вечерняя прогулка с собакой по парку. Она счастлива, я тоже.',
-  'Приготовил домашний хлеб впервые. Выглядит неровно, но пахнет очень хорошо 🍞',
+  'Приготовил домашний хлеб впервые. Выглядит неровно, но пахнет очень хорошо',
   'Главное правило на этой неделе: меньше планов, больше времени на простые вещи.',
   'Посмотрел фильм, который все советовали. Ожидания оправдались.',
-  'Сегодня научился завязывать новый узел. Пригодится в походе, надеюсь 🪢',
+  'Сегодня научился завязывать новый узел. Пригодится в походе, надеюсь',
   'Снова дождь, но в кафе уютно. Работаю и слушаю разговоры вокруг.',
   'Может, кто-то знает хорошую книгу о самоорганизации без воды? Спасибо заранее!',
-  'Составил список мест, которые хочу увидеть до конца года. Первое место — море 🌊',
+  'Составил список мест, которые хочу увидеть до конца года. Первое место — море',
 ];
 
 const BOT_POST_CHANCE = 0.01; // шанс поста у бота за один тик
@@ -101,6 +101,35 @@ function followerCap(user, { now, postCount, likesReceived }) {
   const ageMinutes = Math.max(0, (now - user.createdAt) / 60000);
   const raw = 2 + ageMinutes * 1 + postCount * 3 + likesReceived * 1.5;
   return Math.min(MAX_BOT_FOLLOWERS, Math.floor(raw));
+}
+
+// Эмодзи в текстах виртуальных аккаунтов не используем. Эта функция чистит и уже сохранённые данные.
+const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{25A0}-\u{25FF}\u{FE0F}\u{200D}]/gu;
+
+function stripEmoji(text) {
+  return text.replace(EMOJI_RE, '').replace(/\s{2,}/g, ' ').trim();
+}
+
+// Убирает эмодзи из описаний и постов ботов. Посты реальных пользователей не трогаем.
+function stripBotEmoji(store) {
+  let changed = 0;
+  for (const bot of store.listBots()) {
+    if (bot.bio && EMOJI_RE.test(bot.bio)) {
+      bot.bio = stripEmoji(bot.bio);
+      changed++;
+    }
+    EMOJI_RE.lastIndex = 0;
+  }
+  for (const post of store.posts.values()) {
+    const author = store.getUser(post.authorId);
+    if (author?.isBot && EMOJI_RE.test(post.text)) {
+      post.text = stripEmoji(post.text);
+      changed++;
+    }
+    EMOJI_RE.lastIndex = 0;
+  }
+  if (changed) store.save();
+  return changed;
 }
 
 // Создаёт ботов и стартовые посты, если база пуста. Возвращает число созданных ботов.
@@ -214,6 +243,7 @@ module.exports = {
   BOT_PROFILES,
   POST_TEXTS,
   seedBots,
+  stripBotEmoji,
   followStarterBots,
   growthTick,
   followerCap,

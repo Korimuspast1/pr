@@ -1,5 +1,21 @@
 /* Тема в духе opencode.ai: тёплые нейтральные тона, минимум рамок, моноширинные акценты. */
 
+/* Шрифты OpenCode: Inter для текста, JetBrains Mono для логинов и цифр. Файлы в public/assets/fonts. */
+@font-face {
+  font-family: "Inter";
+  src: url("/assets/fonts/Inter.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/assets/fonts/JetBrainsMonoNerdFontMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   color-scheme: dark;
   --bg: #161313;
@@ -17,8 +33,8 @@
   --like: #f0607d;
   --focus: rgba(241, 236, 236, 0.12);
   --radius: 10px;
-  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   font-family: var(--sans);
   color: var(--text);
   background: var(--bg);

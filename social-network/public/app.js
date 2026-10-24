@@ -9,11 +9,33 @@ const THEME_KEY = 'social.theme';
 const root = document.getElementById('app');
 let me = null;
 let renderId = 0;
+// Токен всегда хранится в памяти страницы. localStorage — лишь дополнительное хранилище:
+// в iframe с sandbox без allow-same-origin доступ к нему запрещён и бросает исключение.
+let memoryToken = null;
+
+// Безопасное чтение и запись хранилища: при ошибке просто работаем без него.
+const storage = {
+  get(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set(key, value) {
+    try {
+      if (value == null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    } catch {
+      // Хранилище недоступно — ничего страшного, токен живёт в памяти.
+    }
+  },
+};
 
 // ---------- тема ----------
 
 function currentTheme() {
-  return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
+  return storage.get(THEME_KEY) === 'light' ? 'light' : 'dark';
 }
 
 function applyTheme(theme) {
@@ -22,7 +44,7 @@ function applyTheme(theme) {
 }
 
 function setTheme(theme) {
-  localStorage.setItem(THEME_KEY, theme);
+  storage.set(THEME_KEY, theme);
   applyTheme(theme);
 }
 
@@ -31,20 +53,12 @@ applyTheme(currentTheme());
 // ---------- сеть ----------
 
 function getToken() {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
+  return memoryToken || storage.get(TOKEN_KEY);
 }
 
 function saveToken(token) {
-  try {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // Хранилище недоступно (например, в строгом режиме): работаем на cookie.
-  }
+  memoryToken = token || null;
+  storage.set(TOKEN_KEY, token || null);
 }
 
 async function api(path, { method = 'GET', body } = {}) {

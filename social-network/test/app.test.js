@@ -387,3 +387,26 @@ test('атрибуты cookie: Lax по HTTP, None+Secure за HTTPS-прокс�
   assert.match(cookie, /SameSite=None; Secure/);
   assert.match(cookie, /HttpOnly/);
 });
+
+test('эмодзи убираются у ботов, но не у реальных пользователей', () => {
+  const { stripBotEmoji } = require('../server/growth');
+  const s = new Store(null);
+  const bot = s.createUser({ username: 'emo_bot', displayName: 'Бот', isBot: true, bio: 'Кофе ☕ и книги 📚' });
+  const botPost = s.createPost({ authorId: bot.id, text: 'Привет 🌅 мир' });
+  const human = s.createUser({ username: 'emo_human', displayName: 'Человек' });
+  const humanPost = s.createPost({ authorId: human.id, text: 'мой пост 😀' });
+  assert.ok(stripBotEmoji(s) > 0);
+  assert.equal(bot.bio, 'Кофе и книги');
+  assert.equal(botPost.text, 'Привет мир');
+  assert.equal(humanPost.text, 'мой пост 😀', 'пост пользователя не меняется');
+});
+
+test('CORS: preflight-запрос к API отвечает без cookie', async () => {
+  const res = await fetch(`${base}/api/feed`, {
+    method: 'OPTIONS',
+    headers: { Origin: 'null', 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'authorization' },
+  });
+  assert.equal(res.status, 204);
+  assert.equal(res.headers.get('access-control-allow-origin'), '*');
+  assert.match(res.headers.get('access-control-allow-headers'), /Authorization/);
+});

@@ -17,6 +17,11 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.ttf': 'font/ttf',
+  '.woff2': 'font/woff2',
+  '.webmanifest': 'application/manifest+json',
+  '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
 };
 
 class HttpError extends Error {
@@ -181,9 +186,11 @@ function serveStatic(res, publicDir, pathname) {
     ? filePath
     : path.join(publicDir, 'index.html');
   const ext = path.extname(target);
+  // Ассеты (шрифты, картинки) кэшируем на сутки, остальное — с проверкой.
+  const isAsset = relative.startsWith('assets/');
   res.writeHead(200, {
     'Content-Type': MIME[ext] || 'application/octet-stream',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': isAsset ? 'public, max-age=86400' : 'no-cache',
   });
   fs.createReadStream(target).pipe(res);
 }
@@ -430,6 +437,20 @@ function createApp({ store, publicDir, now = () => Date.now(), rng = Math.random
   return async function handle(req, res) {
     const url = new URL(req.url, 'http://localhost');
     try {
+      if (url.pathname.startsWith('/api/')) {
+        // CORS нужен, когда страница открыта из sandbox-iframe (opaque origin) и запросы
+        // считаются кросс-доменными. Авторизация идёт заголовком Authorization, а не cookie,
+        // поэтому разрешаем любой origin без credentials.
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+        res.setHeader('Access-Control-Max-Age', '600');
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+      }
       if (!url.pathname.startsWith('/api/')) {
         if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'Метод не разрешён');
         serveStatic(res, publicDir, url.pathname);

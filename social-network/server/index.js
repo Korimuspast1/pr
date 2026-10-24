@@ -4,7 +4,7 @@ const http = require('node:http');
 const path = require('node:path');
 const { Store } = require('./store');
 const { createApp } = require('./app');
-const { seedBots, startGrowth } = require('./growth');
+const { seedBots, stripBotEmoji, startGrowth } = require('./growth');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -15,6 +15,8 @@ const GROWTH_INTERVAL_MS = Number(process.env.GROWTH_INTERVAL_MS) || 10000;
 const store = new Store(DATA_FILE);
 const seeded = seedBots(store);
 if (seeded) console.log(`Создано виртуальных аккаунтов: ${seeded}`);
+const cleaned = stripBotEmoji(store);
+if (cleaned) console.log(`Очищено записей ботов от эмодзи: ${cleaned}`);
 store.flush();
 
 const app = createApp({ store, publicDir: path.join(__dirname, '..', 'public') });
