@@ -30,10 +30,25 @@ npm --prefix app start
 
 ```
 GET  /api/stats        -> хост, CPU, память, диск, git, sudo
+GET  /api/ping         -> { ok, pid }  (health-check)
 POST /api/exec         { cmd, root?, cwd? } -> { out, cwd, code, ms }
 POST /api/kill         { id }
+GET  /api/exec?p=<b64> -> те же параметры через query, для прокси
 GET  /api/files?path=  -> { path, parent, items[] }
 ```
+
+## Транспорт (если «не удалось связаться с сервером»)
+
+Превью-прокси иногда отвечает HTML вместо JSON или режет POST. Клиент
+перебирает транспорты и запоминает рабочий:
+
+```
+POST /api/<name>  →  GET /api/<name>?p=<base64>  →  GET /api/<name>.json?p=…
+                  →  POST /x/<name>  →  GET /x/<name>  →  GET /x/<name>.json?p=…
+```
+
+Кнопка **диагностика** в панели privileges прогоняет все шесть и печатает
+результат. В консоли браузера видно `[sandbox-console] transport: GET /api/*.json`.
 
 ## Root
 

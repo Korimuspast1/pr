@@ -26,7 +26,7 @@ const SHELL = '/usr/bin/bash';
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || '0.0.0.0';
 const MAX_OUT = 512 * 1024;
-const DEFAULT_TIMEOUT = 180 * 1000;
+const DEFAULT_TIMEOUT = Number(process.env.EXEC_TIMEOUT || 90) * 1000;
 
 const state = {
   cwd: ROOT,
@@ -169,8 +169,16 @@ function execCommand(raw, { cwd, root, id } = {}) {
     try {
       child = spawn(SHELL, ['-c', script], {
         cwd: workdir,
-        env: { ...process.env, TERM: 'xterm-256color', PAGER: 'cat', GIT_PAGER: 'cat' },
+        env: {
+          ...process.env,
+          TERM: 'xterm-256color',
+          PAGER: 'cat',
+          GIT_PAGER: 'cat',
+          DEBIAN_FRONTEND: 'noninteractive',
+          SUDO_ASKPASS: '/bin/false',
+        },
         detached: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
       });
     } catch (e) {
       return resolve({ out: String(e), cwd: workdir, code: 1 });
@@ -246,6 +254,28 @@ function readBody(req) {
   });
 }
 
+/**
+ * Parameters may arrive as a JSON body (POST) or as a base64 `p` query param
+ * (GET) — some preview proxies mangle JSON POSTs, so both must work.
+ */
+async function params(req, url) {
+  const body = req.method === 'POST' ? await readBody(req) : {};
+  const raw = url.searchParams.get('p');
+  if (!raw) return body;
+  try {
+    const decoded = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+    return { ...decoded, ...body };
+  } catch {
+    return body;
+  }
+}
+
+/** Routes are mirrored under /api/… and /x/… so a proxy that swallows one still works. */
+function routeName(pathname) {
+  const m = pathname.match(/^\/(?:api|x)\/([a-z]+)(?:\.json)?\/?$/);
+  return m ? m[1] : null;
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -300,8 +330,9 @@ async function fileList(dir) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const name = routeName(url.pathname);
   try {
-    if (url.pathname === '/api/stats' && req.method === 'GET') {
+    if (name === 'stats') {
       const mem = memInfo();
       const disk = await diskInfo();
       const git = await gitInfo();
@@ -318,28 +349,30 @@ const server = http.createServer(async (req, res) => {
         disk,
         uptime: os.uptime(),
         node: process.version,
-        python: (await sh('python3', ['-V'])).err.trim() || (await sh('python3', ['-V'])).out.trim(),
+        python: (await sh('python3', ['-V'])).out.trim() || (await sh('python3', ['-V'])).err.trim(),
         cwd: state.cwd,
         cwdShort: shorten(state.cwd),
         rootMode: state.root,
         sudoPasswordless: sudoPasswordless(),
         git,
         running: running.size,
+        pid: process.pid,
+        transport: req.method,
         time: Date.now(),
       });
     }
 
-    if (url.pathname === '/api/exec' && req.method === 'POST') {
-      const body = await readBody(req);
+    if (name === 'exec') {
+      const body = await params(req, url);
       const cmd = String(body.cmd || '');
-      if (!cmd.trim()) return json(res, { out: '', cwd: state.cwd, code: 0 });
+      if (!cmd.trim()) return json(res, { out: '', cwd: state.cwd, cwdShort: shorten(state.cwd), code: 0 });
       const t0 = Date.now();
       const r = await execCommand(cmd, { cwd: body.cwd, root: body.root, id: body.id || 'current' });
       return json(res, { ...r, ms: Date.now() - t0, cwdShort: shorten(r.cwd) });
     }
 
-    if (url.pathname === '/api/kill' && req.method === 'POST') {
-      const body = await readBody(req);
+    if (name === 'kill') {
+      const body = await params(req, url);
       const child = running.get(body.id);
       if (child) {
         try {
@@ -350,8 +383,9 @@ const server = http.createServer(async (req, res) => {
       return json(res, { killed: false });
     }
 
-    if (url.pathname === '/api/files' && req.method === 'GET') {
-      const p = url.searchParams.get('path') || state.cwd;
+    if (name === 'files') {
+      const body = await params(req, url);
+      const p = body.path || url.searchParams.get('path') || state.cwd;
       try {
         return json(res, await fileList(p));
       } catch (e) {
@@ -359,7 +393,12 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    if (url.pathname === '/api/health') return json(res, { ok: true });
+    if (name === 'ping' || name === 'health') return json(res, { ok: true, pid: process.pid });
+
+    // plain GET hints (useful for curl debugging through a proxy)
+    if (url.pathname === '/api' || url.pathname === '/x') {
+      return json(res, { ok: true, endpoints: ['stats', 'exec', 'kill', 'files', 'ping'] });
+    }
 
     return serveStatic(res, url.pathname);
   } catch (e) {

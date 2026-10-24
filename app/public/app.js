@@ -15,6 +15,87 @@ const history = [];
 let hIndex = 0;
 let booted = false;
 
+/* ── transport ───────────────────────────────────────────────────────── */
+/*
+ * Preview proxies in front of the sandbox sometimes answer with HTML (error
+ * page) instead of the JSON body, or swallow a JSON POST. So: read as text,
+ * parse defensively, and fall back to a GET (?p=<base64 json>) transport —
+ * plain GETs are what already deliver the HTML/CSS/JS.
+ */
+const b64 = (obj) => btoa(unescape(encodeURIComponent(JSON.stringify(obj || {}))));
+
+async function attempt(method, url, body, ms = 95000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  let res;
+  try {
+    res = await fetch(url, {
+      method,
+      signal: ctrl.signal,
+      cache: 'no-store',
+      headers: method === 'POST' ? { 'content-type': 'application/json' } : undefined,
+      body: method === 'POST' ? JSON.stringify(body || {}) : undefined,
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    const msg = e.name === 'AbortError' ? `таймаут ${Math.round(ms / 1000)}s` : 'сеть недоступна';
+    throw new Error(`${method} ${url} → ${msg}`);
+  }
+  clearTimeout(timer);
+
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 90) || '(пустой ответ)';
+    throw new Error(`${method} ${url} → HTTP ${res.status}, не JSON: ${snippet}`);
+  }
+  if (!res.ok) {
+    throw new Error(`${method} ${url} → HTTP ${res.status}: ${(data && data.error) || snippetf(text)}`);
+  }
+  return data;
+}
+const snippetf = (t) => t.replace(/\s+/g, ' ').trim().slice(0, 90);
+
+/*
+ * Candidate transports, tried in order until one returns JSON:
+ * POST body, GET query, and `.json`-suffixed paths (some proxies only forward
+ * requests that look like static files). The winner is cached.
+ */
+const PLANS = [
+  { method: 'POST', path: (n) => `/api/${n}` },
+  { method: 'GET',  path: (n) => `/api/${n}` },
+  { method: 'GET',  path: (n) => `/api/${n}.json` },
+  { method: 'POST', path: (n) => `/x/${n}` },
+  { method: 'GET',  path: (n) => `/x/${n}` },
+  { method: 'GET',  path: (n) => `/x/${n}.json` },
+];
+let transport = null;
+
+async function call(name, body) {
+  const plans = transport ? [transport] : PLANS;
+  const errors = [];
+  for (const plan of plans) {
+    try {
+      let url = plan.path(name);
+      if (plan.method === 'GET') {
+        const qs = b64(body);
+        url += (url.includes('?') ? '&' : '?') + 'p=' + encodeURIComponent(qs);
+      }
+      const data = await attempt(plan.method, url, body);
+      const changed = transport !== plan;
+      transport = plan;
+      if (changed) console.info('[sandbox-console] transport:', plan.method, plan.path('*'));
+      return data;
+    } catch (e) {
+      errors.push(e.message);
+      transport = null;
+    }
+  }
+  throw new Error(errors.join('\n'));
+}
+
 /* ── ANSI → HTML ─────────────────────────────────────────────────────── */
 const C = {
   30: '#484f58', 31: '#ff7b72', 32: '#7ee787', 33: '#e3b341', 34: '#79c0ff',
@@ -128,12 +209,7 @@ async function run(cmd) {
   const t0 = performance.now();
 
   try {
-    const res = await fetch('/api/exec', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ cmd: trimmed, root: rootMode, id: 'current' }),
-    });
-    const data = await res.json();
+    const data = await call('exec', { cmd: trimmed, root: rootMode, id: 'current' });
     if (data.out) renderOutput(data.out);
     if (typeof data.cwdShort === 'string') { cwdShort = data.cwdShort; cwd = data.cwd; }
     const code = data.code ?? 0;
@@ -143,7 +219,9 @@ async function run(cmd) {
     if (cwd !== filesPath) loadFiles(cwd);
   } catch (e) {
     renderOutput(`\x1b[31m${e.message}\x1b[0m`);
+    renderOutput('\x1b[90mсервер не ответил по JSON. Проверь, что процесс node app/server.js жив, и попробуй снова.\x1b[0m');
     setStatus('network error');
+    offline(true);
   } finally {
     busy = false;
     input.disabled = false;
@@ -175,11 +253,32 @@ function setBar(id, pct, valId, label) {
 }
 
 let lastStats = null;
+let statsFails = 0;
+let isOffline = false;
+
+function offline(flag, detail) {
+  if (flag === isOffline && !detail) return;
+  isOffline = flag;
+  const chip = $('rootChip');
+  const dot = document.querySelector('.topbar .dot');
+  if (flag) {
+    $('stripLeft').textContent = 'нет связи с сервером';
+    strip.classList.add('busy');
+    if (dot) dot.style.background = 'var(--red)';
+    if (detail) console.warn('[sandbox-console]', detail);
+  } else {
+    statsFails = 0;
+    if (dot) dot.style.background = 'var(--green)';
+    strip.classList.remove('busy');
+  }
+  void chip;
+}
 
 async function pollStats() {
   try {
-    const s = await (await fetch('/api/stats')).json();
+    const s = await call('stats');
     lastStats = s;
+    offline(false);
     $('hostname').textContent = s.host;
     $('sHost').textContent = s.host;
     $('sKernel').textContent = s.kernel.replace('Linux ', 'Linux ');
@@ -198,7 +297,10 @@ async function pollStats() {
     $('rSudo').className = s.sudoPasswordless ? 'green' : 'red';
     if (!cwd || cwd === '/home/user/pr') { cwd = s.cwd; cwdShort = s.cwdShort; }
     if (booted) syncPrompt();
-  } catch {}
+  } catch (e) {
+    statsFails++;
+    if (statsFails >= 2) offline(true, e.message);
+  }
 }
 
 /* ── files ───────────────────────────────────────────────────────────── */
@@ -207,8 +309,7 @@ let filesParent = '/home/user';
 
 async function loadFiles(path) {
   try {
-    const res = await fetch('/api/files?path=' + encodeURIComponent(path));
-    const data = await res.json();
+    const data = await call('files', { path });
     if (data.error) return;
     filesPath = data.path;
     filesParent = data.parent;
@@ -267,12 +368,10 @@ function banner(s, files) {
   out.appendChild(Object.assign(document.createElement('div'), { className: 'gap' }));
 }
 
-async function boot() {
+async function boot(attemptNo = 0) {
   try {
-    const [s, files] = await Promise.all([
-      (await fetch('/api/stats')).json(),
-      (await fetch('/api/files?path=/home/user/pr')).json(),
-    ]);
+    const s = await call('stats');
+    const files = await call('files', { path: s.cwd || '/home/user/pr' });
     banner(s, files);
     cwd = s.cwd;
     cwdShort = s.cwdShort;
@@ -284,7 +383,17 @@ async function boot() {
     setStatus('ready');
     input.focus();
   } catch (e) {
-    renderOutput('не удалось связаться с сервером: ' + e.message);
+    if (attemptNo < 3) {
+      setStatus(`подключение… попытка ${attemptNo + 2}/4`, 'busy');
+      setTimeout(() => boot(attemptNo + 1), 1200);
+      return;
+    }
+    offline(true, e.message);
+    renderOutput(`\x1b[31mне удалось связаться с сервером\x1b[0m`);
+    renderOutput(`\x1b[90m${esc(e.message)}\x1b[0m`);
+    renderOutput('\x1b[90mперезапуск сервера: node app/server.js · страница повторит попытку через 15 с\x1b[0m');
+    setStatus('offline');
+    setTimeout(() => boot(0), 15000);
   }
 }
 
@@ -311,7 +420,7 @@ input.addEventListener('keydown', async (e) => {
   } else if (e.key === 'c' && e.ctrlKey) {
     e.preventDefault();
     if (busy) {
-      fetch('/api/kill', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'current' }) });
+      call('kill', { id: 'current' }).catch(() => {});
       setStatus('interrupted');
     } else {
       echoCommand('^C');
@@ -320,7 +429,22 @@ input.addEventListener('keydown', async (e) => {
   }
 });
 
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
+  if (e.target.id === 'diagBtn') {
+    renderOutput('\x1b[90m— диагностика транспорта —\x1b[0m');
+    for (const plan of PLANS) {
+      const url = plan.path('ping') + (plan.method === 'GET' ? '?p=' + encodeURIComponent(b64({})) : '');
+      try {
+        const t0 = performance.now();
+        const d = await attempt(plan.method, url, {}, 8000);
+        renderOutput(`\x1b[32m✓\x1b[0m ${plan.method} ${url} → \x1b[36m${Math.round(performance.now() - t0)} ms\x1b[0m pid ${d.pid ?? '?'}`);
+      } catch (err) {
+        renderOutput(`\x1b[31m✗\x1b[0m ${plan.method} ${url} → \x1b[90m${esc(err.message)}\x1b[0m`);
+      }
+    }
+    scrollDown();
+    return;
+  }
   if (e.target.closest('.quick button')) {
     const cmd = e.target.closest('button').dataset.cmd;
     if (cmd) run(cmd);
