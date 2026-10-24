@@ -328,6 +328,117 @@ async function fileList(dir) {
   return { path: target, parent: path.dirname(target), items };
 }
 
+
+/* ------------------------------------------------------- desktop helpers */
+
+function safeResolve(p, base) {
+  const abs = path.isAbsolute(p || '') ? p : path.resolve(base || state.cwd, p || '.');
+  return abs;
+}
+
+async function readFileSmart(target) {
+  const s = await fsp.stat(target);
+  if (s.isDirectory()) throw new Error('это каталог');
+  const LIMIT = 512 * 1024;
+  const size = s.size;
+  const fh = await fsp.open(target, 'r');
+  try {
+    const buf = Buffer.alloc(Math.min(size, LIMIT));
+    await fh.read(buf, 0, buf.length, 0);
+    const binary = buf.includes(0);
+    return {
+      path: target,
+      size,
+      mtime: s.mtimeMs,
+      mode: (s.mode & 0o777).toString(8).padStart(3, '0'),
+      binary,
+      truncated: size > LIMIT,
+      text: binary ? buf.toString('base64') : buf.toString('utf8'),
+      encoding: binary ? 'base64' : 'utf8',
+    };
+  } finally {
+    await fh.close();
+  }
+}
+
+let procCache = { at: 0, data: null };
+async function procList() {
+  if (Date.now() - procCache.at < 1200 && procCache.data) return procCache.data;
+  const { out } = await sh('ps', ['-eo', 'pid=,ppid=,user=,pcpu=,pmem=,rss=,stat=,etimes=,comm=,args=', '--sort=-pcpu']);
+  const rows = [];
+  for (const line of out.split('\n')) {
+    const t = line.trim();
+    if (!t) continue;
+    const m = t.match(/^(\d+)\s+(\d+)\s+(\S+)\s+([\d.]+)\s+([\d.]+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s?(.*)$/);
+    if (!m) continue;
+    rows.push({
+      pid: Number(m[1]), ppid: Number(m[2]), user: m[3],
+      cpu: Number(m[4]), mem: Number(m[5]), rss: Number(m[6]) * 1024,
+      stat: m[7], etimes: Number(m[8]), comm: m[9], args: m[10] || m[9],
+    });
+  }
+  const data = { total: rows.length, rows: rows.slice(0, 80) };
+  procCache = { at: Date.now(), data };
+  return data;
+}
+
+/**
+ * Fetch a page on behalf of the browser app.
+ * Uses curl (system CA store — the sandbox sits behind a TLS-inspecting proxy
+ * that Node's bundled root certificates do not trust).
+ */
+async function proxyFetch(target, opts = {}) {
+  const u = new URL(target);
+  if (!/^https?:$/.test(u.protocol)) throw new Error('только http/https');
+
+  const tmp = await fsp.mkdtemp(path.join(os.tmpdir(), 'wx-fetch-'));
+  const bodyPath = path.join(tmp, 'body');
+  const headPath = path.join(tmp, 'head');
+  const LIMIT = 2 * 1024 * 1024;
+
+  try {
+    const r = await sh('curl', [
+      '-sS', '-L',
+      '--max-time', String(Math.round((opts.timeout || 15000) / 1000)),
+      '--max-filesize', String(6 * 1024 * 1024),
+      '--compressed',
+      '-A', 'Mozilla/5.0 (X11; Linux x86_64) sandboxOS/1.0',
+      '-H', 'Accept: text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+      '-H', 'Accept-Language: ru,en;q=0.8',
+      '-D', headPath,
+      '-o', bodyPath,
+      '-w', '%{http_code}\n%{content_type}\n%{size_download}\n%{url_effective}',
+      target,
+    ], { timeout: (opts.timeout || 15000) + 4000 });
+
+    if (r.code !== 0 && !fs.existsSync(bodyPath)) {
+      throw new Error((r.err || '').trim() || `curl exit ${r.code}`);
+    }
+
+    const meta = r.out.trim().split('\n');
+    const status = Number(meta[0] || 0);
+    const rawType = (meta[1] || '').split('\n').pop();
+    const bytes = Number(meta[2] || 0);
+    const finalUrl = (meta[3] || target).trim();
+
+    let buf = await fsp.readFile(bodyPath);
+    const truncated = buf.length > LIMIT || bytes > LIMIT;
+    if (buf.length > LIMIT) buf = buf.subarray(0, LIMIT);
+
+    return {
+      ok: status >= 200 && status < 400,
+      status: status || (r.code === 63 ? 413 : 502),
+      url: finalUrl,
+      contentType: rawType || '',
+      truncated,
+      bytes,
+      text: buf.toString('utf8'),
+    };
+  } finally {
+    fsp.rm(tmp, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const name = routeName(url.pathname);
@@ -358,6 +469,8 @@ const server = http.createServer(async (req, res) => {
         running: running.size,
         pid: process.pid,
         transport: req.method,
+        home: os.homedir(),
+        repo: ROOT,
         time: Date.now(),
       });
     }
@@ -390,6 +503,75 @@ const server = http.createServer(async (req, res) => {
         return json(res, await fileList(p));
       } catch (e) {
         return json(res, { error: String(e.message || e) }, 400);
+      }
+    }
+
+    if (name === 'read') {
+      const body = await params(req, url);
+      const target = safeResolve(body.path || url.searchParams.get('path'), state.cwd);
+      try {
+        return json(res, await readFileSmart(target));
+      } catch (e) {
+        return json(res, { error: String(e.message || e) }, 400);
+      }
+    }
+
+    if (name === 'write') {
+      const body = await params(req, url);
+      const target = safeResolve(body.path, state.cwd);
+      try {
+        await fsp.mkdir(path.dirname(target), { recursive: true });
+        await fsp.writeFile(target, body.text ?? '', 'utf8');
+        const st = await fsp.stat(target);
+        return json(res, { ok: true, path: target, size: st.size, mtime: st.mtimeMs });
+      } catch (e) {
+        return json(res, { error: String(e.message || e) }, 400);
+      }
+    }
+
+    if (name === 'download') {
+      const target = safeResolve(url.searchParams.get('path'), state.cwd);
+      const inline = url.searchParams.get('inline') === '1';
+      let st;
+      try {
+        st = await fsp.stat(target);
+      } catch (e) {
+        return json(res, { error: 'нет такого файла' }, 404);
+      }
+      if (st.isDirectory()) return json(res, { error: 'это каталог' }, 400);
+      const type = MIME[path.extname(target).toLowerCase()] || 'application/octet-stream';
+      res.writeHead(200, {
+        'content-type': type,
+        'content-length': st.size,
+        'cache-control': 'no-store',
+        'content-disposition': `${inline ? 'inline' : 'attachment'}; filename="${encodeURIComponent(path.basename(target))}"`,
+      });
+      fs.createReadStream(target).pipe(res);
+      return;
+    }
+
+    if (name === 'proc') {
+      return json(res, await procList());
+    }
+
+    if (name === 'killproc') {
+      const body = await params(req, url);
+      const pid = Number(body.pid);
+      if (!pid || pid === process.pid) return json(res, { error: 'недопустимый pid' }, 400);
+      const sig = String(body.signal || 'TERM').replace(/[^A-Z]/g, '') || 'TERM';
+      const cmd = body.root ? `sudo -n kill -${sig} ${pid}` : `kill -${sig} ${pid}`;
+      const r = await sh(SHELL, ['-c', cmd]);
+      return json(res, { ok: r.code === 0, code: r.code, out: (r.out + r.err).trim() });
+    }
+
+    if (name === 'fetch') {
+      const body = await params(req, url);
+      const target = body.url || url.searchParams.get('url');
+      if (!target) return json(res, { error: 'нужен url' }, 400);
+      try {
+        return json(res, await proxyFetch(target, { timeout: Number(body.timeout) || undefined }));
+      } catch (e) {
+        return json(res, { error: String(e.message || e) }, 502);
       }
     }
 

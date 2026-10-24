@@ -3,111 +3,68 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>sandbox e2b.local — console</title>
+<title>sandboxOS — рабочий стол</title>
 <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
 
-<!-- ── top status bar ─────────────────────────────────────────────── -->
-<header class="topbar">
-  <div class="brand"><span class="dot"></span> sandbox <b id="hostname">e2b.local</b></div>
-  <div class="crumb" id="branch">arena/33ba3857-pr</div>
-  <div class="crumb" id="cwdTop">~/pr</div>
-  <div class="crumb dim" id="gitState">git clean</div>
-  <div class="spacer"></div>
-  <div class="chip" id="rootChip">user</div>
-  <div class="clock" id="clock">—</div>
+<div class="wallpaper" id="wallpaper"></div>
+
+<!-- ── top panel ─────────────────────────────────────────────────── -->
+<header id="panel">
+  <button class="panel-btn apps-btn" id="appsBtn" title="Приложения (Super)">
+    <span class="ico" id="appsIco"></span>
+    <span class="apps-label">Приложения</span>
+  </button>
+  <div class="panel-tasks" id="tasks"></div>
+  <div class="panel-right">
+    <button class="indicator root-ind hidden" id="rootIndicator" title="root mode включён">
+      <span class="ico" id="rootIco"></span><span>root</span>
+    </button>
+    <button class="indicator" id="cpuIndicator" title="Загрузка CPU">
+      <span class="ico" id="cpuIco"></span><span id="cpuTxt">0%</span>
+    </button>
+    <button class="indicator" id="netIndicator" title="Соединение с сервером">
+      <span class="ico" id="netIco"></span>
+    </button>
+    <button class="indicator" id="quickBtn" title="Быстрые настройки">
+      <span class="ico" id="volumeIco"></span>
+      <span class="ico" id="batteryIco"></span>
+    </button>
+    <button class="indicator clock" id="clockBtn" title="Календарь">
+      <span id="clockTxt">—</span>
+    </button>
+    <button class="indicator user-ind" id="userBtn" title="Меню пользователя">
+      <span class="ico" id="userIco"></span>
+    </button>
+  </div>
 </header>
 
-<!-- ── stage ──────────────────────────────────────────────────────── -->
-<main class="stage">
+<!-- ── windows ───────────────────────────────────────────────────── -->
+<div id="windows" class="windows"></div>
+<div id="toasts" class="toasts"></div>
 
-  <!-- terminal -->
-  <section class="win term">
-    <div class="titlebar">
-      <div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-      <div class="title" id="winTitle">user@e2b: ~/pr — bash</div>
-      <div class="tab">+ session 1</div>
+<!-- ── dock ──────────────────────────────────────────────────────── -->
+<nav id="dock" class="dock"></nav>
+
+<!-- ── launcher ──────────────────────────────────────────────────── -->
+<div id="launcher" class="overlay hidden">
+  <div class="launcher-box">
+    <div class="launcher-search">
+      <span class="ico" id="searchIco"></span>
+      <input id="launcherInput" placeholder="Поиск приложений…" autocomplete="off" spellcheck="false" />
+      <kbd>Esc</kbd>
     </div>
-    <div class="screen" id="screen">
-      <div class="out" id="out"></div>
-      <div class="cmdline" id="cmdline">
-        <span class="u" id="pUser">user@e2b</span><span class="c">:</span><span class="p" id="pPath">~/pr</span><span class="s" id="pSign">$</span>
-        <input id="input" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="command" />
-      </div>
-    </div>
-    <div class="statusstrip">
-      <span id="stripLeft">ready</span>
-      <span class="spacer"></span>
-      <span class="dim">Enter — выполнить · ↑↓ история · Ctrl+L очистить · Ctrl+C прервать</span>
-    </div>
-  </section>
+    <div class="launcher-grid" id="launcherGrid"></div>
+    <div class="launcher-hint">↑↓ выбрать · Enter открыть · Super или клик по фону — закрыть</div>
+  </div>
+</div>
 
-  <!-- side -->
-  <aside class="side">
+<!-- ── popovers ──────────────────────────────────────────────────── -->
+<div id="quick" class="popover hidden"></div>
+<div id="userMenu" class="popover hidden"></div>
+<div id="calendar" class="popover hidden"></div>
 
-    <!-- system -->
-    <section class="win panel">
-      <div class="titlebar small">
-        <div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-        <div class="title">system</div>
-      </div>
-      <div class="pbody">
-        <div class="kv"><span>host</span><b id="sHost">—</b></div>
-        <div class="kv"><span>kernel</span><b id="sKernel">—</b></div>
-        <div class="kv"><span>cpu</span><b id="sCpu">—</b></div>
-        <div class="metric"><div class="mlabel"><span>cpu load</span><b id="mCpuVal">0%</b></div><div class="bar"><i id="mCpu" style="width:0%"></i></div></div>
-        <div class="metric"><div class="mlabel"><span>memory</span><b id="mMemVal">—</b></div><div class="bar"><i id="mMem" style="width:0%"></i></div></div>
-        <div class="metric"><div class="mlabel"><span>disk /</span><b id="mDiskVal">—</b></div><div class="bar"><i id="mDisk" style="width:0%"></i></div></div>
-        <div class="kv"><span>uptime</span><b id="sUptime">—</b></div>
-        <div class="kv"><span>node / py</span><b id="sRuntimes">—</b></div>
-      </div>
-    </section>
-
-    <!-- root -->
-    <section class="win panel">
-      <div class="titlebar small">
-        <div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-        <div class="title">privileges</div>
-      </div>
-      <div class="pbody">
-        <div class="kv"><span>effective</span><b id="rWho">—</b></div>
-        <div class="kv"><span>sudo -n</span><b id="rSudo">—</b></div>
-        <label class="toggle">
-          <input type="checkbox" id="rootToggle" />
-          <span class="track"><i></i></span>
-          <span class="tlabel">root mode <em>все команды через sudo -n</em></span>
-        </label>
-        <div class="quick">
-          <button data-cmd="id">id</button>
-          <button data-cmd="sudo -n whoami">whoami</button>
-          <button data-cmd="sudo -n -l">sudo -l</button>
-          <button data-cmd="ps aux --sort=-%cpu | head -6">top cpu</button>
-          <button data-cmd="sudo -n apt-get update -qq && echo ok">apt update</button>
-          <button data-cmd="clear" class="ghost">clear</button>
-          <button id="diagBtn" class="ghost" title="проверить, какой транспорт API работает">диагностика</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- files -->
-    <section class="win panel files">
-      <div class="titlebar small">
-        <div class="lights"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-        <div class="title">files</div>
-      </div>
-      <div class="pbody">
-        <div class="pathbar">
-          <button id="fUp" title="наверх">↑</button>
-          <span id="fPath">~/pr</span>
-        </div>
-        <div class="filelist" id="fList"></div>
-      </div>
-    </section>
-
-  </aside>
-</main>
-
-<script src="/app.js"></script>
+<script type="module" src="/js/main.js"></script>
 </body>
 </html>
