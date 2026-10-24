@@ -52,13 +52,35 @@ applyTheme(currentTheme());
 
 // ---------- сеть ----------
 
+// Третий вариант хранения: window.name. В iframe с sandbox доступ к localStorage и cookie закрыт,
+// а имя окна сохраняется при перезагрузке этого же фрейма и очищается, когда вкладка закрыта.
+const WINDOW_NAME_PREFIX = 'social-token:';
+
+function readWindowToken() {
+  try {
+    const match = new RegExp(`^${WINDOW_NAME_PREFIX}([a-f0-9]{64})$`).exec(window.name || '');
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeWindowToken(token) {
+  try {
+    window.name = token ? `${WINDOW_NAME_PREFIX}${token}` : '';
+  } catch {
+    // Имя окна недоступно — остаётся память и localStorage.
+  }
+}
+
 function getToken() {
-  return memoryToken || storage.get(TOKEN_KEY);
+  return memoryToken || storage.get(TOKEN_KEY) || readWindowToken();
 }
 
 function saveToken(token) {
   memoryToken = token || null;
   storage.set(TOKEN_KEY, token || null);
+  writeWindowToken(token || null);
 }
 
 async function api(path, { method = 'GET', body } = {}) {
