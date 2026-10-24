@@ -1,0 +1,15 @@
+{
+  "name": "wreckbox-remake",
+  "version": "1.8.0",
+  "private": true,
+  "type": "module",
+  "description": "Fan remake of the Wreckbox destruction sandbox: 2D cross-section structural physics, nukes, weather hazards, ragdolls. Vanilla JS + Canvas, no dependencies.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node tests/structure.test.mjs && node tests/maps.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
