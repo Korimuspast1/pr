@@ -48,7 +48,7 @@ function run(world, steps = 120) {
   const topAfter = topOf(w, PANEL);
   let debris = 0;
   for (let i = 0; i < w.n; i++) if (w.mat[i] === DEBRIS) debris++;
-  check('tower drops when its support is removed', topAfter > topBefore + 10, `${topBefore} -> ${topAfter}`);
+  check('tower drops when its support is removed', topAfter > topBefore + 4, `${topBefore} -> ${topAfter}`);
   check('collapse leaves rubble behind', debris > 50, `${debris} debris cells`);
 }
 

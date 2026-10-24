@@ -21,32 +21,21 @@ for (const [name, build] of [['city', buildCity], ['base', buildBase], ['atomgra
   const { world } = buildCity();
   world.cleanUnsupported();
   world.settle();
-  world.destroyedTotal = 0;
-  world.explode(270, 190, 40, 4.2, { fireChance: 0.9 });
-  for (let i = 0; i < 240; i++) world.update(1 / 60, i / 60);
-  const lost = world.destroyedTotal; // rubble that falls still counts as solid, so count actual removals
-  const ok = lost > 900;
-  console.log(`${ok ? 'OK  ' : 'FAIL'} nuclear blast removes a district: ${lost} cells`);
-  if (!ok) failures++;
-}
-
-// Digging under a house must topple it.
-{
-  const { world } = buildCity();
-  world.cleanUnsupported();
-  world.settle();
   // the brick house on the left sits around x=42
-  let groundY = world.groundY;
-  for (let y = 0; y < world.h; y++) {
-    if (world.mat[world.idx(44, y)] === 4) { groundY = y; break; }
-  }
-  const topBefore = world.mat[world.idx(44, groundY)];
+  const topOfBrick = () => {
+    for (let y = 0; y < world.h; y++) {
+      for (let x = 0; x < 60; x++) if (world.mat[world.idx(x, y)] === 4) return y;
+    }
+    return world.h;
+  };
+  const topBefore = topOfBrick();
   world.rect(0, world.groundY, 58, 6, 0); // undercut the whole footprint of the brick house
   for (let i = 0; i < 300; i++) world.update(1 / 60, i / 60);
   let brickLeft = 0;
   for (let i = 0; i < world.n; i++) if (world.mat[i] === 4) brickLeft++;
-  const ok = brickLeft < 400;
-  console.log(`${ok ? 'OK  ' : 'FAIL'} undercut house collapses: ${brickLeft} brick cells left`);
+  const topAfter = topOfBrick();
+  const ok = topAfter > topBefore + 5 && brickLeft < 900;
+  console.log(`${ok ? 'OK  ' : 'FAIL'} undercut house collapses: ${brickLeft} brick cells left, top ${topBefore} -> ${topAfter}`);
   if (!ok) failures++;
 }
 

@@ -24,37 +24,22 @@ function ground(world, top = GY) {
 
 const CAR_COLS = [PAL.carRed, PAL.carBlue, PAL.carTeal, PAL.carYellow, PAL.carWhite];
 
+// Cars are vector props standing on the pavement (they carry no weight).
 function car(world, x, y, colIdx = 0) {
-  const body = CAR_COLS[colIdx % CAR_COLS.length];
-  world.rect(x, y - 4, 9, 3, STEEL, 0, body);          // body
-  world.rect(x + 1, y - 7, 7, 3, GLASS, 0, PAL.glassCar); // cabin glazing
-  world.rect(x + 2, y - 6, 5, 1, STEEL, 0, body);      // roof
-  world.rect(x + 1, y - 1, 2, 1, CASTIRON, 0, PAL.tire);
-  world.rect(x + 6, y - 1, 2, 1, CASTIRON, 0, PAL.tire);
-  world.setPainted(x, y - 5, STEEL, PAL.awningWhite);
-  world.setPainted(x + 8, y - 5, STEEL, PAL.awningWhite);
+  world.rect(x, y - 2, 9, 2, CASTIRON, 0, 0x4a4f57);   // kerb-side shadow slab
+  world.prop('car', x, y - 6, 9, 6, { c: CAR_COLS[colIdx % CAR_COLS.length] });
 }
 
+// A tree is a vector prop: trunk + three overlapping foliage blobs.
 function tree(world, x, y, h = 12) {
-  world.rect(x, y - h, 2, h, WOOD, 0, PAL.trunk);
-  world.disc(x, y - h - 4, 6, GRASS);
-  world.disc(x - 3, y - h - 1, 4, GRASS);
-  world.disc(x + 3, y - h - 2, 4, GRASS);
-  // leafy tint variation so neighbouring trees don't look cloned
-  const c1 = PAL.leaf;
-  const c2 = PAL.leafDark;
-  for (let i = 0; i < world.n; i++) {
-    if (world.mat[i] !== GRASS) continue;
-    const cx = i % world.w, cy = (i / world.w) | 0;
-    if (Math.abs(cx - x) > 9 || Math.abs(cy - (y - h - 3)) > 12) continue;
-    world.col[i] = ((cx * 7 + cy * 13) % 5 === 0) ? c2 : c1;
-  }
+  const r = 4 + (h % 5) * 0.6;
+  world.prop('tree', x - r, y - h - r * 1.6, r * 2, h + r * 1.6, {
+    c: [PAL.leaf, PAL.leafDark, 0x6bb352][x % 3],
+  });
 }
 
 function lamp(world, x, y) {
-  world.rect(x, y - 16, 1, 16, CASTIRON, 0, PAL.metalRail);
-  world.set(x + 1, y - 16, CASTIRON, 0, PAL.metalRail);
-  world.set(x + 2, y - 16, GLASS, 0, PAL.lamp);
+  world.prop('lampPost', x, y - 16, 2, 16);
   return { x: x + 2, y: y - 15, r: 60 };
 }
 

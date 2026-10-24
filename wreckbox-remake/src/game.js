@@ -126,6 +126,24 @@ export class Game {
       }
       if (this.frame % 3 === 0 && MATERIALS[m].sound) this.audio.hit(MATERIALS[m].sound, 0.7);
     };
+    // A rigid section lands: dust, ground shake and a rumble scaled by its mass.
+    w.hooks.impact = (x, y, mass, speed) => {
+      const px = x * this.cell, py = y * this.cell;
+      const power = Math.min(3, 0.5 + mass / 220 + speed / 40);
+      this.effects.dust(px, py, Math.min(26, 4 + (mass / 8) | 0), power);
+      this.effects.chips(px, py, 6, '#9a8a74', power);
+      this.effects.shakeAmp = Math.min(14, (this.effects.shakeAmp || 0) + power * 2.4);
+      this.audio.collapse(Math.min(1.6, 0.5 + power * 0.4));
+      this.pushCitizens(px, py, this.cell * 10, power * 0.6);
+    };
+    w.hooks.collapse = (x, y, width) => {
+      this.dangerX = x * this.cell;
+      this.dangerTimer = 3.5;
+      this.effects.dust(x * this.cell, y * this.cell, 18, 1.6);
+      this.effects.shakeAmp = Math.min(16, (this.effects.shakeAmp || 0) + 4);
+      this.audio.collapse(1.8);
+      this.toast(this.lang === 'ru' ? 'Обрушение!' : 'Collapse!');
+    };
     w.hooks.crumble = (x, y, m) => {
       const px = x * this.cell, py = y * this.cell;
       this.crumbleBurst++;

@@ -38,6 +38,14 @@ export class World {
     this.wind = 0.35;
     this.hooks = { destroy: null, blast: null, fire: null, splash: null };
     this.pendingBlasts = [];
+    // rigid debris chunks: whole building sections that lost their support fall
+    // and tumble as one body instead of trickling down cell by cell
+    this.chunks = [];
+    // Decorative vector props (furniture, plants, wall art). They carry no
+    // structural weight and are drawn as smooth shapes by the renderer.
+    this.props = [];
+    // building records (from the map builders) for progressive collapse
+    this.buildings = [];
     this.brokenCount = 0;
     this.destroyedTotal = 0;
     this.powerNodes = [];
@@ -91,6 +99,48 @@ export class World {
   }
 
   // Cell with an explicit colour: furniture, cars, signage, awnings.
+  // Register a decorative prop in cell coordinates.
+  prop(t, x, y, w, h, extra) {
+    this.props.push(Object.assign({ t, x, y, w, h }, extra || {}));
+    this.dirty = true;
+  }
+
+  // Furniture is not structural: a prop disappears when the slab it stands on
+  // (or the wall it hangs from) is destroyed.
+  pruneProps() {
+    if (!this.props.length) return;
+    const { w, h, mat } = this;
+    const keep = [];
+    for (const p of this.props) {
+      let alive;
+      if (p.t === 'roof') {
+        // a roof survives while most of its attic wall is still there
+        const fy = p.y + p.h;
+        let solidRun = 0;
+        for (let xx = p.x + 1; xx < p.x + p.w - 1; xx++) {
+          if (fy < h && mat[fy * w + xx]) solidRun++;
+        }
+        alive = solidRun > p.w * 0.25;
+      } else if (p.t === 'window' || p.t === 'picture' || p.t === 'shelf') {
+        // wall-mounted: needs any solid cell behind it
+        alive = false;
+        for (let yy = p.y; yy < p.y + p.h && !alive; yy++) {
+          for (let xx = p.x; xx < p.x + p.w; xx++) {
+            if (xx >= 0 && yy >= 0 && xx < w && yy < h && mat[yy * w + xx]) { alive = true; break; }
+          }
+        }
+      } else {
+        const fy = p.y + p.h;       // row just under the prop
+        alive = fy < h && p.x >= 0 && p.x + p.w <= w ? !!mat[fy * w + p.x] : false;
+      }
+      if (alive) keep.push(p);
+    }
+    if (keep.length !== this.props.length) {
+      this.props = keep;
+      this.dirty = true;
+    }
+  }
+
   setPainted(x, y, m, col, dmg = 0) {
     this.set(x, y, m, dmg, col);
   }
@@ -200,59 +250,39 @@ export class World {
       }
     };
 
+    const pr = (t, x, y, w2, h2, extra) => this.prop(t, x, y - h2 + 1, w2, h2, extra);
+    const bedCols = [0xc9473f, 0x3f9c8b, 0x4a7fc0, 0xe0a63c];
     if (kind === 0) {
-      // bedroom: bed with a coloured blanket, small wardrobe, rug
-      block(L, floor, 3, 2, WOOD, P.bedWhite);
-      place(L + 1, floor, WOOD, P.bedRed);
-      place(L + 2, floor, WOOD, P.bedRed);
-      place(L, floor - 1, WOOD, P.bedWhite);
-      block(R - 1, floor, 2, 2, WOOD, P.woodDark);
-      this.paint(L + 3, floor, 0xd8c9a4);
-      if (L + 4 <= R) this.paint(L + 4, floor, 0xd8c9a4);
+      pr('bed', L, floor, 3, 2, { c: bedCols[(this.rnd() * 4) | 0] });
+      pr('wardrobe', R - 1, floor, 2, 3);
+      if (R - L > 4) pr('rug', L + 3, floor, 2, 1, { c: 0xd8b892 });
     } else if (kind === 1) {
-      // kitchen: counter run with a sink, a fridge, a stool
-      block(L, floor, Math.min(4, R - L + 1), 1, WOOD, P.tableWood);
-      place(L + 1, floor - 1, PLASTIC, P.awningWhite);
-      block(R - 1, floor, 2, 2, PLASTIC, P.fridge);
-      block(L, floor, 1, 0, WOOD, P.tableWood);
-      if (R - 1 > L + 3) place(L + 3, floor - 1, PLASTIC, P.tvDark);
+      pr('counter', L, floor, Math.min(4, R - L + 1), 1);
+      pr('fridge', R - 1, floor, 2, 3);
+      if (R - L > 5) pr('stool', L + 3, floor, 1, 1);
     } else if (kind === 2) {
-      // living room: sofa, coffee table, tv, plant
-      block(L, floor, 3, 2, WOOD, P.sofaBlue);
-      block(L + 3, floor, 2, 1, WOOD, P.tableWood);
-      place(R, floor, WOOD, P.plant);
-      place(R, floor - 1, WOOD, P.leaf);
-      place(R - 1, floor - 1, PLASTIC, P.tvDark);
-      this.paint(L + 1, floor, 0xe0b9a0);
+      pr('sofa', L, floor, 3, 2, { c: [0x4a7fc0, 0x3f9c8b, 0xc9473f][(this.rnd() * 3) | 0] });
+      if (R - L > 3) pr('table', L + 3, floor, 2, 1);
+      pr('plant', R, floor, 1, 2);
+      if (R - L > 4) pr('tv', R - 1, floor, 2, 2);
     } else if (kind === 3) {
-      // study: desk with a monitor, chair, bookshelf
-      block(L, floor, 2, 1, WOOD, P.tableWood);
-      place(L, floor - 1, PLASTIC, P.tvDark);
-      place(L + 2, floor, WOOD, P.sofaRed);
-      block(R - 1, floor, 2, 2, WOOD, P.woodDark);
+      pr('table', L, floor, 2, 1);
+      pr('monitor', L, floor, 2, 2);
+      pr('stool', L + 2, floor, 1, 1);
+      pr('shelf', R - 1, floor, 2, 3);
     } else {
-      // bathroom / laundry: tiles, washer, sink
       for (let x = x0 + 1; x < x0 + w - 1; x++) {
         for (let y = top + 1; y <= floor; y++) {
           const i = y * this.w + x;
           if (this.mat[i] === EMPTY) this.col[i] = y === floor ? 0xc9dbe2 : 0xd8e6ea;
         }
       }
-      block(L, floor, 2, 2, PLASTIC, P.fridge);
-      place(R, floor, WOOD, P.tableWood);
-      place(R - 1, floor - 1, PLASTIC, P.awningWhite);
+      pr('washer', L, floor, 2, 2);
+      pr('sink', R, floor, 2, 1);
     }
-    // Wall-mounted décor: a shelf and a framed picture hang off the partitions,
-    // so they are carried by the wall and never float.
     if (h >= 5) {
-      const sy = floor - 3;
-      if (place(L, sy, WOOD, P.woodDark)) {
-        place(L + 1, sy, WOOD, P.woodDark);
-        const bookCols = [0xc9473f, 0x3f9c8b, 0x4a7fc0, 0xe9c04a];
-        if (this.inB(L, sy - 1)) place(L, sy - 1, WOOD, bookCols[(this.rnd() * 4) | 0]);
-        if (this.inB(L + 1, sy - 1)) place(L + 1, sy - 1, WOOD, bookCols[(this.rnd() * 4) | 0]);
-      }
-      if (place(R, sy, PLASTIC, P.woodDark)) place(R, sy - 1, PLASTIC, [0xc98a92, 0x8fb3c9, 0xc9a24a][(this.rnd() * 3) | 0]);
+      pr('shelf', L, floor - 2, 2, 1);
+      pr('picture', R, floor - 2, 1, 1, { c: [0xc98a92, 0x8fb3c9, 0xc9a24a][(this.rnd() * 3) | 0] });
     }
     // (ceiling lamps are drawn by the renderer instead of painted here: the row
     // above the top storey is outside the building, so painting there would
@@ -323,12 +353,7 @@ export class World {
       this.rect(x, y, width, 1, CONCRETE, 0, f === 0 ? P.concreteDark : P.floorWood);
       // window bands painted into the side walls (wall stays load-bearing)
       for (const wx of [x, x + width - 2]) {
-        for (let vy = y - 2; vy <= y - 4; vy++) {
-          this.setPainted(wx, vy, mat, PAL.glassCar);
-          this.setPainted(wx + 1, vy, mat, PAL.glassCar);
-        }
-        this.setPainted(wx, y - 1, mat, PAL.panelTrim);
-        this.setPainted(wx + 1, y - 1, mat, PAL.panelTrim);
+        this.prop('window', wx, y - 4, 2, 3);
       }
       this.furnishFloor(x + 2, y, width - 4, floorH, PLASTIC, 5 + ((this.rnd() * 3) | 0));
     }
@@ -364,6 +389,7 @@ export class World {
       this.setPainted(x + 4, roof - 13, PLASTIC, P.signRed);
     }
     this.dirty = true;
+    this.buildings.push({ x, y: roof - 8, w: width, h: h + 8, base: groundY - 1, dead: false });
     return { x, y: roof - 6, w: width, h: h + 6, floors };
   }
 
@@ -385,13 +411,8 @@ export class World {
       this.rect(x + t, y - floorH + 1, width - t * 2, 1, WOOD, 0, P.woodDark);
       // windows painted into the walls
       for (const wx of [x, x + width - 2]) {
-        for (const wy of [y - 3, y - 5]) {
-          if (wy <= y - floorH + 1) continue;
-          this.setPainted(wx, wy, wall, PAL.glassCar);
-          this.setPainted(wx + 1, wy, wall, PAL.glassCar);
-        }
-        this.setPainted(wx, y - 4, wall, PAL.awningWhite);
-        this.setPainted(wx + 1, y - 4, wall, PAL.awningWhite);
+        this.prop('window', wx, y - 3, 2, 2);
+        if (floorH > 6) this.prop('window', wx, y - 6, 2, 2);
       }
       this.furnishFloor(x + t, y, width - t * 2, floorH, wall, 5 + ((this.rnd() * 3) | 0));
     }
@@ -425,12 +446,17 @@ export class World {
     }
     const ridgeW = Math.max(2, width - rise * 2 + 2);
     this.rect(x + rise - 2, groundY - h - rise, ridgeW, 1, roof, 0, mixCol(tile, 0x000000, 0.22));
+    // smooth rendered roof drawn on top of the stepped cells
+    this.prop('roof', x - 1, groundY - h - rise - 1, width + 2, rise + 2, { rise, c: tile });
 
     // chimney: runs from the top-floor ceiling up past the ridge so it is carried
     const chx = x + width - 4;
     this.rect(chx, groundY - h - rise - 3, 2, rise + 4, BRICK, 0, P.chimney);
     this.chimney = this.chimney || [];
     this.chimney.push({ x: chx, y: groundY - h - rise - 4 });
+    this.buildings.push({
+      x, y: groundY - h - rise - 2, w: width, h: h + rise + 4, base: groundY - 1, dead: false,
+    });
 
     this.dirty = true;
     return { x, y: groundY - h - rise, w: width, h: h + rise };
@@ -644,23 +670,15 @@ export class World {
       if (anch[i] && mat[i] && !support[i]) { support[i] = 1; stack[sp++] = i; }
     }
     let falling = 0;
+    // Orthogonal connectivity only: a diagonal chain of cells is not a load
+    // path, so a cantilever can never hold itself up just by touching a corner.
     while (sp > 0) {
       const i = stack[--sp];
       const x = i % w, y = (i / w) | 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        const ny = y + dy;
-        if (ny < 0 || ny >= h) continue;
-        for (let dx = -1; dx <= 1; dx++) {
-          if (!dx && !dy) continue;
-          const nx = x + dx;
-          if (nx < 0 || nx >= w) continue;
-          const j = ny * w + nx;
-          if (support[j]) continue;
-          if (!isSolid(mat[j])) continue;
-          support[j] = 1;
-          stack[sp++] = j;
-        }
-      }
+      if (y > 0) { const j = i - w; if (!support[j] && isSolid(mat[j])) { support[j] = 1; stack[sp++] = j; } }
+      if (y < h - 1) { const j = i + w; if (!support[j] && isSolid(mat[j])) { support[j] = 1; stack[sp++] = j; } }
+      if (x > 0) { const j = i - 1; if (!support[j] && isSolid(mat[j])) { support[j] = 1; stack[sp++] = j; } }
+      if (x < w - 1) { const j = i + 1; if (!support[j] && isSolid(mat[j])) { support[j] = 1; stack[sp++] = j; } }
     }
     this.fallList.length = 0;
     let solid = 0;
@@ -802,11 +820,75 @@ export class World {
     return snapped;
   }
 
+  // Progressive collapse: when a building loses most of its footing the whole
+  // section above the ground gives way as one heavy body instead of surviving on
+  // a single column.
+  checkOverturn() {
+    const { w, mat, support } = this;
+    for (const b of this.buildings) {
+      if (b.dead) continue;
+      let cols = 0, held = 0;
+      for (let x = b.x; x < b.x + b.w; x++) {
+        if (x < 0 || x >= w) continue;
+        cols++;
+        for (let y = b.base; y >= b.base - 3 && y >= 0; y--) {
+          const i = y * w + x;
+          if (!mat[i]) continue;
+          if (support[i]) held++;
+          break;
+        }
+      }
+      if (!cols) { b.dead = true; continue; }
+      b.ratio = held / cols;
+      if (b.ratio < 0.55) this.collapseBuilding(b);
+    }
+  }
+
+  // Pancake collapse: the building is eaten away from the bottom up, one floor
+  // band at a time. Each band becomes a rigid chunk that drops onto the rubble of
+  // the band below, so a five-storey block visibly folds into a pile.
+  collapseBuilding(b) {
+    const { w, h, mat } = this;
+    const bandH = 6;
+    b.dead = true;
+    b.queue = [];
+    for (let y = b.base; y >= Math.max(0, b.y); y -= bandH) {
+      const cells = [];
+      for (let yy = y; yy > y - bandH && yy >= 0; yy--) {
+        for (let x = Math.max(0, b.x); x < Math.min(w, b.x + b.w); x++) {
+          const i = yy * w + x;
+          const m = mat[i];
+          if (!m || m === SOIL || m === ROCK || m === GRASS || this.terrainAnchor[i]) continue;
+          cells.push(i);
+        }
+      }
+      if (cells.length) b.queue.push(cells);
+    }
+    b.queueTimer = 0;
+    this.props = this.props.filter((p) => !(p.x + p.w > b.x - 2 && p.x < b.x + b.w + 2 &&
+      p.y + p.h >= b.y - 2 && p.y <= b.base + 2));
+    this.dirty = true;
+    if (this.hooks.collapse) this.hooks.collapse(b.x + b.w / 2, b.base, b.w);
+  }
+
+  stepCollapses(dt) {
+    for (const b of this.buildings) {
+      if (!b.queue || !b.queue.length) continue;
+      b.queueTimer += dt;
+      while (b.queue.length && b.queueTimer > 0.11) {
+        b.queueTimer -= 0.11;
+        const cells = b.queue.shift();
+        this.spawnChunk(cells, 7);
+      }
+    }
+  }
+
   structuralStep() {
     this.recomputeSupport();
     this.computeSpan();
     this.solveLoad();
     this.applySpanStress();
+    this.checkOverturn();
     this.solvePower();
     this.supportStamp++;
     this.dirty = true;
@@ -852,6 +934,156 @@ export class World {
       else if (rad[i]) rad[i] = 0;
     }
     this.stats.fallout = count;
+  }
+
+  // ------------------------------------------------------------ rigid chunks
+  // Group the unsupported cells into connected islands. Anything big enough is
+  // cut out of the grid as a rigid body (so a whole storey topples realistically
+  // instead of raining single cells); the rest keeps the old sand-like fall.
+  detachIslands() {
+    const { w, h, mat } = this;
+    const list = this.fallList;
+    if (!list.length) return;
+    const seen = this.islandSeen || (this.islandSeen = new Uint8Array(this.n));
+    this.islandSeen.fill(0);
+    const q = this.islandQueue || (this.islandQueue = new Int32Array(this.n));
+    let i0 = 0;
+    while (i0 < list.length) {
+      const start = list[i0++];
+      if (seen[start]) continue;
+      seen[start] = 1;
+      let head = 0, tail = 0;
+      q[tail++] = start;
+      const island = [];
+      while (head < tail) {
+        const i = q[head++];
+        island.push(i);
+        const x = i % w, y = (i / w) | 0;
+        if (y > 0) { const j = i - w; if (!seen[j] && !this.support[j] && mat[j]) { seen[j] = 1; q[tail++] = j; } }
+        if (y < h - 1) { const j = i + w; if (!seen[j] && !this.support[j] && mat[j]) { seen[j] = 1; q[tail++] = j; } }
+        if (x > 0) { const j = i - 1; if (!seen[j] && !this.support[j] && mat[j]) { seen[j] = 1; q[tail++] = j; } }
+        if (x < w - 1) { const j = i + 1; if (!seen[j] && !this.support[j] && mat[j]) { seen[j] = 1; q[tail++] = j; } }
+      }
+      if (island.length < 10) continue;         // small rubble keeps cell physics
+      this.spawnChunk(island);
+    }
+  }
+
+  spawnChunk(island, initialVy = 0) {
+    const { w, mat, dmg, col, tint, fire } = this;
+    let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+    for (const i of island) {
+      const x = i % w, y = (i / w) | 0;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const cw = maxX - minX + 1;
+    const ch = maxY - minY + 1;
+    const cells = [];
+    for (const i of island) {
+      const x = i % w, y = (i / w) | 0;
+      cells.push({
+        dx: x - minX, dy: y - minY,
+        m: mat[i], d: dmg[i], c: col[i], t: tint[i], f: fire[i],
+      });
+      mat[i] = EMPTY; col[i] = 0; dmg[i] = 0; fire[i] = 0;
+    }
+    // tall, narrow sections tip over; wide slabs mostly drop straight down
+    const lean = cw > 0 ? (ch / cw) : 1;
+    const dir = this.rnd() < 0.5 ? 1 : -1;
+    const omega = lean > 1.4 ? dir * Math.min(0.9, 0.12 * lean) : dir * 0.03;
+    this.chunks.push({
+      cells, cw, ch,
+      x: minX, y: minY, vx: 0, vy: initialVy || 0, rot: 0, omega,
+      img: null, age: 0, mass: island.length,
+    });
+    this.dirty = true;
+  }
+
+  stepChunks(dt) {
+    if (!this.chunks.length) return;
+    const { w, h, mat } = this;
+    for (let ci = this.chunks.length - 1; ci >= 0; ci--) {
+      const c = this.chunks[ci];
+      c.age += dt;
+      c.vy = Math.min(46, c.vy + 52 * dt);
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+      c.rot += c.omega * dt;
+      // collision: look at the lowest cell of every column of the chunk
+      let hit = false;
+      const px = Math.round(c.x), py = Math.round(c.y);
+      for (const cell of c.cells) {
+        const gx = px + cell.dx, gy = py + cell.dy;
+        if (gy >= h - 1) { hit = true; break; }
+        if (gx < 0 || gx >= w) { hit = true; break; }
+        const below = (gy + 1) * w + gx;
+        // only the underside matters: a cell resting on the world
+        if (mat[below] && isSolid(mat[below])) {
+          let lowest = true;
+          for (const other of c.cells) {
+            if (other.dx === cell.dx && other.dy > cell.dy) { lowest = false; break; }
+          }
+          if (lowest) { hit = true; break; }
+        }
+      }
+      if (hit) {
+        c.landed = (c.landed || 0) + 1;
+        if (c.landed > 1 || c.age > 0.12) {
+          this.landChunk(c, px, py);
+          this.chunks.splice(ci, 1);
+        } else {
+          // still settling in the hole it left behind
+          c.vy = Math.max(c.vy, 6);
+        }
+      }
+    }
+  }
+
+  // A chunk lands as a rigid body: the whole section settles down by the largest
+  // free distance shared by all of its columns, so storeys stay recognisable in a
+  // stack instead of the building being stamped back into the ground.
+  landChunk(c, px, py) {
+    const { w, h, mat, dmg, col, tint } = this;
+    const speed = c.vy;
+    // how far can every column of the chunk still drop?
+    let drop = h;
+    for (const cell of c.cells) {
+      const gx = px + cell.dx;
+      if (gx < 0 || gx >= w) { drop = 0; break; }
+      let d = 0;
+      let y = py + cell.dy + 1;
+      while (y < h && (mat[y * w + gx] === EMPTY || mat[y * w + gx] === WATER)) { d++; y++; }
+      if (y >= h) { d = h; }
+      // only the bottom-most cell of each column matters: take the max per column
+      const key = cell.dx;
+      if (!c.colDrop || c.colDrop[key] === undefined) {
+        c.colDrop = c.colDrop || {};
+        c.colDrop[key] = d;
+      } else if (d > c.colDrop[key]) c.colDrop[key] = d;
+    }
+    if (c.colDrop) for (const k in c.colDrop) drop = Math.min(drop, c.colDrop[k]);
+    c.colDrop = null;
+    if (drop === h || drop > 40) drop = Math.max(0, Math.round(c.vy));
+    const dy = Math.max(0, Math.round(drop));
+    let crushed = 0;
+    for (const cell of c.cells) {
+      const gx = px + cell.dx;
+      const gy = py + cell.dy + dy;
+      if (gx < 0 || gx >= w || gy < 0 || gy >= h) { crushed++; continue; }
+      const i = gy * w + gx;
+      if (mat[i]) { crushed++; continue; }
+      const rubble = speed > 12 ? this.rnd() < 0.45 : this.rnd() < 0.2;
+      mat[i] = rubble && cell.m !== GLASS ? DEBRIS : cell.m;
+      dmg[i] = Math.min(255, (cell.d || 0) + (speed > 16 ? 40 : 12));
+      col[i] = rubble ? 0 : (cell.c || 0);
+      tint[i] = cell.t || 0;
+    }
+    this.destroyedTotal += crushed;
+    this.dirty = true;
+    if (this.hooks.impact) this.hooks.impact(px + c.cw / 2, py + c.ch, c.mass, speed);
   }
 
   // ----------------------------------------------------------------- gravity
@@ -914,6 +1146,10 @@ export class World {
       this.structuralStep();
       didStruct = true;
     }
+    this.stepCollapses(dt);
+    this.detachIslands();
+    this.stepChunks(dt);
+    if ((this.propTimer = (this.propTimer || 0) + 1) % 12 === 0) this.pruneProps();
     this.stepFalling();
     if (didStruct) this.stepFire(dt * 3);
     this.stepRadiation();
