@@ -1,0 +1,11 @@
+{
+  "name": "sandbox-console",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Web control panel for the sandbox, styled like the desktop screenshot",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" }
+}
