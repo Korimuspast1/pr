@@ -278,17 +278,20 @@ canvas#view {
 .tool-strip {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
   padding: 8px;
   background: var(--paper);
   border: 2px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  max-width: min(100%, 940px);
+  max-width: 100%;
 }
 
 .tool {
   position: relative;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;

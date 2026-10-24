@@ -1,8 +1,8 @@
-import { PAL } from './materials.js';
+import { PAL, mixCol } from './materials.js';
 import { World } from './world.js';
 import {
   EMPTY, SOIL, ROCK, CONCRETE, BRICK, STEEL, GLASS, WOOD, ASPHALT, PANEL,
-  AERATED, SLATE, GLASSBLOCK, LEAD, CASTIRON, SAND, WATER, GRASS, AMMO, REACTOR, WIRE,
+  AERATED, SLATE, GLASSBLOCK, LEAD, CASTIRON, SAND, WATER, GRASS, AMMO, REACTOR, WIRE, PLASTIC,
 } from './materials.js';
 
 export const MAP_W = 460;
@@ -246,6 +246,37 @@ export function buildBase() {
   world.rect(bx + 52, by + 20, 48, 2, CONCRETE);
   world.rect(bx + 102, by + 14, 46, 2, CONCRETE);
 
+  // bunker fit-out: khaki walls, bunks, crates, consoles (painted, never floating)
+  const khaki = 0xcfc39c;
+  for (let yy = by + 1; yy < by + bh - 1; yy++) {
+    for (let xx = bx + 1; xx < bx + bw - 1; xx++) {
+      const i = world.idx(xx, yy);
+      if (!world.mat[i]) world.paint(xx, yy, khaki);
+    }
+  }
+  const bunk = (x, y, w, h, m, c) => {
+    for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) {
+      const y2 = y - dy;
+      if (world.inB(x + dx, y2) && (dy === 0 || world.mat[world.idx(x + dx, y2 + 1)])) {
+        world.setPainted(x + dx, y2, m, c);
+      }
+    }
+  };
+  for (let k = 0; k < 4; k++) {
+    const bxx = bx + 6 + k * 11;
+    bunk(bxx, by + bh - 1, 3, 1, WOOD, PAL.bedWhite);
+    bunk(bxx + 2, by + bh - 2, 1, 1, WOOD, PAL.bedRed);
+  }
+  for (let k = 0; k < 6; k++) {
+    const cx4 = bx + 8 + (k % 3) * 5;
+    const cy4 = by + bh - 1 - ((k / 3) | 0) * 3;
+    bunk(cx4, cy4, 2, 2, WOOD, 0x7f8a54);
+  }
+  for (const [cx5, cy5] of [[bx + 60, by + 14], [bx + 70, by + 14], [bx + 112, by + 8]]) {
+    bunk(cx5, cy5, 4, 2, PLASTIC, PAL.tvDark);
+  }
+  for (let lx = bx + 14; lx < bx + bw - 6; lx += 22) world.paint(lx, by - 2, PAL.lamp);
+
   // lead lining inside the command-room ceiling (part of the slab)
   world.rect(bx + 2, by - 2, 46, 1, LEAD);
   // ventilation shaft with grille up to the surface
@@ -271,11 +302,13 @@ export function buildBase() {
   }
 
   // barracks (brick, two storeys)
-  world.stampHouse(230, GY, 40, 2, { mat: BRICK, roof: SLATE, floorH: 8 });
-  world.stampHouse(290, GY, 30, 2, { mat: PANEL, roof: SLATE, floorH: 8 });
+  world.stampHouse(230, GY, 40, 3, { mat: BRICK, roof: SLATE, floorH: 6, facade: PAL.facBrick });
+  world.stampHouse(290, GY, 30, 2, { mat: PANEL, roof: SLATE, floorH: 6, facade: PAL.facCream });
 
   // command tower with radar
-  const tw = world.stampTower(350, GY, 22, 46, { mat: CONCRETE, glass: GLASSBLOCK, floorH: 7, colStep: 7 });
+  const tw = world.stampTower(350, GY, 26, 42, {
+    mat: CONCRETE, glass: GLASSBLOCK, floorH: 6, colStep: 5, facade: PAL.facMint,
+  });
   world.rect(355, tw.y - 10, 2, 10, STEEL);
   world.rect(352, tw.y - 16, 12, 1, STEEL);
   world.rect(348, tw.y - 22, 20, 2, STEEL);
@@ -295,10 +328,12 @@ export function buildBase() {
   // vehicles on the square
   for (let i = 0; i < 4; i++) {
     const vx = 96 + i * 26;
-    world.rect(vx, GY - 7, 18, 5, i % 2 ? GRASS : CASTIRON); // armour
-    world.rect(vx + 2, GY - 10, 9, 3, STEEL);                 // turret
-    world.rect(vx + 12, GY - 9, 8, 1, CASTIRON);              // barrel
-    world.rect(vx + 1, GY - 2, 16, 2, CASTIRON);              // tracks
+    const olive = i % 2 ? 0x6f7c4a : 0x59654a;
+    world.rect(vx, GY - 7, 18, 5, STEEL, 0, olive);            // armour
+    world.rect(vx + 2, GY - 10, 9, 3, STEEL, 0, mixCol(olive, 0xffffff, 0.12)); // turret
+    world.rect(vx + 12, GY - 9, 8, 1, CASTIRON, 0, 0x3d423a);  // barrel
+    world.rect(vx + 1, GY - 2, 16, 2, CASTIRON, 0, PAL.tire);  // tracks
+    world.setPainted(vx + 5, GY - 6, STEEL, PAL.glassCar);
   }
 
   // perimeter fence: posts with two rails on the far left and right
@@ -354,11 +389,15 @@ export function buildAtomgrad() {
 
   // reactor hall: outer shell, two interior floors, load-bearing steel frame
   const rx = 200;
-  world.rect(rx, GY - 46, 90, 46, CONCRETE);
+  world.rect(rx, GY - 46, 90, 46, PANEL, 0, PAL.facSand);
+  world.rect(rx, GY - 12, 90, 4, PANEL, 0, PAL.facTeal);
   world.rect(rx + 4, GY - 42, 82, 40, EMPTY);
-  world.rect(rx + 4, GY - 42, 82, 2, CONCRETE);   // ceiling under the roof
-  world.rect(rx + 4, GY - 24, 82, 2, CONCRETE);   // mezzanine slab
-  world.rect(rx + 4, GY - 6, 82, 2, CONCRETE);    // basement slab
+  world.rect(rx + 4, GY - 42, 82, 2, CONCRETE, 0, PAL.concreteLight);   // ceiling under the roof
+  world.rect(rx + 4, GY - 24, 82, 2, CONCRETE, 0, PAL.floorWood);   // mezzanine slab
+  world.rect(rx + 4, GY - 6, 82, 2, CONCRETE, 0, PAL.floorWood);    // basement slab
+  // roof trusses and skylight strips
+  for (let tx = rx + 8; tx < rx + 86; tx += 10) world.rect(tx, GY - 45, 2, 3, STEEL, 0, PAL.metalRail);
+  for (let tx = rx + 12; tx < rx + 84; tx += 10) world.paint(tx, GY - 46, PAL.glassCar);
   // steel frame: goes last so fittings and lead can't cut the load path
   for (let cx2 = rx + 4; cx2 < rx + 86; cx2 += 6) {
     world.rect(cx2, GY - 42, 1, 18, STEEL);
@@ -395,20 +434,22 @@ export function buildAtomgrad() {
   for (let st = 0; st < 18; st++) world.rect(rx + 6 + st, GY - 7 - st, 2, 1, CONCRETE);
 
   // turbine hall
-  world.stampTower(300, GY, 46, 34, { mat: PANEL, glass: GLASS, floorH: 8, colStep: 8 });
+  world.stampTower(300, GY, 46, 34, { mat: PANEL, glass: GLASS, floorH: 6, colStep: 5, facade: PAL.facOrange });
   world.rect(304, GY - 6, 16, 6, CASTIRON);
   world.rect(326, GY - 6, 16, 6, CASTIRON);
 
   // town: aerated houses with glass blocks
   let x = 360;
   for (const s of [{ w: 24, h: 26 }, { w: 20, h: 22 }, { w: 28, h: 30 }, { w: 22, h: 24 }]) {
-    world.stampHouse(x, GY, s.w, Math.max(2, Math.round(s.h / 8)), { mat: AERATED, roof: SLATE, floorH: 8 });
+    world.stampHouse(x, GY, s.w, Math.max(2, Math.round(s.h / 7)), {
+      mat: AERATED, roof: SLATE, floorH: 6, facade: [PAL.facCream, PAL.facMint][x % 2],
+    });
     x += s.w + 8;
   }
   // left side town
-  world.stampHouse(20, GY, 26, 3, { mat: BRICK, roof: SLATE, floorH: 8 });
-  world.stampHouse(54, GY, 22, 2, { mat: PANEL, roof: SLATE, floorH: 8 });
-  world.stampHouse(84, GY, 20, 2, { mat: AERATED, roof: SLATE, floorH: 8 });
+  world.stampHouse(20, GY, 26, 3, { mat: BRICK, roof: SLATE, floorH: 6, facade: PAL.facBrick });
+  world.stampHouse(54, GY, 22, 2, { mat: PANEL, roof: SLATE, floorH: 6, facade: PAL.facLilac });
+  world.stampHouse(84, GY, 20, 2, { mat: AERATED, roof: SLATE, floorH: 6, facade: PAL.facMint });
 
   // civil defence shelter: concrete box with lead roof and its own vent
   const sx = 400, sy = GY + 8;
@@ -441,7 +482,7 @@ export function buildAtomgrad() {
   tree(world, 60, GY, 12);
   tree(world, 175, GY, 14);
   tree(world, 355, GY, 11);
-  for (let i = 0; i < 3; i++) car(world, 250 + i * 20, GY + 3, i ? STEEL : PANEL);
+  for (let i = 0; i < 3; i++) car(world, 250 + i * 20, GY + 2, i + 1);
 
   const spawns = [];
   for (let i = 0; i < 12; i++) spawns.push([ri(20, 440), GY - 1]);

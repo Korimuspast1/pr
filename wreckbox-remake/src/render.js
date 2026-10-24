@@ -146,33 +146,64 @@ export class Renderer {
       { sheet: this.makeCloudSheet(23, 6, 1.0), speed: 9, parallax: 0.07, y: 0.16, alpha: 0.8 },
       { sheet: this.makeCloudSheet(59, 5, 0.7), speed: 15, parallax: 0.12, y: 0.24, alpha: 0.95 },
     ];
+    // pre-scale every sheet once: per-frame scaled blits are far too slow
+    for (const layer of this.clouds) {
+      const k = 0.9 + layer.parallax * 2.2;
+      layer.scaled = this.scaleSheet(layer.sheet, k);
+    }
     this.skylineFar = this.makeSkyline(11, 'rgba(174,203,224,0.85)', 250, 1, 'rgba(196,220,238,0.35)');
     this.skylineNear = this.makeSkyline(97, 'rgba(150,183,208,0.92)', 330, 1, 'rgba(178,208,230,0.45)');
+    this.skylineFarS = this.scaleSheet(this.skylineFar, 0.9);
+    this.skylineNearS = this.scaleSheet(this.skylineNear, 1.0);
+  }
+
+  scaleSheet(sheet, k) {
+    if (k === 1) return sheet;
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(sheet.width * k));
+    c.height = Math.max(1, Math.round(sheet.height * k));
+    const cx = c.getContext('2d');
+    cx.imageSmoothingEnabled = true;
+    cx.drawImage(sheet, 0, 0, c.width, c.height);
+    return c;
   }
 
   drawSky(ctx, cam) {
     const W = ctx.canvas.width, H = ctx.canvas.height;
-    if (!this.sky || this.skyH !== H) {
+    // The gradient and the sun bloom are expensive to rasterise every frame, so
+    // they are baked once into offscreen canvases and blitted.
+    if (!this.skyCanvas || this.skyW !== W || this.skyH !== H) {
+      this.skyW = W;
       this.skyH = H;
-      this.sky = ctx.createLinearGradient(0, 0, 0, H);
-      this.sky.addColorStop(0, '#61aee0');
-      this.sky.addColorStop(0.35, '#86c3ea');
-      this.sky.addColorStop(0.62, '#b6dcf3');
-      this.sky.addColorStop(1, '#e3f1f8');
+      const c = (this.skyCanvas = document.createElement('canvas'));
+      c.width = W; c.height = H;
+      const cx = c.getContext('2d');
+      const grad = cx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#61aee0');
+      grad.addColorStop(0.35, '#86c3ea');
+      grad.addColorStop(0.62, '#b6dcf3');
+      grad.addColorStop(1, '#e3f1f8');
+      cx.fillStyle = grad;
+      cx.fillRect(0, 0, W, H);
+
+      const b = (this.bloomCanvas = document.createElement('canvas'));
+      const bs = (b.width = b.height = 512);
+      const bx = b.getContext('2d');
+      const bloom = bx.createRadialGradient(bs / 2, bs / 2, 0, bs / 2, bs / 2, bs / 2);
+      bloom.addColorStop(0, 'rgba(255,252,225,0.92)');
+      bloom.addColorStop(0.10, 'rgba(255,246,200,0.40)');
+      bloom.addColorStop(0.42, 'rgba(255,240,190,0.12)');
+      bloom.addColorStop(1, 'rgba(255,240,190,0)');
+      bx.fillStyle = bloom;
+      bx.fillRect(0, 0, bs, bs);
     }
-    ctx.fillStyle = this.sky;
-    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(this.skyCanvas, 0, 0);
 
     // sun with bloom
     const sunX = W * 0.78 - cam.x * 0.006;
     const sunY = H * 0.13 - cam.y * 0.006;
-    const bloom = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, H * 0.42);
-    bloom.addColorStop(0, 'rgba(255,252,225,0.85)');
-    bloom.addColorStop(0.12, 'rgba(255,246,200,0.35)');
-    bloom.addColorStop(0.45, 'rgba(255,240,190,0.10)');
-    bloom.addColorStop(1, 'rgba(255,240,190,0)');
-    ctx.fillStyle = bloom;
-    ctx.fillRect(0, 0, W, H);
+    const br = H * 0.42;
+    ctx.drawImage(this.bloomCanvas, sunX - br, sunY - br, br * 2, br * 2);
     ctx.fillStyle = '#fffdf0';
     ctx.beginPath();
     ctx.arc(sunX, sunY, H * 0.032, 0, Math.PI * 2);
@@ -181,29 +212,29 @@ export class Renderer {
     // parallax skyline at the horizon
     this.ensureScenery();
     const horizon = (this.g.world.groundY * this.g.cell - cam.y) * cam.zoom;
-    const drawLayer = (sheet, parallax, scale, offsetY) => {
-      const sh = sheet.height * scale;
-      const sw = sheet.width * scale;
-      let x = -((cam.x * parallax) % sw);
-      const y = horizon - sh + offsetY * scale;
+    const drawLayer = (sheet, parallax, offsetY) => {
+      const sw = sheet.width;
+      const sh = sheet.height;
+      let x = -(((cam.x * parallax) % sw) + sw) % sw;
+      const y = Math.round(horizon - sh + offsetY);
       while (x < W) {
-        ctx.drawImage(sheet, x, y, sw, sh);
+        ctx.drawImage(sheet, x, y);
         x += sw;
       }
     };
-    drawLayer(this.skylineFar, 0.18, 0.9, 26);
-    drawLayer(this.skylineNear, 0.32, 1.0, 6);
+    drawLayer(this.skylineFarS, 0.18, 26);
+    drawLayer(this.skylineNearS, 0.32, 6);
 
     // clouds
     for (const layer of this.clouds) {
-      const sheet = layer.sheet;
-      const sh = sheet.height * (0.9 + layer.parallax * 2.2);
-      const sw = sheet.width * (0.9 + layer.parallax * 2.2);
+      const sheet = layer.scaled;
+      const sh = sheet.height;
+      const sw = sheet.width;
       ctx.globalAlpha = layer.alpha;
-      let x = -((cam.x * layer.parallax + this.time * layer.speed) % sw);
-      const y = H * layer.y - cam.y * layer.parallax * 0.9;
+      let x = -(((cam.x * layer.parallax + this.time * layer.speed) % sw) + sw) % sw;
+      const y = Math.round(H * layer.y - cam.y * layer.parallax * 0.9);
       while (x < W) {
-        ctx.drawImage(sheet, x, y, sw, sh);
+        ctx.drawImage(sheet, x, y);
         x += sw;
       }
       ctx.globalAlpha = 1;
@@ -270,14 +301,15 @@ export class Renderer {
               const belowSolid2 = cy < w.h - 1 && isSolid(w.mat[i + w.w]);
               if (belowSolid2) { ir *= 0.9; ig *= 0.9; ib *= 0.92; }
             } else {
+              // default room wall: warm cream or cool plaster, with a darker
+              // skirting row where the wall meets the floor slab
               const belowSolid = cy < w.h - 1 && isSolid(w.mat[i + w.w]);
-              const shade = 0.82 + ((w.tint[i] % 6) * 0.03);
+              const shade = 0.97 + ((w.tint[i] % 5) * 0.012);
               const warm = (w.tint[i] & 1) === 0;
-              ir = (warm ? 214 : 196) * shade;
-              ig = (warm ? 205 : 208) * shade;
-              ib = (warm ? 189 : 216) * shade;
-              if (belowSolid) { ir *= 0.92; ig *= 0.92; ib *= 0.94; }
-              ir *= 0.9; ig *= 0.9; ib *= 0.92;
+              ir = (warm ? 240 : 224) * shade;
+              ig = (warm ? 229 : 235) * shade;
+              ib = (warm ? 205 : 244) * shade;
+              if (belowSolid) { ir *= 0.82; ig *= 0.82; ib *= 0.84; }
             }
           }
           // wall décor: small framed picture or a shelf on some room walls
