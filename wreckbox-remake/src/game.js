@@ -3,7 +3,7 @@ import { Effects } from './effects.js';
 import { Citizens } from './citizens.js';
 import { MAPS, MAP_W, MAP_H } from './maps.js';
 import {
-  EMPTY, MATERIALS, MAT_COUNT, RGB_R, RGB_G, RGB_B, TINTS,
+  EMPTY, MATERIALS,
 } from './materials.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -392,6 +392,10 @@ export class Game {
         for (let dx = -1; dx <= 1; dx++) {
           const nx = x + dx, ny = y + dy;
           if (nx < 0 || ny < 0 || nx >= w.w || ny >= w.h) continue;
+          // stay above the street: the pavement joins every building into one mess
+          if (ny >= w.groundY) continue;
+          // and keep the demolition local to the building you clicked
+          if (Math.abs(nx - cx) > 60) continue;
           const j = ny * w.w + nx;
           if (seen[j] || !w.solidAt(nx, ny) || TERRAIN.has(w.mat[j])) continue;
           seen[j] = 1;
@@ -405,10 +409,15 @@ export class Game {
     for (const i of cells) lowest = Math.max(lowest, (i / w.w) | 0);
     const base = cells.filter((i) => ((i / w.w) | 0) >= lowest - 5).map((i) => [i % w.w, (i / w.w) | 0]);
     base.sort((a, b) => a[0] - b[0]);
+    // a handful of charges along the bottom storey, like a real controlled blast
+    const maxPicks = Math.max(3, Math.min(8, Math.round(Math.sqrt(cells.length) / 3)));
+    const span = base.length ? base[base.length - 1][0] - base[0][0] : 1;
     const picks = [];
-    for (const [x, y] of base) {
-      if (picks.some((p) => Math.abs(p.x - x) < 7)) continue;
-      picks.push({ x, y });
+    for (let k = 0; k < maxPicks; k++) {
+      const tx = base.length ? base[0][0] + Math.round((span * (k + 0.5)) / maxPicks) : cx;
+      let best = base[0] || [cx, cy];
+      for (const c of base) if (Math.abs(c[0] - tx) < Math.abs(best[0] - tx)) best = c;
+      if (!picks.some((p) => Math.abs(p.x - best[0]) < 3)) picks.push({ x: best[0], y: best[1] });
     }
     if (picks.length === 0) picks.push({ x: cx, y: cy });
     this.audio.siren();
@@ -759,12 +768,4 @@ export class Game {
     if (this.fallout <= 0) this.falloutIntensity = 0;
   }
 
-  updateCameraEdge(dt) {
-    const m = 26;
-    const s = 800 / this.cam.zoom * dt;
-    if (this.pointer.x < m) this.cam.x -= s;
-    if (this.pointer.x > this.canvas.width - m) this.cam.x += s;
-    if (this.pointer.y < m) this.cam.y -= s;
-    if (this.pointer.y > this.canvas.height - m) this.cam.y += s;
-  }
 }

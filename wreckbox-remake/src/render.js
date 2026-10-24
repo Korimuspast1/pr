@@ -95,7 +95,7 @@ export class Renderer {
         d[p] = r; d[p + 1] = g; d[p + 2] = b;
       }
     }
-    this.bctx.putImageData(this.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
+    this.bctx.putImageData(this.img, 0, 0);
   }
 
   bakeVisible() {

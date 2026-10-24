@@ -237,5 +237,4 @@ export class AudioEngine {
     this.ambientSrc = { src, g };
   }
 
-  setMenuMusic() {}
 }
