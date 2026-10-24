@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Wreckbox — ремейк</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="hud">
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">WRECKBOX</span>
+      <span class="ver">remake · v1.8-web</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="stat-destroyed">0</b><span data-i18n="hud.cells">разрушено</span></div>
+      <div class="stat"><b id="stat-people">0</b><span data-i18n="hud.people">жителей</span></div>
+      <div class="stat"><b id="stat-lost">0</b><span data-i18n="hud.lost">пострадало</span></div>
+      <div class="stat rad"><b id="stat-rad">0</b><span data-i18n="hud.rad">радиация</span></div>
+    </div>
+    <nav class="top-actions">
+      <select id="map-select" title="Карта">
+        <option value="city">Город</option>
+        <option value="base">Военная база</option>
+        <option value="atomgrad">Атомград</option>
+      </select>
+      <button class="icon-btn" id="btn-lang" title="Язык / Language">RU</button>
+      <button class="icon-btn" id="btn-sound" title="Звук">🔊</button>
+      <button class="icon-btn" id="btn-pause" title="Пауза (P)">⏸</button>
+      <button class="icon-btn" id="btn-help" title="Справка">?</button>
+      <button class="icon-btn" id="btn-full" title="Полный экран (F)">⛶</button>
+    </nav>
+  </header>
+
+  <aside id="side-panel" class="panel">
+    <div class="panel-title" id="panel-title">Инструмент</div>
+    <div id="panel-body"></div>
+  </aside>
+
+  <div id="toast"></div>
+
+  <footer id="toolbar">
+    <div class="tools" id="tools"></div>
+    <div class="hint" data-i18n="hud.hint">ЛКМ — применить · ПКМ/колесо — панорама · H — скрыть интерфейс · T — замедление · P — пауза · R — новый город · F — полный экран · ~ — секрет</div>
+  </footer>
+</div>
+
+<div id="menu" class="modal">
+  <div class="menu-card">
+    <div class="menu-title">WRECKBOX</div>
+    <div class="menu-sub" data-i18n="menu.sub">песочница разрушения в разрезе · ремейк</div>
+    <div class="menu-maps" id="menu-maps"></div>
+    <button id="btn-play" class="play" data-i18n="menu.play">Играть</button>
+    <div class="menu-hint" data-i18n="menu.hint">ЛКМ — ломать · колесо — масштаб · H — интерфейс · T — замедление · P — пауза · R — новый город · ~ — секрет</div>
+  </div>
+</div>
+
+<div id="pause" class="modal hidden">
+  <div class="modal-card">
+    <h2>Пауза</h2>
+    <div class="slider-row"><label>Общая громкость</label><input type="range" id="vol-master" min="0" max="1" step="0.01" value="0.8" /></div>
+    <div class="slider-row"><label>Взрывы</label><input type="range" id="vol-explosions" min="0" max="1" step="0.01" value="0.9" /></div>
+    <div class="slider-row"><label>Окружение</label><input type="range" id="vol-ambient" min="0" max="1" step="0.01" value="0.5" /></div>
+    <div class="slider-row"><label>Сигналы</label><input type="range" id="vol-alerts" min="0" max="1" step="0.01" value="0.7" /></div>
+    <div class="slider-row"><label>Режим записи (мягкий звук)</label><input type="checkbox" id="rec-mode" /></div>
+    <div class="buttons">
+      <button id="btn-resume">Продолжить</button>
+      <button id="btn-new">Новый город</button>
+    </div>
+  </div>
+</div>
+
+<div id="help" class="modal hidden">
+  <div class="modal-card wide">
+    <h2>Wreckbox — ремейк</h2>
+    <p class="muted">2D-песочница разрушения в разрезе. Здания не заскриптованы: вес передаётся от каждой ячейки до фундамента, всё перегруженное трескается и рушится само.</p>
+    <div class="help-grid">
+      <div>
+        <h3>Управление</h3>
+        <ul>
+          <li><b>ЛКМ</b> — применить инструмент</li>
+          <li><b>ПКМ / СКМ</b> — панорама</li>
+          <li><b>Колесо</b> — масштаб</li>
+          <li><b>WASD / стрелки</b> — камера</li>
+          <li><b>1…0, -, B, M, C</b> — инструменты</li>
+          <li><b>H</b> — скрыть интерфейс, <b>T</b> — замедление</li>
+          <li><b>P</b> — пауза, <b>R</b> — новый город</li>
+          <li><b>F</b> — полный экран, <b>~</b> — секрет</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Физика</h3>
+        <ul>
+          <li>Сталь гнётся, арматура тянется, кирпич рассыпается</li>
+          <li>Подрежьте грунт под домом — он провалится</li>
+          <li>Жители — тряпичные куклы: бегут от огня, прячутся, гибнут от энергии удара</li>
+          <li>Бетон и грунт над головой ослабляют радиацию</li>
+        </ul>
+      </div>
+    </div>
+    <button id="btn-help-close">Понятно</button>
+  </div>
+</div>
+
+<div id="console" class="hidden">
+  <div id="console-log"></div>
+  <div class="console-line"><span>&gt;</span><input id="console-input" autocomplete="off" spellcheck="false" /></div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
