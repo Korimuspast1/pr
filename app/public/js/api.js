@@ -11,6 +11,50 @@
 
 const b64 = (obj) => btoa(unescape(encodeURIComponent(JSON.stringify(obj || {}))));
 
+/*
+ * The preview gateway (Cloudflare) starts answering 502 when it sees a burst of
+ * requests. Everything below keeps us well under that: at most two requests in
+ * flight, and after a 502 the whole app cools down (exponential, capped).
+ */
+const MAX_CONCURRENT = 2;
+let inFlight = 0;
+const waiters = [];
+
+async function acquire() {
+  if (inFlight < MAX_CONCURRENT) { inFlight++; return; }
+  await new Promise((resolve) => waiters.push(resolve));
+  inFlight++;
+}
+function release() {
+  inFlight--;
+  const next = waiters.shift();
+  if (next) next();
+}
+
+let cooldownUntil = 0;
+let penalty = 0;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function waitCooldown() {
+  for (;;) {
+    const left = cooldownUntil - Date.now();
+    if (left <= 0) return;
+    await sleep(Math.min(left, 1200));
+  }
+}
+
+function penalise() {
+  penalty = Math.min(penalty + 1, 5);
+  cooldownUntil = Date.now() + Math.min(15000, 500 * 2 ** penalty);
+  emit({ ok: false, error: 'шлюз перегружен — пауза ' + Math.round((cooldownUntil - Date.now()) / 1000) + ' с' });
+}
+function reward() {
+  if (penalty > 0) penalty = Math.max(0, penalty - 1);
+  cooldownUntil = 0;
+}
+
+export const netState = () => ({ penalty, cooling: Date.now() < cooldownUntil });
+
 const PLANS = [
   { method: 'POST', path: (n) => `/api/${n}` },
   { method: 'GET', path: (n) => `/api/${n}` },
@@ -101,10 +145,13 @@ export async function call(name, body = {}, ms = 8000) {
   for (let round = 0; round < rounds; round++) {
     const plans = transport ? [transport, ...PLANS.filter((p) => p !== transport)] : PLANS;
     for (const plan of plans) {
+      await waitCooldown();
+      await acquire();
       try {
         let url = plan.path(name);
         if (plan.method === 'GET') url += (url.includes('?') ? '&' : '?') + 'p=' + encodeURIComponent(b64(body));
         const data = await attempt(plan.method, url, body, ms);
+        reward();
         if (transport !== plan) {
           transport = plan;
           console.info('[console] transport:', plan.method, plan.path('*'));
@@ -113,6 +160,7 @@ export async function call(name, body = {}, ms = 8000) {
         return data;
       } catch (e) {
         lastErr = e;
+        if (e.proxy) penalise();
         // A POST may lose its body inside an aggressive proxy ("нужен url"),
         // so only a failed GET (no body needed) is treated as a real answer.
         const definitive = !e.proxy && plan.method === 'GET';
@@ -121,9 +169,11 @@ export async function call(name, body = {}, ms = 8000) {
           throw e;
         }
         if (transport === plan) transport = null;
+      } finally {
+        release();
       }
     }
-    if (round + 1 < rounds) await new Promise((r) => setTimeout(r, 220 + Math.random() * 260));
+    if (round + 1 < rounds) await sleep(220 + Math.random() * 260);
   }
 
   emit({ ok: false, error: lastErr?.message || 'нет связи' });
@@ -162,12 +212,12 @@ export const api = {
    * Every HTTP call stays under a couple of seconds, which is what the preview
    * proxy requires (it 502s long requests).
    */
-  async fetchUrl(url, { timeout = 30000, onTick } = {}) {
+  async fetchUrl(url, { timeout = 40000, onTick } = {}) {
     const started = await this.fetchStart(url);
     if (started.error) throw new Error(started.error);
     const t0 = Date.now();
     for (;;) {
-      await new Promise((r) => setTimeout(r, 420 + Math.random() * 260));
+      await sleep(900 + Math.random() * 400);
       const job = await this.fetchPoll(started.id);
       if (job.state === 'done') return job;
       if (job.state === 'error' || job.state === 'missing') {

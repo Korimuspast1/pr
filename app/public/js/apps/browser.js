@@ -102,6 +102,8 @@ export default {
     const starBtn = $('.ff-star');
 
     const activeTab = () => tabs.find((t) => t.id === activeId);
+    let mounted = true;
+    const alive = () => mounted;
 
     /* ── tab strip ─────────────────────────────────────────────────── */
     function paintTabs() {
@@ -275,7 +277,12 @@ export default {
         }
       } catch (e) {
         tab.loading = false;
-        const transient = /шлюз|таймаут|связ|сжат|HTTP 5/i.test(e.message || '');
+        const transient = /шлюз|перегружен|пауза|таймаут|связ|сжат|HTTP 5/i.test(e.message || '');
+        if (transient && (tab.retries = (tab.retries || 0) + 1) <= 2) {
+          if (tab === activeTab()) statusEl.textContent = `шлюз занят, повтор ${tab.retries}/2…`;
+          await new Promise((r) => setTimeout(r, 900 * tab.retries));
+          if (alive()) return navigate(url, tab, { push: false });
+        }
         tab.stack = push ? [...tab.stack.slice(0, tab.index + 1), url] : tab.stack;
         tab.index = push ? tab.stack.length - 1 : tab.index;
         tab.url = url;
@@ -287,7 +294,7 @@ export default {
           <div style="font-family:var(--mono);font-size:.85em;color:var(--dim);max-width:560px">${esc(e.message || e)}</div>
           <div style="margin-top:14px;color:var(--faint);font-size:.85em;max-width:560px">
             ${transient
-              ? 'Запрос был слишком долгим для шлюза. Нажми «Повторить» — часто помогает со второго раза. Сайт открывается медленнее 7 с? Значит не успевает.'
+              ? 'Превью-шлюз (Cloudflare) ответил 502 — это ограничение частоты запросов, а не проблема сайта. Нажми «Повторить»; приложение само делает паузу и снижает темп опросов.'
               : 'Сандбокс ходит в интернет только к github.com, registry.npmjs.org, pypi.org и т. п. Проверь адрес или открой локальную страницу (/api/stats).'}
           </div>
           <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
@@ -470,6 +477,6 @@ export default {
     if (initialUrl) urlbar.value = initialUrl;
     else urlbar.focus();
     win.spec.onArgs = (args) => { if (args?.url) newTab(args.url); };
-    win.spec.onClose = () => offBm();
+    win.spec.onClose = () => { mounted = false; offBm(); };
   },
 };

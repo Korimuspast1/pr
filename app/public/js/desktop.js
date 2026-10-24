@@ -447,7 +447,7 @@ export function createDesktop(apps) {
     }
   }
   poll();
-  setInterval(poll, 5000);
+  setInterval(poll, 10000);
   on('root', paintRootUi);
   paintRootUi();
 

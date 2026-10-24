@@ -102,7 +102,7 @@ function mountFallback(host, win, setStatus) {
   async function loop() {
     while (alive && session) {
       try {
-        const r = await api.ptyRead(session.id, offset, 1200);
+        const r = await api.ptyRead(session.id, offset, 900);
         if (!alive) return;
         if (r.data) flush(decoder.decode(latin1ToBytes(r.data), { stream: true }));
         if (typeof r.offset === 'number') offset = r.offset;
@@ -288,15 +288,17 @@ const terminalApp = {
     let failStreak = 0;
     async function pump() {
       while (alive && session) {
-        if (document.hidden) { await new Promise((r) => setTimeout(r, 900)); continue; }
+        if (document.hidden) { await new Promise((r) => setTimeout(r, 1500)); continue; }
+        const focused = win === window.desktop?.wm?.focused;
         try {
-          const r = await api.ptyRead(session.id, offset, 1200);
+          const r = await api.ptyRead(session.id, offset, focused ? 1500 : 600);
           failStreak = 0;
           if (!alive || !session) return;
           if (r.error) { term.write(`\r\n\x1b[31m${r.error}\x1b[0m\r\n`); setStatus('сессия потеряна'); return; }
           if (r.data) {
             term.write(decoder.decode(latin1ToBytes(r.data), { stream: true }));
           }
+          if (r.data === '' && !focused) await new Promise((res) => setTimeout(res, 700));
           if (typeof r.offset === 'number') offset = r.offset;
           if (r.dead) {
             setStatus('сессия завершена');
