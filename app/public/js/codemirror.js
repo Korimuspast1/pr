@@ -17,6 +17,16 @@ function loadCss() {
   return cssLoaded;
 }
 
+import { call } from './api.js';
+
+/** Evaluate vendor code delivered as JSON — bypasses static-asset problems. */
+async function loadViaApi(name) {
+  const asset = await call('asset', { name }, 20000);
+  if (!asset || !asset.code) throw new Error('пустой ассет ' + name);
+  // eslint-disable-next-line no-new-func
+  new Function(asset.code)();
+}
+
 function loadScript(src) {
   if (loadedScripts.has(src)) return Promise.resolve();
   loadedScripts.add(src);
@@ -60,7 +70,13 @@ export async function loadCodeMirror(modes = []) {
   if (!window.CodeMirror) {
     if (!coreLoading) {
       coreLoading = (async () => {
-        await loadScript(`${BASE}/lib/codemirror.js`);
+        try {
+          await loadScript(`${BASE}/lib/codemirror.js`);
+        } catch {}
+        if (!window.CodeMirror) {
+          // прокси не отдал статику — тянем тот же файл через JSON-API
+          await loadViaApi('codemirror');
+        }
         if (!window.CodeMirror) throw new Error('CodeMirror не инициализировался');
         return window.CodeMirror;
       })();
@@ -73,7 +89,14 @@ export async function loadCodeMirror(modes = []) {
     for (const f of MODE_FILES[m] || []) wanted.add(f);
   }
   for (const f of wanted) {
-    try { await loadScript(`${BASE}/${f}`); } catch {}
+    try {
+      await loadScript(`${BASE}/${f}`);
+    } catch {
+      const alias = f.replace('mode/', 'mode-').replace(/\.js$/, '').replace(/\//g, '-');
+      // mode/javascript/javascript.js -> mode-javascript
+      const key = 'mode-' + f.split('/')[1];
+      try { await loadViaApi(key || alias); } catch {}
+    }
   }
   return CM;
 }

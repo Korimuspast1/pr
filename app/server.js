@@ -286,6 +286,21 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
+let vendorCache = { at: 0, xtermJs: '', xtermCss: '', cmCss: '' };
+function inlineVendors() {
+  if (Date.now() - vendorCache.at < 5000) return vendorCache;
+  const read = (rel) => {
+    try { return fs.readFileSync(path.join(PUBLIC, rel), 'utf8'); } catch { return ''; }
+  };
+  vendorCache = {
+    at: Date.now(),
+    xtermJs: read('vendor/xterm/xterm.js'),
+    xtermCss: read('vendor/xterm/xterm.css'),
+    cmCss: read('vendor/codemirror/lib/codemirror.css'),
+  };
+  return vendorCache;
+}
+
 let cssCache = { at: 0, css: '' };
 function inlineCss() {
   if (Date.now() - cssCache.at < 3000) return cssCache.css;
@@ -307,12 +322,26 @@ async function serveStatic(res, urlPath) {
   try {
     let buf = await fsp.readFile(file);
     if (rel === 'index.html') {
-      // Ship the stylesheet inline: some preview proxies rewrite or block
-      // asset responses, which leaves the desktop completely unstyled.
-      const html = buf.toString('utf8').replace(
-        /<link rel="stylesheet" href="\/style\.css"\s*\/?>/,
-        `<style id="inline-css">${inlineCss()}</style>`
-      );
+      // Ship styles + the terminal engine inline: preview proxies sometimes
+      // rewrite or block asset responses (CSS arrives as HTML, big JS 502s).
+      const v = inlineVendors();
+      const html = buf.toString('utf8')
+        .replace(
+          /<link rel="stylesheet" href="\/style\.css"\s*\/?>/,
+          `<style id="inline-css">${inlineCss()}</style>`
+        )
+        .replace(
+          /<link rel="stylesheet" href="\/vendor\/codemirror\/lib\/codemirror\.css"\s*\/?>/,
+          `<style id="cm-css">${v.cmCss}</style>`
+        )
+        .replace(
+          /<link rel="stylesheet" href="\/vendor\/xterm\/xterm\.css"\s*\/?>/,
+          `<style id="xterm-css">${v.xtermCss}</style>`
+        )
+        .replace(
+          /<script[^>]*src="\/vendor\/xterm\/xterm\.js"[^>]*><\/script>/,
+          `<script id="inline-xterm">${v.xtermJs}</script>`
+        );
       buf = Buffer.from(html, 'utf8');
     }
     res.writeHead(200, {
@@ -584,6 +613,103 @@ function ptyClose(id) {
   return true;
 }
 
+
+/** Run argv, return { out: Buffer, err: string, code } — binary safe. */
+function runCapture(argv, { input = null, timeout = 20000, cwd = ROOT } = {}) {
+  return new Promise((resolve) => {
+    const child = spawn(argv[0], argv.slice(1), { cwd, env: process.env });
+    const chunks = [];
+    let err = '';
+    const timer = setTimeout(() => { try { child.kill('SIGKILL'); } catch {} }, timeout);
+    child.stdout.on('data', (d) => chunks.push(d));
+    child.stderr.on('data', (d) => (err += d));
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({ out: Buffer.concat(chunks), err, code });
+    });
+    child.on('error', (e) => {
+      clearTimeout(timer);
+      resolve({ out: Buffer.alloc(0), err: String(e.message), code: 127 });
+    });
+    if (input != null) {
+      child.stdin.end(input);
+    } else {
+      child.stdin.end();
+    }
+  });
+}
+
+const sudoMissing = () => false;
+
+/** List a directory, optionally as root (needed for /root, /etc/shadow, …). */
+async function listDir(dir, asRoot) {
+  if (asRoot) {
+    const r = await runCapture(['sudo', '-n', 'find', dir, '-maxdepth', '1', '-mindepth', '1',
+      '-printf', '%y\t%s\t%T@\t%m\t%f\n']);
+    if (r.code !== 0) throw new Error(cleanSudoErr(r.err, dir));
+    const items = [];
+    for (const line of r.out.toString('utf8').split('\n')) {
+      if (!line.trim()) continue;
+      const [type, size, mtime, mode, ...rest] = line.split('\t');
+      const name = rest.join('\t');
+      if (!name) continue;
+      items.push({
+        name,
+        dir: type === 'd',
+        link: type === 'l',
+        size: Number(size) || 0,
+        mtime: (Number(mtime) || 0) * 1000,
+        mode: String(mode || '').padStart(3, '0'),
+      });
+    }
+    items.sort((a, b) => (b.dir - a.dir) || a.name.localeCompare(b.name));
+    return { path: dir, parent: path.dirname(dir), items, root: true };
+  }
+  return { ...(await fileList(dir)), root: false };
+}
+
+function cleanSudoErr(err, target) {
+  const t = String(err || '').trim();
+  if (/Permission denied|Отказано/i.test(t)) {
+    return `нет доступа к ${target} — включи root mode (нужны права root)`;
+  }
+  if (/password is required|a password is required/i.test(t)) return 'sudo требует пароль, а он недоступен';
+  return t.split('\n').slice(-2).join(' ') || 'не удалось прочитать каталог';
+}
+
+async function readAsRoot(target) {
+  const LIMIT = 512 * 1024;
+  const st = await runCapture(['sudo', '-n', 'stat', '-c', '%s\t%Y\t%a', '--', target]);
+  if (st.code !== 0) throw new Error(cleanSudoErr(st.err, target));
+  const [sizeStr, mtimeStr, modeStr] = st.out.toString().trim().split('\t');
+  const size = Number(sizeStr) || 0;
+  const head = await runCapture(['sudo', '-n', 'head', '-c', String(Math.min(size, LIMIT)), '--', target]);
+  if (head.code !== 0) throw new Error(cleanSudoErr(head.err, target));
+  const buf = head.out;
+  const binary = buf.includes(0);
+  return {
+    path: target,
+    size,
+    mtime: (Number(mtimeStr) || 0) * 1000,
+    mode: String(modeStr || '').padStart(3, '0'),
+    binary,
+    truncated: size > LIMIT,
+    text: binary ? buf.toString('base64') : buf.toString('utf8'),
+    encoding: binary ? 'base64' : 'utf8',
+    root: true,
+  };
+}
+
+async function writeAsRoot(target, text) {
+  await runCapture(['sudo', '-n', 'mkdir', '-p', '--', path.dirname(target)]);
+  const r = await runCapture(['sudo', '-n', 'tee', '--', target], { input: Buffer.from(text, 'utf8') });
+  if (r.code !== 0) throw new Error(cleanSudoErr(r.err, target));
+  const st = await runCapture(['sudo', '-n', 'stat', '-c', '%s\t%Y', '--', target]);
+  const [size, mtime] = st.out.toString().trim().split('\t');
+  return { ok: true, path: target, size: Number(size) || 0, mtime: (Number(mtime) || 0) * 1000, root: true };
+}
+
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const name = routeName(url.pathname);
@@ -644,10 +770,40 @@ const server = http.createServer(async (req, res) => {
     if (name === 'files') {
       const body = await params(req, url);
       const p = body.path || url.searchParams.get('path') || state.cwd;
+      const asRoot = body.root === true || body.root === 'true';
       try {
-        return json(res, await fileList(p));
+        return json(res, await listDir(p, asRoot));
       } catch (e) {
-        return json(res, { error: String(e.message || e) }, 400);
+        const cleaned = cleanSudoErr(String(e.message || e), p);
+        const needRoot = /нет доступа|root mode|EACCES|permission denied/i.test(cleaned || '');
+        return json(res, { error: cleaned, needRoot }, 400);
+      }
+    }
+
+    if (name === 'asset') {
+      const body = await params(req, url);
+      const assetMap = {
+        'codemirror': 'vendor/codemirror/lib/codemirror.js',
+        'codemirror-css': 'vendor/codemirror/lib/codemirror.css',
+        'mode-javascript': 'vendor/codemirror/mode/javascript/javascript.js',
+        'mode-clike': 'vendor/codemirror/mode/clike/clike.js',
+        'mode-python': 'vendor/codemirror/mode/python/python.js',
+        'mode-shell': 'vendor/codemirror/mode/shell/shell.js',
+        'mode-css': 'vendor/codemirror/mode/css/css.js',
+        'mode-xml': 'vendor/codemirror/mode/xml/xml.js',
+        'mode-htmlmixed': 'vendor/codemirror/mode/htmlmixed/htmlmixed.js',
+        'mode-markdown': 'vendor/codemirror/mode/markdown/markdown.js',
+        'mode-yaml': 'vendor/codemirror/mode/yaml/yaml.js',
+        'mode-sql': 'vendor/codemirror/mode/sql/sql.js',
+      };
+      const name2 = body.name || url.searchParams.get('name');
+      const rel = assetMap[name2];
+      if (!rel) return json(res, { error: 'неизвестный ассет' }, 404);
+      try {
+        const code = await fsp.readFile(path.join(PUBLIC, rel), 'utf8');
+        return json(res, { name: name2, code });
+      } catch (e) {
+        return json(res, { error: 'ассет не найден: ' + rel }, 404);
       }
     }
 
@@ -692,8 +848,17 @@ const server = http.createServer(async (req, res) => {
     if (name === 'read') {
       const body = await params(req, url);
       const target = safeResolve(body.path || url.searchParams.get('path'), state.cwd);
+      const asRoot = body.root === true || body.root === 'true';
       try {
-        return json(res, await readFileSmart(target));
+        if (asRoot) return json(res, await readAsRoot(target));
+        try {
+          return json(res, await readFileSmart(target));
+        } catch (e) {
+          if (e && (e.code === 'EACCES' || e.code === 'EPERM')) {
+            return json(res, { error: `нет доступа к ${target} — включи root mode`, needRoot: true }, 403);
+          }
+          throw e;
+        }
       } catch (e) {
         return json(res, { error: String(e.message || e) }, 400);
       }
@@ -702,6 +867,14 @@ const server = http.createServer(async (req, res) => {
     if (name === 'write') {
       const body = await params(req, url);
       const target = safeResolve(body.path, state.cwd);
+      const asRoot = body.root === true || body.root === 'true';
+      if (asRoot) {
+        try {
+          return json(res, await writeAsRoot(target, body.text ?? ''));
+        } catch (e) {
+          return json(res, { error: String(e.message || e), needRoot: true }, 400);
+        }
+      }
       try {
         await fsp.mkdir(path.dirname(target), { recursive: true });
         await fsp.writeFile(target, body.text ?? '', 'utf8');
@@ -715,6 +888,23 @@ const server = http.createServer(async (req, res) => {
     if (name === 'download') {
       const target = safeResolve(url.searchParams.get('path'), state.cwd);
       const inline = url.searchParams.get('inline') === '1';
+      const asRoot = url.searchParams.get('root') === '1';
+      if (asRoot) {
+        const st = await runCapture(['sudo', '-n', 'stat', '-c', '%s', '--', target]);
+        if (st.code !== 0) return json(res, { error: cleanSudoErr(st.err, target) }, 403);
+        const size = Number(st.out.toString().trim()) || 0;
+        const type = MIME[path.extname(target).toLowerCase()] || 'application/octet-stream';
+        res.writeHead(200, {
+          'content-type': type,
+          'content-length': size,
+          'cache-control': 'no-store',
+          'content-disposition': `${inline ? 'inline' : 'attachment'}; filename="${encodeURIComponent(path.basename(target))}"`,
+        });
+        const cat = spawn('sudo', ['-n', 'cat', '--', target]);
+        cat.stdout.pipe(res);
+        cat.on('close', () => res.end());
+        return;
+      }
       let st;
       try {
         st = await fsp.stat(target);

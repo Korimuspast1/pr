@@ -14,6 +14,7 @@ export default {
 
   mount(body, win) {
     let path = win.spec.args?.path || null;
+    let rootMode = !!win.spec.args?.root;
     let zoom = 1;
 
     body.innerHTML = `
@@ -47,7 +48,7 @@ export default {
 
     async function load(p) {
       path = p;
-      img.src = api.downloadUrl(p, true);
+      img.src = api.downloadUrl(p, true, rootMode);
       pathEl.textContent = p;
       pathEl.title = p;
       $('.st-name').textContent = p.split('/').pop();
@@ -56,7 +57,7 @@ export default {
         $('.st-dim').textContent = `${img.naturalWidth} × ${img.naturalHeight}`;
       };
       try {
-        const meta = await api.read(p);
+        const meta = await api.read(p, rootMode);
         $('.st-size').textContent = humanSize(meta.size) + ' · ' + fmtDate(meta.mtime);
       } catch {}
       zoom = 1;
@@ -70,7 +71,7 @@ export default {
     body.querySelector('[data-a="dl"]').onclick = () => {
       if (!path) return;
       const a = document.createElement('a');
-      a.href = api.downloadUrl(path);
+      a.href = api.downloadUrl(path, false, rootMode);
       a.download = path.split('/').pop();
       a.click();
     };

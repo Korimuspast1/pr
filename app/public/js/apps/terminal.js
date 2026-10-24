@@ -28,32 +28,114 @@ function loadXterm() {
   return xtermLoading;
 }
 
-/** Простейший резервный терминал, если xterm.js не загрузился. */
+/**
+ * Резервный терминал: тот же настоящий PTY, но без xterm.js —
+ * вывод чистится от ANSI и печатается построчно. `cd`, root и любые
+ * команды работают, потому что сессия — живой bash, а не отдельные exec.
+ */
 function mountFallback(host, win, setStatus) {
   host.innerHTML = `
-    <div class="term-screen" style="height:100%;overflow:auto;padding:10px 12px;font-family:var(--mono);font-size:.86em;line-height:1.6;user-select:text"></div>
-    <div class="term-inputline" style="padding:0 12px 10px"><span class="tc-user">user@sandbox</span><span class="tc-sep">:</span><span class="tc-path">~</span><span class="tc-sign">$</span><input spellcheck="false" /></div>`;
+    <div class="term-screen" style="height:100%;overflow:auto;padding:10px 12px;font-family:var(--mono);font-size:.86em;line-height:1.55;user-select:text;white-space:pre-wrap;word-break:break-word"></div>
+    <div style="display:flex;gap:6px;padding:0 12px 10px;align-items:center;font-family:var(--mono);font-size:.86em">
+      <span style="color:var(--green);font-weight:700">${state.root ? 'root' : 'user'}@sandbox</span><span style="color:var(--dim)">$</span>
+      <input class="fb-input" spellcheck="false" autocomplete="off" style="flex:1;background:none;border:0;outline:none;color:var(--text);font:inherit" />
+    </div>`;
   const screen = host.querySelector('.term-screen');
-  const input = host.querySelector('input');
-  setStatus('резервный режим (без xterm.js)');
-  const write = (t) => {
-    const d = document.createElement('div');
-    d.textContent = t;
-    d.style.whiteSpace = 'pre-wrap';
-    screen.appendChild(d);
+  const input = host.querySelector('.fb-input');
+  setStatus('резервный режим · PTY без xterm.js');
+
+  let session = null;
+  let offset = 0;
+  let alive = true;
+  let pending = '';
+  const decoder = new TextDecoder('utf-8');
+
+  const ANSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*\x07|\x1b[()][A-Z0-9]/g;
+
+  const flush = (text, force = false) => {
+    pending += text;
+    const parts = pending.split('\n');
+    if (!force) pending = parts.pop();
+    else pending = '';
+    for (const raw of parts) {
+      const clean = raw.replace(ANSI_RE, '').replace(/\r/g, '');
+      if (!clean && !force) continue;
+      const d = document.createElement('div');
+      d.textContent = clean;
+      screen.appendChild(d);
+    }
+    if (force && pending) {
+      const d = document.createElement('div');
+      d.textContent = pending.replace(ANSI_RE, '');
+      screen.appendChild(d);
+      pending = '';
+    }
+    while (screen.children.length > 2000) screen.firstElementChild.remove();
     screen.scrollTop = screen.scrollHeight;
   };
-  write('xterm.js недоступен — работаю в простом режиме.');
-  input.addEventListener('keydown', async (e) => {
-    if (e.key !== 'Enter') return;
-    const cmd = input.value;
-    input.value = '';
-    write('$ ' + cmd);
-    const r = await api.exec(cmd, { root: state.root });
-    write(r.out || '(нет вывода)');
+
+  const latin1ToBytes = (str) => {
+    const u = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) u[i] = str.charCodeAt(i) & 0xff;
+    return u;
+  };
+  const utf8ToLatin1 = (str) => {
+    const bytes = new TextEncoder().encode(str);
+    let out = '';
+    for (const b of bytes) out += String.fromCharCode(b);
+    return out;
+  };
+
+  async function loop() {
+    while (alive && session) {
+      try {
+        const r = await api.ptyRead(session.id, offset, 2600);
+        if (!alive) return;
+        if (r.data) flush(decoder.decode(latin1ToBytes(r.data), { stream: true }));
+        if (typeof r.offset === 'number') offset = r.offset;
+        if (r.dead) { setStatus('сессия завершена'); return; }
+      } catch {
+        await new Promise((r) => setTimeout(r, 800));
+      }
+    }
+  }
+
+  (async () => {
+    try {
+      session = await api.ptyOpen({ root: state.root, cols: 100, rows: 40 });
+      win.setTitle(`${state.root ? 'root' : 'user'}@sandbox — терминал (резервный)`);
+      setStatus('готово · резервный режим');
+      loop();
+    } catch (e) {
+      flush(`не удалось открыть PTY: ${e.message}\n`, true);
+      setStatus('ошибка сессии');
+    }
+  })();
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const cmd = input.value;
+      input.value = '';
+      flush(`\n${state.root ? 'root' : 'user'}@sandbox$ ${cmd}\n`, true);
+      if (session) api.ptyWrite(session.id, utf8ToLatin1(cmd + '\r')).catch(() => {});
+    } else if (e.key === 'l' && e.ctrlKey) {
+      e.preventDefault();
+      screen.innerHTML = '';
+    } else if (e.key === 'c' && e.ctrlKey) {
+      e.preventDefault();
+      if (session) api.ptyWrite(session.id, '\u0003').catch(() => {});
+    }
   });
-  setTimeout(() => input.focus(), 50);
-  win.spec.onClose = () => {};
+
+  body_focus(input);
+  win.spec.onClose = () => {
+    alive = false;
+    if (session) api.ptyClose(session.id).catch(() => {});
+  };
+}
+
+function body_focus(input) {
+  setTimeout(() => input.focus(), 60);
 }
 
 const THEME = {

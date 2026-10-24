@@ -32,9 +32,28 @@ def main():
     if pid == 0:
         os.environ["TERM"] = "xterm-256color"
         os.environ["COLORTERM"] = "truecolor"
-        os.environ["PS1"] = r"\u@\h:\w\$ "
+        # Collect the image's own rc files, then force a familiar prompt
+        # (user@host:cwd$ / # for root) so the session looks like a Linux box.
+        rc = None
         try:
-            os.execvp(shell, [shell, "-i"])
+            import tempfile
+            fd_rc, rc = tempfile.mkstemp(prefix="ptyrc-", suffix=".bashrc")
+            with os.fdopen(fd_rc, "w") as fh:
+                fh.write(
+                    "[ -f /etc/bash.bashrc ] && . /etc/bash.bashrc\n"
+                    "[ -f /etc/profile ] && . /etc/profile\n"
+                    "[ -f ~/.bashrc ] && . ~/.bashrc\n"
+                    "PS1='\\[\\e[1;32m\\]\\u@\\h\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]\\$ '\n"
+                    "export PROMPT_DIRTRIM=2\n"
+                    "export TERM=xterm-256color\n"
+                )
+        except Exception:
+            rc = None
+        try:
+            if rc:
+                os.execvp(shell, [shell, "--rcfile", rc, "-i"])
+            else:
+                os.execvp(shell, [shell, "-i"])
         except Exception:
             os._exit(127)
 

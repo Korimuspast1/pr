@@ -1,7 +1,7 @@
 /* Files — file manager with real filesystem operations. */
 
 import { api } from '../api.js';
-import { state, on } from '../store.js';
+import { state, on, set } from '../store.js';
 import { esc, humanSize, fmtDate, shortenPath } from '../util.js';
 import { iconHTML, icons } from '../icons.js';
 
@@ -34,6 +34,7 @@ export default {
     let items = [];
     let selected = null;
     let filter = '';
+    let rootMode = !!state.root;
     const historyStack = [];
 
     body.innerHTML = `
@@ -49,6 +50,7 @@ export default {
             <button class="tb-btn" data-a="refresh" title="Обновить">${icons.refresh}</button>
             <div class="crumbs"></div>
             <button class="tb-btn" data-a="mkdir" title="Новая папка">${icons.plus}</button>
+            <button class="tb-btn root-btn" data-a="root" title="root mode: доступ к /root и системным файлам">${icons.root}</button>
             <input class="field" style="flex:0 0 150px" placeholder="фильтр…" />
           </div>
           <div class="file-rows"></div>
@@ -78,21 +80,45 @@ export default {
       placesEl.appendChild(b);
     }
 
+    function paintRootBtn() {
+      const b = body.querySelector('[data-a="root"]');
+      if (!b) return;
+      b.style.color = rootMode ? 'var(--red)' : '';
+      b.style.background = rootMode ? 'rgba(255,123,114,.14)' : '';
+      b.title = rootMode ? 'root mode включён — клик, чтобы выключить' : 'root mode выключен — клик, чтобы включить (sudo -n)';
+    }
+
     const markPlaces = () => {
       placesEl.querySelectorAll('.place').forEach((b) => b.classList.toggle('active', b.dataset.path === path));
     };
 
     async function navigate(target, push = true) {
       try {
-        const data = await api.files(target);
+        const data = await api.files(target, rootMode);
         if (data.error) throw new Error(data.error);
         if (push && data.path !== path) historyStack.push(path);
         path = data.path;
         items = data.items;
+        rootMode = !!data.root;
         selected = null;
         render();
       } catch (e) {
-        win.notify('Не удалось открыть папку', String(e.message || e), 'error');
+        const msg = String(e.message || e);
+        const needRoot = /root mode|нет доступа|Permission/i.test(msg);
+        if (needRoot && !rootMode) {
+          const ok = await window.desktop.wm.confirm(
+            `«${target}» доступна только root. Включить root mode и открыть?`,
+            { ok: 'Включить root', title: 'Нужны права root' }
+          );
+          if (ok) {
+            set('root', true);
+            rootMode = true;
+            paintRootBtn();
+            navigate(target, push);
+            return;
+          }
+        }
+        win.notify('Не удалось открыть папку', msg, 'error');
       }
     }
 
@@ -179,9 +205,10 @@ export default {
       const p = fullPath(it.name);
       if (it.dir) return navigate(p);
       const e = ext(it.name);
-      if (IMG_EXT.has(e)) return window.desktop.launch('viewer', { path: p, name: it.name });
-      if (TEXT_EXT.has(e) || !e) return window.desktop.launch('editor', { path: p });
-      window.desktop.launch('editor', { path: p });
+      const root = rootMode;
+      if (IMG_EXT.has(e)) return window.desktop.launch('viewer', { path: p, name: it.name, root });
+      if (TEXT_EXT.has(e) || !e) return window.desktop.launch('editor', { path: p, root });
+      window.desktop.launch('editor', { path: p, root });
     }
 
     function contextMenu(x, y, it) {
@@ -209,7 +236,7 @@ export default {
         if (IMG_EXT.has(ext(it.name))) entry('image', 'Открыть как изображение', '', () => window.desktop.launch('viewer', { path: p, name: it.name }));
         entry('download', 'Скачать', '', () => {
           const a = document.createElement('a');
-          a.href = api.downloadUrl(p);
+          a.href = api.downloadUrl(p, false, rootMode);
           a.download = it.name;
           a.click();
         });
@@ -223,14 +250,14 @@ export default {
       entry('editor', 'Переименовать', '', async () => {
         const name = prompt('Новое имя', it.name);
         if (!name || name === it.name) return;
-        const r = await api.exec(`mv ${shq(p)} ${shq(fullPath(name))}`, { root: state.root });
+        const r = await api.exec(`mv ${shq(p)} ${shq(fullPath(name))}`, { root: rootMode });
         if (r.code !== 0) win.notify('Ошибка переименования', r.out, 'error');
         navigate(path, false);
       });
       entry('trash', 'Удалить', 'danger', async () => {
         const ok = await window.desktop.wm.confirm(`Удалить ${it.dir ? 'папку' : 'файл'} «${it.name}»?`, { ok: 'Удалить', danger: true });
         if (!ok) return;
-        const r = await api.exec(`rm -rf ${shq(p)}`, { root: state.root });
+        const r = await api.exec(`rm -rf ${shq(p)}`, { root: rootMode });
         if (r.code !== 0) win.notify('Ошибка удаления', r.out, 'error');
         else win.notify('Удалено', it.name, 'ok');
         navigate(path, false);
@@ -254,10 +281,22 @@ export default {
       navigate(path.replace(/\/[^/]+\/?$/, '') || '/');
     };
     body.querySelector('[data-a="refresh"]').onclick = () => navigate(path, false);
+    body.querySelector('[data-a="root"]').onclick = async () => {
+      rootMode = !rootMode;
+      set('root', rootMode);
+      paintRootBtn();
+      win.notify(rootMode ? 'root mode включён' : 'root mode выключен',
+        rootMode ? 'файлы читаются и пишутся через sudo -n' : 'снова обычный пользователь',
+        rootMode ? 'warn' : 'info', 2600);
+      // при включении root сразу показываем /root — иначе непонятно, что изменилось
+      if (rootMode && !path.startsWith('/root')) navigate('/root');
+      else navigate(path, false);
+    };
+
     body.querySelector('[data-a="mkdir"]').onclick = async () => {
       const name = prompt('Имя новой папки');
       if (!name) return;
-      const r = await api.exec(`mkdir -p ${shq(fullPath(name))}`, { root: state.root });
+      const r = await api.exec(`mkdir -p ${shq(fullPath(name))}`, { root: rootMode });
       if (r.code !== 0) win.notify('Не удалось создать папку', r.out, 'error');
       navigate(path, false);
     };
@@ -271,9 +310,15 @@ export default {
       if (args?.path) navigate(args.path);
     };
 
-    const offRoot = on('*', () => {});
+    const offRoot = on('root', (v) => {
+      if (v === rootMode) return;
+      rootMode = !!v;
+      paintRootBtn();
+      navigate(path, false);
+    });
     win.spec.onClose = () => offRoot();
 
-    navigate('/home/user/pr');
+    paintRootBtn();
+    navigate(state.root && path === '/home/user/pr' ? '/root' : '/home/user/pr');
   },
 };

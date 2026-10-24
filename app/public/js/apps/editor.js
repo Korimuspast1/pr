@@ -15,6 +15,7 @@ export default {
 
   mount(body, win) {
     let path = win.spec.args?.path || null;
+    let rootMode = !!win.spec.args?.root;
     let original = '';
     let dirty = false;
     let cm = null;
@@ -110,7 +111,7 @@ export default {
 
     async function open(p) {
       try {
-        const data = await api.read(p);
+        const data = await api.read(p, rootMode);
         if (data.binary) {
           win.notify('Двоичный файл', 'Открываю просмотрщиком', 'warn');
           window.desktop.launch('viewer', { path: p, name: p.split('/').pop() });
@@ -124,7 +125,10 @@ export default {
         pathEl.textContent = path;
         pathEl.title = path;
         setDirty(false);
-        msg.textContent = data.truncated ? 'файл обрезан (512 КБ)' : `загружено · ${data.encoding}`;
+        rootMode = !!data.root || rootMode;
+        msg.textContent = data.truncated
+          ? 'файл обрезан (512 КБ)'
+          : `загружено · ${data.encoding}${rootMode ? ' · root' : ''}`;
         updateMeta();
       } catch (e) {
         win.notify('Не удалось открыть', String(e.message || e), 'error');
@@ -135,7 +139,7 @@ export default {
       if (!path) return;
       try {
         msg.textContent = 'сохранение…';
-        const r = await api.write(path, text());
+        const r = await api.write(path, text(), rootMode);
         original = text();
         setDirty(false);
         msg.textContent = `сохранено · ${humanSize(r.size)}`;

@@ -213,6 +213,7 @@ export function createDesktop(apps) {
       <div class="pop-sep"></div>
       <button class="pop-btn" data-go="settings">${iconHTML('settings', 14)}<span>Настройки</span></button>
       <button class="pop-btn" data-go="monitor">${iconHTML('monitor', 14)}<span>Системный монитор</span></button>
+      <button class="pop-btn" data-go="terminal-root">${iconHTML('root', 14)}<span>Терминал (root)</span></button>
       <button class="pop-btn danger" data-lock>${iconHTML('lock', 14)}<span>Заблокировать экран</span></button>`;
 
     quick.querySelector('[data-root]').onclick = (e) => {
@@ -281,11 +282,22 @@ export function createDesktop(apps) {
       <button class="pop-btn" data-go="settings">${iconHTML('settings', 14)}<span>Настройки</span></button>
       <button class="pop-btn" data-go="files">${iconHTML('files', 14)}<span>Домашняя папка</span></button>
       <button class="pop-btn" data-go="terminal">${iconHTML('terminal', 14)}<span>Терминал</span></button>
+      <button class="pop-btn" data-go="terminal-root">${iconHTML('root', 14)}<span>Терминал (root)</span></button>
+      <button class="pop-btn" data-go="files">${iconHTML('lock', 14)}<span>Папка /root</span></button>
       <div class="pop-sep"></div>
       <button class="pop-btn danger" data-lock>${iconHTML('lock', 14)}<span>Заблокировать</span></button>
       <button class="pop-btn danger" data-closeall>${iconHTML('power', 14)}<span>Закрыть все окна</span></button>`;
     userMenu.querySelectorAll('[data-go]').forEach((b) => {
-      b.onclick = () => { hidePopovers(); launch(b.dataset.go); };
+      b.onclick = () => {
+        hidePopovers();
+        if (b.dataset.go === 'files' && b.textContent.includes('/root')) {
+          set('root', true);
+          const w = launch('files');
+          setTimeout(() => w?.spec?.onArgs?.({ path: '/root' }), 60);
+          return;
+        }
+        launch(b.dataset.go);
+      };
     });
     userMenu.querySelector('[data-lock]').onclick = () => { hidePopovers(); lockScreen(); };
     userMenu.querySelector('[data-closeall]').onclick = () => { hidePopovers(); wm.closeAll(); };

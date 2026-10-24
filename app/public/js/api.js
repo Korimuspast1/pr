@@ -147,9 +147,9 @@ export const api = {
   stats: () => call('stats', {}, 5000),
   exec: (cmd, opts = {}) => call('exec', { cmd, root: opts.root, cwd: opts.cwd, id: opts.id || 'current' }, opts.ms || 60000),
   kill: (id = 'current') => call('kill', { id }, 6000),
-  files: (path) => call('files', { path }, 6000),
-  read: (path) => call('read', { path }, 6000),
-  write: (path, text) => call('write', { path, text }, 8000),
+  files: (path, root = false) => call('files', { path, root }, 8000),
+  read: (path, root = false) => call('read', { path, root }, 8000),
+  write: (path, text, root = false) => call('write', { path, text, root }, 10000),
   proc: () => call('proc', {}, 6000),
   killproc: (pid, opts = {}) => call('killproc', { pid, signal: opts.signal || 'TERM', root: opts.root }, 8000),
   fetchUrl: (url) => call('fetch', { url }, 11000),
@@ -161,6 +161,6 @@ export const api = {
   ptyResize: (id, cols, rows) => call('ptyresize', { id, cols, rows }, 6000),
   ptyClose: (id) => call('ptyclose', { id }, 5000),
 
-  downloadUrl: (path, inline = false) =>
-    `/api/download?path=${encodeURIComponent(path)}${inline ? '&inline=1' : ''}`,
+  downloadUrl: (path, inline = false, root = false) =>
+    `/api/download?path=${encodeURIComponent(path)}${inline ? '&inline=1' : ''}${root ? '&root=1' : ''}`,
 };
