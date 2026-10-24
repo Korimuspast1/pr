@@ -8,10 +8,19 @@ import { esc } from '../util.js';
 
 let xtermLoading = null;
 
+async function loadXtermViaApi() {
+  const asset = await api.asset('xterm');
+  if (!asset || !asset.code) throw new Error('ассет xterm пуст');
+  // eslint-disable-next-line no-new-func
+  new Function(asset.code)();
+  if (!window.Terminal) throw new Error('xterm не инициализировался');
+}
+
 function loadXterm() {
   if (window.Terminal) return Promise.resolve();
   if (xtermLoading) return xtermLoading;
   xtermLoading = new Promise((resolve, reject) => {
+    const viaApi = () => loadXtermViaApi().then(resolve).catch(reject);
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = '/vendor/xterm/xterm.css';
@@ -20,9 +29,13 @@ function loadXterm() {
     s.src = '/vendor/xterm/xterm.js';
     s.async = true;
     const fail = (why) => reject(new Error(why));
-    const guard = setTimeout(() => fail('xterm.js не ответил за 8 с'), 8000);
-    s.onload = () => { clearTimeout(guard); window.Terminal ? resolve() : fail('xterm не инициализировался'); };
-    s.onerror = () => { clearTimeout(guard); fail('не удалось загрузить xterm.js'); };
+    const guard = setTimeout(() => { clearTimeout(guard); viaApi(); }, 4000);
+    s.onload = () => {
+      clearTimeout(guard);
+      if (window.Terminal) resolve();
+      else viaApi();
+    };
+    s.onerror = () => { clearTimeout(guard); viaApi(); };
     document.head.appendChild(s);
   });
   return xtermLoading;
@@ -89,7 +102,7 @@ function mountFallback(host, win, setStatus) {
   async function loop() {
     while (alive && session) {
       try {
-        const r = await api.ptyRead(session.id, offset, 2600);
+        const r = await api.ptyRead(session.id, offset, 1200);
         if (!alive) return;
         if (r.data) flush(decoder.decode(latin1ToBytes(r.data), { stream: true }));
         if (typeof r.offset === 'number') offset = r.offset;
@@ -277,7 +290,7 @@ const terminalApp = {
       while (alive && session) {
         if (document.hidden) { await new Promise((r) => setTimeout(r, 900)); continue; }
         try {
-          const r = await api.ptyRead(session.id, offset, 2600);
+          const r = await api.ptyRead(session.id, offset, 1200);
           failStreak = 0;
           if (!alive || !session) return;
           if (r.error) { term.write(`\r\n\x1b[31m${r.error}\x1b[0m\r\n`); setStatus('сессия потеряна'); return; }

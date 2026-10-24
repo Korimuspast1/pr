@@ -337,10 +337,6 @@ async function serveStatic(res, urlPath) {
         .replace(
           /<link rel="stylesheet" href="\/vendor\/xterm\/xterm\.css"\s*\/?>/,
           `<style id="xterm-css">${v.xtermCss}</style>`
-        )
-        .replace(
-          /<script[^>]*src="\/vendor\/xterm\/xterm\.js"[^>]*><\/script>/,
-          `<script id="inline-xterm">${v.xtermJs}</script>`
         );
       buf = Buffer.from(html, 'utf8');
     }
@@ -552,7 +548,7 @@ function ptyOpen({ root = false, cols = 120, rows = 32 } = {}) {
 }
 
 /** Long-poll: returns everything after `from`, waiting up to `wait` ms. */
-function ptyRead(id, from, wait = 3000) {
+function ptyRead(id, from, wait = 1200) {
   const s = ptys.get(id);
   if (!s) return Promise.resolve({ error: 'нет такой сессии' });
   const fromIdx = Math.max(0, Number(from) - s.offset);
@@ -710,6 +706,52 @@ async function writeAsRoot(target, text) {
 }
 
 
+
+/* --------------------------------------------------------- fetch jobs ---
+ * Preview proxies kill any request that lives longer than a second or two
+ * (Cloudflare answers with a 502 HTML page). Downloading a web page can take
+ * seconds, so it runs in the background: `fetchstart` returns a job id at
+ * once, `fetchpoll` answers from memory until the page is ready.
+ */
+const fetchJobs = new Map();
+let fetchSeq = 0;
+
+function startFetchJob(target) {
+  for (const [id, j] of fetchJobs) {
+    if (Date.now() - j.at > 120000) fetchJobs.delete(id);
+  }
+  const id = 'j' + ++fetchSeq;
+  const job = { id, state: 'running', at: Date.now(), started: Date.now(), result: null, error: null, target };
+  fetchJobs.set(id, job);
+
+  proxyFetch(target, { timeout: 8000 })
+    .then((r) => {
+      job.state = 'done';
+      job.result = r;
+      job.at = Date.now();
+    })
+    .catch((e) => {
+      job.state = 'error';
+      job.error = String((e && e.message) || e);
+      job.at = Date.now();
+    });
+
+  return { id, state: job.state };
+}
+
+function pollFetchJob(id) {
+  const job = fetchJobs.get(id);
+  if (!job) return { state: 'missing', error: 'задача не найдена (сервер перезапускался?)' };
+  if (job.state === 'running') {
+    return { state: 'running', waited: Date.now() - job.started };
+  }
+  const base = { state: job.state, error: job.error };
+  if (job.state === 'done' && job.result) {
+    return { ...base, ...job.result };
+  }
+  return base;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const name = routeName(url.pathname);
@@ -783,6 +825,8 @@ const server = http.createServer(async (req, res) => {
     if (name === 'asset') {
       const body = await params(req, url);
       const assetMap = {
+        'xterm': 'vendor/xterm/xterm.js',
+        'xterm-css': 'vendor/xterm/xterm.css',
         'codemirror': 'vendor/codemirror/lib/codemirror.js',
         'codemirror-css': 'vendor/codemirror/lib/codemirror.css',
         'mode-javascript': 'vendor/codemirror/mode/javascript/javascript.js',
@@ -824,7 +868,7 @@ const server = http.createServer(async (req, res) => {
       const body = await params(req, url);
       const id = body.id || url.searchParams.get('id');
       const from = body.from ?? url.searchParams.get('from') ?? 0;
-      const wait = Math.min(6000, Number(body.wait ?? url.searchParams.get('wait')) || 3000);
+      const wait = Math.min(2500, Number(body.wait ?? url.searchParams.get('wait')) || 1200);
       return json(res, await ptyRead(id, from, wait));
     }
 
@@ -935,6 +979,25 @@ const server = http.createServer(async (req, res) => {
       const cmd = body.root ? `sudo -n kill -${sig} ${pid}` : `kill -${sig} ${pid}`;
       const r = await sh(SHELL, ['-c', cmd]);
       return json(res, { ok: r.code === 0, code: r.code, out: (r.out + r.err).trim() });
+    }
+
+    if (name === 'fetchstart') {
+      const body = await params(req, url);
+      const target = body.url || url.searchParams.get('url');
+      if (!target) return json(res, { error: 'нужен url' }, 400);
+      try {
+        const u = new URL(target);
+        if (!/^https?:$/.test(u.protocol)) return json(res, { error: 'только http/https' }, 400);
+      } catch {
+        return json(res, { error: 'кривой url' }, 400);
+      }
+      return json(res, startFetchJob(target));
+    }
+
+    if (name === 'fetchpoll') {
+      const body = await params(req, url);
+      const id = body.id || url.searchParams.get('id');
+      return json(res, pollFetchJob(id));
     }
 
     if (name === 'fetch') {

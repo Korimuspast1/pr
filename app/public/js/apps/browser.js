@@ -216,12 +216,16 @@ export default {
       tab.loading = true;
       tab.status = 'загрузка…';
       tab.meta = '';
+      const progress = (ms) => {
+        if (tab !== activeTab()) return;
+        statusEl.textContent = `загрузка… ${(ms / 1000).toFixed(1)} с`;
+      };
       if (tab === activeTab()) { statusEl.textContent = 'загрузка…'; metaEl.textContent = ''; }
       paintTabs();
       tab.page.innerHTML = '<div class="empty">Загрузка…</div>';
 
       try {
-        const r = await api.fetchUrl(url);
+        const r = await api.fetchUrl(url, { onTick: progress });
         tab.loading = false;
         if (push) {
           tab.stack = tab.stack.slice(0, tab.index + 1);
@@ -461,8 +465,10 @@ export default {
     paintBookmarks();
     const offBm = on('bookmarks', paintBookmarks);
 
-    newTab();
-    urlbar.focus();
+    const initialUrl = win.spec.args?.url || null;
+    newTab(initialUrl);
+    if (initialUrl) urlbar.value = initialUrl;
+    else urlbar.focus();
     win.spec.onArgs = (args) => { if (args?.url) newTab(args.url); };
     win.spec.onClose = () => offBm();
   },

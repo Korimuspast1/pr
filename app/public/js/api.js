@@ -113,8 +113,10 @@ export async function call(name, body = {}, ms = 8000) {
         return data;
       } catch (e) {
         lastErr = e;
-        if (!e.proxy) {
-          // real application-level error (bad path, permission, …) — don't retry
+        // A POST may lose its body inside an aggressive proxy ("нужен url"),
+        // so only a failed GET (no body needed) is treated as a real answer.
+        const definitive = !e.proxy && plan.method === 'GET';
+        if (definitive) {
           emit({ ok: false, error: e.message });
           throw e;
         }
@@ -152,11 +154,34 @@ export const api = {
   write: (path, text, root = false) => call('write', { path, text, root }, 10000),
   proc: () => call('proc', {}, 6000),
   killproc: (pid, opts = {}) => call('killproc', { pid, signal: opts.signal || 'TERM', root: opts.root }, 8000),
-  fetchUrl: (url) => call('fetch', { url }, 11000),
+  fetchStart: (url) => call('fetchstart', { url }, 5000),
+  fetchPoll: (id) => call('fetchpoll', { id }, 5000),
+
+  /**
+   * Load a page without any long request: start a background job, then poll.
+   * Every HTTP call stays under a couple of seconds, which is what the preview
+   * proxy requires (it 502s long requests).
+   */
+  async fetchUrl(url, { timeout = 30000, onTick } = {}) {
+    const started = await this.fetchStart(url);
+    if (started.error) throw new Error(started.error);
+    const t0 = Date.now();
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 420 + Math.random() * 260));
+      const job = await this.fetchPoll(started.id);
+      if (job.state === 'done') return job;
+      if (job.state === 'error' || job.state === 'missing') {
+        throw new Error(job.error || 'не удалось загрузить страницу');
+      }
+      onTick?.(Date.now() - t0);
+      if (Date.now() - t0 > timeout) throw new Error('страница не ответила за ' + Math.round(timeout / 1000) + ' с');
+    }
+  },
+  asset: (name) => call('asset', { name }, 15000),
 
   // ── real PTY session (xterm.js terminal) ─────────────────────────────
   ptyOpen: (opts = {}) => call('ptyopen', { root: !!opts.root, cols: opts.cols || 120, rows: opts.rows || 32 }, 8000),
-  ptyRead: (id, from, wait = 2600) => call('ptyread', { id, from, wait }, wait + 4000),
+  ptyRead: (id, from, wait = 1200) => call('ptyread', { id, from, wait }, wait + 3500),
   ptyWrite: (id, data) => call('ptywrite', { id, data }, 6000),
   ptyResize: (id, cols, rows) => call('ptyresize', { id, cols, rows }, 6000),
   ptyClose: (id) => call('ptyclose', { id }, 5000),
