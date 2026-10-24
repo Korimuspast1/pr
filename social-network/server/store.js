@@ -93,7 +93,14 @@ class Store {
   save() {
     if (!this.file) return;
     clearTimeout(this._timer);
-    this._timer = setTimeout(() => this.flush(), 200);
+    this._timer = setTimeout(() => {
+      try {
+        this.flush();
+      } catch (err) {
+        // Ошибка записи не должна ронять процесс: иначе все запросы получат 502.
+        console.error('Не удалось сохранить данные:', err);
+      }
+    }, 200);
     this._timer.unref();
   }
 

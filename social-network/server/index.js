@@ -21,6 +21,11 @@ store.flush();
 
 const app = createApp({ store, publicDir: path.join(__dirname, '..', 'public') });
 const server = http.createServer(app);
+// Прокси предпросмотра держит соединение открытым дольше, чем Node по умолчанию (5 с).
+// Если Node закроет простаивающий сокет в тот же момент, что прокси отправит запрос,
+// прокси отвечает 502. Поэтому держим сокет дольше и делаем headersTimeout больше keepAliveTimeout.
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
 startGrowth(store, { intervalMs: GROWTH_INTERVAL_MS });
 
 server.listen(PORT, HOST, () => {
