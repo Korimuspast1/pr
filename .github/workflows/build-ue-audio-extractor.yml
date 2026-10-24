@@ -11,7 +11,7 @@ on:
       - ".github/workflows/build-ue-audio-extractor.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-windows-x64:
@@ -43,3 +43,20 @@ jobs:
           path: dist/UE-Audio-Extractor-windows-x64.exe
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish direct-download GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ue-audio-extractor-v1.0.0
+          target_commitish: ${{ github.sha }}
+          name: UE Audio Extractor v1.0.0 — Windows x64
+          body: |
+            Standalone Windows x64 GUI build. Download `UE-Audio-Extractor-windows-x64.exe` and launch it.
+
+            For MP3/FLAC/WAV/OGG transcoding, install FFmpeg; copying supported source streams works without it.
+          files: dist/UE-Audio-Extractor-windows-x64.exe
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
