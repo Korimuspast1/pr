@@ -271,17 +271,28 @@ export default {
         }
       } catch (e) {
         tab.loading = false;
+        const transient = /шлюз|таймаут|связ|сжат|HTTP 5/i.test(e.message || '');
         tab.stack = push ? [...tab.stack.slice(0, tab.index + 1), url] : tab.stack;
         tab.index = push ? tab.stack.length - 1 : tab.index;
         tab.url = url;
         tab.title = 'Не удалось открыть';
         tab.page.innerHTML = `<div class="empty"><div>
-          <div style="color:var(--red);font-weight:600;margin-bottom:8px">Не удалось загрузить страницу</div>
+          <div style="color:${transient ? 'var(--yellow)' : 'var(--red)'};font-weight:600;margin-bottom:8px">
+            ${transient ? 'Превью-прокси не пропустил запрос' : 'Не удалось загрузить страницу'}
+          </div>
           <div style="font-family:var(--mono);font-size:.85em;color:var(--dim);max-width:560px">${esc(e.message || e)}</div>
           <div style="margin-top:14px;color:var(--faint);font-size:.85em;max-width:560px">
-            Сандбокс ходит в интернет только к github.com, registry.npmjs.org, pypi.org и т. п.
-            Проверь адрес или открой локальную страницу (/api/stats).
-          </div></div></div>`;
+            ${transient
+              ? 'Запрос был слишком долгим для шлюза. Нажми «Повторить» — часто помогает со второго раза. Сайт открывается медленнее 7 с? Значит не успевает.'
+              : 'Сандбокс ходит в интернет только к github.com, registry.npmjs.org, pypi.org и т. п. Проверь адрес или открой локальную страницу (/api/stats).'}
+          </div>
+          <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
+            <button class="btn primary" data-retry>Повторить</button>
+            <button class="btn ghost" data-local>Открыть /api/stats</button>
+          </div>
+        </div></div>`;
+        tab.page.querySelector('[data-retry]')?.addEventListener('click', () => navigate(url, tab, { push: false }));
+        tab.page.querySelector('[data-local]')?.addEventListener('click', () => navigate(location.origin + '/api/stats', tab));
         tab.status = 'ошибка';
         if (tab === activeTab()) {
           statusEl.textContent = 'ошибка';

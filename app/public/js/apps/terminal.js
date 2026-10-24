@@ -19,8 +19,10 @@ function loadXterm() {
     const s = document.createElement('script');
     s.src = '/vendor/xterm/xterm.js';
     s.async = true;
-    s.onload = () => (window.Terminal ? resolve() : reject(new Error('xterm не инициализировался')));
-    s.onerror = () => reject(new Error('не удалось загрузить xterm.js'));
+    const fail = (why) => reject(new Error(why));
+    const guard = setTimeout(() => fail('xterm.js не ответил за 8 с'), 8000);
+    s.onload = () => { clearTimeout(guard); window.Terminal ? resolve() : fail('xterm не инициализировался'); };
+    s.onerror = () => { clearTimeout(guard); fail('не удалось загрузить xterm.js'); };
     document.head.appendChild(s);
   });
   return xtermLoading;
@@ -107,7 +109,8 @@ const terminalApp = {
     let session = null;
     let alive = true;
     let offset = 0;
-    let decoder = new TextDecoder('utf-8');
+    const TD = window.TextDecoder || TextDecoder;
+    let decoder = new TD('utf-8');
     let resizeTimer = null;
     let rootSession = win.spec.args?.root ?? state.root;
 
@@ -163,7 +166,7 @@ const terminalApp = {
         if (!alive) { api.ptyClose(s.id).catch(() => {}); return; }
         session = s;
         offset = 0;
-        decoder = new TextDecoder('utf-8');
+        decoder = new TD('utf-8');
         paintMode();
         setStatus('готово');
         win.setTitle(`${rootSession ? 'root' : 'user'}@sandbox — терминал`);
@@ -187,10 +190,13 @@ const terminalApp = {
     };
 
     // ── output pump (long-poll) ────────────────────────────────────────
+    let failStreak = 0;
     async function pump() {
       while (alive && session) {
+        if (document.hidden) { await new Promise((r) => setTimeout(r, 900)); continue; }
         try {
-          const r = await api.ptyRead(session.id, offset);
+          const r = await api.ptyRead(session.id, offset, 2600);
+          failStreak = 0;
           if (!alive || !session) return;
           if (r.error) { term.write(`\r\n\x1b[31m${r.error}\x1b[0m\r\n`); setStatus('сессия потеряна'); return; }
           if (r.data) {
@@ -203,8 +209,13 @@ const terminalApp = {
           }
         } catch (e) {
           if (!alive) return;
-          setStatus('переподключение…');
-          await new Promise((res) => setTimeout(res, 700));
+          failStreak++;
+          setStatus(failStreak > 2 ? 'связь нестабильна, повторяю…' : 'переподключение…');
+          await new Promise((res) => setTimeout(res, Math.min(4000, 500 * failStreak)));
+          if (failStreak === 5) {
+            win.notify('Терминал: связь с сервером нестабильна',
+              'Превью-прокси рвёт длинные запросы. Пробую снова автоматически.', 'warn');
+          }
         }
       }
     }

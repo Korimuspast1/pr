@@ -1,7 +1,7 @@
 /* Desktop shell: panel, dock, launcher, popovers, notifications, app registry. */
 
 import { WM } from './wm.js';
-import { api } from './api.js';
+import { api, onNet } from './api.js';
 import { state, set, on, applyTheme, WALLPAPERS } from './store.js';
 import { icons, iconHTML } from './icons.js';
 import { esc, humanSize } from './util.js';
@@ -411,6 +411,7 @@ export function createDesktop(apps) {
   }
 
   async function poll() {
+    if (document.hidden) return;
     try {
       const s = await api.stats();
       lastStats = s;
@@ -434,9 +435,30 @@ export function createDesktop(apps) {
     }
   }
   poll();
-  setInterval(poll, 3000);
+  setInterval(poll, 5000);
   on('root', paintRootUi);
   paintRootUi();
+
+  /* ── network health badge ──────────────────────────────────────────── */
+  const netBadge = document.createElement('div');
+  netBadge.className = 'net-badge hidden';
+  netBadge.innerHTML = '<span class="spin"></span><span>переподключение к серверу…</span>';
+  document.body.appendChild(netBadge);
+
+  let netOk = true;
+  onNet(({ ok, error }) => {
+    const wasOk = netOk;
+    netOk = ok;
+    netBadge.classList.toggle('hidden', ok);
+    if (!ok && wasOk) {
+      netBadge.querySelector('span:last-child').textContent = 'связь потеряна — повторяю…';
+    }
+    if (ok && !wasOk) {
+      wm.notify('Связь восстановлена', 'Десктоп снова онлайн', 'ok', 2600);
+    }
+    if (!ok && error) console.warn('[console] net:', error);
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 
   /* ── keyboard shortcuts ────────────────────────────────────────────── */
   document.addEventListener('keydown', (e) => {

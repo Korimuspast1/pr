@@ -1047,3 +1047,58 @@ input, textarea { font: inherit; color: inherit; }
 .term-host .xterm-viewport::-webkit-scrollbar-thumb { background: #263140; border-radius: 8px; }
 .term-host .xterm-screen { padding: 2px; }
 .term-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; background: #0b1016; }
+
+/* ── network health badge ──────────────────────────────────────────── */
+.net-badge {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: 8980;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(28, 20, 10, 0.95);
+  border: 1px solid rgba(227, 179, 65, 0.4);
+  color: var(--yellow);
+  font-size: 0.8em;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  animation: pop 0.15s ease-out;
+}
+.net-badge .spin { border-top-color: var(--yellow); }
+
+/* ── CodeMirror theme (matches the desktop palette) ────────────────── */
+.editor-host { flex: 1 1 auto; min-height: 0; overflow: hidden; background: #0b1016; position: relative; }
+.editor-host .CodeMirror {
+  height: 100%;
+  background: #0b1016;
+  color: #d6dee8;
+  font-family: var(--mono);
+  font-size: 0.84em;
+  line-height: 1.6;
+}
+.editor-host .CodeMirror-gutters { background: #0d131b; border-right: 1px solid #1a2431; }
+.editor-host .CodeMirror-linenumber { color: #45505e; }
+.editor-host .CodeMirror-cursor { border-left: 1.6px solid var(--green); }
+.editor-host .CodeMirror-selected { background: rgba(121, 192, 255, 0.22) !important; }
+.editor-host .CodeMirror-activeline-background { background: rgba(255, 255, 255, 0.03); }
+.editor-host .cm-keyword { color: #ff7b72; }
+.editor-host .cm-atom { color: #79c0ff; }
+.editor-host .cm-number { color: #e3b341; }
+.editor-host .cm-def { color: #d2a8ff; }
+.editor-host .cm-variable { color: #d6dee8; }
+.editor-host .cm-variable-2 { color: #56d4dd; }
+.editor-host .cm-property { color: #79c0ff; }
+.editor-host .cm-operator { color: #8b949e; }
+.editor-host .cm-comment { color: #5b6672; font-style: italic; }
+.editor-host .cm-string { color: #7ee787; }
+.editor-host .cm-string-2 { color: #7ee787; }
+.editor-host .cm-meta { color: #e3b341; }
+.editor-host .cm-builtin { color: #56d4dd; }
+.editor-host .cm-tag { color: #7ee787; }
+.editor-host .cm-attribute { color: #79c0ff; }
+.editor-host .cm-header { color: #79c0ff; font-weight: 700; }
+.editor-host .cm-link { color: #d2a8ff; }
+.editor-wrap.dirty .editor-host { box-shadow: inset 3px 0 0 var(--yellow); }

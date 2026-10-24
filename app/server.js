@@ -420,7 +420,7 @@ async function proxyFetch(target, opts = {}) {
   try {
     const r = await sh('curl', [
       '-sS', '-L',
-      '--max-time', String(Math.round((opts.timeout || 15000) / 1000)),
+      '--max-time', String(Math.max(3, Math.round((opts.timeout || 5000) / 1000))),
       '--max-filesize', String(6 * 1024 * 1024),
       '--compressed',
       '-A', 'Mozilla/5.0 (X11; Linux x86_64) sandboxOS/1.0',
@@ -430,7 +430,7 @@ async function proxyFetch(target, opts = {}) {
       '-o', bodyPath,
       '-w', '%{http_code}\n%{content_type}\n%{size_download}\n%{url_effective}',
       target,
-    ], { timeout: (opts.timeout || 15000) + 4000 });
+    ], { timeout: Math.max(3000, opts.timeout || 5000) + 2500 });
 
     if (r.code !== 0 && !fs.existsSync(bodyPath)) {
       throw new Error((r.err || '').trim() || `curl exit ${r.code}`);
@@ -523,7 +523,7 @@ function ptyOpen({ root = false, cols = 120, rows = 32 } = {}) {
 }
 
 /** Long-poll: returns everything after `from`, waiting up to `wait` ms. */
-function ptyRead(id, from, wait = 18000) {
+function ptyRead(id, from, wait = 3000) {
   const s = ptys.get(id);
   if (!s) return Promise.resolve({ error: 'нет такой сессии' });
   const fromIdx = Math.max(0, Number(from) - s.offset);
@@ -668,7 +668,7 @@ const server = http.createServer(async (req, res) => {
       const body = await params(req, url);
       const id = body.id || url.searchParams.get('id');
       const from = body.from ?? url.searchParams.get('from') ?? 0;
-      const wait = Math.min(20000, Number(body.wait ?? url.searchParams.get('wait')) || 18000);
+      const wait = Math.min(6000, Number(body.wait ?? url.searchParams.get('wait')) || 3000);
       return json(res, await ptyRead(id, from, wait));
     }
 
@@ -752,7 +752,7 @@ const server = http.createServer(async (req, res) => {
       const target = body.url || url.searchParams.get('url');
       if (!target) return json(res, { error: 'нужен url' }, 400);
       try {
-        return json(res, await proxyFetch(target, { timeout: Number(body.timeout) || undefined }));
+        return json(res, await proxyFetch(target, { timeout: Math.min(6000, Number(body.timeout) || 5000) }));
       } catch (e) {
         return json(res, { error: String(e.message || e) }, 502);
       }
