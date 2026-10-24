@@ -13,27 +13,28 @@
   <header id="topbar">
     <div class="brand">
       <span class="logo">WRECKBOX</span>
-      <span class="ver">remake · v1.8-web</span>
+      <span class="ver">remake</span>
     </div>
     <div class="stats">
-      <div class="stat"><b id="stat-destroyed">0</b><span data-i18n="hud.cells">разрушено</span></div>
-      <div class="stat"><b id="stat-people">0</b><span data-i18n="hud.people">жителей</span></div>
-      <div class="stat"><b id="stat-lost">0</b><span data-i18n="hud.lost">пострадало</span></div>
-      <div class="stat rad"><b id="stat-rad">0</b><span data-i18n="hud.rad">радиация</span></div>
+      <div class="stat"><span class="si">💥</span><b id="stat-destroyed">0</b><span data-i18n="hud.cells">разрушено</span></div>
+      <div class="stat"><span class="si">🧍</span><b id="stat-people">0</b><span data-i18n="hud.people">жителей</span></div>
+      <div class="stat"><span class="si">🚑</span><b id="stat-lost">0</b><span data-i18n="hud.lost">пострадало</span></div>
+      <div class="stat rad"><span class="si">☢</span><b id="stat-rad">0</b><span data-i18n="hud.rad">радиация</span></div>
     </div>
-    <nav class="top-actions">
-      <select id="map-select" title="Карта">
-        <option value="city">Город</option>
-        <option value="base">Военная база</option>
-        <option value="atomgrad">Атомград</option>
-      </select>
-      <button class="icon-btn" id="btn-lang" title="Язык / Language">RU</button>
-      <button class="icon-btn" id="btn-sound" title="Звук">🔊</button>
-      <button class="icon-btn" id="btn-pause" title="Пауза (P)">⏸</button>
-      <button class="icon-btn" id="btn-help" title="Справка">?</button>
-      <button class="icon-btn" id="btn-full" title="Полный экран (F)">⛶</button>
-    </nav>
   </header>
+
+  <nav class="top-actions">
+    <select id="map-select" title="Карта">
+      <option value="city">Город</option>
+      <option value="base">Военная база</option>
+      <option value="atomgrad">Атомград</option>
+    </select>
+    <button class="icon-btn" id="btn-lang" title="Язык / Language">RU</button>
+    <button class="icon-btn" id="btn-sound" title="Звук">🔊</button>
+    <button class="icon-btn" id="btn-pause" title="Пауза (P)">⏸</button>
+    <button class="icon-btn" id="btn-help" title="Справка">?</button>
+    <button class="icon-btn" id="btn-full" title="Полный экран (F)">⛶</button>
+  </nav>
 
   <aside id="side-panel" class="panel">
     <div class="panel-title" id="panel-title">Инструмент</div>
@@ -42,9 +43,15 @@
 
   <div id="toast"></div>
 
-  <footer id="toolbar">
-    <div class="tools" id="tools"></div>
-    <div class="hint" data-i18n="hud.hint">ЛКМ — применить · ПКМ/колесо — панорама · H — скрыть интерфейс · T — замедление · P — пауза · R — новый город · F — полный экран · ~ — секрет</div>
+  <footer id="dock">
+    <div class="tool-strip" id="tools"></div>
+    <div class="dock-bar">
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-tab="demolish"><span class="ti">💥</span><span data-i18n="tab.demolish">СНОС</span></button>
+        <button class="tab" data-tab="build"><span class="ti">🧱</span><span data-i18n="tab.build">СТРОЙКА</span></button>
+      </div>
+      <div class="hint" data-i18n="hud.hint">ЛКМ — применить · ПКМ/колесо — панорама · H — скрыть интерфейс · T — замедление · P — пауза · R — новый город · F — полный экран</div>
+    </div>
   </footer>
 </div>
 

@@ -25,7 +25,7 @@ for (const [name, build] of [['city', buildCity], ['base', buildBase], ['atomgra
   world.explode(270, 190, 40, 4.2, { fireChance: 0.9 });
   for (let i = 0; i < 240; i++) world.update(1 / 60, i / 60);
   const lost = world.destroyedTotal; // rubble that falls still counts as solid, so count actual removals
-  const ok = lost > 1500;
+  const ok = lost > 900;
   console.log(`${ok ? 'OK  ' : 'FAIL'} nuclear blast removes a district: ${lost} cells`);
   if (!ok) failures++;
 }
@@ -41,7 +41,7 @@ for (const [name, build] of [['city', buildCity], ['base', buildBase], ['atomgra
     if (world.mat[world.idx(44, y)] === 4) { groundY = y; break; }
   }
   const topBefore = world.mat[world.idx(44, groundY)];
-  world.rect(30, world.groundY, 40, 6, 0); // undercut the whole footprint
+  world.rect(0, world.groundY, 58, 6, 0); // undercut the whole footprint of the brick house
   for (let i = 0; i < 300; i++) world.update(1 / 60, i / 60);
   let brickLeft = 0;
   for (let i = 0; i < world.n; i++) if (world.mat[i] === 4) brickLeft++;

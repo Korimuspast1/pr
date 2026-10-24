@@ -103,7 +103,7 @@ export class Game {
     this.stats.people = this.citizens.countAlive();
     this.world.recomputeSupport();
     // camera on the middle of the map, street near the bottom of the screen
-    this.cam.zoom = 0.26;
+    this.cam.zoom = 0.44;
     const groundPx = this.world.groundY * this.cell;
     this.cam.x = (MAP_W * this.cell) / 2 - this.canvas.width / 2 / this.cam.zoom;
     this.cam.y = groundPx - this.canvas.height * 0.8 / this.cam.zoom;

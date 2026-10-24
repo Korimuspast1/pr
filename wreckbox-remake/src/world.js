@@ -1,6 +1,7 @@
 import {
   EMPTY, WATER, AMMO, REACTOR, DEBRIS, ROCK, WIRE, WOOD, SOIL, SAND, GRASS, ASPHALT,
-  DENSITY, STRENGTH, HARDNESS, FLAMMABLE, SHELTER, SPAN, TINTS, isSolid,
+  PAL, PLASTIC, AERATED, PANEL, SLATE, GLASSBLOCK, STEEL, CASTIRON, LEAD, BRICK, CONCRETE, GLASS,
+  DENSITY, STRENGTH, HARDNESS, FLAMMABLE, SHELTER, SPAN, TINTS, isSolid, mixCol,
 } from './materials.js';
 
 // World: pixel-cell grid + structural solver + fire + radiation + power grid.
@@ -18,6 +19,8 @@ export class World {
     this.mat = new Uint8Array(n);
     this.dmg = new Uint8Array(n);
     this.tint = new Uint8Array(n);
+    // optional explicit colour per cell (furniture, cars, signs...) 0 = material colour
+    this.col = new Uint32Array(n);
     this.fire = new Uint8Array(n);
     this.rad = new Float32Array(n);
     this.load = new Float32Array(n);
@@ -76,17 +79,31 @@ export class World {
   at(x, y) { return this.inB(x, y) ? this.mat[y * this.w + x] : 0; }
   solidAt(x, y) { return isSolid(this.at(x, y)); }
 
-  set(x, y, m, dmg = 0) {
+  set(x, y, m, dmg = 0, col = 0) {
     if (!this.inB(x, y)) return;
     const i = y * this.w + x;
     this.clearAnchor(i);
     this.mat[i] = m;
     this.dmg[i] = dmg;
+    this.col[i] = col;
     this.tint[i] = (this.rnd() * TINTS) | 0;
     this.dirty = true;
   }
 
-  rect(x, y, w, h, m, dmg = 0) {
+  // Cell with an explicit colour: furniture, cars, signage, awnings.
+  setPainted(x, y, m, col, dmg = 0) {
+    this.set(x, y, m, dmg, col);
+  }
+
+  // Paint a colour without changing the material (wallpaper on empty interior
+  // cells, tinting existing structure).
+  paint(x, y, col) {
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
+    this.col[y * this.w + x] = col;
+    this.dirty = true;
+  }
+
+  rect(x, y, w, h, m, dmg = 0, col = 0) {
     const x0 = Math.max(0, x | 0), y0 = Math.max(0, y | 0);
     const x1 = Math.min(this.w, (x + w) | 0), y1 = Math.min(this.h, (y + h) | 0);
     for (let yy = y0; yy < y1; yy++) {
@@ -94,20 +111,36 @@ export class World {
         const i = yy * this.w + xx;
         this.mat[i] = m;
         this.dmg[i] = dmg;
+        this.col[i] = col;
         this.tint[i] = (this.rnd() * TINTS) | 0;
+        this.clearAnchor(i);
       }
     }
     this.dirty = true;
   }
 
-  line(x0, y0, x1, y1, m, thickness = 1, dmg = 0) {
+  line(x0, y0, x1, y1, m, thickness = 1, dmg = 0, col = 0) {
     const dx = x1 - x0, dy = y1 - y0;
     const steps = Math.max(1, Math.round(Math.hypot(dx, dy)));
     for (let s = 0; s <= steps; s++) {
       const x = Math.round(x0 + (dx * s) / steps);
       const y = Math.round(y0 + (dy * s) / steps);
-      if (thickness <= 1) this.set(x, y, m, dmg);
-      else this.rect(x - (thickness >> 1), y - (thickness >> 1), thickness, thickness, m, dmg);
+      if (thickness <= 1) this.set(x, y, m, dmg, col);
+      else this.rect(x - (thickness >> 1), y - (thickness >> 1), thickness, thickness, m, dmg, col);
+    }
+  }
+
+  // Decorative blob that always keeps a 1px border of `edge` material.
+  paintedDisc(cx, cy, r, m, col, edge = 0, edgeCol = 0) {
+    const r2 = r * r;
+    for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++) {
+      for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
+        const d2 = (x - cx) ** 2 + (y - cy) ** 2;
+        if (d2 > r2) continue;
+        const inner = d2 < (r - 1) ** 2;
+        if (!inner && edge) this.set(x, y, edge, 0, edgeCol);
+        else this.set(x, y, m, 0, col);
+      }
     }
   }
 
@@ -124,106 +157,282 @@ export class World {
   }
 
   // ---------------------------------------------------------------- buildings
+  // A furnished flat: bed/sofa/table/tv/plant, all painted with explicit
+  // colours so the cross-section reads like a real home.
+  // One furnished flat inside a segment of a floor: furniture sits on the slab,
+  // lamps go into the ceiling row, so nothing decorative ever floats.
+  furnishFlat(x0, w, y0, h) {
+    const P = PAL;
+    if (w < 4) return;
+    const floor = y0 - 1;          // top walkable row (slab is at y0)
+    const top = y0 - h + 1;        // ceiling row
+    const L = x0 + 1;
+    const R = x0 + w - 2;
+    if (R < L) return;
+
+    // Wallpaper on the empty room cells (back wall seen in section).
+    const walls = [0xf7e4bf, 0xf6d2d6, 0xcfe4f6, 0xd8eed0, 0xf9e9b4, 0xe5d9f5];
+    const wp = walls[(this.rnd() * walls.length) | 0];
+    const kind = (this.rnd() * 5) | 0;
+    const wpLow = kind === 4 ? 0xd8e6ea : mixCol(wp, 0x8a7a63, 0.24);
+    for (let x = x0 + 1; x < x0 + w - 1; x++) {
+      for (let y = top + 1; y <= floor; y++) {
+        const i = y * this.w + x;
+        if (this.mat[i] !== EMPTY) continue;
+        this.col[i] = y === floor ? wpLow : wp;
+      }
+    }
+
+    // Furniture placement with a support guard: a cell is only painted when the
+    // cell below it is already solid, so nothing ever floats (floating islands
+    // would be dropped by the structural solver).
+    const place = (x, y, m, c) => {
+      if (x < x0 + 1 || x > x0 + w - 2 || y < top + 1 || y > floor) return false;
+      const below = (y + 1) * this.w + x;
+      if (y < floor && !this.mat[below]) return false;
+      this.setPainted(x, y, m, c);
+      return true;
+    };
+    // bottom-up so each row is carried by the row painted before it
+    const block = (x, y, bw, bh, m, c) => {
+      for (let dy = 0; dy < bh; dy++) {
+        for (let dx = 0; dx < bw; dx++) place(x + dx, y - dy, m, c);
+      }
+    };
+
+    if (kind === 0) {
+      // bedroom: bed with a coloured blanket, small wardrobe, rug
+      block(L, floor, 3, 2, WOOD, P.bedWhite);
+      place(L + 1, floor, WOOD, P.bedRed);
+      place(L + 2, floor, WOOD, P.bedRed);
+      place(L, floor - 1, WOOD, P.bedWhite);
+      block(R - 1, floor, 2, 2, WOOD, P.woodDark);
+      this.paint(L + 3, floor, 0xd8c9a4);
+      if (L + 4 <= R) this.paint(L + 4, floor, 0xd8c9a4);
+    } else if (kind === 1) {
+      // kitchen: counter run with a sink, a fridge, a stool
+      block(L, floor, Math.min(4, R - L + 1), 1, WOOD, P.tableWood);
+      place(L + 1, floor - 1, PLASTIC, P.awningWhite);
+      block(R - 1, floor, 2, 2, PLASTIC, P.fridge);
+      block(L, floor, 1, 0, WOOD, P.tableWood);
+      if (R - 1 > L + 3) place(L + 3, floor - 1, PLASTIC, P.tvDark);
+    } else if (kind === 2) {
+      // living room: sofa, coffee table, tv, plant
+      block(L, floor, 3, 2, WOOD, P.sofaBlue);
+      block(L + 3, floor, 2, 1, WOOD, P.tableWood);
+      place(R, floor, WOOD, P.plant);
+      place(R, floor - 1, WOOD, P.leaf);
+      place(R - 1, floor - 1, PLASTIC, P.tvDark);
+      this.paint(L + 1, floor, 0xe0b9a0);
+    } else if (kind === 3) {
+      // study: desk with a monitor, chair, bookshelf
+      block(L, floor, 2, 1, WOOD, P.tableWood);
+      place(L, floor - 1, PLASTIC, P.tvDark);
+      place(L + 2, floor, WOOD, P.sofaRed);
+      block(R - 1, floor, 2, 2, WOOD, P.woodDark);
+    } else {
+      // bathroom / laundry: tiles, washer, sink
+      for (let x = x0 + 1; x < x0 + w - 1; x++) {
+        for (let y = top + 1; y <= floor; y++) {
+          const i = y * this.w + x;
+          if (this.mat[i] === EMPTY) this.col[i] = y === floor ? 0xc9dbe2 : 0xd8e6ea;
+        }
+      }
+      block(L, floor, 2, 2, PLASTIC, P.fridge);
+      place(R, floor, WOOD, P.tableWood);
+      place(R - 1, floor - 1, PLASTIC, P.awningWhite);
+    }
+    // Wall-mounted décor: a shelf and a framed picture hang off the partitions,
+    // so they are carried by the wall and never float.
+    if (h >= 5) {
+      const sy = floor - 3;
+      if (place(L, sy, WOOD, P.woodDark)) {
+        place(L + 1, sy, WOOD, P.woodDark);
+        const bookCols = [0xc9473f, 0x3f9c8b, 0x4a7fc0, 0xe9c04a];
+        if (this.inB(L, sy - 1)) place(L, sy - 1, WOOD, bookCols[(this.rnd() * 4) | 0]);
+        if (this.inB(L + 1, sy - 1)) place(L + 1, sy - 1, WOOD, bookCols[(this.rnd() * 4) | 0]);
+      }
+      if (place(R, sy, PLASTIC, P.woodDark)) place(R, sy - 1, PLASTIC, [0xc98a92, 0x8fb3c9, 0xc9a24a][(this.rnd() * 3) | 0]);
+    }
+    // (ceiling lamps are drawn by the renderer instead of painted here: the row
+    // above the top storey is outside the building, so painting there would
+    // leave a floating cell for the solver to drop.)
+  }
+
+  // A whole storey: partitions, several flats, window bands.
+  furnishFloor(x0, y0, w, h, wallMat) {
+    if (w < 6 || h < 4) return;
+    const P = PAL;
+    const step = 6;
+    // partitions first (they are part of the fit-out, painted on structure)
+    for (let px = x0 + step; px < x0 + w - 2; px += step) {
+      const pc = mixCol(0xf1ece0, 0x8c8474, 0.18);
+      this.rect(px, y0 - h + 2, 1, h - 2, wallMat, 0, pc);
+      this.setPainted(px, y0 - 1, wallMat, P.woodDark);
+    }
+    for (let sx = x0 + 1; sx < x0 + w - 1; sx += step) {
+      const seg = Math.min(step, x0 + w - 1 - sx);
+      this.furnishFlat(sx, seg, y0, h);
+    }
+  }
+
+  // Shopfront on the ground floor: signage painted onto the walls plus a door
+  // carved into one of them (so nothing decorative ever floats).
+  shopFront(x, groundY, width) {
+    const P = PAL;
+    const signCol = [P.signRed, P.signBlue, P.signGreen, P.signYellow][(this.rnd() * 4) | 0];
+    const awn = this.rnd() < 0.5 ? P.awningRed : P.awningGreen;
+    const left = this.rnd() < 0.5;
+    const wx = left ? x : x + width - 2;
+    // signage band on both walls
+    for (const sx of [x, x + width - 2]) {
+      this.setPainted(sx, groundY - 5, CONCRETE, awn);
+      this.setPainted(sx + 1, groundY - 5, CONCRETE, awn);
+      this.setPainted(sx, groundY - 6, CONCRETE, signCol);
+      this.setPainted(sx + 1, groundY - 6, CONCRETE, signCol);
+    }
+    // entrance painted on the chosen wall (the wall keeps carrying load)
+    for (let dy = 1; dy <= 3; dy++) {
+      this.setPainted(wx, groundY - dy, CONCRETE, P.doorBrown);
+      this.setPainted(wx + 1, groundY - dy, CONCRETE, P.woodDark);
+    }
+    this.setPainted(wx, groundY - 4, CONCRETE, P.awningWhite);
+    this.setPainted(wx + 1, groundY - 4, CONCRETE, P.awningWhite);
+  }
+
   stampTower(x, groundY, width, height, opts = {}) {
-    const mat = opts.mat ?? 9; // panel
+    const mat = opts.mat ?? PANEL;
     const floorH = opts.floorH ?? 6;
-    const glass = opts.glass ?? 6;
-    const frame = opts.frame ?? 3;
-    const wallT = opts.wallT ?? 1;
+    const glass = opts.glass ?? GLASS;
+    const frame = opts.frame ?? CONCRETE;
     const floors = Math.max(1, Math.floor(height / floorH));
     const h = floors * floorH;
+    const P = PAL;
+    const trimCol = opts.trim ?? [P.signGreen, P.sofaTeal, P.signBlue][(this.rnd() * 3) | 0];
+    const facade = opts.facade ?? 0;
+
     // foundation slab
-    this.rect(x - 1, groundY - 1, width + 2, 2, 3);
-    // side walls
-    this.rect(x, groundY - h, wallT, h, mat);
-    this.rect(x + width - wallT, groundY - h, wallT, h, mat);
-    // floor slabs + windows
-    for (let f = 0; f <= floors; f++) {
+    this.rect(x - 1, groundY - 1, width + 2, 2, CONCRETE);
+
+    // side walls (2 cells: solid, window-core visible in section)
+    this.rect(x, groundY - h, 2, h, mat, 0, facade);
+    this.rect(x + width - 2, groundY - h, 2, h, mat, 0, facade);
+
+    for (let f = 0; f < floors; f++) {
       const y = groundY - f * floorH;
-      this.rect(x, y, width, 1, frame);
-      if (f === floors) break;
-      // corner columns
-      this.rect(x, y - floorH, 1, floorH - 1, mat);
-      this.rect(x + width - 1, y - floorH, 1, floorH - 1, mat);
-      // window band
-      const inner = width - 2;
-      if (opts.windows !== false) {
-        for (let wx = x + 1; wx < x + width - 1; wx++) {
-          const isMullion = (wx - x) % 5 === 0;
-          if (isMullion) { this.set(wx, y - 3, frame); this.set(wx, y - 2, frame); continue; }
-          this.set(wx, y - 1, glass);
-          this.set(wx, y - 2, glass);
-          this.set(wx, y - 3, glass);
+      // floor slab (the only full-width row) then a thin ceiling beam line
+      this.rect(x, y, width, 1, CONCRETE, 0, f === 0 ? P.concreteDark : P.floorWood);
+      // window bands painted into the side walls (wall stays load-bearing)
+      for (const wx of [x, x + width - 2]) {
+        for (let vy = y - 2; vy <= y - 4; vy++) {
+          this.setPainted(wx, vy, mat, PAL.glassCar);
+          this.setPainted(wx + 1, vy, mat, PAL.glassCar);
         }
-      } else if (inner > 0) {
-        this.rect(x + 1, y - 3, inner, 3, glass);
+        this.setPainted(wx, y - 1, mat, PAL.panelTrim);
+        this.setPainted(wx + 1, y - 1, mat, PAL.panelTrim);
       }
+      this.furnishFloor(x + 2, y, width - 4, floorH, PLASTIC);
     }
-    // load-bearing interior columns keep the floor slabs short-spanned
+
+    // load-bearing columns, drawn after the fit-out so nothing cuts them
     const colStep = opts.colStep ?? 6;
-    if (opts.columns !== false) {
-      for (let cx = x + colStep; cx < x + width - 1; cx += colStep) {
-        this.rect(cx, groundY - h, 1, h, mat);
-      }
+    for (let cx = x + colStep; cx < x + width - 1; cx += colStep) {
+      this.rect(cx, groundY - h, 1, h, mat, 0, facade ? mixCol(facade, 0xffffff, 0.5) : P.panelTrim);
     }
-    // interior partitions on some floors
-    if (opts.partitions !== false) {
-      for (let f = 1; f < floors; f++) {
-        const y = groundY - f * floorH;
-        if ((f & 1) === 0) this.rect(x + 2, y - floorH + 1, 1, floorH - 2, 10);
-      }
+
+    // balconies on every other floor (slab + railing, hung off the wall)
+    for (let f = 1; f < floors; f += 2) {
+      const y = groundY - f * floorH;
+      const side = this.rnd() < 0.5 ? 1 : -1;
+      const bx = side > 0 ? x + width : x - 3;
+      this.rect(bx, y - 1, 3, 1, CONCRETE, 0, P.concreteLight);
+      this.rect(bx, y - 2, 3, 1, STEEL, 0, P.metalRail);
+      this.setPainted(bx + 1, y - 2, STEEL, P.metalRail);
+    }
+
+    // ground floor: shops and an entrance
+    if (opts.shop !== false) this.shopFront(x, groundY, width);
+
+    // roof: parapet, machinery, antenna, stair box
+    const roof = groundY - h;
+    this.rect(x, roof - 2, width, 2, CONCRETE, 0, facade ? mixCol(facade, 0x000000, 0.35) : P.concreteLight);
+    this.rect(x + 3, roof - 4, 6, 2, STEEL, 0, P.ac);
+    this.rect(x + width - 9, roof - 4, 5, 2, STEEL, 0, P.ac);
+    this.rect(x + width - 14, roof - 6, 4, 4, CONCRETE, 0, P.concreteLight);
+    this.rect(x + width - 13, roof - 6, 2, 1, GLASS);
+    if (floors > 4) {
+      this.rect(x + 4, roof - 12, 1, 8, STEEL, 0, P.metalRail);
+      this.setPainted(x + 4, roof - 13, PLASTIC, P.signRed);
     }
     this.dirty = true;
-    return { x, y: groundY - h, w: width, h, floors };
+    return { x, y: roof - 6, w: width, h: h + 6, floors };
   }
 
   stampHouse(x, groundY, width, floors, opts = {}) {
-    const wall = opts.mat ?? 4;
-    const roof = opts.roof ?? 11;
+    const wall = opts.mat ?? BRICK;
+    const roof = opts.roof ?? SLATE;
     const floorH = opts.floorH ?? 7;
-    const t = 2; // exterior wall thickness (brick / aerated houses)
+    const t = 2;
     const h = floors * floorH;
-    this.rect(x - 1, groundY - 1, width + 2, 2, 3);   // footing
+    const P = PAL;
+    const facade = opts.facade ?? 0;
+    this.rect(x - 1, groundY - 1, width + 2, 2, CONCRETE, 0, P.concreteDark);
+
     for (let f = 0; f < floors; f++) {
       const y = groundY - f * floorH;
-      this.rect(x, y - floorH + 1, t, floorH - 1, wall);              // left wall
-      this.rect(x + width - t, y - floorH + 1, t, floorH - 1, wall);  // right wall
-      this.rect(x, y, width, 1, 3);                                   // floor slab
-      this.rect(x + t, y - floorH + 1, width - t * 2, 1, 7);          // ceiling joists
-      // interior room divider
-      if (width > 14) this.rect(x + Math.floor(width / 2), y - floorH + 1, 1, floorH - 1, wall);
-      // furniture so the interior reads as lived-in
-      if (f === 0) {
-        this.rect(x + t + 1, y - 1, 5, 1, 7);      // bed
-        this.rect(x + width - t - 4, y - 2, 2, 2, 7); // table + chair
-      } else {
-        this.rect(x + t + 2, y - 2, 3, 2, 7);
-        this.rect(x + width - t - 5, y - 1, 4, 1, 7);
+      this.rect(x, y - floorH + 1, t, floorH - 1, wall, 0, facade);
+      this.rect(x + width - t, y - floorH + 1, t, floorH - 1, wall, 0, facade);
+      this.rect(x, y, width, 1, CONCRETE, 0, f === 0 ? P.concreteDark : P.floorWood);
+      this.rect(x + t, y - floorH + 1, width - t * 2, 1, WOOD, 0, P.woodDark);
+      // windows painted into the walls
+      for (const wx of [x, x + width - 2]) {
+        for (const wy of [y - 3, y - 5]) {
+          if (wy <= y - floorH + 1) continue;
+          this.setPainted(wx, wy, wall, PAL.glassCar);
+          this.setPainted(wx + 1, wy, wall, PAL.glassCar);
+        }
+        this.setPainted(wx, y - 4, wall, PAL.awningWhite);
+        this.setPainted(wx + 1, y - 4, wall, PAL.awningWhite);
       }
+      this.furnishFloor(x + t, y, width - t * 2, floorH, wall);
     }
-    // entrance: a door void in the middle with a concrete frame
+
+    // front door with a small porch canopy
     const dx = x + Math.floor(width / 2) - 4;
     this.rect(dx, groundY - 4, 6, 4, EMPTY);
-    this.rect(dx - 1, groundY - 4, 1, 4, 3);
-    this.rect(dx + 6, groundY - 4, 1, 4, 3);
-    this.rect(dx - 1, groundY - 5, 8, 1, 7);
-    // pitched roof: timber attic with a slate skin and king posts down to the
-    // ceiling, so no part of the roof is a long unsupported cantilever
-    const rise = Math.max(2, Math.round(width * 0.24));
+    this.rect(dx - 1, groundY - 4, 1, 4, CONCRETE);
+    this.rect(dx + 6, groundY - 4, 1, 4, CONCRETE);
+    this.rect(dx - 2, groundY - 5, 10, 1, WOOD, 0, P.awningRed);
+
+    // pitched roof: tiled slope, timber attic inside, ridge cap on top
+    const rise = Math.max(2, Math.round(width * 0.16));
+    const tileCols = [P.roofRed, P.roofGreen, P.roofGrey, P.signRed];
+    const tile = opts.roofCol ?? tileCols[(this.rnd() * tileCols.length) | 0];
     for (let i = 0; i < rise; i++) {
       const yy = groundY - h - i - 1;
       const left = x + i - 1;
       const wRoof = width - i * 2 + 2;
       if (wRoof <= 0) break;
-      this.rect(left, yy, wRoof, 1, WOOD);
-      this.rect(left, yy, Math.min(2, wRoof), 1, roof);
-      if (wRoof > 2) this.rect(left + wRoof - Math.min(2, wRoof), yy, Math.min(2, wRoof), 1, roof);
+      // solid tiled slope with a timber core (keeps every cell carried)
+      this.rect(left, yy, wRoof, 1, WOOD, 0, P.woodDark);
+      this.rect(left, yy, Math.min(2, wRoof), 1, roof, 0, tile);
+      if (wRoof > 2) this.rect(left + wRoof - 2, yy, 2, 1, roof, 0, tile);
     }
+    // ceiling slab so the roof sits on structure (no floating rows)
+    this.rect(x - 1, groundY - h, width + 2, 1, CONCRETE, 0, P.floorWood);
+    // truss posts tie the roof down to the top storey
     for (let px = x + 3; px < x + width - 2; px += 5) {
-      this.rect(px, groundY - h - rise + 2, 1, rise, WOOD);
+      this.rect(px, groundY - h - rise + 2, 1, Math.max(2, rise), WOOD, 0, P.woodDark);
     }
-    // ridge beam
-    this.rect(x + rise - 2, groundY - h - rise, Math.max(2, width - rise * 2 + 2), 1, roof);
+    const ridgeW = Math.max(2, width - rise * 2 + 2);
+    this.rect(x + rise - 2, groundY - h - rise, ridgeW, 1, roof, 0, mixCol(tile, 0x000000, 0.22));
+
+    // chimney: runs from the top-floor ceiling up past the ridge so it is carried
+    const chx = x + width - 4;
+    this.rect(chx, groundY - h - rise - 3, 2, rise + 4, BRICK, 0, P.chimney);
+    this.chimney = this.chimney || [];
+    this.chimney.push({ x: chx, y: groundY - h - rise - 4 });
+
     this.dirty = true;
     return { x, y: groundY - h - rise, w: width, h: h + rise };
   }
@@ -235,6 +444,7 @@ export class World {
     const x = i % this.w, y = (i / this.w) | 0;
     this.clearAnchor(i);
     this.mat[i] = EMPTY;
+    this.col[i] = 0;
     this.dmg[i] = 0;
     this.fire[i] = 0;
     this.rad[i] = 0;
@@ -684,10 +894,12 @@ export class World {
   moveCell(i, j) {
     this.mat[j] = this.mat[i];
     this.dmg[j] = this.dmg[i];
+    this.col[j] = this.col[i];
     this.tint[j] = this.tint[i];
     this.fire[j] = this.fire[i];
     this.fallDist[j] = Math.min(255, this.fallDist[i] + 1);
     this.mat[i] = EMPTY;
+    this.col[i] = 0;
     this.dmg[i] = 0;
     this.fire[i] = 0;
     this.fallDist[i] = 0;
@@ -751,7 +963,7 @@ export class World {
         if (island.length > maxSize) break;
       }
       if (island.length <= maxSize) {
-        for (const j of island) { this.mat[j] = EMPTY; this.dmg[j] = 0; removed++; }
+        for (const j of island) { this.mat[j] = EMPTY; this.col[j] = 0; this.dmg[j] = 0; removed++; }
       }
     }
     this.dirty = true;

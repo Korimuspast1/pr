@@ -7,6 +7,8 @@ const STR = {
     'hud.people': 'жителей',
     'hud.lost': 'пострадало',
     'hud.rad': 'радиация',
+    'tab.demolish': 'СНОС',
+    'tab.build': 'СТРОЙКА',
     'hud.hint': 'ЛКМ — применить · ПКМ/колесо — панорама · H — скрыть интерфейс · T — замедление · P — пауза · R — новый город · F — полный экран · ~ — секрет',
     'panel.tool': 'Инструмент',
     'panel.yield': 'Мощность заряда',
@@ -44,6 +46,8 @@ const STR = {
     'hud.people': 'citizens',
     'hud.lost': 'casualties',
     'hud.rad': 'radiation',
+    'tab.demolish': 'DEMOLISH',
+    'tab.build': 'BUILD',
     'hud.hint': 'LMB — use · RMB/wheel — pan · H — hide UI · T — slow-mo · P — pause · R — new city · F — fullscreen · ~ — secret',
     'panel.tool': 'Tool',
     'panel.yield': 'Yield',
@@ -97,7 +101,9 @@ export class UI {
       rad: this.$('#stat-rad'),
     };
     this.consoleOpen = false;
+    this.tab = 'demolish';
     this.buildToolbar();
+    this.bindTabs();
     this.bind();
     this.applyLang(game.lang);
     this.onToolChanged(game);
@@ -118,6 +124,32 @@ export class UI {
       el.addEventListener('click', () => this.g.setTool(tool.id));
       this.toolbar.appendChild(el);
       this.toolEls[tool.id] = el;
+    }
+    if (this.tab) this.filterTools();
+  }
+
+  // СНОС / СТРОЙКА tabs, mirroring the reference UI: the demolish tab holds the
+  // destruction tools, the build tab holds the building, brush and citizen.
+  static TOOL_TAB = { build: 'build', brush: 'build', citizen: 'build' };
+
+  bindTabs() {
+    const tabs = this.$('#tabs');
+    if (!tabs) return;
+    tabs.querySelectorAll('[data-tab]').forEach((el) => {
+      el.addEventListener('click', () => {
+        this.tab = el.dataset.tab;
+        tabs.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === this.tab));
+        this.filterTools();
+        this.audio.click();
+      });
+    });
+    this.filterTools();
+  }
+
+  filterTools() {
+    for (const [id, el] of Object.entries(this.toolEls || {})) {
+      const tab = UI.TOOL_TAB[id] || 'demolish';
+      el.style.display = tab === this.tab ? '' : 'none';
     }
   }
 
@@ -308,10 +340,17 @@ export class UI {
   onToolChanged(game) {
     const tool = TOOLS.find((t) => t.id === game.tool);
     for (const [id, el] of Object.entries(this.toolEls || {})) el.classList.toggle('selected', id === game.tool);
+    const wantTab = UI.TOOL_TAB[game.tool] || 'demolish';
+    if (this.tab !== wantTab) {
+      this.tab = wantTab;
+      const tabs = this.$('#tabs');
+      if (tabs) tabs.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === wantTab));
+      this.filterTools();
+    }
     this.panel.classList.add('show');
     this.panelTitle.textContent = (this.g.lang === 'ru' ? tool.ru : tool.en).toUpperCase();
     const hint = STR[this.g.lang].hints[tool.id] || '';
-    let html = `<div class="panel-row" style="font-size:11px;line-height:1.5;color:#bdb6aa">${hint}</div>`;
+    let html = `<div class="panel-row" style="font-size:11px;line-height:1.5;color:#7b7264">${hint}</div>`;
     if (tool.id === 'nuke') {
       html += `<div class="panel-row"><label>${this.t('panel.yield')} <b id="yield-val">${game.nukeYield} Мт</b></label>
         <input type="range" id="yield" min="1" max="50" step="1" value="${game.nukeYield}" /></div>
@@ -322,7 +361,7 @@ export class UI {
       html += `<div class="opt-list">${BUILDINGS.map((b) => `<button class="opt ${b.id === game.building ? 'sel' : ''}" data-building="${b.id}">${this.g.lang === 'ru' ? b.ru : b.en}</button>`).join('')}</div>`;
     } else if (tool.id === 'brush') {
       html += `<div class="swatches">${[1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21].map((m) => `<button class="swatch ${m === game.brushMat ? 'sel' : ''}" data-mat="${m}" style="background:${MATERIALS[m].color}" title="${this.g.lang === 'ru' ? MATERIALS[m].ru : MATERIALS[m].en}"></button>`).join('')}</div>
-        <div class="panel-row" style="font-size:10px;color:#8d877e;margin-top:8px">${this.t('panel.erase')}</div>`;
+        <div class="panel-row" style="font-size:10px;color:#8d877e;margin-top:6px">${this.t('panel.erase')}</div>`;
     }
     this.panelBody.innerHTML = html;
 

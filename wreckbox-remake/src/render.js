@@ -1,4 +1,14 @@
-import { TINT_R, TINT_G, TINT_B, TINTS, EMPTY, WATER, REACTOR, GLASS, isSolid } from './materials.js';
+import {
+  TINT_R, TINT_G, TINT_B, TINTS, EMPTY, WATER, REACTOR, GLASS, GRASS, SOIL, ROCK,
+  BRICK, CONCRETE, PANEL, AERATED, PLASTIC, WOOD, SLATE, STEEL, CASTIRON, LEAD,
+  GLASSBLOCK, SAND, AMMO, WIRE, DEBRIS, PAL, isSolid,
+} from './materials.js';
+
+// Renderer: bright daylight, layered sky, and a per-cell bake with real detail
+// (bricks, panels, window frames, cracks, green structural outlines).
+const PPS = 3; // baked pixels per world cell
+
+const rnd = (a = 1, b = 0) => b + Math.random() * (a - b);
 
 export class Renderer {
   constructor(game) {
@@ -6,164 +16,500 @@ export class Renderer {
     this.buf = document.createElement('canvas');
     this.bctx = this.buf.getContext('2d');
     this.img = null;
-    this.worldRef = null;
+    this.cols = 0;
+    this.rows = 0;
+    this.x0 = 0;
+    this.y0 = 0;
+    this.clouds = null;
+    this.skylineFar = null;
+    this.skylineNear = null;
+    this.sky = null;
+    this.skyH = 0;
+    this.vignette = null;
+    this.time = 0;
+    this.outdoor = null;
+    this.outdoorFrame = -999;
   }
 
-  ensureBuffer() {
+  // Which empty cells are "outside" (connected to the sky)? Used to draw the
+  // green structural outline only along the building silhouette, like the
+  // original's schematic skin, instead of on every room edge.
+  computeOutdoor() {
     const w = this.g.world;
-    if (!this.img || this.worldRef !== w) {
-      this.worldRef = w;
-      this.buf.width = w.w;
-      this.buf.height = w.h;
-      this.img = new ImageData(w.w, w.h);
-      const d = this.img.data;
-      for (let i = 3; i < d.length; i += 4) d[i] = 255;
+    const n = w.n;
+    if (!this.outdoor || this.outdoor.length !== n) this.outdoor = new Uint8Array(n);
+    const out = this.outdoor;
+    out.fill(0);
+    const q = new Int32Array(n);
+    let head = 0, tail = 0;
+    for (let x = 0; x < w.w; x++) {
+      const i = x;
+      if (!w.mat[i]) { out[i] = 1; q[tail++] = i; }
+    }
+    while (head < tail) {
+      const i = q[head++];
+      const x = i % w.w, y = (i / w.w) | 0;
+      if (x > 0) { const j = i - 1; if (!out[j] && !w.mat[j]) { out[j] = 1; q[tail++] = j; } }
+      if (x < w.w - 1) { const j = i + 1; if (!out[j] && !w.mat[j]) { out[j] = 1; q[tail++] = j; } }
+      if (y > 0) { const j = i - w.w; if (!out[j] && !w.mat[j]) { out[j] = 1; q[tail++] = j; } }
+      if (y < w.h - 1) { const j = i + w.w; if (!out[j] && !w.mat[j]) { out[j] = 1; q[tail++] = j; } }
     }
   }
 
-  bakeRegion(x0, y0, x1, y1) {
+  isOutdoor(x, y) {
     const w = this.g.world;
-    this.ensureBuffer();
+    if (x < 0 || y < 0 || x >= w.w || y >= w.h) return true;
+    return this.outdoor[y * w.w + x] === 1;
+  }
+
+  // ------------------------------------------------------------------ scenery
+  makeCloudSheet(seed, puffs, scale) {
+    const W = 1024, H = 320;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    let s = seed;
+    const r = () => {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+    for (let p = 0; p < puffs; p++) {
+      const cx = r() * W;
+      const cy = H * (0.25 + r() * 0.45);
+      const size = (28 + r() * 46) * scale;
+      const lobes = 5 + ((r() * 5) | 0);
+      // shadow under the cloud
+      c.fillStyle = 'rgba(170,195,215,0.55)';
+      for (let i = 0; i < lobes; i++) {
+        const a = (i / lobes) * Math.PI * 2;
+        c.beginPath();
+        c.ellipse(cx + Math.cos(a) * size * 0.62, cy + 8 * scale + Math.abs(Math.sin(a)) * size * 0.18,
+          size * 0.62, size * 0.3, 0, 0, Math.PI * 2);
+        c.fill();
+      }
+      // bright body
+      c.fillStyle = 'rgba(255,255,255,0.97)';
+      for (let i = 0; i < lobes; i++) {
+        const a = (i / lobes) * Math.PI * 2 + r();
+        const rr = size * (0.42 + r() * 0.34);
+        c.beginPath();
+        c.arc(cx + Math.cos(a) * size * 0.6, cy - size * 0.1 + Math.sin(a) * size * 0.22, rr, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.beginPath();
+      c.arc(cx, cy - size * 0.18, size * 0.62, 0, Math.PI * 2);
+      c.fill();
+    }
+    return cv;
+  }
+
+  makeSkyline(seed, color, height, cellSize, litColor) {
+    const W = 2048, H = 420;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    let s = seed;
+    const r = () => {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+    c.fillStyle = color;
+    let x = 0;
+    while (x < W) {
+      const w = 26 + r() * 70;
+      const h = height * (0.35 + r() * 0.65);
+      c.fillRect(x, H - h, w, h);
+      // rooftop details
+      if (r() < 0.4) c.fillRect(x + w * 0.3, H - h - 14, 4, 14);
+      if (r() < 0.3) {
+        c.fillRect(x + w * 0.1, H - h - 8, w * 0.35, 4);
+      }
+      // windows
+      if (litColor) {
+        c.fillStyle = litColor;
+        for (let yy = H - h + 10; yy < H - 8; yy += 10) {
+          for (let xx = x + 6; xx < x + w - 6; xx += 9) {
+            if (r() < 0.55) c.fillRect(xx, yy, 4, 5);
+          }
+        }
+        c.fillStyle = color;
+      }
+      x += w + 4 + r() * 16;
+    }
+    return cv;
+  }
+
+  ensureScenery() {
+    if (this.clouds) return;
+    this.clouds = [
+      { sheet: this.makeCloudSheet(7, 5, 1.35), speed: 5, parallax: 0.035, y: 0.1, alpha: 0.5 },
+      { sheet: this.makeCloudSheet(23, 6, 1.0), speed: 9, parallax: 0.07, y: 0.16, alpha: 0.8 },
+      { sheet: this.makeCloudSheet(59, 5, 0.7), speed: 15, parallax: 0.12, y: 0.24, alpha: 0.95 },
+    ];
+    this.skylineFar = this.makeSkyline(11, 'rgba(174,203,224,0.85)', 250, 1, 'rgba(196,220,238,0.35)');
+    this.skylineNear = this.makeSkyline(97, 'rgba(150,183,208,0.92)', 330, 1, 'rgba(178,208,230,0.45)');
+  }
+
+  drawSky(ctx, cam) {
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    if (!this.sky || this.skyH !== H) {
+      this.skyH = H;
+      this.sky = ctx.createLinearGradient(0, 0, 0, H);
+      this.sky.addColorStop(0, '#61aee0');
+      this.sky.addColorStop(0.35, '#86c3ea');
+      this.sky.addColorStop(0.62, '#b6dcf3');
+      this.sky.addColorStop(1, '#e3f1f8');
+    }
+    ctx.fillStyle = this.sky;
+    ctx.fillRect(0, 0, W, H);
+
+    // sun with bloom
+    const sunX = W * 0.78 - cam.x * 0.006;
+    const sunY = H * 0.13 - cam.y * 0.006;
+    const bloom = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, H * 0.42);
+    bloom.addColorStop(0, 'rgba(255,252,225,0.85)');
+    bloom.addColorStop(0.12, 'rgba(255,246,200,0.35)');
+    bloom.addColorStop(0.45, 'rgba(255,240,190,0.10)');
+    bloom.addColorStop(1, 'rgba(255,240,190,0)');
+    ctx.fillStyle = bloom;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fffdf0';
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, H * 0.032, 0, Math.PI * 2);
+    ctx.fill();
+
+    // parallax skyline at the horizon
+    this.ensureScenery();
+    const horizon = (this.g.world.groundY * this.g.cell - cam.y) * cam.zoom;
+    const drawLayer = (sheet, parallax, scale, offsetY) => {
+      const sh = sheet.height * scale;
+      const sw = sheet.width * scale;
+      let x = -((cam.x * parallax) % sw);
+      const y = horizon - sh + offsetY * scale;
+      while (x < W) {
+        ctx.drawImage(sheet, x, y, sw, sh);
+        x += sw;
+      }
+    };
+    drawLayer(this.skylineFar, 0.18, 0.9, 26);
+    drawLayer(this.skylineNear, 0.32, 1.0, 6);
+
+    // clouds
+    for (const layer of this.clouds) {
+      const sheet = layer.sheet;
+      const sh = sheet.height * (0.9 + layer.parallax * 2.2);
+      const sw = sheet.width * (0.9 + layer.parallax * 2.2);
+      ctx.globalAlpha = layer.alpha;
+      let x = -((cam.x * layer.parallax + this.time * layer.speed) % sw);
+      const y = H * layer.y - cam.y * layer.parallax * 0.9;
+      while (x < W) {
+        ctx.drawImage(sheet, x, y, sw, sh);
+        x += sw;
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // ---------------------------------------------------------------- world bake
+  ensureBuffer(cols, rows) {
+    if (this.cols === cols && this.rows === rows && this.img) return;
+    this.cols = cols;
+    this.rows = rows;
+    this.buf.width = cols * PPS;
+    this.buf.height = rows * PPS;
+    this.img = this.bctx.createImageData(cols * PPS, rows * PPS);
+  }
+
+  bakeView() {
+    const g = this.g;
+    const w = g.world;
+    if (g.frame - this.outdoorFrame > 6) {
+      this.outdoorFrame = g.frame;
+      this.computeOutdoor();
+    }
+    const cell = g.cell;
+    const cam = g.cam;
+    const cols = Math.ceil(g.canvas.width / cam.zoom / cell) + 4;
+    const rows = Math.ceil(g.canvas.height / cam.zoom / cell) + 4;
+    this.ensureBuffer(cols, rows);
+    const x0 = Math.floor(cam.x / cell) - 2;
+    const y0 = Math.floor(cam.y / cell) - 2;
+    this.x0 = x0;
+    this.y0 = y0;
     const d = this.img.data;
-    const t = this.g.time;
-    const flick = 0.82 + Math.sin(t * 18) * 0.1 + Math.random() * 0.08;
-    x0 = Math.max(0, x0 | 0); y0 = Math.max(0, y0 | 0);
-    x1 = Math.min(w.w, x1 | 0); y1 = Math.min(w.h, y1 | 0);
-    for (let y = y0; y < y1; y++) {
-      const row = y * w.w;
-      for (let x = x0; x < x1; x++) {
-        const i = row + x;
-        const m = w.mat[i];
-        const p = i * 4;
-        if (m === EMPTY) {
-          const rad = w.rad[i];
-          if (rad > 0.05) {
-            // contaminated air: a translucent green haze, never a solid wall
-            d[p] = 120; d[p + 1] = 200; d[p + 2] = 90;
-            d[p + 3] = Math.min(120, rad * 70) | 0;
-          } else {
-            d[p] = 0; d[p + 1] = 0; d[p + 2] = 0; d[p + 3] = 0;
+    const stride = cols * PPS;
+    const t = g.time;
+    const GLASSC = PAL.glassCar;
+    const flick = 0.86 + Math.sin(t * 16) * 0.08 + Math.random() * 0.06;
+
+    for (let ry = 0; ry < rows; ry++) {
+      const cy = y0 + ry;
+      for (let rx = 0; rx < cols; rx++) {
+        const cx = x0 + rx;
+        const bx = rx * PPS;
+        const by = ry * PPS;
+        if (cx < 0 || cy < 0 || cx >= w.w || cy >= w.h) {
+          for (let py = 0; py < PPS; py++) {
+            let p = ((by + py) * stride + bx) * 4;
+            for (let px = 0; px < PPS; px++) { d[p + 3] = 0; p += 4; }
           }
           continue;
         }
-        d[p + 3] = 255;
-        let ti = (m * TINTS + w.tint[i]) | 0;
-        let r = TINT_R[ti], g = TINT_G[ti], b = TINT_B[ti];
-        const dmg = w.dmg[i];
-        if (dmg > 0) {
-          const k = 1 - (dmg / 255) * 0.42;
-          r *= k; g *= k; b *= k;
-          if (dmg > 110) {
-            const crack = (x * 7 + y * 13 + dmg) % 9;
-            if (crack === 0) { r *= 0.55; g *= 0.55; b *= 0.55; }
+        const i = cy * w.w + cx;
+        const m = w.mat[i];
+        if (m === EMPTY) {
+          const rad = w.rad[i];
+          const enclosed = !this.isOutdoor(cx, cy);
+          // interior "back wall": rooms must not show the sky through them
+          let ir = 0, ig = 0, ib = 0;
+          if (enclosed) {
+            const c = w.col[i];
+            if (c) {
+              ir = (c >> 16) & 255; ig = (c >> 8) & 255; ib = c & 255;
+              // subtle vertical shading so flat wallpaper still has depth
+              const belowSolid2 = cy < w.h - 1 && isSolid(w.mat[i + w.w]);
+              if (belowSolid2) { ir *= 0.9; ig *= 0.9; ib *= 0.92; }
+            } else {
+              const belowSolid = cy < w.h - 1 && isSolid(w.mat[i + w.w]);
+              const shade = 0.82 + ((w.tint[i] % 6) * 0.03);
+              const warm = (w.tint[i] & 1) === 0;
+              ir = (warm ? 214 : 196) * shade;
+              ig = (warm ? 205 : 208) * shade;
+              ib = (warm ? 189 : 216) * shade;
+              if (belowSolid) { ir *= 0.92; ig *= 0.92; ib *= 0.94; }
+              ir *= 0.9; ig *= 0.9; ib *= 0.92;
+            }
           }
+          // wall décor: small framed picture or a shelf on some room walls
+          let decor = 0, decorCol = 0;
+          if (enclosed && cy > 1 && isSolid(w.mat[i - w.w])) {
+            const dh = ((cx * 13 + cy * 29 + (w.col[i] & 255)) % 11);
+            if (dh === 0) { decor = 1; decorCol = 0xc9a24a; }
+            else if (dh === 1) { decor = 1; decorCol = 0x8fb3c9; }
+            else if (dh === 2) { decor = 1; decorCol = 0xc98a92; }
+          }
+          // ceiling lamp: warm bulb tucked under the slab, plus a soft halo
+          let lampGlow = 0;
+          if (enclosed && cy > 0 && isSolid(w.mat[i - w.w])) {
+            const hsh = ((cx * 37 + cy * 61 + (w.tint[i] & 7)) % 5);
+            if (hsh === 0) lampGlow = 1;
+          }
+          for (let py = 0; py < PPS; py++) {
+            let p = ((by + py) * stride + bx) * 4;
+            for (let px = 0; px < PPS; px++) {
+              if (enclosed) {
+                d[p] = ir; d[p + 1] = ig; d[p + 2] = ib; d[p + 3] = 255;
+                if (decor && py === 1) {
+                  if (px === 1) { d[p] = 92; d[p + 1] = 74; d[p + 2] = 52; }
+                  else { d[p] = (decorCol >> 16) & 255; d[p + 1] = (decorCol >> 8) & 255; d[p + 2] = decorCol & 255; }
+                } else if (lampGlow) {
+                  if (py === 0 && px === 1) { d[p] = 255; d[p + 1] = 226; d[p + 2] = 140; }
+                  else {
+                    const k = py === 0 ? 0.55 : 0.26;
+                    d[p] = d[p] + (255 - d[p]) * k;
+                    d[p + 1] = d[p + 1] + (236 - d[p + 1]) * k;
+                    d[p + 2] = d[p + 2] + (170 - d[p + 2]) * k;
+                  }
+                }
+                if (rad > 0.06) {
+                  d[p] = d[p] * 0.5 + 150 * 0.5;
+                  d[p + 1] = d[p + 1] * 0.5 + 215 * 0.5;
+                  d[p + 2] = d[p + 2] * 0.5 + 120 * 0.5;
+                }
+              } else if (rad > 0.06) {
+                d[p] = 150; d[p + 1] = 215; d[p + 2] = 120;
+                d[p + 3] = Math.min(90, rad * 55) | 0;
+              } else d[p + 3] = 0;
+              p += 4;
+            }
+          }
+          continue;
         }
-        if (w.fire[i]) {
-          const f = flick;
-          r = Math.min(255, 250 * f);
-          g = Math.min(255, (110 + Math.sin(t * 12 + x) * 40) * f);
-          b = 20;
+
+        // base colour
+        let r, gg, b;
+        const override = w.col[i];
+        if (override) {
+          r = (override >> 16) & 255; gg = (override >> 8) & 255; b = override & 255;
+          const k = 0.94 + (w.tint[i] / 15) * 0.12;
+          r *= k; gg *= k; b *= k;
+        } else {
+          const ti = (m * TINTS + w.tint[i]) | 0;
+          r = TINT_R[ti]; gg = TINT_G[ti]; b = TINT_B[ti];
         }
+
+        // material micro-patterns on a 3x3 footprint
+        const pat = (w.tint[i] + cx * 3 + cy * 5) & 3;
+        switch (m) {
+          case BRICK:
+            if (cy % 2 === 0 || (cx + ((cy >> 1) % 2) * 2) % 4 === 0) { r *= 0.87; gg *= 0.85; b *= 0.84; }
+            break;
+          case CONCRETE: case PANEL: case AERATED: case PLASTIC:
+            if (pat === 0) { r *= 0.96; gg *= 0.96; b *= 0.96; }
+            if (cx % 4 === 0) { r *= 0.93; gg *= 0.93; b *= 0.93; }
+            break;
+          case STEEL: case CASTIRON: case LEAD:
+            if ((cx % 4 === 2) && (cy % 4 === 2)) { r *= 0.78; gg *= 0.8; b *= 0.84; }
+            else if (cy % 5 === 0) { r *= 0.93; gg *= 0.94; b *= 0.95; }
+            break;
+          case WOOD:
+            if (cy % 2 === 1) { r *= 0.9; gg *= 0.88; b *= 0.86; }
+            if (pat === 1) { r *= 0.95; gg *= 0.93; b *= 0.9; }
+            break;
+          case SLATE:
+            if ((cx + cy) % 3 === 0) { r *= 0.88; gg *= 0.89; b *= 0.9; }
+            break;
+          case GLASSBLOCK:
+            if ((cx + cy) % 3 === 0) { r *= 0.9; gg *= 0.95; b *= 0.96; }
+            break;
+          case SOIL:
+            if (pat === 0) { r *= 0.86; gg *= 0.84; b *= 0.82; }
+            else if (pat === 2) { r *= 1.06; gg *= 1.04; b *= 1.02; }
+            break;
+          case ROCK:
+            if (pat === 1) { r *= 1.1; gg *= 1.1; b *= 1.1; }
+            break;
+          case SAND:
+            if (pat === 3) { r *= 0.93; gg *= 0.91; b *= 0.88; }
+            break;
+          case GRASS:
+            {
+              const k = 0.86 + ((w.tint[i] % 5) * 0.07);
+              r *= k; gg *= 1.06; b *= k * 0.9;
+            }
+            break;
+          case WIRE:
+            r = 224; gg = 186; b = 96;
+            break;
+          default: break;
+        }
+
         if (m === WATER) {
-          const s = Math.sin(t * 2 + x * 0.4 + y * 0.2) * 8;
-          r += s; g += s; b += s;
+          const s = Math.sin(t * 2 + cx * 0.4 + cy * 0.2) * 10;
+          r += s; gg += s; b += s;
         }
         if (m === REACTOR) {
           const pulse = 0.7 + Math.sin(t * 3) * 0.3;
-          r += 40 * pulse; g += 80 * pulse; b += 40 * pulse;
+          r += 30 * pulse; gg += 70 * pulse; b += 30 * pulse;
         }
-        if (m === GLASS) {
-          const gl = Math.sin((x + y) * 0.9) > 0.86 ? 22 : 0;
-          r += gl; g += gl; b += gl;
+
+        // damage: darken, then thin cracks
+        const dmg = w.dmg[i];
+        if (dmg > 0) {
+          const k = 1 - (dmg / 255) * 0.35;
+          r *= k; gg *= k; b *= k;
         }
-        // material surface patterns: mortar, panel seams, rivets, grain
-        if (m === 4) {                       // brick
-          if (y % 2 === 0 || (x + ((y >> 1) % 2) * 2) % 4 === 0) { r *= 0.82; g *= 0.82; b *= 0.82; }
-        } else if (m === 3 || m === 9 || m === 10) { // concrete / panel / aerated
-          if (x % 4 === 0 || y % 3 === 0) { r *= 0.93; g *= 0.93; b *= 0.93; }
-        } else if (m === 5 || m === 14) {    // steel / cast iron
-          if (x % 5 === 2 && y % 4 === 2) { r *= 0.78; g *= 0.78; b *= 0.78; }
-          else if (y % 6 === 0) { r *= 0.9; g *= 0.9; b *= 0.9; }
-        } else if (m === 7) {                // wood grain
-          if (y % 2 === 1) { r *= 0.9; g *= 0.9; b *= 0.9; }
-        } else if (m === 11) {               // slate shingles
-          if ((x + y) % 3 === 0) { r *= 0.88; g *= 0.88; b *= 0.88; }
-        } else if (m === 13) {               // lead sheet seams
-          if (x % 3 === 0) { r *= 0.88; g *= 0.88; b *= 0.9; }
+        const cracked = dmg > 120 && ((cx * 5 + cy * 3 + (dmg >> 3)) % 7 === 0);
+        if (cracked) { r *= 0.5; gg *= 0.5; b *= 0.5; }
+
+        if (w.fire[i]) {
+          r = 250 * flick; gg = (120 + Math.sin(t * 12 + cx) * 40) * flick; b = 30;
         }
-        if (y > w.groundY + 2) { r *= 0.86; g *= 0.86; b *= 0.86; }
-        d[p] = r; d[p + 1] = g; d[p + 2] = b;
+
+        // ambient light: sun from the upper left, sky bounce from above
+        const above = cy > 0 ? w.mat[i - w.w] : EMPTY;
+        const below = cy < w.h - 1 ? w.mat[i + w.w] : EMPTY;
+        const left = cx > 0 ? w.mat[i - 1] : EMPTY;
+        const right = cx < w.w - 1 ? w.mat[i + 1] : EMPTY;
+        const openAbove = !isSolid(above);
+        const openLeft = !isSolid(left);
+        const openRight = !isSolid(right);
+        const openBelow = !isSolid(below);
+
+        // write the 3x3 block
+        for (let py = 0; py < PPS; py++) {
+          const edgeY = py === 0 ? (openAbove ? 1.18 : 1.02) : py === PPS - 1 ? (openBelow ? 0.82 : 0.96) : 1;
+          let p = ((by + py) * stride + bx) * 4;
+          for (let px = 0; px < PPS; px++) {
+            let rr = r, g2 = gg, b2 = b;
+            let k = edgeY;
+            if (px === 0 && openLeft) k *= 1.14;
+            if (px === PPS - 1 && openRight) k *= 0.9;
+
+            // painted window panes (col == glass): white frame + sky sheen
+            if (override === GLASSC) {
+              rr = 150; g2 = 200; b2 = 226; k = 1;
+              if (px === 0 || px === PPS - 1) { rr = 246; g2 = 248; b2 = 250; }
+              if (py === 1 && px === 1) { rr = 214; g2 = 238; b2 = 250; }
+              if (py === PPS - 1) { rr = 226; g2 = 231; b2 = 236; }
+            }
+
+            // glass: white frame + sheen
+            if (m === GLASS) {
+              const frame = (py === 0 || py === PPS - 1 || px === 0 || px === PPS - 1);
+              if (frame) { rr = 244; g2 = 250; b2 = 254; k = 1; }
+              else if (px === py) { rr = 236; g2 = 248; b2 = 255; }
+            } else if (m === GLASSBLOCK) {
+              if (px === 1 && py === 1) { rr = 250; g2 = 255; b2 = 255; }
+            } else if (m === WIRE) {
+              if (py === 1) { rr = 255; g2 = 232; b2 = 140; } else { rr = 176; g2 = 138; b2 = 52; }
+            }
+
+            d[p] = rr * k;
+            d[p + 1] = g2 * k;
+            d[p + 2] = b2 * k;
+            d[p + 3] = 255;
+            p += 4;
+          }
+        }
+
+        // green structural outline along the silhouette only (schematic skin)
+        const structural = m === CONCRETE || m === PANEL || m === STEEL || m === BRICK ||
+          m === CASTIRON || m === AERATED || m === GLASSBLOCK || m === LEAD || m === WOOD ||
+          m === PLASTIC || m === DEBRIS;
+        const outAbove = openAbove && this.isOutdoor(cx, cy - 1);
+        const outLeft = openLeft && this.isOutdoor(cx - 1, cy);
+        const outRight = openRight && this.isOutdoor(cx + 1, cy);
+        if (structural && (outAbove || outLeft || outRight)) {
+          const gr = 96, gg2 = 208, gb = 150;
+          const blend = (p, rr, g2, b2, a) => {
+            d[p] = d[p] * (1 - a) + rr * a;
+            d[p + 1] = d[p + 1] * (1 - a) + g2 * a;
+            d[p + 2] = d[p + 2] * (1 - a) + b2 * a;
+          };
+          if (outAbove) {
+            for (let px = 0; px < PPS; px++) blend((by * stride + bx + px) * 4, gr, gg2, gb, 0.72);
+          }
+          if (outLeft) {
+            for (let py = 0; py < PPS; py++) blend(((by + py) * stride + bx) * 4, gr, gg2, gb, 0.55);
+          }
+          if (outRight) {
+            for (let py = 0; py < PPS; py++) blend(((by + py) * stride + bx + PPS - 1) * 4, gr, gg2, gb, 0.45);
+          }
+        }
       }
     }
     this.bctx.putImageData(this.img, 0, 0);
   }
 
-  bakeVisible() {
-    const g = this.g;
-    const cam = g.cam;
-    const c = g.cell;
-    const pad = 6;
-    const x0 = cam.x / c - pad;
-    const y0 = cam.y / c - pad;
-    const x1 = (cam.x + g.canvas.width / cam.zoom) / c + pad;
-    const y1 = (cam.y + g.canvas.height / cam.zoom) / c + pad;
-    this.bakeRegion(x0, y0, x1, y1);
-  }
-
+  // ------------------------------------------------------------------- draw
   draw() {
     const g = this.g;
     const ctx = g.ctx;
     const cam = g.cam;
     const W = g.canvas.width, H = g.canvas.height;
+    this.time += 1 / 60;
     const shake = g.effects.shakeAmp;
     const ox = shake ? (Math.random() - 0.5) * shake * 2 : 0;
     const oy = shake ? (Math.random() - 0.5) * shake * 2 : 0;
 
-    // sky (gradient cached: building it every frame is surprisingly expensive)
-    if (!this.sky || this.skyH !== H) {
-      this.skyH = H;
-      this.sky = ctx.createLinearGradient(0, 0, 0, H);
-      this.sky.addColorStop(0, '#1d2a3d');
-      this.sky.addColorStop(0.45, '#5d6f85');
-      this.sky.addColorStop(0.75, '#9c8f7c');
-      this.sky.addColorStop(1, '#c8b39a');
-    }
-    ctx.fillStyle = this.sky;
-    ctx.fillRect(0, 0, W, H);
+    this.drawSky(ctx, cam);
 
     ctx.save();
     ctx.translate(ox, oy);
-    this.bakeVisible();
+    this.bakeView();
+    const cell = g.cell;
+    const dx = (this.x0 * cell - cam.x) * cam.zoom;
+    const dy = (this.y0 * cell - cam.y) * cam.zoom;
     ctx.imageSmoothingEnabled = false;
-    {
-      const W0 = g.world.w, H0 = g.world.h;
-      const c = g.cell;
-      const srcX = Math.max(0, Math.floor(cam.x / c) - 1);
-      const srcY = Math.max(0, Math.floor(cam.y / c) - 1);
-      const srcW = Math.min(W0 - srcX, Math.ceil(g.canvas.width / cam.zoom / c) + 3);
-      const srcH = Math.min(H0 - srcY, Math.ceil(g.canvas.height / cam.zoom / c) + 3);
-      const dx = (srcX * c - cam.x) * cam.zoom;
-      const dy = (srcY * c - cam.y) * cam.zoom;
-      if (srcW > 0 && srcH > 0) {
-        ctx.drawImage(this.buf, srcX, srcY, srcW, srcH, dx, dy, srcW * c * cam.zoom, srcH * c * cam.zoom);
-      }
-    }
+    ctx.drawImage(this.buf, dx, dy, this.cols * cell * cam.zoom, this.rows * cell * cam.zoom);
 
-    // power lines and lamps
     this.drawPower(ctx, cam);
-
-    // effects (behind citizens)
     g.effects.draw(ctx, cam);
-
-    // people
     g.citizens.draw(ctx, cam);
-
-    // light glows
     this.drawLights(ctx, cam);
-
     ctx.restore();
 
-    // post effects
     g.effects.drawOverlay(ctx, cam);
     if (!g.lowQ) this.drawRadiation(ctx, cam);
     if (!g.lowQ) this.drawVignette(ctx);
@@ -172,29 +518,24 @@ export class Renderer {
   }
 
   drawPower(ctx, cam) {
-    const w = this.g.world;
+    const g = this.g;
+    const w = g.world;
     if (!w.powerNodes || !w.powerNodes.length) return;
     ctx.save();
-    ctx.lineWidth = Math.max(1, 1.6 * cam.zoom * 8 * 0.12);
+    ctx.lineWidth = Math.max(1, 1.4 * cam.zoom);
     for (const l of w.powerLinks) {
       const a = w.powerNodes[l.a], b = w.powerNodes[l.b];
       if (!a || !b) continue;
-      const ax = (a.x * this.g.cell - cam.x) * cam.zoom;
-      const ay = (a.y * this.g.cell - cam.y) * cam.zoom;
-      const bx = (b.x * this.g.cell - cam.x) * cam.zoom;
-      const by = (b.y * this.g.cell - cam.y) * cam.zoom;
-      const sag = Math.min(60, Math.abs(bx - ax) * 0.08) + 6;
-      ctx.strokeStyle = l.cut ? 'rgba(40,40,40,0.8)' : 'rgba(24,24,26,0.85)';
+      const ax = (a.x * g.cell - cam.x) * cam.zoom;
+      const ay = (a.y * g.cell - cam.y) * cam.zoom;
+      const bx = (b.x * g.cell - cam.x) * cam.zoom;
+      const by = (b.y * g.cell - cam.y) * cam.zoom;
+      const sag = Math.min(70, Math.abs(bx - ax) * 0.09) + 6;
+      ctx.strokeStyle = l.cut ? 'rgba(70,60,50,0.8)' : 'rgba(54,58,64,0.85)';
       ctx.beginPath();
       ctx.moveTo(ax, ay);
       ctx.quadraticCurveTo((ax + bx) / 2, (ay + by) / 2 + sag, bx, by);
       ctx.stroke();
-      if (!l.cut && !w.blackout) {
-        ctx.strokeStyle = 'rgba(255,225,130,0.20)';
-        ctx.lineWidth = Math.max(0.6, 0.6 * cam.zoom * 10);
-        ctx.stroke();
-        ctx.lineWidth = Math.max(1, 1.6 * cam.zoom * 8 * 0.12);
-      }
     }
     ctx.restore();
   }
@@ -208,24 +549,11 @@ export class Renderer {
       if (!l) continue;
       const x = (l.x * this.g.cell - cam.x) * cam.zoom;
       const y = (l.y * this.g.cell - cam.y) * cam.zoom;
-      const r = l.r * cam.zoom * 2.2;
+      const r = l.r * cam.zoom * 1.6;
+      if (x < -r || y < -r || x > ctx.canvas.width + r || y > ctx.canvas.height + r) continue;
       const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
-      grd.addColorStop(0, 'rgba(255,224,150,0.35)');
-      grd.addColorStop(1, 'rgba(255,200,100,0)');
-      ctx.fillStyle = grd;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // reactor glow
-    for (const n of w.powerNodes) {
-      if (!n.plant || !n.on) continue;
-      const x = (n.x * this.g.cell - cam.x) * cam.zoom;
-      const y = (n.y * this.g.cell - cam.y) * cam.zoom;
-      const r = 160 * cam.zoom;
-      const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
-      grd.addColorStop(0, 'rgba(140,255,180,0.28)');
-      grd.addColorStop(1, 'rgba(80,255,140,0)');
+      grd.addColorStop(0, 'rgba(255,236,170,0.30)');
+      grd.addColorStop(1, 'rgba(255,210,120,0)');
       ctx.fillStyle = grd;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -235,33 +563,21 @@ export class Renderer {
   }
 
   drawRadiation(ctx, cam) {
-    const g = this.g;
-    const w = g.world;
+    const w = this.g.world;
     if (w.stats.fallout < 20) return;
-    // faint green veil + drifting fallout speckles, clipped to the screen
-    const grd = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-    grd.addColorStop(0, 'rgba(120,255,140,0.012)');
-    grd.addColorStop(1, 'rgba(110,220,120,0.05)');
-    ctx.fillStyle = grd;
+    ctx.fillStyle = 'rgba(150,225,120,0.05)';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    const n = Math.min(140, Math.round(w.stats.fallout / 6));
-    ctx.fillStyle = 'rgba(190,240,170,0.35)';
-    for (let i = 0; i < n; i++) {
-      const x = (Math.random() * ctx.canvas.width) | 0;
-      const y = (Math.random() * ctx.canvas.height) | 0;
-      ctx.fillRect(x, y, 1, 1);
-    }
   }
 
   drawVignette(ctx) {
     const W = ctx.canvas.width, H = ctx.canvas.height;
-    if (!this.vignette) {
+    if (!this.vignette || this.vignette.width !== W || this.vignette.height !== H) {
       const cv = document.createElement('canvas');
       cv.width = W; cv.height = H;
       const c = cv.getContext('2d');
-      const grd = c.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.95);
+      const grd = c.createRadialGradient(W / 2, H / 2, H * 0.55, W / 2, H / 2, H * 1.05);
       grd.addColorStop(0, 'rgba(0,0,0,0)');
-      grd.addColorStop(1, 'rgba(0,0,0,0.42)');
+      grd.addColorStop(1, 'rgba(20,30,40,0.22)');
       c.fillStyle = grd;
       c.fillRect(0, 0, W, H);
       this.vignette = cv;

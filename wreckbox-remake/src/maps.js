@@ -1,3 +1,4 @@
+import { PAL } from './materials.js';
 import { World } from './world.js';
 import {
   EMPTY, SOIL, ROCK, CONCRETE, BRICK, STEEL, GLASS, WOOD, ASPHALT, PANEL,
@@ -12,32 +13,48 @@ const rnd = (a = 1, b = 0) => b + Math.random() * (a - b);
 const ri = (a, b) => Math.floor(rnd(a, b));
 
 function ground(world, top = GY) {
-  world.rect(0, top, MAP_W, 2, CONCRETE);           // sidewalk / pavement
-  world.rect(0, top + 2, MAP_W, 3, ASPHALT);        // street
+  world.rect(0, top, MAP_W, 2, CONCRETE, 0, PAL.floorTile);   // sidewalk / pavement
+  world.rect(0, top + 1, MAP_W, 1, CONCRETE, 0, 0xc4bfae);    // kerb edge
+  world.rect(0, top + 2, MAP_W, 3, ASPHALT, 0, 0x3a3d42);     // street
+  for (let x = 4; x < MAP_W; x += 14) world.setPainted(x, top + 3, ASPHALT, PAL.signYellow);
   world.rect(0, top + 5, MAP_W, 34, SOIL);          // soil
   world.rect(0, top + 39, MAP_W, MAP_H - top - 39, ROCK); // bedrock
   world.groundY = top;
 }
 
-function car(world, x, y, colorMat = STEEL) {
-  world.rect(x, y - 4, 9, 3, colorMat);
-  world.rect(x + 1, y - 7, 7, 3, GLASS);
-  world.rect(x + 1, y - 1, 2, 1, CASTIRON);
-  world.rect(x + 6, y - 1, 2, 1, CASTIRON);
-  world.rect(x + 3, y - 5, 3, 1, GLASSBLOCK);
+const CAR_COLS = [PAL.carRed, PAL.carBlue, PAL.carTeal, PAL.carYellow, PAL.carWhite];
+
+function car(world, x, y, colIdx = 0) {
+  const body = CAR_COLS[colIdx % CAR_COLS.length];
+  world.rect(x, y - 4, 9, 3, STEEL, 0, body);          // body
+  world.rect(x + 1, y - 7, 7, 3, GLASS, 0, PAL.glassCar); // cabin glazing
+  world.rect(x + 2, y - 6, 5, 1, STEEL, 0, body);      // roof
+  world.rect(x + 1, y - 1, 2, 1, CASTIRON, 0, PAL.tire);
+  world.rect(x + 6, y - 1, 2, 1, CASTIRON, 0, PAL.tire);
+  world.setPainted(x, y - 5, STEEL, PAL.awningWhite);
+  world.setPainted(x + 8, y - 5, STEEL, PAL.awningWhite);
 }
 
 function tree(world, x, y, h = 12) {
-  world.rect(x, y - h, 1, h, WOOD);
+  world.rect(x, y - h, 2, h, WOOD, 0, PAL.trunk);
   world.disc(x, y - h - 4, 6, GRASS);
   world.disc(x - 3, y - h - 1, 4, GRASS);
   world.disc(x + 3, y - h - 2, 4, GRASS);
+  // leafy tint variation so neighbouring trees don't look cloned
+  const c1 = PAL.leaf;
+  const c2 = PAL.leafDark;
+  for (let i = 0; i < world.n; i++) {
+    if (world.mat[i] !== GRASS) continue;
+    const cx = i % world.w, cy = (i / world.w) | 0;
+    if (Math.abs(cx - x) > 9 || Math.abs(cy - (y - h - 3)) > 12) continue;
+    world.col[i] = ((cx * 7 + cy * 13) % 5 === 0) ? c2 : c1;
+  }
 }
 
 function lamp(world, x, y) {
-  world.rect(x, y - 16, 1, 16, CASTIRON);
-  world.set(x + 1, y - 16, CASTIRON);
-  world.set(x + 2, y - 16, GLASS);
+  world.rect(x, y - 16, 1, 16, CASTIRON, 0, PAL.metalRail);
+  world.set(x + 1, y - 16, CASTIRON, 0, PAL.metalRail);
+  world.set(x + 2, y - 16, GLASS, 0, PAL.lamp);
   return { x: x + 2, y: y - 15, r: 60 };
 }
 
@@ -98,24 +115,31 @@ export function buildCity() {
   for (let x = 310; x < 364; x += 12) world.rect(x, GY + 12, 2, 16, CONCRETE);
 
   const towers = [];
-  // left residential block
-  let x = 8;
+  // Chunky mid-rise blocks: wide, 3-6 storeys, brightly painted facades so the
+  // city reads like the reference art instead of thin grey towers.
+  const facades = [PAL.facBrick, PAL.facCream, PAL.facTeal, PAL.facSand,
+    PAL.facOrange, PAL.facLilac, PAL.facMint, PAL.facRose];
   const specs = [
-    { w: 26, h: 62, mat: PANEL, glass: GLASS, style: 'tower' },
-    { w: 20, h: 48, mat: BRICK, glass: GLASS, style: 'house' },
-    { w: 30, h: 84, mat: CONCRETE, glass: GLASSBLOCK, style: 'tower' },
-    { w: 24, h: 40, mat: AERATED, glass: GLASS, style: 'house' },
-    { w: 32, h: 96, mat: STEEL, glass: GLASS, style: 'tower' },
+    { w: 46, h: 34, mat: BRICK, glass: GLASS, style: 'house', floors: 4 },
+    { w: 38, h: 44, mat: PANEL, glass: GLASS, style: 'tower' },
+    { w: 52, h: 30, mat: AERATED, glass: GLASS, style: 'house', floors: 3 },
+    { w: 42, h: 38, mat: BRICK, glass: GLASS, style: 'house', floors: 4 },
+    { w: 36, h: 50, mat: PANEL, glass: GLASS, style: 'tower' },
   ];
+  let x = 6;
+  let fi = 0;
   for (const s of specs) {
+    const facade = facades[fi++ % facades.length];
     if (s.style === 'tower') {
-      const b = world.stampTower(x, GY, s.w, s.h, { mat: s.mat, glass: s.glass, floorH: 6, colStep: 6 });
-      towers.push(b);
+      towers.push(world.stampTower(x, GY, s.w, s.h, {
+        mat: s.mat, glass: s.glass, floorH: 6, colStep: 7, facade,
+      }));
     } else {
-      const b = world.stampHouse(x, GY, s.w, Math.max(2, Math.round(s.h / 8)), { mat: s.mat, roof: SLATE });
-      towers.push(b);
+      towers.push(world.stampHouse(x, GY, s.w, s.floors, {
+        mat: s.mat, roof: SLATE, floorH: 6, facade,
+      }));
     }
-    x += s.w + 8;
+    x += s.w + 9;
   }
   // street furniture, left part
   for (let i = 0; i < 5; i++) car(world, 12 + i * 34, GY + 3, i % 2 ? STEEL : CASTIRON);
@@ -128,16 +152,24 @@ export function buildCity() {
   // right downtown block
   let x2 = 250;
   const specs2 = [
-    { w: 28, h: 110, mat: STEEL, glass: GLASS, style: 'tower' },
-    { w: 22, h: 70, mat: PANEL, glass: GLASS, style: 'tower' },
-    { w: 34, h: 128, mat: CONCRETE, glass: GLASSBLOCK, style: 'tower' },
-    { w: 26, h: 54, mat: BRICK, glass: GLASS, style: 'house' },
-    { w: 30, h: 88, mat: PANEL, glass: GLASS, style: 'tower' },
+    { w: 44, h: 52, mat: PANEL, glass: GLASS, style: 'tower' },
+    { w: 40, h: 32, mat: BRICK, glass: GLASS, style: 'house', floors: 4 },
+    { w: 50, h: 36, mat: AERATED, glass: GLASS, style: 'house', floors: 4 },
+    { w: 38, h: 60, mat: PANEL, glass: GLASS, style: 'tower' },
+    { w: 34, h: 28, mat: BRICK, glass: GLASS, style: 'house', floors: 3 },
   ];
   for (const s of specs2) {
-    if (s.style === 'tower') towers.push(world.stampTower(x2, GY, s.w, s.h, { mat: s.mat, glass: s.glass, floorH: 6, colStep: 6 }));
-    else towers.push(world.stampHouse(x2, GY, s.w, Math.max(3, Math.round(s.h / 8)), { mat: s.mat, roof: SLATE }));
-    x2 += s.w + 8;
+    const facade = facades[fi++ % facades.length];
+    if (s.style === 'tower') {
+      towers.push(world.stampTower(x2, GY, s.w, s.h, {
+        mat: s.mat, glass: s.glass, floorH: 6, colStep: 7, facade,
+      }));
+    } else {
+      towers.push(world.stampHouse(x2, GY, s.w, s.floors, {
+        mat: s.mat, roof: SLATE, floorH: 6, facade,
+      }));
+    }
+    x2 += s.w + 9;
   }
   for (let i = 0; i < 5; i++) car(world, 256 + i * 34, GY + 3, i % 3 ? STEEL : CASTIRON);
   tree(world, 300, GY, 15);
