@@ -69,7 +69,7 @@ npm test
 
 ## API
 
-Все запросы и ответы — JSON. Вход возвращает `token`; его нужно передавать в заголовке `Authorization: Bearer <token>`. Токен хранится в памяти страницы и дополнительно в `localStorage`, если тот доступен. Cookie `sid` тоже выставляется (HttpOnly; `SameSite=None; Secure` на HTTPS), но интерфейс от неё не зависит. Интерфейс работает в iframe на другом домене и в iframe с `sandbox` без `allow-same-origin`. API отдаёт `Access-Control-Allow-Origin: *`, потому что авторизация идёт заголовком, а не cookie.
+Все запросы и ответы — JSON. Вход возвращает `token`; его передают в заголовке `Authorization: Bearer <token>` и дублируют в `X-Session-Token`. Сервер принимает токен из любого из этих заголовков или из cookie, потому что прокси предпросмотра может потерять один из них. Токен хранится в памяти страницы и дополнительно в `localStorage`, если тот доступен. Cookie `sid` тоже выставляется (HttpOnly; `SameSite=None; Secure` на HTTPS), но интерфейс от неё не зависит. Интерфейс работает в iframe на другом домене и в iframe с `sandbox` без `allow-same-origin`. API отдаёт `Access-Control-Allow-Origin: *`, потому что авторизация идёт заголовком, а не cookie.
 
 В iframe с `sandbox` без `allow-same-origin` браузер запрещает хранилище и cookie. Поэтому токен дополнительно сохраняется в `window.name`: он переживает перезагрузку фрейма и сбрасывается при закрытии вкладки или выходе из аккаунта.
 

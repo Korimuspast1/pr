@@ -204,10 +204,13 @@ function createApp({ store, publicDir, now = () => Date.now(), rng = Math.random
   // Токен берём из заголовка Authorization (его хранит клиент в localStorage)
   // или из cookie. Заголовок нужен, потому что интерфейс может открываться
   // внутри iframe на другом домене, и браузер тогда не отправляет cookie.
+  // Прокси предпросмотра иногда теряет Authorization или cookie, поэтому токен принимаем из трёх мест.
   function tokenFrom(req) {
     const auth = req.headers.authorization || '';
-    const match = /^Bearer\s+([a-f0-9]{64})$/i.exec(auth);
-    if (match) return match[1];
+    const bearer = /^Bearer\s+([a-f0-9]{64})$/i.exec(auth);
+    if (bearer) return bearer[1];
+    const custom = String(req.headers['x-session-token'] || '');
+    if (/^[a-f0-9]{64}$/i.test(custom)) return custom;
     return parseCookies(req.headers.cookie)[SESSION_COOKIE] || null;
   }
 
@@ -443,7 +446,7 @@ function createApp({ store, publicDir, now = () => Date.now(), rng = Math.random
         // поэтому разрешаем любой origin без credentials.
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+        res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Session-Token');
         res.setHeader('Access-Control-Max-Age', '600');
         if (req.method === 'OPTIONS') {
           res.writeHead(204);

@@ -86,7 +86,11 @@ function saveToken(token) {
 async function api(path, { method = 'GET', body } = {}) {
   const options = { method, headers: {}, credentials: 'same-origin' };
   const token = getToken();
-  if (token) options.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    // Дублируем токен в двух заголовках: если прокси потеряет один, сработает второй.
+    options.headers.Authorization = `Bearer ${token}`;
+    options.headers['X-Session-Token'] = token;
+  }
   if (body !== undefined) {
     options.headers['Content-Type'] = 'application/json';
     options.body = JSON.stringify(body);
