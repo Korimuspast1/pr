@@ -194,8 +194,18 @@ function createApp({ store, publicDir, now = () => Date.now(), rng = Math.random
   const routes = [];
   const route = (method, pattern, handler) => routes.push({ method, pattern, handler });
 
+  // Токен берём из заголовка Authorization (его хранит клиент в localStorage)
+  // или из cookie. Заголовок нужен, потому что интерфейс может открываться
+  // внутри iframe на другом домене, и браузер тогда не отправляет cookie.
+  function tokenFrom(req) {
+    const auth = req.headers.authorization || '';
+    const match = /^Bearer\s+([a-f0-9]{64})$/i.exec(auth);
+    if (match) return match[1];
+    return parseCookies(req.headers.cookie)[SESSION_COOKIE] || null;
+  }
+
   function currentUser(req) {
-    const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
+    const token = tokenFrom(req);
     if (!token) return null;
     const session = store.getSession(token);
     if (!session) return null;
@@ -238,8 +248,14 @@ function createApp({ store, publicDir, now = () => Date.now(), rng = Math.random
     };
   }
 
-  function setSessionCookie(res, token) {
-    return { 'Set-Cookie': `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}` };
+  // Для HTTPS ставим SameSite=None; Secure, чтобы cookie работала и во встроенном (iframe) просмотре.
+  function cookieAttrs(req, maxAge) {
+    const secure = req.socket.encrypted || req.headers['x-forwarded-proto'] === 'https';
+    return `Path=/; HttpOnly; ${secure ? 'SameSite=None; Secure' : 'SameSite=Lax'}; Max-Age=${maxAge}`;
+  }
+
+  function sessionHeaders(req, token) {
+    return { 'Set-Cookie': `${SESSION_COOKIE}=${token}; ${cookieAttrs(req, SESSION_MAX_AGE)}` };
   }
 
   // ----- аутентификация -----
@@ -256,7 +272,7 @@ function createApp({ store, publicDir, now = () => Date.now(), rng = Math.random
     const user = store.createUser({ username, displayName, salt, passwordHash, createdAt: now() });
     followStarterBots(store, user.id, { rng });
     const token = store.createSession(user.id);
-    sendJson(res, 201, { user: publicUser(store, user, user.id) }, setSessionCookie(res, token));
+    sendJson(res, 201, { user: publicUser(store, user, user.id), token }, sessionHeaders(req, token));
   });
 
   route('POST', '/api/auth/login', async (req, res, body) => {
@@ -265,14 +281,14 @@ function createApp({ store, publicDir, now = () => Date.now(), rng = Math.random
     const ok = user && verifyPassword(String(body.password ?? ''), user.salt, user.passwordHash);
     if (!ok) throw new HttpError(401, 'Неверный логин или пароль');
     const token = store.createSession(user.id);
-    sendJson(res, 200, { user: publicUser(store, user, user.id) }, setSessionCookie(res, token));
+    sendJson(res, 200, { user: publicUser(store, user, user.id), token }, sessionHeaders(req, token));
   });
 
   route('POST', '/api/auth/logout', async (req, res) => {
-    const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
+    const token = tokenFrom(req);
     if (token) store.deleteSession(token);
     sendJson(res, 200, { ok: true }, {
-      'Set-Cookie': `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
+      'Set-Cookie': `${SESSION_COOKIE}=; ${cookieAttrs(req, 0)}`,
     });
   });
 

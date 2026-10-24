@@ -351,3 +351,39 @@ test('некорректный JSON и неверный content-type', async () 
   });
   assert.equal(wrongType.status, 415);
 });
+
+test('вход по токену в заголовке Authorization (работает без cookie)', async () => {
+  const u = await registerUser('bearer');
+  const token = (await api('POST', '/api/auth/login', { body: { username: u.username, password: 'secret123' } })).data.token;
+  assert.match(token, /^[a-f0-9]{64}$/);
+
+  const res = await fetch(`${base}/api/feed`, { headers: { Authorization: `Bearer ${token}` } });
+  assert.equal(res.status, 200);
+
+  const bad = await fetch(`${base}/api/feed`, { headers: { Authorization: 'Bearer 0000' } });
+  assert.equal(bad.status, 401);
+
+  const out = await fetch(`${base}/api/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+  assert.equal(out.status, 200);
+  const after = await fetch(`${base}/api/feed`, { headers: { Authorization: `Bearer ${token}` } });
+  assert.equal(after.status, 401, 'после выхода токен не работает');
+});
+
+test('атрибуты cookie: Lax по HTTP, None+Secure за HTTPS-прокси', async () => {
+  const name = `cookie_${Date.now().toString(36)}`;
+  const plain = await fetch(`${base}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: name, password: 'secret123' }),
+  });
+  assert.match(plain.headers.get('set-cookie'), /SameSite=Lax/);
+
+  const proxied = await fetch(`${base}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Forwarded-Proto': 'https' },
+    body: JSON.stringify({ username: name, password: 'secret123' }),
+  });
+  const cookie = proxied.headers.get('set-cookie');
+  assert.match(cookie, /SameSite=None; Secure/);
+  assert.match(cookie, /HttpOnly/);
+});

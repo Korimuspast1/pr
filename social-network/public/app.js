@@ -1,16 +1,56 @@
 'use strict';
 
-// Клиент соцсети: маршрутизация по хешу (#/feed, #/u/имя и т.д.) и рендер на чистом JS.
+// Клиент соцсеть: маршрутизация по хешу (#/feed, #/u/имя и т.д.) и рендер без фреймворков.
 // Весь пользовательский текст вставляется через textContent, поэтому HTML не исполняется.
+
+const TOKEN_KEY = 'social.token';
+const THEME_KEY = 'social.theme';
 
 const root = document.getElementById('app');
 let me = null;
 let renderId = 0;
 
-// ---------- утилиты ----------
+// ---------- тема ----------
+
+function currentTheme() {
+  return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f8f6f6' : '#161313');
+}
+
+function setTheme(theme) {
+  localStorage.setItem(THEME_KEY, theme);
+  applyTheme(theme);
+}
+
+applyTheme(currentTheme());
+
+// ---------- сеть ----------
+
+function getToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveToken(token) {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // Хранилище недоступно (например, в строгом режиме): работаем на cookie.
+  }
+}
 
 async function api(path, { method = 'GET', body } = {}) {
   const options = { method, headers: {}, credentials: 'same-origin' };
+  const token = getToken();
+  if (token) options.headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) {
     options.headers['Content-Type'] = 'application/json';
     options.body = JSON.stringify(body);
@@ -22,9 +62,10 @@ async function api(path, { method = 'GET', body } = {}) {
   } catch {
     data = null;
   }
-  // Сессия истекла на сервере: возвращаем на экран входа.
+  // Сессия истекла: возвращаем на экран входа.
   if (res.status === 401 && !path.startsWith('/auth/') && me) {
     me = null;
+    saveToken(null);
     location.hash = '#/auth';
   }
   if (!res.ok) {
@@ -34,6 +75,8 @@ async function api(path, { method = 'GET', body } = {}) {
   }
   return data;
 }
+
+// ---------- DOM-утилиты ----------
 
 function h(tag, props, ...children) {
   const el = document.createElement(tag);
@@ -53,10 +96,10 @@ function h(tag, props, ...children) {
   return el;
 }
 
-function toast(message) {
-  const el = h('div', { class: 'toast' }, message);
+function toast(message, { icon: iconName = 'circle-alert' } = {}) {
+  const el = h('div', { class: 'toast', role: 'status' }, icon(iconName, { size: 16 }), message);
   document.body.append(el);
-  setTimeout(() => el.remove(), 2400);
+  setTimeout(() => el.remove(), 2600);
 }
 
 function plural(n, forms) {
@@ -73,7 +116,7 @@ function relativeTime(ts) {
   if (diff < 60) return 'только что';
   if (diff < 3600) {
     const m = Math.floor(diff / 60);
-    return `${m} ${plural(m, ['минуту', 'минуты', 'минут'])} назад`;
+    return `${m} ${plural(m, ['мин', 'мин', 'мин'])} назад`;
   }
   if (diff < 86400) {
     const hr = Math.floor(diff / 3600);
@@ -93,39 +136,109 @@ function avatar(user, size = '') {
   }, letter);
 }
 
+function profileHref(username) {
+  return `#/u/${encodeURIComponent(username)}`;
+}
+
 function userLink(user, className = 'name') {
-  return h('a', { href: `#/u/${encodeURIComponent(user.username)}`, class: className }, user.displayName);
+  return h('a', { href: profileHref(user.username), class: className }, user.displayName);
 }
 
 function botBadge(user) {
   return user.isBot ? h('span', { class: 'badge', title: 'Виртуальный аккаунт' }, 'виртуальный') : null;
 }
 
-function setPage(...children) {
+// ---------- каркас ----------
+
+const NAV = [
+  { href: '#/feed', label: 'Лента', icon: 'house', path: '/feed' },
+  { href: '#/explore', label: 'Обзор', icon: 'flame', path: '/explore' },
+  { href: '#/search', label: 'Люди', icon: 'users', path: '/search' },
+  { href: () => profileHref(me.username), label: 'Профиль', icon: 'user', path: 'me' },
+  { href: '#/settings', label: 'Настройки', icon: 'settings', path: '/settings' },
+];
+
+function isActive(item, path) {
+  if (item.path === 'me') return me && path === `/u/${me.username}`;
+  return path === item.path;
+}
+
+function brand() {
+  return h('a', { href: '#/feed', class: 'brand', 'aria-label': 'Соцсеть, на главную' },
+    h('span', { class: 'logo-mark' }),
+    h('span', null, 'соцсеть'),
+    h('span', { class: 'cursor' }),
+  );
+}
+
+function sidebar(path) {
+  const links = NAV.map((item) => {
+    const href = typeof item.href === 'function' ? item.href() : item.href;
+    return h('a', { href, class: `nav-link${isActive(item, path) ? ' active' : ''}` },
+      icon(item.icon, { size: 17 }), item.label);
+  });
+  return h('aside', { class: 'sidebar' },
+    brand(),
+    ...links,
+    h('div', { class: 'sidebar-spacer' }),
+    h('div', { class: 'row', style: { gap: '6px' } },
+      me ? h('a', { href: profileHref(me.username), class: 'me-card grow' },
+        avatar(me, 'sm'),
+        h('div', { class: 'meta grow' },
+          h('div', { class: 'name truncate' }, me.displayName),
+          h('div', { class: 'handle truncate' }, `@${me.username}`)),
+      ) : null,
+      themeToggle(),
+    ),
+  );
+}
+
+function themeToggle() {
+  return h('button', {
+    class: 'btn btn-ghost btn-icon',
+    title: 'Сменить тему',
+    'aria-label': 'Сменить тему',
+    onclick: () => {
+      setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+      render();
+    },
+  }, icon(currentTheme() === 'dark' ? 'sun' : 'moon', { size: 17 }));
+}
+
+function tabbar(path) {
+  return h('nav', { class: 'tabbar', 'aria-label': 'Навигация' },
+    ...NAV.map((item) => {
+      const href = typeof item.href === 'function' ? item.href() : item.href;
+      return h('a', { href, class: `tab${isActive(item, path) ? ' active' : ''}`, 'aria-label': item.label },
+        icon(item.icon, { size: 20 }), h('span', null, item.label));
+    }),
+  );
+}
+
+function shell(path, ...children) {
   const page = h('main', { class: 'page' }, ...children);
-  root.replaceChildren(topbar(), page);
+  root.replaceChildren(
+    h('div', { class: 'app' },
+      sidebar(path),
+      h('div', { class: 'main' },
+        h('header', { class: 'mobile-top' }, brand(), themeToggle()),
+        page,
+      ),
+      tabbar(path),
+    ),
+  );
   return page;
 }
 
-function navLink(href, label, icon, active) {
-  return h('a', { href, class: active ? 'active' : '' }, `${icon} `, h('span', { class: 'nav-label' }, label));
+function pageHead(title, subtitle) {
+  return h('header', { class: 'page-head' },
+    h('h1', null, title),
+    subtitle ? h('p', null, subtitle) : null,
+  );
 }
 
-function topbar() {
-  const route = currentRoute().path;
-  const profileHref = me ? `#/u/${encodeURIComponent(me.username)}` : '#/auth';
-  return h('header', { class: 'topbar' },
-    h('div', { class: 'topbar-inner' },
-      h('a', { href: '#/feed', class: 'brand' }, '🌐', h('span', { class: 'text' }, 'Соцсеть')),
-      h('nav', { class: 'nav' },
-        navLink('#/feed', 'Лента', '🏠', route === '/feed'),
-        navLink('#/explore', 'Обзор', '🔥', route === '/explore'),
-        navLink('#/search', 'Люди', '🔍', route === '/search'),
-        navLink(profileHref, 'Профиль', '👤', route.startsWith('/u/') && me && route === `/u/${me.username}`),
-        navLink('#/settings', 'Настройки', '⚙️', route === '/settings'),
-      ),
-    ),
-  );
+function emptyState(iconName, text, extra) {
+  return h('div', { class: 'empty' }, icon(iconName, { size: 28 }), h('p', null, text), extra || null);
 }
 
 // ---------- маршрутизация ----------
@@ -140,7 +253,7 @@ async function render() {
   const id = ++renderId;
   const { path } = currentRoute();
 
-  if (!me) {
+  if (!me && getToken()) {
     try {
       me = (await api('/me')).user;
     } catch {
@@ -164,36 +277,36 @@ async function render() {
 
   try {
     const userMatch = path.match(/^\/u\/([^/]+)(?:\/(followers|following))?$/);
-    if (path === '/feed') await renderFeed(id);
-    else if (path === '/explore') await renderExplore(id);
-    else if (path === '/search') await renderSearch(id);
-    else if (path === '/settings') renderSettings();
+    if (path === '/feed') await renderFeed(id, path);
+    else if (path === '/explore') await renderExplore(id, path);
+    else if (path === '/search') await renderSearch(id, path);
+    else if (path === '/settings') renderSettings(path);
     else if (userMatch) {
       const username = decodeURIComponent(userMatch[1]);
-      if (userMatch[2]) await renderUserList(id, username, userMatch[2]);
-      else await renderProfile(id, username);
+      if (userMatch[2]) await renderUserList(id, username, userMatch[2], path);
+      else await renderProfile(id, username, path);
     } else {
-      setPage(h('div', { class: 'card empty' }, 'Такой страницы нет. ', h('a', { href: '#/feed' }, 'На главную')));
+      shell(path, emptyState('circle-alert', 'Такой страницы нет.', h('a', { href: '#/feed', class: 'btn btn-ghost', style: { marginTop: '12px' } }, 'На главную')));
     }
   } catch (err) {
     if (id !== renderId) return;
-    setPage(h('div', { class: 'card empty' }, `Ошибка: ${err.message}`));
+    shell(path, emptyState('circle-alert', `Ошибка: ${err.message}`));
   }
 }
 
 window.addEventListener('hashchange', render);
 
-// ---------- авторизация ----------
+// ---------- вход и регистрация ----------
 
 function renderAuth(mode = 'login') {
   const error = h('div', { class: 'error', role: 'alert' });
-  const submit = h('button', { type: 'submit', class: 'block' }, mode === 'login' ? 'Войти' : 'Создать аккаунт');
-  const username = h('input', { name: 'username', autocomplete: 'username', required: true, placeholder: 'например, alex_01' });
-  const password = h('input', { name: 'password', type: 'password', required: true, minlength: 6, autocomplete: mode === 'login' ? 'current-password' : 'new-password' });
-  const displayName = h('input', { name: 'displayName', maxlength: 40, placeholder: 'Как вас показывать' });
+  const submit = h('button', { type: 'submit', class: 'btn btn-primary btn-block', style: { height: '40px', marginTop: '6px' } },
+    mode === 'login' ? 'Войти' : 'Создать аккаунт');
+  const username = h('input', { type: 'text', name: 'username', autocomplete: 'username', required: true, placeholder: 'alex_01', maxlength: 20 });
+  const password = h('input', { type: 'password', name: 'password', required: true, minlength: 6, maxlength: 100, autocomplete: mode === 'login' ? 'current-password' : 'new-password', placeholder: 'минимум 6 символов' });
+  const displayName = h('input', { type: 'text', name: 'displayName', maxlength: 40, placeholder: 'Как вас показывать' });
 
   const form = h('form', {
-    class: 'card',
     onsubmit: async (e) => {
       e.preventDefault();
       error.textContent = '';
@@ -202,6 +315,7 @@ function renderAuth(mode = 'login') {
         const body = { username: username.value.trim(), password: password.value };
         if (mode === 'register') body.displayName = displayName.value.trim();
         const data = await api(mode === 'login' ? '/auth/login' : '/auth/register', { method: 'POST', body });
+        saveToken(data.token);
         me = data.user;
         location.hash = '#/feed';
         render();
@@ -212,25 +326,29 @@ function renderAuth(mode = 'login') {
       }
     },
   },
-    h('div', { class: 'tabs' },
-      h('button', { type: 'button', class: mode === 'login' ? 'active' : '', onclick: () => renderAuth('login') }, 'Вход'),
-      h('button', { type: 'button', class: mode === 'register' ? 'active' : '', onclick: () => renderAuth('register') }, 'Регистрация'),
-    ),
-    h('label', null, 'Логин', username),
-    mode === 'register' ? h('label', null, 'Имя', displayName) : null,
-    h('label', null, 'Пароль', password),
+    h('label', { class: 'field' }, h('span', null, 'Логин'), username),
+    mode === 'register' ? h('label', { class: 'field' }, h('span', null, 'Имя'), displayName) : null,
+    h('label', { class: 'field' }, h('span', null, 'Пароль'), password),
     error,
     submit,
+  );
+
+  const tabs = h('div', { class: 'tabs', role: 'tablist' },
+    h('button', { type: 'button', class: mode === 'login' ? 'active' : '', role: 'tab', onclick: () => renderAuth('login') }, 'Вход'),
+    h('button', { type: 'button', class: mode === 'register' ? 'active' : '', role: 'tab', onclick: () => renderAuth('register') }, 'Регистрация'),
   );
 
   root.replaceChildren(
     h('div', { class: 'auth-wrap' },
       h('div', { class: 'auth-card' },
-        h('div', { class: 'brand', style: { marginBottom: '8px', fontSize: '28px' } }, '🌐 Соцсеть'),
-        h('p', { class: 'muted', style: { margin: 0 } }, mode === 'login'
-          ? 'Войдите, чтобы читать ленту и публиковать посты.'
-          : 'Создайте аккаунт за минуту. Подписчики появятся постепенно.'),
+        brand(),
+        h('p', { class: 'lead' }, mode === 'login'
+          ? 'Лента без шума: только те, кто вам интересен. Войдите, чтобы продолжить.'
+          : 'Создайте аккаунт за минуту. Подписчики появятся постепенно, по мере того как вы публикуете.'),
+        tabs,
         form,
+        h('div', { class: 'faint small', style: { marginTop: '20px', textAlign: 'center' } },
+          'Аккаунты виртуальные. Все данные хранятся на этом сервере.'),
       ),
     ),
   );
@@ -239,37 +357,51 @@ function renderAuth(mode = 'login') {
 
 // ---------- посты ----------
 
-function postCard(post, { onDelete } = {}) {
-  const likeBtn = h('button', {
-    class: `act${post.likedByMe ? ' liked' : ''}`,
-    title: 'Нравится',
-    onclick: async () => {
-      try {
-        const data = await api(`/posts/${post.id}/like`, { method: 'POST' });
-        post.likedByMe = data.likedByMe;
-        post.likes = data.likes;
-        likeBtn.className = `act${post.likedByMe ? ' liked' : ''}`;
-        likeBtn.textContent = `${post.likedByMe ? '♥' : '♡'} ${post.likes}`;
-      } catch (err) {
-        toast(err.message);
-      }
-    },
-  }, `${post.likedByMe ? '♥' : '♡'} ${post.likes}`);
+function likeButton(post) {
+  const iconEl = icon('heart', { size: 15 });
+  const label = h('span', null, String(post.likes));
+  const btn = h('button', { class: `act${post.likedByMe ? ' liked' : ''}`, title: 'Нравится', 'aria-label': 'Нравится' }, iconEl, label);
+  const paint = () => {
+    btn.className = `act${post.likedByMe ? ' liked' : ''}`;
+    iconEl.setAttribute('fill', post.likedByMe ? 'currentColor' : 'none');
+    label.textContent = String(post.likes);
+  };
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      const data = await api(`/posts/${post.id}/like`, { method: 'POST' });
+      post.likedByMe = data.likedByMe;
+      post.likes = data.likes;
+      paint();
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  paint();
+  return btn;
+}
 
+function postCard(post, { onDelete } = {}) {
   const commentsBox = h('div', { class: 'comments', hidden: true });
   let commentsLoaded = false;
-  const commentBtn = h('button', { class: 'act', title: 'Комментарии' }, `💬 ${post.comments}`);
+  const countLabel = h('span', null, String(post.comments));
+  const commentBtn = h('button', { class: 'act', title: 'Комментарии', 'aria-label': 'Комментарии' },
+    icon('message-circle', { size: 15 }), countLabel);
   commentBtn.addEventListener('click', async () => {
     commentsBox.hidden = !commentsBox.hidden;
     if (!commentsBox.hidden && !commentsLoaded) {
       commentsLoaded = true;
-      await loadComments(post, commentsBox, commentBtn);
+      await loadComments(post, commentsBox, countLabel);
     }
   });
 
   const deleteBtn = post.mine && onDelete
     ? h('button', {
       class: 'act danger',
+      title: 'Удалить пост',
+      'aria-label': 'Удалить пост',
       onclick: async () => {
         if (!confirm('Удалить пост?')) return;
         try {
@@ -279,31 +411,31 @@ function postCard(post, { onDelete } = {}) {
           toast(err.message);
         }
       },
-    }, 'Удалить')
+    }, icon('trash-2', { size: 15 }))
     : null;
 
-  return h('article', { class: 'card post' },
-    h('div', { class: 'post-head' },
-      avatar(post.author),
-      h('div', { class: 'grow' },
-        h('div', null, userLink(post.author), ' ', botBadge(post.author)),
-        h('div', { class: 'meta' },
-          h('a', { href: `#/u/${encodeURIComponent(post.author.username)}`, class: 'meta' }, `@${post.author.username}`),
-          ' · ', relativeTime(post.createdAt)),
+  return h('article', { class: 'post' },
+    avatar(post.author),
+    h('div', { class: 'post-body' },
+      h('div', { class: 'post-head' },
+        userLink(post.author),
+        botBadge(post.author),
+        h('a', { href: profileHref(post.author.username), class: 'handle' }, `@${post.author.username}`),
+        h('span', { class: 'time' }, `· ${relativeTime(post.createdAt)}`),
       ),
+      h('p', { class: 'post-text' }, post.text),
+      h('div', { class: 'post-actions' }, likeButton(post), commentBtn, h('span', { class: 'act-spacer' }), deleteBtn),
+      commentsBox,
     ),
-    h('p', { class: 'post-text' }, post.text),
-    h('div', { class: 'post-actions' }, likeBtn, commentBtn, deleteBtn),
-    commentsBox,
   );
 }
 
-async function loadComments(post, box, countBtn) {
-  box.replaceChildren(h('div', { class: 'muted small' }, 'Загрузка…'));
+async function loadComments(post, box, countLabel) {
+  box.replaceChildren(h('div', { class: 'faint small' }, 'Загрузка…'));
   try {
     const { comments } = await api(`/posts/${post.id}/comments`);
-    const input = h('input', { placeholder: 'Написать комментарий…', maxlength: 300 });
-    const send = h('button', { type: 'submit' }, 'Отправить');
+    const input = h('input', { type: 'text', placeholder: 'Ответить…', maxlength: 300, 'aria-label': 'Текст комментария' });
+    const send = h('button', { type: 'submit', class: 'btn btn-icon', title: 'Отправить', 'aria-label': 'Отправить' }, icon('send', { size: 16 }));
     const form = h('form', {
       class: 'comment-form',
       onsubmit: async (e) => {
@@ -315,10 +447,9 @@ async function loadComments(post, box, countBtn) {
           const data = await api(`/posts/${post.id}/comments`, { method: 'POST', body: { text } });
           input.value = '';
           post.comments = data.comments;
-          countBtn.textContent = `💬 ${post.comments}`;
+          countLabel.textContent = String(post.comments);
           box.insertBefore(commentRow(data.comment), form);
-          const empty = box.querySelector('.empty-comments');
-          if (empty) empty.remove();
+          box.querySelector('.comments-empty')?.remove();
         } catch (err) {
           toast(err.message);
         } finally {
@@ -329,7 +460,7 @@ async function loadComments(post, box, countBtn) {
 
     const list = comments.length
       ? comments.map(commentRow)
-      : [h('div', { class: 'muted small empty-comments' }, 'Комментариев пока нет')];
+      : [h('div', { class: 'faint small comments-empty' }, 'Комментариев пока нет')];
     box.replaceChildren(...list, form);
   } catch (err) {
     box.replaceChildren(h('div', { class: 'error' }, err.message));
@@ -339,8 +470,10 @@ async function loadComments(post, box, countBtn) {
 function commentRow(comment) {
   return h('div', { class: 'comment' },
     avatar(comment.author, 'sm'),
-    h('div', { class: 'bubble' },
-      h('div', null, userLink(comment.author), ' ', h('span', { class: 'muted small' }, relativeTime(comment.createdAt))),
+    h('div', { class: 'comment-bubble' },
+      h('div', { class: 'who' },
+        h('b', null, comment.author.displayName), ' ',
+        h('span', { class: 'faint mono' }, `@${comment.author.username} · ${relativeTime(comment.createdAt)}`)),
       h('p', null, comment.text),
     ),
   );
@@ -348,18 +481,20 @@ function commentRow(comment) {
 
 function composer(onPosted) {
   const MAX = 500;
-  const textarea = h('textarea', { placeholder: 'Что нового?', maxlength: MAX, rows: 2 });
+  const textarea = h('textarea', { placeholder: 'Что нового?', maxlength: MAX, rows: 2, 'aria-label': 'Новый пост' });
   const counter = h('span', { class: 'counter' }, `0/${MAX}`);
   const error = h('div', { class: 'error' });
-  const button = h('button', { type: 'submit', disabled: true }, 'Опубликовать');
+  const button = h('button', { type: 'submit', class: 'btn btn-primary' }, icon('send', { size: 15 }), 'Опубликовать');
+  button.disabled = true;
 
   textarea.addEventListener('input', () => {
     counter.textContent = `${textarea.value.length}/${MAX}`;
+    counter.classList.toggle('warn', textarea.value.length > MAX - 30);
     button.disabled = textarea.value.trim().length === 0;
   });
 
   return h('form', {
-    class: 'card composer',
+    class: 'composer',
     onsubmit: async (e) => {
       e.preventDefault();
       const text = textarea.value.trim();
@@ -376,22 +511,22 @@ function composer(onPosted) {
         button.disabled = false;
       }
     },
-  }, textarea, error, h('div', { class: 'composer-footer' }, counter, button));
+  }, textarea, error, h('div', { class: 'composer-foot' }, counter, button));
 }
 
-// Список постов с кнопкой «Показать ещё». endpoint — путь API без параметров.
-function postFeed(endpoint, emptyText, { composerNode = null } = {}) {
-  const list = h('div', { class: 'feed-list' });
-  const more = h('button', { class: 'outline block', hidden: true }, 'Показать ещё');
+// Список постов с пагинацией. endpoint — путь API без параметров.
+function postFeed(endpoint, emptyIcon, emptyText, { composerNode = null } = {}) {
+  const list = h('div', { class: 'feed' });
+  const more = h('button', { class: 'btn btn-block', hidden: true, style: { marginTop: '16px' } }, 'Показать ещё');
   let nextBefore = null;
 
   const appendPosts = (posts, { reset = false } = {}) => {
     if (reset) list.replaceChildren();
     if (reset && posts.length === 0) {
-      list.append(h('div', { class: 'card empty' }, emptyText));
+      list.append(emptyState(emptyIcon, emptyText));
     }
     for (const post of posts) {
-      list.append(postCard(post, { onDelete: () => reloadAll() }));
+      list.append(postCard(post, { onDelete: () => render() }));
     }
   };
 
@@ -404,7 +539,7 @@ function postFeed(endpoint, emptyText, { composerNode = null } = {}) {
       nextBefore = data.nextBefore;
       more.hidden = nextBefore == null;
     } catch (err) {
-      list.replaceChildren(h('div', { class: 'card error' }, err.message));
+      list.replaceChildren(h('div', { class: 'error' }, err.message));
     }
   };
 
@@ -424,32 +559,29 @@ function postFeed(endpoint, emptyText, { composerNode = null } = {}) {
     }
   });
 
-  const node = h('div', { class: 'page-list' }, composerNode, list, more);
+  const node = h('div', { class: 'stack' }, composerNode, list, more);
   reloadAll();
   return node;
 }
 
-async function renderFeed(id) {
-  const composerNode = composer(() => {
-    // Перезагружаем ленту после публикации.
-    render();
-  });
-  const feedNode = postFeed('/feed', 'Пока пусто. Подпишитесь на кого-нибудь или напишите первый пост!', { composerNode });
+async function renderFeed(id, path) {
+  const composerNode = composer(() => render());
+  const feedNode = postFeed('/feed', 'house', 'Пока пусто. Подпишитесь на кого-нибудь или напишите первый пост.', { composerNode });
   if (id !== renderId) return;
-  setPage(h('h1', { class: 'page-title' }, 'Лента'), feedNode);
+  shell(path, pageHead('Лента', 'Посты тех, на кого вы подписаны'), feedNode);
 }
 
-async function renderExplore(id) {
-  const feedNode = postFeed('/explore', 'Постов пока нет.');
+async function renderExplore(id, path) {
+  const feedNode = postFeed('/explore', 'flame', 'Постов пока нет.');
   if (id !== renderId) return;
-  setPage(h('h1', { class: 'page-title' }, 'Обзор'), h('p', { class: 'muted', style: { margin: 0 } }, 'Все посты соцсети, от новых к старым.'), feedNode);
+  shell(path, pageHead('Обзор', 'Все посты соцсети, от новых к старым'), feedNode);
 }
 
 // ---------- поиск людей ----------
 
-async function renderSearch(id) {
-  const input = h('input', { type: 'search', placeholder: 'Поиск по имени или логину', autofocus: true });
-  const results = h('div', { class: 'card user-list' });
+async function renderSearch(id, path) {
+  const input = h('input', { type: 'search', placeholder: 'Поиск по имени или логину', 'aria-label': 'Поиск людей', autocomplete: 'off' });
+  const results = h('div', { class: 'user-list' });
 
   const load = async () => {
     const q = input.value.trim();
@@ -458,7 +590,7 @@ async function renderSearch(id) {
       if (id !== renderId) return;
       results.replaceChildren(...(users.length
         ? users.map((u) => userRow(u, { onChange: load }))
-        : [h('div', { class: 'empty' }, 'Никого не нашли')]));
+        : [h('div', { class: 'empty', style: { border: 'none' } }, icon('search', { size: 26 }), h('p', null, 'Никого не нашли'))]));
     } catch (err) {
       results.replaceChildren(h('div', { class: 'error', style: { padding: '16px' } }, err.message));
     }
@@ -470,7 +602,11 @@ async function renderSearch(id) {
     timer = setTimeout(load, 250);
   });
 
-  setPage(h('h1', { class: 'page-title' }, 'Люди'), input, results);
+  shell(path,
+    pageHead('Люди', 'Подписывайтесь на тех, кто пишет интересное'),
+    h('div', { class: 'search-box' }, icon('search', { size: 16 }), input),
+    results,
+  );
   load();
 }
 
@@ -478,19 +614,19 @@ function userRow(user, { onChange } = {}) {
   const btn = me && user.id !== me.id ? followButton(user, onChange) : null;
   return h('div', { class: 'user-row' },
     avatar(user),
-    h('div', { class: 'grow' },
-      h('div', null, userLink(user), ' ', botBadge(user)),
-      h('div', { class: 'muted small' }, `@${user.username} · подписчиков: ${user.followers}`),
+    h('div', { class: 'who grow' },
+      h('div', { class: 'row', style: { gap: '6px' } }, userLink(user), botBadge(user)),
+      h('div', { class: 'sub' }, `@${user.username} · подписчиков ${user.followers}`),
     ),
     btn,
   );
 }
 
 function followButton(user, onChange) {
-  const btn = h('button', { class: 'outline' });
+  const btn = h('button', { class: 'btn btn-follow' });
   const paint = (following) => {
-    btn.className = `outline${following ? ' on' : ''}`;
-    btn.textContent = following ? 'Вы подписаны' : 'Подписаться';
+    btn.className = `btn btn-follow${following ? ' on' : ' btn-primary'}`;
+    btn.replaceChildren(icon(following ? 'user-check' : 'user-plus', { size: 15 }), following ? 'Подписаны' : 'Подписаться');
     btn.dataset.following = following ? '1' : '0';
   };
   paint(user.isFollowing);
@@ -514,55 +650,51 @@ function followButton(user, onChange) {
 
 // ---------- профиль ----------
 
-async function renderProfile(id, username) {
+async function renderProfile(id, username, path) {
   const { user, posts } = await api(`/users/${encodeURIComponent(username)}`);
   if (id !== renderId) return;
 
-  const followBtn = user.isMe
-    ? h('a', { href: '#/settings', class: 'button-link' }, h('button', { class: 'outline' }, 'Редактировать'))
+  const action = user.isMe
+    ? h('a', { href: '#/settings', class: 'btn' }, icon('pencil', { size: 15 }), 'Редактировать')
     : followButton(user, () => render());
 
-  const postsBox = h('div', { class: 'page-list' });
+  const postsBox = h('div', { class: 'feed' });
   if (posts.length === 0) {
-    postsBox.append(h('div', { class: 'card empty' }, user.isMe ? 'Вы ещё ничего не опубликовали.' : 'Постов пока нет.'));
+    postsBox.append(emptyState('message-circle', user.isMe ? 'Вы ещё ничего не опубликовали.' : 'Постов пока нет.'));
   }
   for (const post of posts) postsBox.append(postCard(post, { onDelete: () => render() }));
 
-  const profileCard = h('section', { class: 'card' },
-    h('div', { class: 'profile-head' },
+  const profile = h('section', { class: 'panel' },
+    h('div', { class: 'profile-top' },
       avatar(user, 'lg'),
-      h('div', { class: 'profile-info' },
-        h('h2', null, user.displayName, ' ', botBadge(user)),
+      h('div', { class: 'info' },
+        h('h2', null, user.displayName, botBadge(user)),
         h('div', { class: 'handle' }, `@${user.username}`),
-        user.bio ? h('p', { class: 'bio' }, user.bio) : h('p', { class: 'bio muted' }, 'Пока без описания'),
+        user.bio ? h('p', { class: 'bio' }, user.bio) : h('p', { class: 'bio faint' }, 'Пока без описания'),
         h('div', { class: 'stats' },
-          h('span', null, h('b', null, String(user.posts)), h('span', { class: 'label' }, plural(user.posts, ['пост', 'поста', 'постов']))),
-          h('a', { href: `#/u/${encodeURIComponent(user.username)}/followers` },
-            h('b', null, String(user.followers)), h('span', { class: 'label' }, plural(user.followers, ['подписчик', 'подписчика', 'подписчиков']))),
-          h('a', { href: `#/u/${encodeURIComponent(user.username)}/following` },
-            h('b', null, String(user.following)), h('span', { class: 'label' }, 'подписок')),
+          h('span', null, h('b', null, String(user.posts)), plural(user.posts, ['пост', 'поста', 'постов'])),
+          h('a', { href: `${profileHref(user.username)}/followers` }, h('b', null, String(user.followers)), plural(user.followers, ['подписчик', 'подписчика', 'подписчиков'])),
+          h('a', { href: `${profileHref(user.username)}/following` }, h('b', null, String(user.following)), 'подписок'),
         ),
       ),
-      h('div', null, followBtn),
+      h('div', { class: 'actions' }, action),
     ),
   );
 
-  setPage(profileCard, postsBox);
+  shell(path, profile, postsBox);
 }
 
-async function renderUserList(id, username, kind) {
+async function renderUserList(id, username, kind, path) {
   const { users } = await api(`/users/${encodeURIComponent(username)}/${kind}`);
   if (id !== renderId) return;
   const title = kind === 'followers' ? 'Подписчики' : 'Подписки';
-  const list = h('div', { class: 'card user-list' },
-    users.length
-      ? users.map((u) => userRow(u, { onChange: () => render() }))
-      : [h('div', { class: 'empty' }, kind === 'followers' ? 'Подписчиков пока нет' : 'Подписок пока нет')],
-  );
-  setPage(
-    h('div', { class: 'row' },
-      h('a', { href: `#/u/${encodeURIComponent(username)}`, class: 'ghost button-link' }, '← Назад'),
-      h('h1', { class: 'page-title' }, title),
+  const list = users.length
+    ? h('div', { class: 'user-list' }, users.map((u) => userRow(u, { onChange: () => render() })))
+    : emptyState('users', kind === 'followers' ? 'Подписчиков пока нет' : 'Подписок пока нет');
+  shell(path,
+    h('div', { class: 'page-head-row' },
+      h('a', { href: profileHref(username), class: 'btn btn-ghost btn-icon', 'aria-label': 'Назад' }, icon('arrow-left', { size: 18 })),
+      h('h1', { style: { margin: 0, fontSize: '24px', fontWeight: 600, letterSpacing: '-.02em' } }, title),
     ),
     list,
   );
@@ -570,13 +702,13 @@ async function renderUserList(id, username, kind) {
 
 // ---------- настройки ----------
 
-function renderSettings() {
+function renderSettings(path) {
   const error = h('div', { class: 'error' });
-  const ok = h('div', { class: 'small', style: { color: '#2a9d5b', minHeight: '18px' } });
+  const ok = h('div', { class: 'small', style: { color: 'var(--text-2)', minHeight: '18px' } });
 
-  const displayName = h('input', { value: me.displayName, maxlength: 40, required: true });
+  const displayName = h('input', { type: 'text', value: me.displayName, maxlength: 40, required: true });
   const bio = h('textarea', { maxlength: 160, rows: 3 }, me.bio || '');
-  const color = h('input', { type: 'color', value: me.avatarColor });
+  const color = h('input', { type: 'color', value: me.avatarColor, 'aria-label': 'Цвет аватара' });
   const preview = avatar(me, 'lg');
   const updatePreview = () => {
     preview.style.background = color.value;
@@ -585,10 +717,10 @@ function renderSettings() {
   displayName.addEventListener('input', updatePreview);
   color.addEventListener('input', updatePreview);
 
-  const saveBtn = h('button', { type: 'submit' }, 'Сохранить');
+  const saveBtn = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Сохранить');
 
-  const form = h('form', {
-    class: 'card',
+  const profileForm = h('form', {
+    class: 'panel stack',
     onsubmit: async (e) => {
       e.preventDefault();
       error.textContent = '';
@@ -600,7 +732,7 @@ function renderSettings() {
           body: { displayName: displayName.value, bio: bio.value, avatarColor: color.value },
         });
         me = data.user;
-        ok.textContent = 'Сохранено';
+        ok.textContent = 'Изменения сохранены';
       } catch (err) {
         error.textContent = err.message;
       } finally {
@@ -608,32 +740,71 @@ function renderSettings() {
       }
     },
   },
-    h('div', { class: 'row', style: { marginBottom: '16px' } }, preview,
-      h('div', { class: 'grow' }, h('div', { class: 'name' }, me.displayName), h('div', { class: 'muted small' }, `@${me.username}`))),
-    h('label', null, 'Имя', displayName),
-    h('label', null, 'О себе', bio),
-    h('label', null, 'Цвет аватара', color),
+    h('div', { class: 'row' }, preview,
+      h('div', { class: 'grow' },
+        h('div', { style: { fontWeight: 600 } }, me.displayName),
+        h('div', { class: 'faint mono small' }, `@${me.username}`))),
+    h('label', { class: 'field' }, h('span', null, 'Имя'), displayName),
+    h('label', { class: 'field' }, h('span', null, 'О себе'), bio),
+    h('div', { class: 'row', style: { alignItems: 'flex-end', justifyContent: 'space-between' } },
+      h('label', { class: 'field', style: { marginBottom: 0 } }, h('span', null, 'Цвет аватара'), color),
+      saveBtn),
     error,
     ok,
-    h('div', { class: 'row' }, saveBtn,
-      h('a', { href: `#/u/${encodeURIComponent(me.username)}`, class: 'button-link' }, h('button', { type: 'button', class: 'outline' }, 'Открыть профиль'))),
   );
 
+  const themeButtons = h('div', { class: 'segmented', role: 'group', 'aria-label': 'Тема' });
+  const paintTheme = () => {
+    themeButtons.replaceChildren(
+      ...[['dark', 'moon', 'Тёмная'], ['light', 'sun', 'Светлая']].map(([value, iconName, label]) =>
+        h('button', {
+          type: 'button',
+          class: currentTheme() === value ? 'active' : '',
+          onclick: () => {
+            setTheme(value);
+            paintTheme();
+            // Перерисовываем, чтобы обновить иконку темы в шапке.
+            render();
+          },
+        }, icon(iconName, { size: 14 }), label)));
+  };
+  paintTheme();
+
   const logout = h('button', {
-    class: 'danger block',
+    class: 'btn btn-danger',
     onclick: async () => {
       try {
         await api('/auth/logout', { method: 'POST' });
       } catch {
         // Даже при ошибке сбрасываем локальную сессию.
       }
+      saveToken(null);
       me = null;
       location.hash = '#/auth';
       render();
     },
-  }, 'Выйти из аккаунта');
+  }, icon('log-out', { size: 15 }), 'Выйти из аккаунта');
 
-  setPage(h('h1', { class: 'page-title' }, 'Настройки'), form, h('div', { class: 'card' }, logout));
+  shell(path,
+    pageHead('Настройки', 'Профиль, оформление и доступ к аккаунту'),
+    profileForm,
+    h('section', { class: 'panel' },
+      h('div', { class: 'section-title' }, 'Оформление'),
+      h('div', { class: 'setting-row' },
+        h('div', null,
+          h('div', { class: 'label' }, 'Тема'),
+          h('div', { class: 'hint' }, 'Тёмная тема по умолчанию, как в opencode.ai')),
+        themeButtons),
+    ),
+    h('section', { class: 'panel' },
+      h('div', { class: 'section-title' }, 'Аккаунт'),
+      h('div', { class: 'setting-row' },
+        h('div', null,
+          h('div', { class: 'label' }, 'Выход'),
+          h('div', { class: 'hint' }, 'Сессия закроется на этом устройстве')),
+        logout),
+    ),
+  );
 }
 
 // ---------- старт ----------
