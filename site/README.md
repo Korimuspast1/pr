@@ -20,6 +20,8 @@ t'                            ''XSSS8SSX%XX8#.    %XSX%
                             .
 ```
 
+![A mixed tank: whale, great white, tiger, blacktip, epaulette and goblin sharks](preview.png)
+
 Fish and sharks drawn as ASCII on a canvas. Zero runtime dependencies.
 
 ```sh
