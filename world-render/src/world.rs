@@ -125,24 +125,30 @@ struct Pad {
     lift: f32,
 }
 
-/// Flat building pads, so no prop ends up floating or half-buried.
+/// Building pads: the terrain is eased towards the height at the middle of the
+/// pad, so a cottage stands in a shallow clearing instead of on a slope.
+///
+/// The blend has no flat core and no hard rim on purpose: a plateau cut into a
+/// hillside shows up as a wall of earth with the prop on top of it. The prop
+/// itself is always seated on the lowest ground of its own footprint, and a
+/// stone plinth fills whatever gap is left.
 const PADS: [Pad; 3] = [
     Pad {
         x: -2.30,
         z: 1.45,
-        radius: 1.20,
+        radius: 2.60,
         lift: 0.02,
     },
     Pad {
         x: 2.75,
         z: 2.55,
-        radius: 1.00,
+        radius: 2.20,
         lift: 0.00,
     },
     Pad {
         x: 0.55,
         z: 1.65,
-        radius: 0.72,
+        radius: 1.40,
         lift: -0.01,
     },
 ];
@@ -175,7 +181,7 @@ fn composed_height(x: f32, z: f32, seed: u32, detail_on: bool) -> f32 {
         let d = ((x - pad.x).powi(2) + (z - pad.z).powi(2)).sqrt();
         if d < pad.radius {
             let target = raw_height(pad.x, pad.z, seed, detail_on) + pad.lift;
-            let t = smoothstep(pad.radius, pad.radius * 0.35, d);
+            let t = smoothstep(pad.radius, 0.0, d);
             h += (target - h) * t;
         }
     }
@@ -419,7 +425,7 @@ pub struct Solid {
 }
 
 impl Solid {
-    fn new(anchor: Vec3, prop: Prop) -> Self {
+    pub fn new(anchor: Vec3, prop: Prop) -> Self {
         let (offset, radius) = match prop {
             // The sphere must fully contain the geometry: a bound that is too
             // small would report a distance larger than the real one and let
@@ -429,8 +435,10 @@ impl Solid {
                 v3(0.0, height * 0.5, 0.0),
                 ((height * 0.62).powi(2) + radius * radius).sqrt() + 0.05,
             ),
-            Prop::Cottage { .. } => (v3(0.0, 0.85, 0.0), 1.50),
-            Prop::Lighthouse => (v3(0.0, 1.75, 0.0), 2.10),
+            // The bound must also take in the plinth, which reaches below the
+            // anchor, otherwise a player could walk through the foundation.
+            Prop::Cottage { .. } => (v3(0.0, 0.70, 0.0), 1.85),
+            Prop::Lighthouse => (v3(0.0, 1.55, 0.0), 2.75),
             Prop::Boulder { radius } => (v3(0.0, 0.0, 0.0), radius + 0.05),
             Prop::Dock { .. } => (v3(0.0, -0.12, 0.0), 1.30),
         };
@@ -471,7 +479,7 @@ impl Solid {
         }
     }
 
-    fn material(&self, p: Vec3) -> Mat {
+    pub fn material(&self, p: Vec3) -> Mat {
         let l = p - self.anchor;
         match self.prop {
             Prop::Pine { height, radius } => {
@@ -484,7 +492,9 @@ impl Solid {
             }
             Prop::Cottage { yaw } => {
                 let r = rot_y(l, -yaw);
-                if r.y > 1.08 {
+                if r.y < 0.08 {
+                    Mat::Stone
+                } else if r.y > 1.08 {
                     Mat::Roof
                 } else if r.y > 0.42 && r.y < 0.80 && r.z.abs() > 0.55 && r.x.abs() < 0.24 {
                     Mat::Lamp
@@ -533,7 +543,10 @@ fn pine_distance(l: Vec3, height: f32, radius: f32) -> f32 {
 
 fn cottage_distance(l: Vec3, yaw: f32) -> f32 {
     let p = rot_y(l, -yaw);
-    let mut d = sd_box(p - v3(0.0, 0.55, 0.0), v3(0.88, 0.55, 0.62));
+    // Stone plinth: the cottage is seated on the lowest ground under it, so on
+    // a slope this is the part that reaches down into the hillside.
+    let mut d = sd_box(p - v3(0.0, -0.11, 0.0), v3(0.92, 0.19, 0.66));
+    d = d.min(sd_box(p - v3(0.0, 0.55, 0.0), v3(0.88, 0.55, 0.62)));
 
     // Two slanted roof slabs meeting at a ridge that runs along X.
     let slab_half = v3(0.98, 0.055, 0.44);
@@ -548,7 +561,8 @@ fn cottage_distance(l: Vec3, yaw: f32) -> f32 {
 }
 
 fn lighthouse_distance(l: Vec3) -> f32 {
-    let mut d = sd_cylinder_y(l - v3(0.0, 0.20, 0.0), 0.62, 0.22);
+    let mut d = sd_cylinder_y(l - v3(0.0, 0.06, 0.0), 0.66, 0.36);
+    d = d.min(sd_cylinder_y(l - v3(0.0, 0.20, 0.0), 0.62, 0.22));
     d = d.min(sd_capped_cone(l - v3(0.0, 1.55, 0.0), 1.15, 0.36, 0.25));
     d = d.min(sd_cylinder_y(l - v3(0.0, 2.72, 0.0), 0.33, 0.045));
     d = d.min(sd_box(l - v3(0.0, 2.95, 0.0), v3(0.20, 0.20, 0.20)));
@@ -593,16 +607,27 @@ impl World {
         let mut solids: Vec<Solid> = Vec::new();
         let mut rng = crate::camera::Rng(seed ^ 0x51ed_270b);
 
+        // Buildings sit on the *lowest* point of their footprint: seating them
+        // on the ground at the centre leaves the downhill corners hanging in
+        // the air, which is exactly how a floating cottage is born.
+        let seat = |x: f32, z: f32, half_x: f32, half_z: f32| {
+            let mut low = ground(x, z);
+            for dx in [-half_x, 0.0, half_x] {
+                for dz in [-half_z, 0.0, half_z] {
+                    low = low.min(ground(x + dx, z + dz));
+                }
+            }
+            low
+        };
+
         // Cottage on its pad.
         let (cx, cz) = (-2.30f32, 1.45f32);
-        solids.push(Solid::new(
-            v3(cx, ground(cx, cz), cz),
-            Prop::Cottage { yaw: -0.55 },
-        ));
+        let cy = seat(cx, cz, 0.95, 0.70);
+        solids.push(Solid::new(v3(cx, cy, cz), Prop::Cottage { yaw: -0.55 }));
 
         // Lighthouse on the rocky pad near the shore.
         let (lx, lz) = (2.75f32, 2.55f32);
-        let ly = ground(lx, lz);
+        let ly = seat(lx, lz, 0.55, 0.55);
         solids.push(Solid::new(v3(lx, ly, lz), Prop::Lighthouse));
         let lantern_pos = v3(lx, ly + 2.95, lz);
 
@@ -616,7 +641,7 @@ impl World {
             let x = angle.cos() * radius * 1.05;
             let z = angle.sin() * radius * 0.95;
             let h = ground(x, z);
-            if h < 0.30 || h > 1.55 {
+            if h < 0.55 || h > 1.55 {
                 continue;
             }
             if height.normal(x, z).y < 0.80 {

@@ -16,12 +16,17 @@
 многопоточной трассировки лучей, своего PNG-кодировщика и интерактивного
 браузерного превью.
 
+По острову можно **ходить пешком от первого лица**: WASD и мышь, прыжок,
+коллизии с деревьями и стенами, четыре времени суток. Прогулка собрана в
+WebAssembly и запускается в браузере из того же сервера превью.
+
 ![day](world-render/renders/preview/day.jpg)
 
 ```bash
 cd world-render
 cargo run --release -- --preset sunset --out renders/sunset.png
-cargo run --release -- --serve --port 8080   # превью в браузере
+cargo run --release -- --serve --port 8080   # превью + прогулка в браузере
+bash tools/build_wasm.sh                     # пересобрать wasm-модуль прогулки
 ```
 
 Подробности, все пресеты и описание алгоритмов — в

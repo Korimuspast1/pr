@@ -3,239 +3,363 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Procedural World — рендер на Rust</title>
+<title>Прогулка по миру — Rust + WebAssembly</title>
 <style>
   :root {
-    --bg: #0e1218;
-    --panel: #151b24;
-    --line: #232c38;
-    --text: #e7edf5;
-    --muted: #8c9aab;
+    --bg: #0b0f14;
+    --panel: rgba(16, 22, 30, .82);
+    --line: #26313f;
+    --text: #e8eef6;
+    --muted: #93a1b3;
     --accent: #f0a55e;
     --accent-2: #5fc7c1;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
-    margin: 0;
-    background: radial-gradient(1200px 700px at 70% -10%, #1b2635 0%, var(--bg) 60%);
-    color: var(--text);
+    margin: 0; overflow: hidden; background: var(--bg); color: var(--text);
     font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    min-height: 100vh;
+    user-select: none;
   }
-  header {
-    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
-    padding: 22px 28px 6px;
+  canvas { display: block; width: 100vw; height: 100vh; image-rendering: auto; cursor: crosshair; }
+
+  .hud { position: fixed; z-index: 5; }
+  .top-left { top: 14px; left: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .top-right { top: 14px; right: 14px; display: flex; gap: 8px; align-items: center; }
+  .bottom-left { bottom: 14px; left: 14px; }
+  .bottom-right { bottom: 14px; right: 14px; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 12px; backdrop-filter: blur(8px);
   }
-  h1 { font-size: 19px; margin: 0; letter-spacing: .2px; font-weight: 650; }
-  header .sub { color: var(--muted); font-size: 13px; }
-  main {
-    display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px;
-    padding: 16px 28px 32px; align-items: start;
-  }
-  @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
-  .panel {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-    padding: 16px;
-  }
-  .field { margin-bottom: 15px; }
-  .field:last-child { margin-bottom: 0; }
-  label { display: block; font-size: 12px; text-transform: uppercase;
-          letter-spacing: .09em; color: var(--muted); margin-bottom: 7px; }
-  select, input[type=number] {
-    width: 100%; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line);
-    background: #0f151d; color: var(--text); font: inherit;
-  }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .presets button {
-    padding: 9px 6px; border-radius: 9px; border: 1px solid var(--line);
-    background: #0f151d; color: var(--text); font: inherit; cursor: pointer;
+  .title { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-size: 13px; color: var(--text); background: #16202b;
+    border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; cursor: pointer;
     transition: border-color .15s, background .15s, color .15s;
   }
-  .presets button:hover { border-color: #3a4757; }
-  .presets button[aria-pressed=true] {
-    border-color: var(--accent); color: #1a1207; background: var(--accent);
-    font-weight: 600;
+  button:hover { border-color: #3b4a5c; }
+  button[aria-pressed=true] { background: var(--accent); color: #23170a; border-color: var(--accent); font-weight: 600; }
+  .stats { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); }
+  .stats b { color: var(--text); font-weight: 550; }
+  kbd {
+    display: inline-block; min-width: 20px; text-align: center; padding: 1px 5px;
+    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px;
+    background: #131b24; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
   }
-  .render-btn {
-    width: 100%; padding: 12px; border-radius: 10px; border: 0; cursor: pointer;
+  .help { max-width: 340px; font-size: 13px; color: var(--muted); }
+  .help b { color: var(--text); font-weight: 550; }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 10; display: grid; place-items: center;
+    background: radial-gradient(900px 600px at 50% 40%, rgba(18, 26, 36, .92), rgba(8, 11, 16, .97));
+    text-align: center; padding: 24px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; }
+  .overlay p { margin: 0 0 18px; color: var(--muted); max-width: 520px; }
+  .bar { width: 320px; height: 6px; border-radius: 99px; background: #1b242f; overflow: hidden; margin: 0 auto 12px; }
+  .bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #5fc7c1, #f0a55e); transition: width .2s; }
+  .cta {
+    padding: 12px 22px; border-radius: 11px; border: 0; cursor: pointer; font: inherit; font-weight: 650;
     background: linear-gradient(180deg, #6fd3cd, #3aa8a2); color: #06201f;
-    font: inherit; font-weight: 650; letter-spacing: .01em;
   }
-  .render-btn:disabled { opacity: .55; cursor: progress; }
-  .hint { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
-  .stage { position: relative; border-radius: 14px; overflow: hidden;
-           border: 1px solid var(--line); background: #0a0e13; }
-  .stage img { display: block; width: 100%; height: auto; }
-  .stage .spin {
-    position: absolute; inset: 0; display: none; place-items: center;
-    background: rgba(8, 12, 17, .55); backdrop-filter: blur(2px);
-    font-size: 13px; color: var(--text); gap: 10px;
+  .err { color: #ff9b9b; font-size: 13px; max-width: 560px; word-break: break-word; }
+  .crosshair {
+    position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+    border-radius: 50%; background: rgba(255,255,255,.75); box-shadow: 0 0 0 1px rgba(0,0,0,.35);
+    z-index: 4; pointer-events: none; display: none;
   }
-  .stage.busy .spin { display: grid; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-2);
-         animation: pulse 1s infinite ease-in-out; display: inline-block; margin-right: 8px; }
-  @keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
-  .meta { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted);
-          font-size: 12.5px; padding: 10px 2px 0; }
-  .meta b { color: var(--text); font-weight: 550; }
-  code { background: #0f151d; border: 1px solid var(--line); border-radius: 6px;
-         padding: 1px 6px; font-size: 12.5px; }
+  body.locked .crosshair { display: block; }
+  body.locked .help { opacity: .35; }
 </style>
 </head>
 <body>
-<header>
-  <h1>Procedural World</h1>
-  <span class="sub">остров из шума, отрисованный CPU-рейкастером на Rust — без GPU, без текстур, без зависимостей</span>
-</header>
+<canvas id="view" width="960" height="540"></canvas>
+<div class="crosshair"></div>
 
-<main>
-  <form class="panel" id="controls" onsubmit="return false">
-    <div class="field">
-      <label>Время суток</label>
-      <div class="presets" id="presets">
-        <button type="button" data-preset="dawn">Рассвет</button>
-        <button type="button" data-preset="day">День</button>
-        <button type="button" data-preset="sunset">Закат</button>
-        <button type="button" data-preset="night">Ночь</button>
-      </div>
+<div class="hud top-left">
+  <div class="card">
+    <div class="title">время суток</div>
+    <div class="row" id="presets" style="margin-top:6px">
+      <button data-preset="0">Рассвет</button>
+      <button data-preset="1" aria-pressed="true">День</button>
+      <button data-preset="2">Закат</button>
+      <button data-preset="3">Ночь</button>
     </div>
+  </div>
+  <div class="card">
+    <div class="title">мир</div>
+    <div class="row" style="margin-top:6px">
+      <button id="reseed">Новый мир</button>
+      <button id="respawn">К берегу</button>
+    </div>
+  </div>
+</div>
 
-    <div class="field">
-      <label for="seed">Сид мира</label>
-      <div class="row">
-        <input id="seed" type="number" value="7" min="0" max="999999">
-        <button type="button" id="dice" class="presets" style="padding:9px;border-radius:9px;
-          border:1px solid var(--line);background:#0f151d;color:var(--text);cursor:pointer">
-          Случайный
-        </button>
-      </div>
-    </div>
+<div class="hud top-right">
+  <div class="card stats" id="stats">—</div>
+</div>
 
-    <div class="field">
-      <label for="size">Разрешение</label>
-      <select id="size">
-        <option value="640x360">640 × 360 — быстро</option>
-        <option value="960x540" selected>960 × 540</option>
-        <option value="1280x720">1280 × 720</option>
-        <option value="1920x1080">1920 × 1080 — медленно</option>
-      </select>
-    </div>
+<div class="hud bottom-left">
+  <div class="card help">
+    <b>WASD</b> / стрелки — идти · <b>мышь</b> — смотреть · <kbd>Shift</kbd> — бежать ·
+    <kbd>Space</kbd> — прыжок · <kbd>Esc</kbd> — освободить курсор · <b>1–4</b> — время суток
+  </div>
+</div>
 
-    <div class="field">
-      <label for="quality">Качество сглаживания</label>
-      <select id="quality">
-        <option value="1">1 луч на пиксель</option>
-        <option value="2" selected>4 луча на пиксель</option>
-        <option value="3">9 лучей на пиксель</option>
-      </select>
-    </div>
+<div class="hud bottom-right">
+  <div class="card stats" id="quality-card">
+    <span class="title" style="margin-right:6px">качество</span>
+    <button data-quality="0.55">низкое</button>
+    <button data-quality="0.75" aria-pressed="true">среднее</button>
+    <button data-quality="1">высокое</button>
+  </div>
+</div>
 
-    <button class="render-btn" id="render">Отрендерить</button>
-    <p class="hint">Клик по картинке — открыть в полном размере. Клавиши 1–4 переключают время суток.</p>
-  </form>
-
-  <section>
-    <div class="stage" id="stage">
-      <img id="shot" alt="Рендер процедурного острова" src="">
-      <div class="spin"><span><span class="dot"></span>трассировка лучей…</span></div>
+<div class="overlay" id="overlay">
+  <div>
+    <h1>Генерация мира</h1>
+    <p id="overlay-text">Строим рельеф, запекаем освещение и спрайты объектов — всё на Rust, скомпилированном в WebAssembly.</p>
+    <div class="bar"><i id="progress"></i></div>
+    <div class="stats" id="overlay-progress">0%</div>
+    <p class="err" id="error" hidden></p>
+    <div style="margin-top:18px; display:none" id="enter-wrap">
+      <button class="cta" id="enter">Войти в мир</button>
+      <p style="margin-top:14px; font-size:12.5px">
+        Клик по кнопке захватывает курсор. Выйти — <kbd>Esc</kbd>.
+      </p>
     </div>
-    <div class="meta">
-      <span>пресет: <b id="m-preset">—</b></span>
-      <span>сид: <b id="m-seed">—</b></span>
-      <span>размер: <b id="m-size">—</b></span>
-      <span>время: <b id="m-time">—</b></span>
-    </div>
-  </section>
-</main>
+  </div>
+</div>
 
 <script>
-  const presets = { dawn: "Рассвет", day: "День", sunset: "Закат", night: "Ночь" };
-  let state = { preset: "day", seed: 7, width: 960, height: 540, samples: 2 };
+(() => {
+  const canvas = document.getElementById("view");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const overlay = document.getElementById("overlay");
+  const overlayText = document.getElementById("overlay-text");
+  const progressBar = document.getElementById("progress");
+  const progressText = document.getElementById("overlay-progress");
+  const errorBox = document.getElementById("error");
+  const enterWrap = document.getElementById("enter-wrap");
+  const stats = document.getElementById("stats");
 
-  const stage = document.getElementById("stage");
-  const shot = document.getElementById("shot");
-  const renderBtn = document.getElementById("render");
+  let wasm = null;
+  let image = null;
+  let presetIndex = 1;
+  let quality = 0.75;
+  let seed = 7;
+  let last = 0;
+  let fpsAccum = 0;
+  let fpsFrames = 0;
+  let running = false;
 
-  function markPreset(name) {
-    document.querySelectorAll("#presets button").forEach((b) => {
-      b.setAttribute("aria-pressed", String(b.dataset.preset === name));
+  const keys = new Set();
+  const codeBits = {
+    KeyW: 1, ArrowUp: 1,
+    KeyS: 2, ArrowDown: 2,
+    KeyA: 4, ArrowLeft: 4,
+    KeyD: 8, ArrowRight: 8,
+    ShiftLeft: 16, ShiftRight: 16,
+    Space: 32,
+  };
+
+  function readString(ptr) {
+    if (!ptr) return "";
+    const memory = new Uint8Array(wasm.memory.buffer);
+    let out = "";
+    for (let i = ptr; memory[i]; i++) out += String.fromCharCode(memory[i]);
+    return out;
+  }
+
+  function fail(message) {
+    errorBox.hidden = false;
+    errorBox.textContent = message;
+    overlay.classList.remove("hidden");
+    enterWrap.style.display = "none";
+  }
+
+  function setProgress(percent) {
+    progressBar.style.width = `${percent}%`;
+    progressText.textContent = `${percent}%`;
+    progressText.style.display = percent >= 100 ? "none" : "";
+  }
+
+  function resize() {
+    const scale = Math.min(window.devicePixelRatio || 1, 2);
+    const height = Math.max(240, Math.round(window.innerHeight * quality * scale));
+    const width = Math.max(320, Math.round(window.innerWidth * quality * scale));
+    canvas.width = width;
+    canvas.height = height;
+    wasm.wr_resize(width, height);
+    image = ctx.createImageData(width, height);
+  }
+
+  function frame(now) {
+    if (!running) return;
+    const dt = last ? Math.min((now - last) / 1000, 0.1) : 0.016;
+    last = now;
+
+    let bits = 0;
+    for (const code of keys) bits |= codeBits[code] || 0;
+    wasm.wr_input(bits);
+
+    const pointer = wasm.wr_frame(dt);
+    if (pointer) {
+      const pixels = new Uint8Array(wasm.memory.buffer, pointer, canvas.width * canvas.height * 4);
+      image.data.set(pixels);
+      ctx.putImageData(image, 0, 0);
+    }
+
+    fpsAccum += dt;
+    fpsFrames++;
+    if (fpsAccum >= 0.5) {
+      const fps = fpsFrames / fpsAccum;
+      stats.innerHTML =
+        `<b>${fps.toFixed(0)}</b> fps · ` +
+        `<b>${canvas.width}×${canvas.height}</b> · ` +
+        `x <b>${wasm.wr_player_x().toFixed(1)}</b> ` +
+        `y <b>${wasm.wr_player_y().toFixed(1)}</b> ` +
+        `z <b>${wasm.wr_player_z().toFixed(1)}</b>`;
+      fpsAccum = 0;
+      fpsFrames = 0;
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function bake() {
+    // Bake a few sprites per tick so the page never freezes for long.
+    const progress = wasm.wr_bake_step(3);
+    setProgress(progress);
+    if (progress >= 100) {
+      setProgress(100);
+      overlayText.textContent =
+        "Мир готов: рельеф, освещение и объекты сгенерированы на Rust. Кликните, чтобы захватить мышь и пойти.";
+      enterWrap.style.display = "";
+      return;
+    }
+    setTimeout(bake, 0);
+  }
+
+  function startWorld(index, newSeed) {
+    presetIndex = index;
+    seed = newSeed;
+    running = false;
+    overlay.classList.remove("hidden");
+    enterWrap.style.display = "none";
+    setProgress(0);
+    overlayText.textContent = "Строим рельеф, запекаем освещение и спрайты объектов — всё на Rust, скомпилированном в WebAssembly.";
+
+    // Let the overlay paint before the heavy synchronous generation.
+    setTimeout(() => {
+      try {
+        wasm.wr_init(presetIndex, seed);
+        resize();
+        bake();
+      } catch (error) {
+        fail(`Мир не запустился: ${readString(wasm.wr_last_error()) || error.message}`);
+      }
+    }, 60);
+  }
+
+  function enter() {
+    overlay.classList.add("hidden");
+    running = true;
+    last = 0;
+    canvas.requestPointerLock?.();
+    requestAnimationFrame(frame);
+  }
+
+  document.getElementById("enter").addEventListener("click", enter);
+  canvas.addEventListener("click", () => {
+    if (!overlay.classList.contains("hidden")) return;
+    canvas.requestPointerLock?.();
+  });
+
+  document.addEventListener("pointerlockchange", () => {
+    document.body.classList.toggle("locked", document.pointerLockElement === canvas);
+  });
+
+  document.addEventListener("mousemove", (event) => {
+    if (document.pointerLockElement !== canvas) return;
+    wasm.wr_look(event.movementX, event.movementY);
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (!wasm) return;
+    if (codeBits[event.code]) {
+      keys.add(event.code);
+      event.preventDefault();
+    }
+    if (event.code === "KeyR") {
+      wasm.wr_respawn();
+    }
+    if (["Digit1", "Digit2", "Digit3", "Digit4"].includes(event.code)) {
+      const index = Number(event.code.slice(-1)) - 1;
+      selectPreset(index);
+    }
+  });
+
+  window.addEventListener("keyup", (event) => {
+    keys.delete(event.code);
+  });
+
+  window.addEventListener("blur", () => keys.clear());
+  window.addEventListener("resize", () => {
+    if (!wasm) return;
+    resize();
+  });
+
+  function selectPreset(index) {
+    document.querySelectorAll("#presets button").forEach((button) => {
+      button.setAttribute("aria-pressed", String(Number(button.dataset.preset) === index));
     });
-  }
-
-  function setMeta(key, value) {
-    document.getElementById(key).textContent = value;
-  }
-
-  function draw() {
-    const url = `/api/render?preset=${encodeURIComponent(state.preset)}` +
-      `&seed=${state.seed}&width=${state.width}&height=${state.height}` +
-      `&samples=${state.samples}`;
-    stage.classList.add("busy");
-    renderBtn.disabled = true;
-    const started = performance.now();
-    const image = new Image();
-    image.onload = () => {
-      shot.src = url;
-      stage.classList.remove("busy");
-      renderBtn.disabled = false;
-      setMeta("m-preset", presets[state.preset] || state.preset);
-      setMeta("m-seed", state.seed);
-      setMeta("m-size", `${state.width} × ${state.height}`);
-      setMeta("m-time", `${((performance.now() - started) / 1000).toFixed(2)} с`);
-      shot.onclick = () => window.open(url, "_blank");
-    };
-    image.onerror = () => {
-      stage.classList.remove("busy");
-      renderBtn.disabled = false;
-      setMeta("m-time", "ошибка сервера");
-    };
-    image.src = url;
+    startWorld(index, seed);
   }
 
   document.querySelectorAll("#presets button").forEach((button) => {
     button.addEventListener("click", () => {
-      state.preset = button.dataset.preset;
-      markPreset(state.preset);
-      draw();
+      selectPreset(Number(button.dataset.preset));
     });
   });
 
-  document.getElementById("seed").addEventListener("change", (event) => {
-    state.seed = Math.max(0, Math.min(999999, parseInt(event.target.value || "7", 10)));
-    event.target.value = state.seed;
+  document.getElementById("reseed").addEventListener("click", () => {
+    startWorld(presetIndex, Math.floor(Math.random() * 100000));
   });
 
-  document.getElementById("dice").addEventListener("click", () => {
-    state.seed = Math.floor(Math.random() * 100000);
-    document.getElementById("seed").value = state.seed;
-    draw();
+  document.getElementById("respawn").addEventListener("click", () => {
+    wasm.wr_respawn();
   });
 
-  document.getElementById("size").addEventListener("change", (event) => {
-    const [w, h] = event.target.value.split("x").map(Number);
-    state.width = w;
-    state.height = h;
+  document.querySelectorAll("[data-quality]").forEach((button) => {
+    button.addEventListener("click", () => {
+      quality = Number(button.dataset.quality);
+      document.querySelectorAll("[data-quality]").forEach((other) => {
+        other.setAttribute("aria-pressed", String(other === button));
+      });
+      if (wasm) resize();
+    });
   });
 
-  document.getElementById("quality").addEventListener("change", (event) => {
-    state.samples = Number(event.target.value);
-  });
-
-  renderBtn.addEventListener("click", draw);
-
-  document.addEventListener("keydown", (event) => {
-    const names = ["dawn", "day", "sunset", "night"];
-    const index = Number(event.key) - 1;
-    if (index >= 0 && index < names.length) {
-      state.preset = names[index];
-      markPreset(state.preset);
-      draw();
+  async function boot() {
+    try {
+      const response = await fetch("wasm/world_render.wasm");
+      if (!response.ok) throw new Error(`HTTP ${response.status} для wasm-модуля`);
+      const bytes = await response.arrayBuffer();
+      const { instance } = await WebAssembly.instantiate(bytes, {});
+      wasm = instance.exports;
+      startWorld(1, 7);
+    } catch (error) {
+      fail(`Не удалось загрузить WebAssembly-модуль: ${error.message}`);
     }
-  });
+  }
 
-  markPreset(state.preset);
-  draw();
+  boot();
+})();
 </script>
 </body>
 </html>

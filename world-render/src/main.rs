@@ -13,169 +13,25 @@
 
 mod camera;
 mod png;
+mod presets;
 mod render;
 mod server;
 mod vec3;
+// The walk mode is driven by the WebAssembly build; the binary only needs a
+// couple of entry points from it, so silence dead-code warnings for the rest.
+#[allow(dead_code)]
+mod walk;
 mod world;
 
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use camera::Camera;
-use render::{render, RenderSettings, Scene};
-use vec3::{v3, Vec3};
+use presets::{presets, scene_from_query};
+use vec3::v3;
+use render::{render, RenderSettings};
+use walk::{Frame, Player, WalkWorld};
 use world::World;
-
-pub struct Preset {
-    pub name: &'static str,
-    pub description: &'static str,
-    pub scene: Scene,
-    pub camera_pos: Vec3,
-    pub camera_target: Vec3,
-    pub fov: f32,
-}
-
-#[allow(clippy::too_many_arguments)]
-fn scene(
-    sun: Vec3,
-    sun_color: Vec3,
-    zenith: Vec3,
-    horizon: Vec3,
-    glow: Vec3,
-    cloud: Vec3,
-    sea_deep: Vec3,
-    sea_shallow: Vec3,
-    exposure: f32,
-    haze: f32,
-    ambient: f32,
-    stars: f32,
-    lantern: f32,
-    time: f32,
-) -> Scene {
-    Scene {
-        sun_dir: sun.normalized(),
-        sun_color,
-        sky_zenith: zenith,
-        sky_horizon: horizon,
-        sun_glow: glow,
-        cloud_color: cloud,
-        sea_deep,
-        sea_shallow,
-        exposure,
-        haze,
-        star_amount: stars,
-        ambient,
-        lantern,
-        time,
-    }
-}
-
-pub fn presets() -> Vec<Preset> {
-    vec![
-        Preset {
-            name: "dawn",
-            description: "Low warm sun behind the island, mist over the water",
-            scene: scene(
-                v3(-0.58, 0.26, -0.77),
-                v3(1.00, 0.74, 0.48) * 1.75,
-                v3(0.085, 0.165, 0.400),
-                v3(0.95, 0.68, 0.47),
-                v3(1.00, 0.62, 0.34),
-                v3(0.98, 0.74, 0.63),
-                v3(0.012, 0.046, 0.075),
-                v3(0.055, 0.265, 0.285),
-                1.10,
-                0.006,
-                0.52,
-                0.0,
-                1.4,
-                9.0,
-            ),
-            camera_pos: v3(5.20, 2.85, 11.40),
-            camera_target: v3(-0.25, 1.05, 0.0),
-            fov: 37.0,
-        },
-        Preset {
-            name: "day",
-            description: "Clear afternoon light, crisp shadows, turquoise shallows",
-            scene: scene(
-                v3(0.55, 0.80, 0.30),
-                v3(1.00, 0.95, 0.86) * 2.30,
-                v3(0.070, 0.215, 0.520),
-                v3(0.62, 0.77, 0.90),
-                v3(1.00, 0.96, 0.85),
-                v3(1.00, 1.00, 1.00),
-                v3(0.010, 0.075, 0.140),
-                v3(0.050, 0.360, 0.375),
-                0.62,
-                0.007,
-                0.62,
-                0.0,
-                0.0,
-                21.0,
-            ),
-            camera_pos: v3(5.45, 3.15, 11.75),
-            camera_target: v3(-0.20, 1.10, 0.0),
-            fov: 37.0,
-        },
-        Preset {
-            name: "sunset",
-            description: "Golden hour from the side, lanterns already lit",
-            scene: scene(
-                v3(0.78, 0.105, -0.56),
-                v3(1.00, 0.50, 0.22) * 2.30,
-                v3(0.075, 0.055, 0.170),
-                v3(1.00, 0.42, 0.15),
-                v3(1.00, 0.46, 0.20),
-                v3(0.95, 0.50, 0.38),
-                v3(0.010, 0.026, 0.050),
-                v3(0.090, 0.205, 0.250),
-                0.92,
-                0.006,
-                0.46,
-                0.0,
-                2.4,
-                17.0,
-            ),
-            camera_pos: v3(5.05, 2.60, 11.15),
-            camera_target: v3(-0.30, 1.00, 0.0),
-            fov: 37.0,
-        },
-        Preset {
-            name: "night",
-            description: "Moonlight, a dense star field, and one lit window",
-            scene: scene(
-                v3(-0.40, 0.72, -0.60),
-                v3(0.30, 0.38, 0.56) * 0.60,
-                v3(0.006, 0.011, 0.030),
-                v3(0.026, 0.046, 0.088),
-                v3(0.36, 0.43, 0.62),
-                v3(0.10, 0.13, 0.21),
-                v3(0.003, 0.008, 0.017),
-                v3(0.008, 0.030, 0.046),
-                1.05,
-                0.007,
-                0.18,
-                1.0,
-                6.0,
-                4.0,
-            ),
-            camera_pos: v3(5.15, 2.95, 11.35),
-            camera_target: v3(-0.25, 1.05, 0.0),
-            fov: 37.0,
-        },
-    ]
-}
-
-/// Scene and camera for a preset name; used by both the CLI and the preview.
-pub fn scene_from_query(preset: &str, _seed: u32) -> (Scene, Camera) {
-    let preset = presets()
-        .into_iter()
-        .find(|p| p.name == preset)
-        .unwrap_or_else(|| presets().remove(1));
-    let camera = Camera::look_at(preset.camera_pos, preset.camera_target, preset.fov);
-    (preset.scene, camera)
-}
 
 struct Options {
     preset: String,
@@ -186,6 +42,12 @@ struct Options {
     seed: u32,
     serve: bool,
     port: u16,
+    /// Render one frame of the walk-mode renderer to a PNG (debug/verification).
+    walk_frame: bool,
+    walk_seed: u32,
+    /// Optional camera override for `--walk-frame`: "x,z" and degrees.
+    walk_pos: Option<(f32, f32)>,
+    walk_yaw: Option<f32>,
 }
 
 fn help() -> String {
@@ -201,6 +63,10 @@ fn help() -> String {
     text.push_str("    --samples <1|2|3> 1, 4 or 9 rays per pixel (default: 2)\n");
     text.push_str("    --seed <n>        terrain seed (default: 7)\n");
     text.push_str("    --serve           start the interactive preview server\n");
+    text.push_str("    --walk-frame      render one first-person frame (debug)\n");
+    text.push_str("    --walk-seed <n>   seed for the first-person frame\n");
+    text.push_str("    --walk-pos x,z    camera position for the first-person frame\n");
+    text.push_str("    --walk-yaw deg    camera heading for the first-person frame\n");
     text.push_str("    --port <port>     preview server port (default: 8080)\n");
     text.push_str("    --list-presets    print presets and exit\n");
     text.push_str("    -h, --help        print this help and exit\n\nPRESETS:\n");
@@ -220,6 +86,10 @@ fn parse_args() -> Result<Options, String> {
         seed: 7,
         serve: false,
         port: 8080,
+        walk_frame: false,
+        walk_seed: 7,
+        walk_pos: None,
+        walk_yaw: None,
     };
 
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -244,6 +114,7 @@ fn parse_args() -> Result<Options, String> {
                 std::process::exit(0);
             }
             "--serve" => options.serve = true,
+            "--walk-frame" => options.walk_frame = true,
             "--preset" => options.preset = take_value(&mut i)?,
             "--out" => options.out = Some(PathBuf::from(take_value(&mut i)?)),
             "--width" => {
@@ -260,6 +131,27 @@ fn parse_args() -> Result<Options, String> {
                     .map_err(|_| "invalid --samples")?
             }
             "--seed" => options.seed = take_value(&mut i)?.parse().map_err(|_| "invalid --seed")?,
+            "--walk-seed" => {
+                options.walk_seed = take_value(&mut i)?
+                    .parse()
+                    .map_err(|_| "invalid --walk-seed")?
+            }
+            "--walk-pos" => {
+                let value = take_value(&mut i)?;
+                let (x, z) = value
+                    .split_once(',')
+                    .ok_or_else(|| "expected --walk-pos x,z".to_string())?;
+                options.walk_pos = Some((
+                    x.parse().map_err(|_| "invalid --walk-pos x")?,
+                    z.parse().map_err(|_| "invalid --walk-pos z")?,
+                ));
+            }
+            "--walk-yaw" => {
+                let value: f32 = take_value(&mut i)?
+                    .parse()
+                    .map_err(|_| "invalid --walk-yaw")?;
+                options.walk_yaw = Some(value.to_radians());
+            }
             "--port" => options.port = take_value(&mut i)?.parse().map_err(|_| "invalid --port")?,
             other => return Err(format!("unknown option: {other}")),
         }
@@ -314,6 +206,52 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 names.join(", ")
             )
         })?;
+
+    if options.walk_frame {
+        let frame_started = Instant::now();
+        let (mut walk, mut job) = WalkWorld::new(options.walk_seed, &preset.scene);
+        // Native build: bake the whole sprite bank in one go.
+        job.step(job.total());
+        walk.install(job.finish().expect("sprite bake incomplete"));
+        let bake_time = frame_started.elapsed();
+        let mut player = Player::spawn(&walk.world);
+        if let Some((x, z)) = options.walk_pos {
+            player.pos = v3(x, walk.ground(x, z), z);
+        }
+        if let Some(yaw) = options.walk_yaw {
+            player.yaw = yaw;
+        }
+        // `WR_WALK_DEBUG=1` prints where the debug camera ended up, which is
+        // handy when a screenshot looks like the camera is aiming at the sky.
+        if std::env::var("WR_WALK_DEBUG").is_ok() {
+            println!(
+                "player pos {:?} pitch {:.3} yaw {:.1}° eye {:?} ground {:.2}",
+                player.pos,
+                player.pitch,
+                player.yaw.to_degrees(),
+                player.eye(),
+                walk.ground(player.pos.x, player.pos.z)
+            );
+        }
+        let mut frame = Frame::new(options.width, options.height);
+        let render_started = Instant::now();
+        walk::render_profiled_for_cli(&walk, &player, &mut frame);
+        let render_time = render_started.elapsed();
+        let out = options
+            .out
+            .clone()
+            .unwrap_or_else(|| PathBuf::from("renders/walk-frame.png"));
+        save(&out, options.width, options.height, &frame.rgb)?;
+        println!(
+            "walk frame: sprite bake {:.0} ms, render {:.1} ms, player at ({:.2}, {:.2}) -> {}",
+            bake_time.as_secs_f64() * 1000.0,
+            render_time.as_secs_f64() * 1000.0,
+            player.pos.x,
+            player.pos.z,
+            out.display()
+        );
+        return Ok(());
+    }
 
     let started = Instant::now();
     let world = World::build(options.seed);

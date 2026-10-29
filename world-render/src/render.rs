@@ -473,12 +473,24 @@ pub fn render(world: &World, scene: &Scene, cam: &Camera, settings: RenderSettin
     let width = settings.width;
     let height = settings.height;
     let mut out = vec![0u8; width * height * 3];
-    let threads = std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(4)
-        .clamp(1, 32);
+    // wasm has no threads: render everything in the calling thread there.
+    let threads = if cfg!(target_arch = "wasm32") {
+        1
+    } else {
+        std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4)
+            .clamp(1, 32)
+    };
     let rows_per = (height + threads - 1) / threads;
     let stride = width * 3 * rows_per;
+
+    if threads == 1 {
+        for (chunk_index, chunk) in out.chunks_mut(stride).enumerate() {
+            render_strip(world, scene, cam, &settings, chunk_index * rows_per, chunk);
+        }
+        return out;
+    }
 
     std::thread::scope(|scope| {
         let mut handles = Vec::new();

@@ -13,6 +13,7 @@ use crate::scene_from_query;
 use crate::World;
 
 const PAGE: &str = include_str!("../web/index.html");
+const WASM: &[u8] = include_bytes!("../web/wasm/world_render.wasm");
 
 pub fn serve(port: u16) -> std::io::Result<()> {
     let listener = TcpListener::bind(("0.0.0.0", port))?;
@@ -69,6 +70,7 @@ fn handle(stream: TcpStream) -> std::io::Result<()> {
             let bytes = render_png(&params);
             respond(&mut writer, 200, "image/png", &bytes)
         }
+        "/wasm/world_render.wasm" => respond(&mut writer, 200, "application/wasm", WASM),
         "/favicon.ico" => respond(&mut writer, 204, "image/x-icon", &[]),
         _ => respond_text(&mut writer, 404, "not found"),
     }
@@ -106,8 +108,10 @@ impl PreviewParams {
                 _ => {}
             }
         }
-        params.width = params.width.clamp(160, 2560);
-        params.height = params.height.clamp(90, 1440);
+        // A picture request is served synchronously, so keep it bounded: a
+        // 4K frame with 9 rays takes minutes and would just look like a hang.
+        params.width = params.width.clamp(160, 1280);
+        params.height = params.height.clamp(90, 720);
         params.samples = params.samples.clamp(1, 3);
         params
     }
