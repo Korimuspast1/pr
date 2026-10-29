@@ -1,0 +1,5 @@
+/target/
+# Full-resolution renders are regenerated with the commands in README.md;
+# only the small preview JPEGs are committed.
+/renders/*.png
+/renders/*.ppm

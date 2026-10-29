@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Прогулка по миру — Rust + WebAssembly</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: rgba(16, 22, 30, .82);
+    --line: #26313f;
+    --text: #e8eef6;
+    --muted: #93a1b3;
+    --accent: #f0a55e;
+    --accent-2: #5fc7c1;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; overflow: hidden; background: var(--bg); color: var(--text);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    user-select: none;
+  }
+  canvas { display: block; width: 100vw; height: 100vh; image-rendering: auto; cursor: crosshair; }
+
+  .hud { position: fixed; z-index: 5; }
+  .top-left { top: 14px; left: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .top-right { top: 14px; right: 14px; display: flex; gap: 8px; align-items: center; }
+  .bottom-left { bottom: 14px; left: 14px; }
+  .bottom-right { bottom: 14px; right: 14px; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 12px; backdrop-filter: blur(8px);
+  }
+  .title { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-size: 13px; color: var(--text); background: #16202b;
+    border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  button:hover { border-color: #3b4a5c; }
+  button[aria-pressed=true] { background: var(--accent); color: #23170a; border-color: var(--accent); font-weight: 600; }
+  .stats { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); }
+  .stats b { color: var(--text); font-weight: 550; }
+  kbd {
+    display: inline-block; min-width: 20px; text-align: center; padding: 1px 5px;
+    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px;
+    background: #131b24; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .help { max-width: 340px; font-size: 13px; color: var(--muted); }
+  .help b { color: var(--text); font-weight: 550; }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 10; display: grid; place-items: center;
+    background: radial-gradient(900px 600px at 50% 40%, rgba(18, 26, 36, .92), rgba(8, 11, 16, .97));
+    text-align: center; padding: 24px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; }
+  .overlay p { margin: 0 0 18px; color: var(--muted); max-width: 520px; }
+  .bar { width: 320px; height: 6px; border-radius: 99px; background: #1b242f; overflow: hidden; margin: 0 auto 12px; }
+  .bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #5fc7c1, #f0a55e); transition: width .2s; }
+  .cta {
+    padding: 12px 22px; border-radius: 11px; border: 0; cursor: pointer; font: inherit; font-weight: 650;
+    background: linear-gradient(180deg, #6fd3cd, #3aa8a2); color: #06201f;
+  }
+  .err { color: #ff9b9b; font-size: 13px; max-width: 560px; word-break: break-word; }
+  .settings {
+    margin: 18px auto 0; display: grid; gap: 10px; justify-items: center;
+    font-size: 13px; color: var(--muted);
+  }
+  .settings label { display: flex; align-items: center; gap: 10px; }
+  .settings input[type=range] { width: 180px; accent-color: var(--accent-2); }
+  .settings output { min-width: 42px; text-align: left; color: var(--text); font-variant-numeric: tabular-nums; }
+  .settings input[type=checkbox] { accent-color: var(--accent-2); }
+  .crosshair {
+    position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+    border-radius: 50%; background: rgba(255,255,255,.75); box-shadow: 0 0 0 1px rgba(0,0,0,.35);
+    z-index: 4; pointer-events: none; display: none;
+  }
+  body.locked .crosshair { display: block; }
+  body.locked .help { opacity: .35; }
+
+  /* «Чистый» режим: только мир, ни одной панели поверх картинки. */
+  body.clean .hud,
+  body.clean .crosshair { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="view" width="960" height="540"></canvas>
+<div class="crosshair"></div>
+
+<div class="hud top-left">
+  <div class="card">
+    <div class="title">время суток</div>
+    <div class="row" id="presets" style="margin-top:6px">
+      <button data-preset="0">Рассвет</button>
+      <button data-preset="1" aria-pressed="true">День</button>
+      <button data-preset="2">Закат</button>
+      <button data-preset="3">Ночь</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="title">мир</div>
+    <div class="row" style="margin-top:6px">
+      <button id="reseed">Новый мир</button>
+      <button id="respawn">К берегу</button>
+    </div>
+  </div>
+</div>
+
+<div class="hud top-right">
+  <div class="card stats" id="stats">—</div>
+</div>
+
+<div class="hud bottom-left">
+  <div class="card help">
+    <b>WASD</b> / стрелки — идти · <b>мышь</b> — смотреть · <kbd>Shift</kbd> — бежать ·
+    <kbd>Space</kbd> — прыжок · <kbd>Esc</kbd> — освободить курсор · <b>1–4</b> — время суток ·
+    <kbd>−</kbd>/<kbd>+</kbd> — скорость · <kbd>I</kbd> — инверсия мыши · <kbd>H</kbd> — панели ·
+    <kbd>F</kbd> — полный экран · <kbd>P</kbd> — снимок
+  </div>
+</div>
+
+<div class="hud bottom-right">
+  <div class="card stats" id="quality-card">
+    <span class="title" style="margin-right:6px">качество</span>
+    <button data-quality="0.6">низкое</button>
+    <button data-quality="0.8">среднее</button>
+    <button data-quality="1" aria-pressed="true">высокое</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div>
+    <h1>Генерация мира</h1>
+    <p id="overlay-text">Строим рельеф, запекаем освещение и спрайты объектов — всё на Rust, скомпилированном в WebAssembly.</p>
+    <div class="bar"><i id="progress"></i></div>
+    <div class="stats" id="overlay-progress">0%</div>
+    <p class="err" id="error" hidden></p>
+    <div style="margin-top:18px; display:none" id="enter-wrap">
+      <div class="settings">
+        <label>скорость ходьбы
+          <input type="range" id="set-speed" min="0.4" max="2" step="0.1" value="1">
+          <output id="set-speed-value">×1.0</output>
+        </label>
+        <label>чувствительность мыши
+          <input type="range" id="set-sens" min="0.3" max="2.5" step="0.1" value="1">
+          <output id="set-sens-value">×1.0</output>
+        </label>
+        <label><input type="checkbox" id="set-invert-x"> инверсия мыши по горизонтали</label>
+        <label><input type="checkbox" id="set-invert-y"> инверсия мыши по вертикали</label>
+      </div>
+      <button class="cta" id="enter" style="margin-top:16px">Войти в мир</button>
+      <p style="margin-top:14px; font-size:12.5px">
+        Кнопка сразу открывает мир во весь экран и без интерфейса.
+        <kbd>F</kbd> — полный экран · <kbd>H</kbd> — показать/скрыть панели ·
+        <kbd>P</kbd> — сохранить кадр · <kbd>Esc</kbd> — выйти.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("view");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const overlay = document.getElementById("overlay");
+  const overlayText = document.getElementById("overlay-text");
+  const progressBar = document.getElementById("progress");
+  const progressText = document.getElementById("overlay-progress");
+  const errorBox = document.getElementById("error");
+  const enterWrap = document.getElementById("enter-wrap");
+  const stats = document.getElementById("stats");
+
+  // Bumped by hand when the page changes, so an old tab is easy to spot.
+  const BUILD = "walk 2026-10-30 · no-gui";
+
+  let wasm = null;
+  let image = null;
+  const settings = { speed: 1, sens: 1, invertX: false, invertY: false };
+  try {
+    Object.assign(settings, JSON.parse(localStorage.getItem("walk-settings") || "{}"));
+  } catch (error) {
+    // private mode / corrupted storage: defaults are fine
+  }
+  let presetIndex = 1;
+  // 1.0 means "one canvas pixel per screen pixel"; the pixel budget below and
+  // the automatic scaler keep the frame rate usable on slower machines.
+  let quality = 1.0;
+  let autoScale = 1.0;
+  let seed = 7;
+  let last = 0;
+  let fpsAccum = 0;
+  let fpsFrames = 0;
+  let running = false;
+  // The walk is meant to be looked at: no panels over the world unless asked.
+  let clean = true;
+
+  const keys = new Set();
+  const codeBits = {
+    KeyW: 1, ArrowUp: 1,
+    KeyS: 2, ArrowDown: 2,
+    KeyA: 4, ArrowLeft: 4,
+    KeyD: 8, ArrowRight: 8,
+    ShiftLeft: 16, ShiftRight: 16,
+    Space: 32,
+  };
+
+  function readString(ptr) {
+    if (!ptr) return "";
+    const memory = new Uint8Array(wasm.memory.buffer);
+    let out = "";
+    for (let i = ptr; memory[i]; i++) out += String.fromCharCode(memory[i]);
+    return out;
+  }
+
+  function fail(message) {
+    errorBox.hidden = false;
+    errorBox.textContent = message;
+    overlay.classList.remove("hidden");
+    enterWrap.style.display = "none";
+  }
+
+  function setProgress(percent) {
+    progressBar.style.width = `${percent}%`;
+    progressText.textContent = `${percent}%`;
+    progressText.style.display = percent >= 100 ? "none" : "";
+  }
+
+  // ~1.1 megapixels is what this renderer does at ~30 fps on a desktop CPU.
+  const PIXEL_BUDGET = 1_800_000;
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    let width = window.innerWidth * dpr;
+    let height = window.innerHeight * dpr;
+    const budget = Math.sqrt(PIXEL_BUDGET / Math.max(1, width * height));
+    const k = Math.min(1, budget) * quality * autoScale;
+    width = Math.max(320, Math.round(width * k));
+    height = Math.max(200, Math.round(height * k));
+    if (width === canvas.width && height === canvas.height) return;
+    canvas.width = width;
+    canvas.height = height;
+    wasm.wr_resize(width, height);
+    image = ctx.createImageData(width, height);
+  }
+
+  function drawFrame(dt) {
+    const pointer = wasm.wr_frame(dt);
+    if (!pointer) return false;
+    const pixels = new Uint8Array(wasm.memory.buffer, pointer, canvas.width * canvas.height * 4);
+    image.data.set(pixels);
+    ctx.putImageData(image, 0, 0);
+    return true;
+  }
+
+  function setClean(on) {
+    clean = on;
+    document.body.classList.toggle("clean", on);
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+      }
+    } catch (error) {
+      // Inside a sandboxed iframe the browser may refuse fullscreen; the page
+      // already fills the viewport, so the clean view still works.
+      console.warn("полноэкранный режим недоступен:", error);
+    }
+  }
+
+  /// Saves the current view at full resolution as a PNG, without any UI.
+  function saveScreenshot() {
+    if (!wasm || !running) return;
+    const previous = quality;
+    quality = 1;
+    resize();
+    drawFrame(0);
+    const names = ["dawn", "day", "sunset", "night"];
+    const name = `world-${names[presetIndex]}-${seed}-${canvas.width}x${canvas.height}.png`;
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = name;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+      quality = previous;
+      resize();
+    }, "image/png");
+  }
+
+  function frame(now) {
+    if (!running) return;
+    const dt = last ? Math.min((now - last) / 1000, 0.1) : 0.016;
+    last = now;
+
+    let bits = 0;
+    for (const code of keys) bits |= codeBits[code] || 0;
+    wasm.wr_input(bits);
+
+    drawFrame(dt);
+
+    fpsAccum += dt;
+    fpsFrames++;
+    if (fpsAccum >= 0.5) {
+      const fps = fpsFrames / fpsAccum;
+      // Keep the picture sharp on fast machines and the walk smooth on slow
+      // ones: nudging the resolution is invisible, a 12 fps camera is not.
+      if (fps < 24 && autoScale > 0.55) {
+        autoScale = Math.max(0.55, autoScale * 0.92);
+        resize();
+      } else if (fps > 52 && autoScale < 1.0) {
+        autoScale = Math.min(1.0, autoScale * 1.05);
+        resize();
+      }
+      stats.innerHTML =
+        `<b>${fps.toFixed(0)}</b> fps · ` +
+        `<b>${canvas.width}×${canvas.height}</b> · ` +
+        `x <b>${wasm.wr_player_x().toFixed(1)}</b> ` +
+        `y <b>${wasm.wr_player_y().toFixed(1)}</b> ` +
+        `z <b>${wasm.wr_player_z().toFixed(1)}</b>` +
+        `<div style="margin-top:4px;opacity:.65">${BUILD}</div>`;
+      fpsAccum = 0;
+      fpsFrames = 0;
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function bake() {
+    // Bake a few sprites per tick so the page never freezes for long.
+    const progress = wasm.wr_bake_step(3);
+    setProgress(progress);
+    if (progress >= 100) {
+      setProgress(100);
+      overlayText.textContent =
+        "Мир готов: рельеф, освещение и объекты сгенерированы на Rust. Кликните, чтобы захватить мышь и пойти.";
+      enterWrap.style.display = "";
+      return;
+    }
+    setTimeout(bake, 0);
+  }
+
+  function startWorld(index, newSeed) {
+    presetIndex = index;
+    seed = newSeed;
+    running = false;
+    overlay.classList.remove("hidden");
+    enterWrap.style.display = "none";
+    setProgress(0);
+    overlayText.textContent = "Строим рельеф, запекаем освещение и спрайты объектов — всё на Rust, скомпилированном в WebAssembly.";
+
+    // Let the overlay paint before the heavy synchronous generation.
+    setTimeout(() => {
+      try {
+        wasm.wr_init(presetIndex, seed);
+        resize();
+        bake();
+      } catch (error) {
+        fail(`Мир не запустился: ${readString(wasm.wr_last_error()) || error.message}`);
+      }
+    }, 60);
+  }
+
+  function enter() {
+    overlay.classList.add("hidden");
+    running = true;
+    last = 0;
+    // Full screen, no interface: the world and nothing else.
+    setClean(true);
+    toggleFullscreen();
+    canvas.requestPointerLock?.();
+    requestAnimationFrame(frame);
+  }
+
+  const speedInput = document.getElementById("set-speed");
+  const speedValue = document.getElementById("set-speed-value");
+  const sensInput = document.getElementById("set-sens");
+  const sensValue = document.getElementById("set-sens-value");
+  const invertX = document.getElementById("set-invert-x");
+  const invertY = document.getElementById("set-invert-y");
+
+  function applySettings(persist = true) {
+    speedInput.value = settings.speed;
+    speedValue.textContent = `×${Number(settings.speed).toFixed(1)}`;
+    sensInput.value = settings.sens;
+    sensValue.textContent = `×${Number(settings.sens).toFixed(1)}`;
+    invertX.checked = settings.invertX;
+    invertY.checked = settings.invertY;
+    if (wasm && wasm.wr_set_speed) wasm.wr_set_speed(Number(settings.speed));
+    if (persist) {
+      try {
+        localStorage.setItem("walk-settings", JSON.stringify(settings));
+      } catch (error) {
+        // storage is optional
+      }
+    }
+  }
+
+  speedInput.addEventListener("input", () => {
+    settings.speed = Number(speedInput.value);
+    applySettings();
+  });
+  sensInput.addEventListener("input", () => {
+    settings.sens = Number(sensInput.value);
+    applySettings();
+  });
+  invertX.addEventListener("change", () => {
+    settings.invertX = invertX.checked;
+    applySettings();
+  });
+  invertY.addEventListener("change", () => {
+    settings.invertY = invertY.checked;
+    applySettings();
+  });
+
+  document.getElementById("enter").addEventListener("click", enter);
+  canvas.addEventListener("click", () => {
+    if (!overlay.classList.contains("hidden")) return;
+    canvas.requestPointerLock?.();
+  });
+
+  document.addEventListener("pointerlockchange", () => {
+    const locked = document.pointerLockElement === canvas;
+    document.body.classList.toggle("locked", locked);
+    // Step out of the walk: bring the panels back, otherwise there is no way
+    // to change the world without remembering a hotkey.
+    if (!locked && !document.fullscreenElement) setClean(false);
+  });
+
+  document.addEventListener("fullscreenchange", () => {
+    if (wasm) resize();
+    if (!document.fullscreenElement && document.pointerLockElement !== canvas) {
+      setClean(false);
+    }
+  });
+
+  // Pointer lock is the normal way to look around. If the browser refuses it
+  // (sandboxed iframe), dragging with the left button does the same thing.
+  let dragging = false;
+  canvas.addEventListener("mousedown", () => {
+    dragging = true;
+  });
+  window.addEventListener("mouseup", () => {
+    dragging = false;
+  });
+  document.addEventListener("mousemove", (event) => {
+    const locked = document.pointerLockElement === canvas;
+    if (!locked && !dragging) return;
+    if (!wasm) return;
+    let dx = (event.movementX || 0) * settings.sens;
+    let dy = (event.movementY || 0) * settings.sens;
+    if (settings.invertX) dx = -dx;
+    if (settings.invertY) dy = -dy;
+    wasm.wr_look(dx, dy);
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (!wasm) return;
+    if (codeBits[event.code]) {
+      keys.add(event.code);
+      event.preventDefault();
+    }
+    if (event.code === "KeyR") {
+      wasm.wr_respawn();
+    }
+    if (event.code === "KeyF") {
+      toggleFullscreen();
+    }
+    if (event.code === "KeyH") {
+      setClean(!clean);
+    }
+    if (event.code === "KeyP") {
+      saveScreenshot();
+    }
+    // Pace and mouse behaviour can be tuned while walking, without leaving the
+    // clean view.
+    if (event.code === "Minus" || event.code === "NumpadSubtract") {
+      settings.speed = Math.max(0.4, Number(settings.speed) - 0.1);
+      applySettings();
+      event.preventDefault();
+    }
+    if (event.code === "Equal" || event.code === "NumpadAdd") {
+      settings.speed = Math.min(2.0, Number(settings.speed) + 0.1);
+      applySettings();
+      event.preventDefault();
+    }
+    if (event.code === "KeyI") {
+      settings.invertX = !settings.invertX;
+      settings.invertY = settings.invertX;
+      applySettings();
+    }
+    if (["Digit1", "Digit2", "Digit3", "Digit4"].includes(event.code)) {
+      const index = Number(event.code.slice(-1)) - 1;
+      selectPreset(index);
+    }
+  });
+
+  window.addEventListener("keyup", (event) => {
+    keys.delete(event.code);
+  });
+
+  window.addEventListener("blur", () => keys.clear());
+  window.addEventListener("resize", () => {
+    if (!wasm) return;
+    resize();
+  });
+
+  function selectPreset(index) {
+    document.querySelectorAll("#presets button").forEach((button) => {
+      button.setAttribute("aria-pressed", String(Number(button.dataset.preset) === index));
+    });
+    startWorld(index, seed);
+  }
+
+  document.querySelectorAll("#presets button").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectPreset(Number(button.dataset.preset));
+    });
+  });
+
+  document.getElementById("reseed").addEventListener("click", () => {
+    startWorld(presetIndex, Math.floor(Math.random() * 100000));
+  });
+
+  document.getElementById("respawn").addEventListener("click", () => {
+    wasm.wr_respawn();
+  });
+
+  document.querySelectorAll("[data-quality]").forEach((button) => {
+    button.addEventListener("click", () => {
+      quality = Number(button.dataset.quality);
+      autoScale = 1.0;
+      document.querySelectorAll("[data-quality]").forEach((other) => {
+        other.setAttribute("aria-pressed", String(other === button));
+      });
+      if (wasm) resize();
+    });
+  });
+
+  async function boot() {
+    try {
+      const response = await fetch("wasm/world_render.wasm");
+      if (!response.ok) throw new Error(`HTTP ${response.status} для wasm-модуля`);
+      const bytes = await response.arrayBuffer();
+      const { instance } = await WebAssembly.instantiate(bytes, {});
+      wasm = instance.exports;
+      applySettings(false);
+      startWorld(1, 7);
+    } catch (error) {
+      fail(`Не удалось загрузить WebAssembly-модуль: ${error.message}`);
+    }
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
