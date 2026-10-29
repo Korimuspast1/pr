@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Sandbox 2D — карта и персонаж</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="stage">
+    <canvas id="world"></canvas>
+
+    <!-- HUD персонажа -->
+    <div id="hud">
+      <div class="hud-title">Игрок</div>
+      <div class="hp-row">
+        <div class="hp-bar"><div id="hp-fill"></div></div>
+        <div id="hp-text">100 / 100</div>
+      </div>
+      <div class="hud-sub">
+        <span id="state-text">стоит</span>
+        <span id="coords">x: 0 · y: 0</span>
+      </div>
+    </div>
+
+    <!-- подсказки -->
+    <div id="hint">
+      <div><b>A</b> / <b>D</b> — идти &nbsp;·&nbsp; <b>Space</b> — прыжок</div>
+      <div><b>Shift</b> — бег &nbsp;·&nbsp; колесо — зум &nbsp;·&nbsp; <b>F1</b> — скелет</div>
+      <div><b>ЛКМ</b> — схватить / швырнуть персонажа</div>
+      <div id="fps">60 fps</div>
+    </div>
+
+    <!-- нижняя панель инструментов (пока пустая) -->
+    <div id="toolbar" aria-label="Панель инструментов">
+      <div class="slot" data-slot="1"></div>
+      <div class="slot" data-slot="2"></div>
+      <div class="slot" data-slot="3"></div>
+      <div class="slot" data-slot="4"></div>
+      <div class="slot" data-slot="5"></div>
+      <div class="slot" data-slot="6"></div>
+      <div class="slot" data-slot="7"></div>
+      <div class="slot" data-slot="8"></div>
+      <div class="slot" data-slot="9"></div>
+      <div class="slot" data-slot="10"></div>
+    </div>
+  </div>
+
+  <script src="js/terrain.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/human.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
