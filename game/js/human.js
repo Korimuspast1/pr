@@ -11,12 +11,12 @@
      ========================================================= */
 
   const BODY = {
-    standHeight: 63, // таз над землёй
+    standHeight: 70, // таз над землёй
     torsoLen: 41, // таз -> грудь
-    neckLen: 24, // грудь -> голова
-    thigh: 32, // таз -> колено
-    shin: 31, // колено -> стопа
-    arm: 46, // грудь -> кисть
+    neckLen: 18, // грудь -> голова
+    thigh: 34, // таз -> колено
+    shin: 32, // колено -> стопа
+    arm: 40, // грудь -> кисть
     headR: 11,
     footR: 7,
   };
@@ -79,13 +79,13 @@
       this.chest = mk(0, -BODY.torsoLen, { r: 9, mass: 6, friction: 0.5 });
       this.head = mk(1 * this.facing, -BODY.torsoLen - BODY.neckLen, { r: BODY.headR, mass: 3.4, friction: 0.42 });
 
-      this.handL = mk(-9, 4, { r: 4.5, mass: 1.1, friction: 0.28 });
-      this.handR = mk(9, 4, { r: 4.5, mass: 1.1, friction: 0.28 });
+      this.handL = mk(-5, 6, { r: 4.5, mass: 1.1, friction: 0.28 });
+      this.handR = mk(5, 6, { r: 4.5, mass: 1.1, friction: 0.28 });
 
-      this.kneeL = mk(-5, 31, { r: 5, mass: 2.6, friction: 0.4 });
-      this.footL = mk(-8, BODY.standHeight - 2, { r: BODY.footR, mass: 2, friction: 0.78, restitution: 0 });
-      this.kneeR = mk(5, 31, { r: 5, mass: 2.6, friction: 0.4 });
-      this.footR = mk(8, BODY.standHeight - 2, { r: BODY.footR, mass: 2, friction: 0.78, restitution: 0 });
+      this.kneeL = mk(-7, 33, { r: 5, mass: 2.6, friction: 0.4 });
+      this.footL = mk(-11, BODY.standHeight - 2, { r: BODY.footR, mass: 2, friction: 0.78, restitution: 0 });
+      this.kneeR = mk(7, 33, { r: 5, mass: 2.6, friction: 0.4 });
+      this.footR = mk(11, BODY.standHeight - 2, { r: BODY.footR, mass: 2, friction: 0.78, restitution: 0 });
 
       this.parts = {
         pelvis: this.pelvis,
@@ -130,8 +130,8 @@
       }
 
       this.legs = {
-        L: { foot: this.footL, knee: this.kneeL, state: "stance", plantX: this.footL.x, swingT: 0, fromX: 0, toX: 0, offX: -8 },
-        R: { foot: this.footR, knee: this.kneeR, state: "stance", plantX: this.footR.x, swingT: 0, fromX: 0, toX: 0, offX: 8 },
+        L: { foot: this.footL, knee: this.kneeL, state: "stance", plantX: this.footL.x, swingT: 0, fromX: 0, toX: 0, offX: -11 },
+        R: { foot: this.footR, knee: this.kneeR, state: "stance", plantX: this.footR.x, swingT: 0, fromX: 0, toX: 0, offX: 11 },
       };
     }
 
@@ -423,7 +423,7 @@
       const chestY = this.rootY + upY * BODY.torsoLen;
       t.chest = { x: chestX, y: chestY };
 
-      const headX = chestX + upX * BODY.neckLen + this.facing * 2;
+      const headX = chestX + upX * BODY.neckLen + this.facing * 1;
       const headY = chestY + upY * BODY.neckLen;
       t.head = { x: headX, y: headY };
 
@@ -436,15 +436,23 @@
         { key: "handL", side: -1, sw: swing },
         { key: "handR", side: 1, sw: -swing },
       ];
+      const downX = -upX;
+      const downY = -upY;
       for (const h of hands) {
         // плечо
-        const sx = chestX + sideX * 4 * h.side + upX * 10;
-        const sy = chestY + sideY * 4 * h.side + upY * 10;
-        let hx = sx + this.facing * h.sw * 22 + sideX * 8 * h.side + upX * -6;
-        let hy = sy + 45 - Math.abs(h.sw) * 6 + sideY * 8 * h.side;
+        const sx = chestX + upX * 3 + sideX * 5.5 * h.side;
+        const sy = chestY + upY * 3 + sideY * 5.5 * h.side;
+        // кисть чуть впереди корпуса, качается вдоль взгляда
+        let hx = sx + sideX * (h.sw * 18) + downX * 37 + sideX * 2 * h.side;
+        let hy = sy + sideY * (h.sw * 18) + downY * 37 + sideY * 2 * h.side;
         if (air) {
-          hy = sy + 8;
-          hx = sx + this.facing * (14 + 7 * h.side);
+          hx = sx + upX * 14 + sideX * 7;
+          hy = sy + upY * 14 + sideY * 7;
+        }
+        if (h.side < 0) {
+          // дальняя рука уходит за корпус
+          hx -= this.facing * 7;
+          hy -= 1;
         }
         t[h.key] = { x: hx, y: hy };
       }
@@ -504,63 +512,64 @@
     draw(ctx, cam) {
       if (this.pelvis.x < cam.left - 220 || this.pelvis.x > cam.right + 220) return;
 
-      const C = this.colors;
-      const palette = makePalette(C, this.bloodiness);
+      const palette = makePalette(this.colors, this.bloodiness);
       const facing = this.facing;
-
-      const limb = (a, b, wA, wB, color) => drawLimb(ctx, a, b, wA, wB, color);
-
       const pelvis = this.pelvis;
       const chest = this.chest;
       const head = this.head;
 
-      // тень
+      // --- тень ---
       const gy = this.terrain.groundY(pelvis.x);
-      ctx.globalAlpha = 0.2;
+      ctx.globalAlpha = 0.18;
       ctx.fillStyle = "#000";
       ctx.beginPath();
-      ctx.ellipse(pelvis.x, gy + 1, 20, 4.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(pelvis.x, gy + 1, 19, 4.2, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      const shoulderY = chest.y + 10;
+      // --- система координат корпуса ---
+      const frame = bodyFrame(pelvis, chest, facing);
+      const { frontX, frontY, upX, upY } = frame;
 
-      // --- дальняя рука ---
-      const farArm = armPoints(chest, this.handL, -1, facing);
-      limb(farArm.shoulder, farArm.elbow, 5.2, 4.4, palette.shirtFar);
-      limb(farArm.elbow, farArm.hand, 4.2, 3.6, palette.skinFar);
-      circle(ctx, farArm.hand.x, farArm.hand.y, 4.3, palette.skinFar);
+      const shoulderNear = {
+        x: chest.x - upX * 2 + frontX * 3.2,
+        y: chest.y - upY * 2 + frontY * 3.2,
+      };
+      const shoulderFar = {
+        x: chest.x - upX * 2 - frontX * 2.4,
+        y: chest.y - upY * 2 - frontY * 2.4,
+      };
+
+      // --- дальняя рука (за корпусом) ---
+      drawArm(ctx, shoulderFar, this.handL, facing, -1, palette.armFar, palette.skinFar, palette);
 
       // --- дальняя нога ---
-      limb(pelvis, this.kneeL, 7.2, 5.4, palette.pantsFar);
-      limb(this.kneeL, this.footL, 5.2, 4.2, palette.pantsFar);
-      drawShoe(ctx, this.footL, this.kneeL, palette.shoeFar, facing);
-
-      // --- ближняя нога ---
-      limb(pelvis, this.kneeR, 7.8, 5.8, palette.pants);
-      limb(this.kneeR, this.footR, 5.6, 4.5, palette.pants);
+      drawLeg(ctx, pelvis, this.kneeL, this.footL, facing, palette.pantsFar, palette.shoeFar, -1);
 
       // --- корпус ---
-      drawTorso(ctx, pelvis, chest, palette, facing);
+      drawTorso(ctx, pelvis, chest, frame, palette);
 
-      // --- шея (короткая, под головой) ---
-      const neckTop = {
+      // --- шея ---
+      const neckFrom = { x: chest.x + upX * 4, y: chest.y + upY * 4 };
+      const neckTo = {
         x: chest.x + (head.x - chest.x) * 0.72,
         y: chest.y + (head.y - chest.y) * 0.72,
       };
-      limb(chest, neckTop, 5.2, 4.6, palette.skinShade);
+      capsule(ctx, neckFrom, neckTo, 5.4, 4.8, palette.skinShade);
+
+      // --- воротник ---
+      const collar = { x: chest.x + upX * 2.4, y: chest.y + upY * 2.4 };
+      circle(ctx, collar.x + frontX * 3, collar.y + frontY * 3, 3.6, palette.shirt);
+      circle(ctx, collar.x - frontX * 3, collar.y - frontY * 3, 3.6, palette.shirt);
 
       // --- голова ---
       drawHead(ctx, head, facing, palette, this.dead, this.colors.hair);
 
-      // --- ближняя рука ---
-      const nearArm = armPoints(chest, this.handR, 1, facing);
-      limb(nearArm.shoulder, nearArm.elbow, 5.6, 4.8, palette.shirt);
-      limb(nearArm.elbow, nearArm.hand, 4.6, 3.9, palette.skin);
-      circle(ctx, nearArm.hand.x, nearArm.hand.y, 4.7, palette.skin);
+      // --- ближняя нога ---
+      drawLeg(ctx, pelvis, this.kneeR, this.footR, facing, palette.pants, palette.shoe, 1);
 
-      // --- стопа ---
-      drawShoe(ctx, this.footR, this.kneeR, palette.shoe, facing);
+      // --- ближняя рука ---
+      drawArm(ctx, shoulderNear, this.handR, facing, 1, palette.shirt, palette.skin, palette);
 
       if (this.dismembered.handL) circle(ctx, this.handL.x, this.handL.y, 5, palette.skinFar);
       if (this.dismembered.handR) circle(ctx, this.handR.x, this.handR.y, 5, palette.skin);
@@ -571,7 +580,7 @@
         ctx.globalAlpha = 1;
       }
 
-      // полоска здоровья
+      // --- полоска здоровья ---
       if (!this.dead) {
         const w = 36;
         const hh = 5;
@@ -586,7 +595,7 @@
         ctx.fill();
       }
 
-      // режим отладки: скелет
+      // --- отладка: скелет ---
       if (this.debugSkeleton) {
         ctx.strokeStyle = "rgba(0,255,200,0.6)";
         ctx.lineWidth = 1;
@@ -605,9 +614,56 @@
     }
   }
 
-  /* ---------------- рисование ---------------- */
+  /* ---------------- геометрия и рисование ---------------- */
 
-  function drawLimb(ctx, a, b, wA, wB, color) {
+  function bodyFrame(pelvis, chest, facing) {
+    let dx = chest.x - pelvis.x;
+    let dy = chest.y - pelvis.y;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len;
+    dy /= len;
+    return {
+      upX: dx,
+      upY: dy,
+      // «перед» — перпендикуляр к оси корпуса в сторону взгляда
+      frontX: -dy * facing,
+      frontY: dx * facing,
+    };
+  }
+
+  /** двухзвенная IK: положение локтя/колена */
+  function ik2(root, target, l1, l2, bend) {
+    let dx = target.x - root.x;
+    let dy = target.y - root.y;
+    let d = Math.hypot(dx, dy);
+    const maxD = (l1 + l2) * 0.998;
+    if (d < 0.001) {
+      dx = 0;
+      dy = 1;
+      d = 0.001;
+    }
+    if (d > maxD) {
+      const k = maxD / d;
+      dx *= k;
+      dy *= k;
+      d = maxD;
+    }
+    const ux = dx / d;
+    const uy = dy / d;
+    const a = (d * d + l1 * l1 - l2 * l2) / (2 * d);
+    const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+    const nx = -uy;
+    const ny = ux;
+    return {
+      x: root.x + ux * a + nx * h * bend,
+      y: root.y + uy * a + ny * h * bend,
+      handX: root.x + ux * d,
+      handY: root.y + uy * d,
+    };
+  }
+
+  /** капсула между двумя точками с разной толщиной на концах */
+  function capsule(ctx, a, b, wA, wB, color) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -624,165 +680,149 @@
     ctx.fill();
   }
 
-  function armPoints(chest, hand, side, facing) {
-    const shoulder = { x: chest.x + facing * 6 + side * 0.5, y: chest.y + 9 };
-    const dx = hand.x - shoulder.x;
-    const dy = hand.y - shoulder.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const bend = 5 * facing * side;
-    return {
-      shoulder,
-      elbow: {
-        x: shoulder.x + dx * 0.5 + (-dy / len) * bend,
-        y: shoulder.y + dy * 0.5 + (dx / len) * bend,
-      },
-      hand,
-    };
+  const ARM_UPPER = 19;
+  const ARM_FORE = 21;
+
+  function drawArm(ctx, shoulder, hand, facing, side, sleeve, skin, palette) {
+    // локоть слегка назад, как у расслабленной руки
+    const joint = ik2(shoulder, hand, ARM_UPPER, ARM_FORE, -facing * 0.22);
+    const elbow = { x: joint.x, y: joint.y };
+    const tip = { x: joint.handX, y: joint.handY };
+
+    capsule(ctx, shoulder, elbow, 5.4, 4.2, sleeve);
+    capsule(ctx, elbow, tip, 4.0, 3.5, skin);
+    capsule(ctx, tip, { x: tip.x - facing * 1.2, y: tip.y + 4.4 }, 3.6, 3.0, skin);
   }
 
-  function armPose(chest, hand, side, facing) {
-    const dx = hand.x - chest.x;
-    const dy = hand.y - chest.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const bend = 8 * facing * side;
-    return {
-      elbow: {
-        x: (chest.x + hand.x) / 2 + (-dy / len) * bend,
-        y: (chest.y + hand.y) / 2 + (dx / len) * bend,
-      },
-      hand,
-    };
-  }
-
-  function drawShoe(ctx, foot, knee, color, facing) {
-    const ang = Math.atan2(foot.y - knee.y, foot.x - knee.x);
+  function drawLeg(ctx, pelvis, knee, foot, facing, pants, shoe, side) {
+    capsule(ctx, pelvis, knee, 6.9, 5.2, pants);
+    capsule(ctx, knee, foot, 5.0, 3.7, pants);
+    // обувь: слегка повторяет наклон голени, но остаётся «стоящей»
+    const ang = Math.atan2(foot.y - knee.y, foot.x - knee.x) - Math.PI / 2;
+    const tilt = Math.max(-0.45, Math.min(0.45, ang));
     ctx.save();
-    ctx.translate(foot.x, foot.y);
-    ctx.rotate(ang + Math.PI / 2);
-    ctx.fillStyle = color;
-    roundRect(ctx, -5, -4.5, 15 * (facing || 1), 9, 4.2);
+    ctx.translate(foot.x, foot.y + 0.5);
+    ctx.rotate(tilt);
+    ctx.fillStyle = shoe;
+    roundRect(ctx, -5.5, -4.6, 15 * facing, 9.2, 4.2);
+    ctx.fill();
+    // носок обуви
+    ctx.beginPath();
+    ctx.ellipse(facing * 8, 0, 4.2, 4.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // подошва
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    roundRect(ctx, -5.5, 3.2, 15 * facing, 2.2, 1.1);
     ctx.fill();
     ctx.restore();
   }
 
-  function outlineLimb(ctx, a, b, wA, wB, color) {
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const nx = -dy / len;
-    const ny = dx / len;
-    ctx.beginPath();
-    ctx.moveTo(a.x + nx * (wA + 1.2), a.y + ny * (wA + 1.2));
-    ctx.lineTo(b.x + nx * (wB + 1.2), b.y + ny * (wB + 1.2));
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-
-  function drawTorso(ctx, pelvis, chest, palette, facing) {
-    const dx = chest.x - pelvis.x;
-    const dy = chest.y - pelvis.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const ux = dx / len;
-    const uy = dy / len;
-    const nx = -uy;
-    const ny = ux;
+  function drawTorso(ctx, pelvis, chest, frame, palette) {
+    const { upX, upY, frontX, frontY } = frame;
+    const len = Math.hypot(chest.x - pelvis.x, chest.y - pelvis.y) || 1;
 
     // полуширины: бёдра -> талия -> грудь -> плечи
-    const wHip = 9.5;
-    const wWaist = 8.3;
-    const wChest = 11.5;
-    const wShoulder = 12.5;
+    const wHip = 8.6;
+    const wWaist = 7.4;
+    const wChest = 10.3;
+    const wShoulder = 11.4;
 
-    const P = (t, w, sign) => ({
-      x: pelvis.x + ux * len * t + nx * w * sign,
-      y: pelvis.y + uy * len * t + ny * w * sign,
+    const pt = (t, w) => ({
+      x: pelvis.x + upX * len * t + frontX * w,
+      y: pelvis.y + upY * len * t + frontY * w,
     });
 
-    const hipL = P(0.02, wHip, 1);
-    const hipR = P(0.02, wHip, -1);
-    const waistL = P(0.42, wWaist, 1);
-    const waistR = P(0.42, wWaist, -1);
-    const chestL = P(0.86, wChest, 1);
-    const chestR = P(0.86, wChest, -1);
-    const neckL = P(1.0, 5.5, 1);
-    const neckR = P(1.0, 5.5, -1);
+    const hipF = pt(-0.12, wHip + 0.8);
+    const hipB = pt(-0.12, -(wHip + 0.8));
+    const waistF = pt(0.44, wWaist);
+    const waistB = pt(0.44, -wWaist);
+    const chestF = pt(0.84, wChest);
+    const chestB = pt(0.84, -wChest);
+    const shoulderF = pt(0.99, wShoulder);
+    const shoulderB = pt(0.99, -wShoulder);
+
+    const shape = () => {
+      ctx.beginPath();
+      ctx.moveTo(hipF.x, hipF.y);
+      ctx.quadraticCurveTo(waistF.x, waistF.y, chestF.x, chestF.y);
+      ctx.quadraticCurveTo(shoulderF.x + upX * 2, shoulderF.y + upY * 2, shoulderF.x, shoulderF.y);
+      ctx.quadraticCurveTo(
+        chest.x + upX * 5,
+        chest.y + upY * 5,
+        shoulderB.x,
+        shoulderB.y
+      );
+      ctx.quadraticCurveTo(shoulderB.x - upX * 1, shoulderB.y - upY * 1, chestB.x, chestB.y);
+      ctx.quadraticCurveTo(waistB.x, waistB.y, hipB.x, hipB.y);
+      ctx.quadraticCurveTo(
+        pelvis.x - upX * 8,
+        pelvis.y - upY * 8,
+        hipF.x,
+        hipF.y
+      );
+      ctx.closePath();
+    };
 
     // футболка
-    ctx.beginPath();
-    ctx.moveTo(hipL.x, hipL.y);
-    ctx.lineTo(waistL.x, waistL.y);
-    ctx.lineTo(chestL.x, chestL.y);
-    ctx.quadraticCurveTo(
-      chest.x + ux * 5 + nx * wShoulder,
-      chest.y + uy * 5 + ny * wShoulder,
-      neckL.x,
-      neckL.y
-    );
-    ctx.lineTo(neckR.x, neckR.y);
-    ctx.quadraticCurveTo(
-      chest.x + ux * 5 - nx * wShoulder,
-      chest.y + uy * 5 - ny * wShoulder,
-      chestR.x,
-      chestR.y
-    );
-    ctx.lineTo(waistR.x, waistR.y);
-    ctx.lineTo(hipR.x, hipR.y);
-    ctx.closePath();
+    shape();
     ctx.fillStyle = palette.shirt;
     ctx.fill();
 
-    // плечи
-    circle(ctx, chest.x + nx * (wShoulder - 4) + ux * 3, chest.y + ny * (wShoulder - 4) + uy * 3, 4.6, palette.shirt);
-    circle(ctx, chest.x - nx * (wShoulder - 4) + ux * 3, chest.y - ny * (wShoulder - 4) + uy * 3, 4.6, palette.shirt);
-
-    // объём: светлая часть и тень
+    // объём
     ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(hipL.x, hipL.y);
-    ctx.lineTo(waistL.x, waistL.y);
-    ctx.lineTo(chestL.x, chestL.y);
-    ctx.lineTo(neckL.x, neckL.y);
-    ctx.lineTo(neckR.x, neckR.y);
-    ctx.lineTo(chestR.x, chestR.y);
-    ctx.lineTo(waistR.x, waistR.y);
-    ctx.lineTo(hipR.x, hipR.y);
-    ctx.closePath();
+    shape();
     ctx.clip();
-
+    ctx.globalAlpha = 0.5;
     ctx.fillStyle = palette.shirtLight;
-    ctx.globalAlpha = 0.55;
     ctx.beginPath();
-    ctx.ellipse(chest.x + facing * 4, chest.y + 4, 7.5, 15, 0, 0, Math.PI * 2);
+    ctx.ellipse(
+      chest.x + frontX * 4.5 - upX * 3,
+      chest.y + frontY * 4.5 - upY * 3,
+      6.5,
+      15,
+      Math.atan2(upY, upX) - Math.PI / 2,
+      0,
+      Math.PI * 2
+    );
     ctx.fill();
-
-    ctx.globalAlpha = 0.22;
+    ctx.globalAlpha = 0.18;
     ctx.fillStyle = "#000";
     ctx.beginPath();
-    ctx.ellipse(chest.x - facing * 6, chest.y + 6, 6, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(
+      chest.x - frontX * 5,
+      chest.y - frontY * 5 - 2,
+      6,
+      17,
+      Math.atan2(upY, upX) - Math.PI / 2,
+      0,
+      Math.PI * 2
+    );
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.restore();
 
-    // шорты / пояс
-    const shortLen = 13;
+    // шорты: пояс от талии вниз, поверх бёдер
+    const sF = pt(0.16, wHip + 0.4);
+    const sB = pt(0.16, -(wHip + 0.4));
+    const bF = pt(-0.12, wHip + 1.0);
+    const bB = pt(-0.12, -(wHip + 1.0));
+    const bottomF = pt(-0.42, wHip - 1.2);
+    const bottomB = pt(-0.42, -(wHip - 1.2));
     ctx.beginPath();
-    ctx.moveTo(hipL.x + ux * -shortLen * 0.35, hipL.y + uy * -shortLen * 0.35);
-    ctx.lineTo(waistL.x, waistL.y);
-    ctx.lineTo(hipL.x, hipL.y);
-    ctx.quadraticCurveTo(pelvis.x, pelvis.y + 6, hipR.x, hipR.y);
-    ctx.lineTo(waistR.x, waistR.y);
-    ctx.lineTo(hipR.x + ux * -shortLen * 0.35, hipR.y + uy * -shortLen * 0.35);
-    ctx.quadraticCurveTo(pelvis.x, pelvis.y + 7, hipL.x + ux * -shortLen * 0.35, hipL.y + uy * -shortLen * 0.35);
+    ctx.moveTo(sF.x, sF.y);
+    ctx.quadraticCurveTo(bF.x, bF.y, bottomF.x, bottomF.y);
+    ctx.lineTo(bottomB.x, bottomB.y);
+    ctx.quadraticCurveTo(bB.x, bB.y, sB.x, sB.y);
     ctx.closePath();
     ctx.fillStyle = palette.pants;
     ctx.fill();
 
-    ctx.strokeStyle = "rgba(0,0,0,0.16)";
-    ctx.lineWidth = 1;
+    // резинка
+    ctx.strokeStyle = "rgba(0,0,0,0.2)";
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(waistL.x, waistL.y);
-    ctx.lineTo(waistR.x, waistR.y);
+    ctx.moveTo(sF.x, sF.y);
+    ctx.lineTo(sB.x, sB.y);
     ctx.stroke();
   }
 
@@ -790,17 +830,21 @@
     const r = BODY.headR;
     // лицо
     circle(ctx, head.x, head.y, r, palette.skin);
+    // ухо
+    circle(ctx, head.x - facing * r * 0.66, head.y + 0.5, 2.1, palette.skinShade);
+
     // причёска
     ctx.beginPath();
-    ctx.arc(head.x, head.y - 1.2, r + 0.4, Math.PI * 1.0, Math.PI * 2.0);
+    ctx.arc(head.x, head.y - 1.4, r + 0.6, Math.PI * 0.98, Math.PI * 2.02);
     ctx.fillStyle = hairColor || palette.hair;
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(head.x - facing * r * 0.5, head.y - 2.6, r * 0.62, 0, Math.PI * 2);
+    ctx.arc(head.x - facing * r * 0.48, head.y - 3, r * 0.6, 0, Math.PI * 2);
     ctx.fill();
 
-    const ex = head.x + facing * r * 0.44;
-    const ey = head.y + 1.4;
+    // глаз
+    const ex = head.x + facing * r * 0.42;
+    const ey = head.y + 1.2;
     if (dead) {
       ctx.strokeStyle = "#20232b";
       ctx.lineWidth = 1.7;
@@ -812,7 +856,14 @@
       ctx.stroke();
     } else {
       circle(ctx, ex, ey, 1.9, "#20232b");
-      circle(ctx, ex + 0.5, ey - 0.6, 0.7, "#ffffff");
+      circle(ctx, ex + 0.55, ey - 0.65, 0.7, "#ffffff");
+      // бровь
+      ctx.strokeStyle = "rgba(40,30,20,0.55)";
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(ex - facing * 2, ey - 4.2);
+      ctx.lineTo(ex + facing * 2.4, ey - 5);
+      ctx.stroke();
     }
   }
 
@@ -870,15 +921,16 @@
     const pants = mix(C.pants, "#4a1010", b * 0.4);
     return {
       skin,
-      skinFar: shade(skin, -0.26),
+      skinFar: shade(skin, -0.22),
       skinShade: shade(skin, -0.14),
       shirt,
       shirtFar: shade(shirt, -0.26),
       pants,
-      pantsFar: shade(pants, -0.28),
+      pantsFar: shade(pants, -0.34),
       pantsLight: shade(pants, 0.08),
       hair: C.hair,
       shirtLight: shade(shirt, 0.12),
+      armFar: shade(shirt, -0.1),
       outline: shade(shirt, -0.35),
       shoe: C.shoe,
       shoeFar: shade(C.shoe, -0.25),
@@ -887,5 +939,5 @@
 
   root.Human = Human;
   root.HumanBody = BODY;
-  root.DrawHelpers = { circle, roundRect, mix, shade, hexToRgb, drawLimb };
+  root.DrawHelpers = { circle, roundRect, mix, shade, hexToRgb, capsule, ik2, bodyFrame };
 })(typeof globalThis !== "undefined" ? globalThis : this);
