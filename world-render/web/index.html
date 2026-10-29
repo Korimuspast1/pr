@@ -74,6 +74,10 @@
   }
   body.locked .crosshair { display: block; }
   body.locked .help { opacity: .35; }
+
+  /* «Чистый» режим: только мир, ни одной панели поверх картинки. */
+  body.clean .hud,
+  body.clean .crosshair { display: none !important; }
 </style>
 </head>
 <body>
@@ -113,9 +117,9 @@
 <div class="hud bottom-right">
   <div class="card stats" id="quality-card">
     <span class="title" style="margin-right:6px">качество</span>
-    <button data-quality="0.55">низкое</button>
-    <button data-quality="0.75" aria-pressed="true">среднее</button>
-    <button data-quality="1">высокое</button>
+    <button data-quality="0.6">низкое</button>
+    <button data-quality="0.8">среднее</button>
+    <button data-quality="1" aria-pressed="true">высокое</button>
   </div>
 </div>
 
@@ -129,7 +133,9 @@
     <div style="margin-top:18px; display:none" id="enter-wrap">
       <button class="cta" id="enter">Войти в мир</button>
       <p style="margin-top:14px; font-size:12.5px">
-        Клик по кнопке захватывает курсор. Выйти — <kbd>Esc</kbd>.
+        Кнопка сразу открывает мир во весь экран и без интерфейса.
+        <kbd>F</kbd> — полный экран · <kbd>H</kbd> — показать/скрыть панели ·
+        <kbd>P</kbd> — сохранить кадр · <kbd>Esc</kbd> — выйти.
       </p>
     </div>
   </div>
@@ -150,12 +156,17 @@
   let wasm = null;
   let image = null;
   let presetIndex = 1;
-  let quality = 0.75;
+  // 1.0 means "one canvas pixel per screen pixel"; the pixel budget below and
+  // the automatic scaler keep the frame rate usable on slower machines.
+  let quality = 1.0;
+  let autoScale = 1.0;
   let seed = 7;
   let last = 0;
   let fpsAccum = 0;
   let fpsFrames = 0;
   let running = false;
+  // The walk is meant to be looked at: no panels over the world unless asked.
+  let clean = true;
 
   const keys = new Set();
   const codeBits = {
@@ -188,14 +199,73 @@
     progressText.style.display = percent >= 100 ? "none" : "";
   }
 
+  // ~1.1 megapixels is what this renderer does at ~30 fps on a desktop CPU.
+  const PIXEL_BUDGET = 1_100_000;
+
   function resize() {
-    const scale = Math.min(window.devicePixelRatio || 1, 2);
-    const height = Math.max(240, Math.round(window.innerHeight * quality * scale));
-    const width = Math.max(320, Math.round(window.innerWidth * quality * scale));
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    let width = window.innerWidth * dpr;
+    let height = window.innerHeight * dpr;
+    const budget = Math.sqrt(PIXEL_BUDGET / Math.max(1, width * height));
+    const k = Math.min(1, budget) * quality * autoScale;
+    width = Math.max(320, Math.round(width * k));
+    height = Math.max(200, Math.round(height * k));
+    if (width === canvas.width && height === canvas.height) return;
     canvas.width = width;
     canvas.height = height;
     wasm.wr_resize(width, height);
     image = ctx.createImageData(width, height);
+  }
+
+  function drawFrame(dt) {
+    const pointer = wasm.wr_frame(dt);
+    if (!pointer) return false;
+    const pixels = new Uint8Array(wasm.memory.buffer, pointer, canvas.width * canvas.height * 4);
+    image.data.set(pixels);
+    ctx.putImageData(image, 0, 0);
+    return true;
+  }
+
+  function setClean(on) {
+    clean = on;
+    document.body.classList.toggle("clean", on);
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+      }
+    } catch (error) {
+      // Inside a sandboxed iframe the browser may refuse fullscreen; the page
+      // already fills the viewport, so the clean view still works.
+      console.warn("полноэкранный режим недоступен:", error);
+    }
+  }
+
+  /// Saves the current view at full resolution as a PNG, without any UI.
+  function saveScreenshot() {
+    if (!wasm || !running) return;
+    const previous = quality;
+    quality = 1;
+    resize();
+    drawFrame(0);
+    const names = ["dawn", "day", "sunset", "night"];
+    const name = `world-${names[presetIndex]}-${seed}-${canvas.width}x${canvas.height}.png`;
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = name;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+      quality = previous;
+      resize();
+    }, "image/png");
   }
 
   function frame(now) {
@@ -207,17 +277,21 @@
     for (const code of keys) bits |= codeBits[code] || 0;
     wasm.wr_input(bits);
 
-    const pointer = wasm.wr_frame(dt);
-    if (pointer) {
-      const pixels = new Uint8Array(wasm.memory.buffer, pointer, canvas.width * canvas.height * 4);
-      image.data.set(pixels);
-      ctx.putImageData(image, 0, 0);
-    }
+    drawFrame(dt);
 
     fpsAccum += dt;
     fpsFrames++;
     if (fpsAccum >= 0.5) {
       const fps = fpsFrames / fpsAccum;
+      // Keep the picture sharp on fast machines and the walk smooth on slow
+      // ones: nudging the resolution is invisible, a 12 fps camera is not.
+      if (fps < 24 && autoScale > 0.55) {
+        autoScale = Math.max(0.55, autoScale * 0.92);
+        resize();
+      } else if (fps > 52 && autoScale < 1.0) {
+        autoScale = Math.min(1.0, autoScale * 1.05);
+        resize();
+      }
       stats.innerHTML =
         `<b>${fps.toFixed(0)}</b> fps · ` +
         `<b>${canvas.width}×${canvas.height}</b> · ` +
@@ -270,6 +344,9 @@
     overlay.classList.add("hidden");
     running = true;
     last = 0;
+    // Full screen, no interface: the world and nothing else.
+    setClean(true);
+    toggleFullscreen();
     canvas.requestPointerLock?.();
     requestAnimationFrame(frame);
   }
@@ -281,12 +358,34 @@
   });
 
   document.addEventListener("pointerlockchange", () => {
-    document.body.classList.toggle("locked", document.pointerLockElement === canvas);
+    const locked = document.pointerLockElement === canvas;
+    document.body.classList.toggle("locked", locked);
+    // Step out of the walk: bring the panels back, otherwise there is no way
+    // to change the world without remembering a hotkey.
+    if (!locked && !document.fullscreenElement) setClean(false);
   });
 
+  document.addEventListener("fullscreenchange", () => {
+    if (wasm) resize();
+    if (!document.fullscreenElement && document.pointerLockElement !== canvas) {
+      setClean(false);
+    }
+  });
+
+  // Pointer lock is the normal way to look around. If the browser refuses it
+  // (sandboxed iframe), dragging with the left button does the same thing.
+  let dragging = false;
+  canvas.addEventListener("mousedown", () => {
+    dragging = true;
+  });
+  window.addEventListener("mouseup", () => {
+    dragging = false;
+  });
   document.addEventListener("mousemove", (event) => {
-    if (document.pointerLockElement !== canvas) return;
-    wasm.wr_look(event.movementX, event.movementY);
+    const locked = document.pointerLockElement === canvas;
+    if (!locked && !dragging) return;
+    if (!wasm) return;
+    wasm.wr_look(event.movementX || 0, event.movementY || 0);
   });
 
   window.addEventListener("keydown", (event) => {
@@ -297,6 +396,15 @@
     }
     if (event.code === "KeyR") {
       wasm.wr_respawn();
+    }
+    if (event.code === "KeyF") {
+      toggleFullscreen();
+    }
+    if (event.code === "KeyH") {
+      setClean(!clean);
+    }
+    if (event.code === "KeyP") {
+      saveScreenshot();
     }
     if (["Digit1", "Digit2", "Digit3", "Digit4"].includes(event.code)) {
       const index = Number(event.code.slice(-1)) - 1;
@@ -338,6 +446,7 @@
   document.querySelectorAll("[data-quality]").forEach((button) => {
     button.addEventListener("click", () => {
       quality = Number(button.dataset.quality);
+      autoScale = 1.0;
       document.querySelectorAll("[data-quality]").forEach((other) => {
         other.setAttribute("aria-pressed", String(other === button));
       });

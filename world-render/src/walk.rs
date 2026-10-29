@@ -161,9 +161,12 @@ impl Player {
         v3(self.yaw.cos(), 0.0, self.yaw.sin())
     }
 
+    /// Mouse look. `dx`/`dy` are raw pointer deltas in pixels.
     pub fn look(&mut self, dx: f32, dy: f32) {
-        let sensitivity = 0.0026;
-        self.yaw -= dx * sensitivity;
+        let sensitivity = 0.0016;
+        // `yaw` grows towards +X, which is to the right of the view: dragging
+        // the mouse right must add to it, not subtract.
+        self.yaw += dx * sensitivity;
         self.pitch = (self.pitch - dy * sensitivity).clamp(-1.30, 1.30);
     }
 
@@ -180,7 +183,9 @@ impl Player {
     pub fn update(&mut self, world: &World, input: &Input, dt: f32) {
         let dt = dt.clamp(0.0, 0.1);
 
-        let speed = if input.run { 7.2 } else { 3.4 };
+        // The island is about 12 m across, so walking speed is scaled to it:
+        // 1.6 m/s crosses it in a reasonable half a minute.
+        let speed = if input.run { 3.2 } else { 1.6 };
         let mut wish_x = 0.0;
         let mut wish_z = 0.0;
         let fwd = self.forward();
@@ -223,14 +228,14 @@ impl Player {
         let ground = world.height.sample(self.pos.x, self.pos.z);
 
         if self.on_ground && input.jump {
-            self.vel_y = 4.4;
+            self.vel_y = 2.6;
             self.on_ground = false;
         }
 
         if self.on_ground {
             self.pos.y = ground;
         } else {
-            self.vel_y -= 11.5 * dt;
+            self.vel_y -= 9.0 * dt;
             self.pos.y += self.vel_y * dt;
             if self.pos.y <= ground {
                 self.pos.y = ground;
@@ -411,90 +416,6 @@ fn stamp_prop_shadows(world: &World, light: Light, size: usize, extent: f32, sha
 }
 
 /// Sky colour baked per (elevation, azimuth-relative-to-sun).
-pub struct SkyLut {
-    cols: usize,
-    rows: usize,
-    data: Vec<f32>,
-}
-
-impl SkyLut {
-    fn build(light: Light, cols: usize, rows: usize) -> SkyLut {
-        let mut data = vec![0.0f32; cols * rows * 3];
-        for r in 0..rows {
-            // elevation: -10° at the bottom row, +90° at the top.
-            let e = -0.18 + (1.0 + 0.18) * (r as f32 + 0.5) / rows as f32;
-            let elevation = (e * std::f32::consts::FRAC_PI_2).min(std::f32::consts::FRAC_PI_2);
-            for c in 0..cols {
-                let azimuth = (c as f32 + 0.5) / cols as f32 * std::f32::consts::TAU;
-                let dir = v3(
-                    elevation.cos() * azimuth.sin(),
-                    elevation.sin(),
-                    -elevation.cos() * azimuth.cos(),
-                );
-                let colour = sky_colour(light, dir);
-                let idx = (r * cols + c) * 3;
-                data[idx] = colour.x;
-                data[idx + 1] = colour.y;
-                data[idx + 2] = colour.z;
-            }
-        }
-        SkyLut { cols, rows, data }
-    }
-
-    /// `azimuth` is measured from the sun's direction (0 = looking at the sun).
-    fn sample(&self, elevation: f32, azimuth: f32) -> Vec3 {
-        let v = ((elevation + 0.18) / 1.18).clamp(0.0, 0.999) * self.rows as f32;
-        let u = (azimuth / std::f32::consts::TAU).rem_euclid(1.0) * self.cols as f32;
-        let j0 = v as usize;
-        let i0 = u as usize;
-        let i1 = (i0 + 1) % self.cols;
-        let j1 = (j0 + 1).min(self.rows - 1);
-        let fu = u - i0 as f32;
-        let fv = v - j0 as f32;
-        let at = |i: usize, j: usize| {
-            let idx = (j * self.cols + i) * 3;
-            v3(self.data[idx], self.data[idx + 1], self.data[idx + 2])
-        };
-        let a = at(i0, j0).lerp(at(i1, j0), fu);
-        let b = at(i0, j1).lerp(at(i1, j1), fu);
-        a.lerp(b, fv)
-    }
-}
-
-/// Tone mapping table: linear light to sRGB bytes.
-pub struct ToneLut {
-    data: Vec<u8>,
-}
-
-impl ToneLut {
-    fn build() -> ToneLut {
-        let mut data = vec![0u8; TONE_STEPS];
-        for (i, slot) in data.iter_mut().enumerate() {
-            let linear = i as f32 / (TONE_STEPS - 1) as f32 * TONE_MAX;
-            *slot = encode_direct(linear);
-        }
-        ToneLut { data }
-    }
-
-    #[inline]
-    fn map(&self, linear: f32) -> u8 {
-        let idx = (linear / TONE_MAX * (TONE_STEPS - 1) as f32) as isize;
-        self.data[idx.clamp(0, TONE_STEPS as isize - 1) as usize]
-    }
-}
-
-const TONE_STEPS: usize = 2048;
-const TONE_MAX: f32 = 12.0;
-
-fn aces(x: f32) -> f32 {
-    let (a, b, c, d, e) = (2.51, 0.03, 2.43, 0.59, 0.14);
-    ((x * (a * x + b)) / (x * (c * x + d) + e)).clamp(0.0, 1.0)
-}
-
-fn encode_direct(x: f32) -> u8 {
-    (aces(x).powf(1.0 / 2.2) * 255.0 + 0.5).clamp(0.0, 255.0) as u8
-}
-
 // ---------------------------------------------------------------------------
 // Sprites baked from the signed-distance geometry
 // ---------------------------------------------------------------------------
@@ -517,8 +438,8 @@ pub struct SpriteBank {
     pub docks: Vec<Sprite>,
 }
 
-const ANGLES: usize = 12;
-const SPRITE_SIZE: usize = 112;
+const ANGLES: usize = 16;
+const SPRITE_SIZE: usize = 176;
 
 pub fn canonical_prop(kind: u8) -> Prop {
     match kind {
@@ -756,15 +677,55 @@ fn terrain_light(world: &World, light: Light, x: f32, z: f32, h: f32, n: Vec3) -
     colour * light.exposure
 }
 
-fn sky_colour(light: Light, dir: Vec3) -> Vec3 {
+pub struct ToneLut {
+    data: Vec<u8>,
+}
+
+impl ToneLut {
+    fn build() -> ToneLut {
+        let mut data = vec![0u8; TONE_STEPS];
+        for (i, slot) in data.iter_mut().enumerate() {
+            let linear = i as f32 / (TONE_STEPS - 1) as f32 * TONE_MAX;
+            *slot = encode_direct(linear);
+        }
+        ToneLut { data }
+    }
+
+    #[inline]
+    fn map(&self, linear: f32) -> u8 {
+        let idx = (linear / TONE_MAX * (TONE_STEPS - 1) as f32) as isize;
+        self.data[idx.clamp(0, TONE_STEPS as isize - 1) as usize]
+    }
+}
+
+const TONE_STEPS: usize = 2048;
+const TONE_MAX: f32 = 12.0;
+
+fn aces(x: f32) -> f32 {
+    let (a, b, c, d, e) = (2.51, 0.03, 2.43, 0.59, 0.14);
+    ((x * (a * x + b)) / (x * (c * x + d) + e)).clamp(0.0, 1.0)
+}
+
+fn encode_direct(x: f32) -> u8 {
+    (aces(x).powf(1.0 / 2.2) * 255.0 + 0.5).clamp(0.0, 255.0) as u8
+}
+
+/// Sky colour in a direction: horizon-to-zenith gradient plus the halo around
+/// the sun. Cheap enough to evaluate per pixel, which is exactly what used to
+/// be a 256×160 lookup table.
+#[inline]
+fn sky_gradient(light: Light, dir: Vec3) -> Vec3 {
     let up = dir.y.max(0.0);
-    let grad = smoothstep(-0.02, 0.75, up).powf(0.8);
+    let grad = smoothstep(-0.02, 0.75, up).sqrt();
     let mut colour = light.sky.lerp(light.zenith, grad);
 
-    // The sun (or moon) itself is drawn per pixel: a disc sharper than a
-    // lookup-table cell turns into a foggy blob once the table is sampled.
     let mu = dir.dot(light.sun_dir).max(0.0);
-    colour += light.sun_color * (mu.powf(8.0) * 0.035);
+    if mu > 0.72 {
+        let m2 = mu * mu;
+        let m4 = m2 * m2;
+        let m8 = m4 * m4;
+        colour += light.sun_color * (m8 * 0.035);
+    }
 
     colour * light.exposure
 }
@@ -820,7 +781,6 @@ pub struct WalkWorld {
     /// Coarser height field: the same island, cheaper to sample.
     pub field: HeightField,
     pub colour: ColourMap,
-    pub sky: SkyLut,
     pub tone: ToneLut,
     pub bank: SpriteBank,
     pub light: Light,
@@ -832,9 +792,10 @@ impl WalkWorld {
         let world = World::build(seed);
         let light = Light::from_scene(scene, world.lantern_pos);
         let extent = world.height_extent();
-        let field = HeightField::build(seed, 700, extent, true);
-        let colour = ColourMap::build(&world, light, 448);
-        let sky = SkyLut::build(light, 256, 160);
+        // The silhouette is marched on the smooth field: the 10 cm detail
+        // bumps turn a grazing hilltop into a sawtooth.
+        let field = HeightField::build(seed, 700, extent, false);
+        let colour = ColourMap::build(&world, light, 768);
         let tone = ToneLut::build();
         let job = BakeJob::new(light);
         (
@@ -842,7 +803,6 @@ impl WalkWorld {
                 world,
                 field,
                 colour,
-                sky,
                 tone,
                 bank: SpriteBank {
                     pines: Vec::new(),
@@ -914,6 +874,29 @@ impl Frame {
 /// Vertical field of view of the walk camera, in radians.
 pub const FOV_Y: f32 = 1.18;
 
+/// Distance at which the water is treated as open sea up to the horizon.
+const FAR_WATER_DISTANCE: f32 = 26.0;
+
+/// March step: fine near the player, coarse far away, where a step covers
+/// many screen pixels anyway.
+#[inline]
+fn next_step(t: f32) -> f32 {
+    if t < 6.0 {
+        t * 1.02 + 0.006
+    } else {
+        t * 1.05 + 0.02
+    }
+}
+
+/// Colour of the open sea at the horizon: deep water mirroring the sky.
+fn far_water(walk: &WalkWorld, t: f32) -> Vec3 {
+    let light = walk.light;
+    let sunlight = light.sun_dir.y.max(0.0);
+    let base = light.sea_deep * (0.75 + 0.55 * sunlight);
+    let mirrored = base.lerp(light.sky, 0.45);
+    fog(walk, mirrored * light.exposure, t)
+}
+
 pub fn render(walk: &WalkWorld, player: &Player, frame: &mut Frame) {
     render_inner(walk, player, frame, false);
 }
@@ -941,7 +924,6 @@ fn render_inner(walk: &WalkWorld, player: &Player, frame: &mut Frame, profile: b
     let focal = (h as f32 * 0.5) / (FOV_Y * 0.5).tan();
     let horizon = (h as f32 * 0.5 + player.pitch.tan() * focal)
         .clamp(-(h as f32) * 2.0, h as f32 * 3.0);
-    let sun_azimuth = light.sun_dir.x.atan2(-light.sun_dir.z);
 
     frame.depth.iter_mut().for_each(|d| *d = f32::INFINITY);
 
@@ -952,59 +934,97 @@ fn render_inner(walk: &WalkWorld, player: &Player, frame: &mut Frame, profile: b
         let (sin_a, cos_a) = ang.sin_cos();
         let dir_x = sin_a;
         let dir_z = -cos_a;
-        let sky_azimuth = (ang - sun_azimuth).rem_euclid(std::f32::consts::TAU);
 
         let mut ymin = h;
+        let mut last_colour = v3(0.0, 0.0, 0.0);
         let mut t = 0.28f32;
+        // Last distance at which the ground was still hidden behind itself
+        // (i.e. above the eye). Used to refine the silhouette.
+        let mut t_hidden = t;
 
-        while t < 105.0 {
-            let px = eye.x + dir_x * t;
-            let pz = eye.z + dir_z * t;
-            let ground = walk.field.sample(px, pz);
-            let surface = ground.max(WATER_LEVEL);
-            let dy = eye.y - surface;
-            if dy > 0.0 {
-                let row = horizon + dy * focal / t;
-                if row < ymin as f32 {
-                    let top = row.max(0.0) as usize;
-                    let bottom = ymin.min(h);
-                    if top < bottom {
-                        if ground < WATER_LEVEL {
-                            paint_water(walk, eye, dir_x, dir_z, t, x, top, bottom, frame);
-                        } else {
-                            let colour =
-                                fog(walk, walk.colour.sample(px, pz), t);
-                            paint_column(frame, x, top, bottom, colour, t);
-                        }
-                    }
-                    ymin = top;
-                    if ymin == 0 {
-                        break;
-                    }
+        while t < FAR_WATER_DISTANCE {
+            let mut px = eye.x + dir_x * t;
+            let mut pz = eye.z + dir_z * t;
+            let mut ground = walk.field.sample(px, pz);
+            let dy = eye.y - ground.max(WATER_LEVEL);
+            if dy <= 0.0 {
+                t_hidden = t;
+                t = next_step(t);
+                continue;
+            }
+
+            // The hilltop silhouette falls between two samples. Bisecting the
+            // crossing turns the sawtooth ridge into a clean edge.
+            let mut lo = t_hidden;
+            let mut hi = t;
+            for _ in 0..4 {
+                let mid = 0.5 * (lo + hi);
+                let mx = eye.x + dir_x * mid;
+                let mz = eye.z + dir_z * mid;
+                let mg = walk.field.sample(mx, mz);
+                if eye.y > mg.max(WATER_LEVEL) {
+                    hi = mid;
+                    px = mx;
+                    pz = mz;
+                    ground = mg;
+                } else {
+                    lo = mid;
                 }
             }
+
+            let row = horizon + (eye.y - ground.max(WATER_LEVEL)) * focal / hi;
+            if row < ymin as f32 {
+                let top = row.max(0.0) as usize;
+                let bottom = ymin.min(h);
+                if top < bottom {
+                    if ground < WATER_LEVEL {
+                        paint_water(walk, eye, dir_x, dir_z, hi, x, top, bottom, frame);
+                    } else {
+                        let colour = fog(walk, walk.colour.sample(px, pz), hi);
+                        paint_terrain_column(frame, x, top, bottom, last_colour, colour, hi);
+                        last_colour = colour;
+                    }
+                }
+                ymin = top;
+                if ymin == 0 {
+                    break;
+                }
+            }
+            t_hidden = t;
             // Geometric stepping keeps a roughly uniform density on screen.
-            t *= 1.0125;
-            t += 0.005;
+            t = next_step(t);
+        }
+
+        // Beyond the last sample the sea is flat all the way to the horizon:
+        // fill the band under it with the far-water colour instead of marching
+        // hundreds of pointless steps over open water.
+        let horizon_row = horizon.max(0.0) as usize;
+        if horizon_row < ymin {
+            let colour = far_water(walk, FAR_WATER_DISTANCE);
+            paint_column(frame, x, horizon_row.min(ymin), ymin, colour, FAR_WATER_DISTANCE);
         }
 
         // Everything above the first hit is sky.
         for y in 0..ymin {
             let ndc_y = (horizon - y as f32) / focal;
             let elevation = ndc_y.atan();
-            let mut colour = walk
-                .sky
-                .sample(elevation, sky_azimuth + std::f32::consts::PI);
+            let (sin_e, cos_e) = elevation.sin_cos();
+            let dir = v3(cos_e * sin_a, sin_e, -cos_e * cos_a);
+            let mut colour = sky_gradient(light, dir);
+            // Only pay for what this preset actually draws: hashing a star
+            // field across every sky pixel costs milliseconds for nothing in
+            // daylight.
             if light.stars > 0.0 || light.sun_dir.y > -0.1 {
-                let (sin_e, cos_e) = elevation.sin_cos();
-                let dir = v3(cos_e * sin_a, sin_e, -cos_e * cos_a);
                 if light.stars > 0.0 {
                     colour += stars(dir) * (light.stars * smoothstep(0.0, 0.18, sin_e));
                 }
-                // Sun or moon: a crisp disc with a soft halo around it.
-                let mu = dir.dot(light.sun_dir).max(0.0);
-                let disc = smoothstep(0.99986, 0.99994, mu);
-                colour += light.sun_color * (disc * 6.0);
+                if light.sun_dir.y > -0.1 {
+                    let mu = dir.dot(light.sun_dir).max(0.0);
+                    if mu > 0.9998 {
+                        // Sun or moon: a crisp disc with a soft halo.
+                        colour += light.sun_color * (smoothstep(0.99986, 0.99994, mu) * 6.0);
+                    }
+                }
             }
             let idx = (y * w + x) * 3;
             frame.linear[idx] = colour.x;
@@ -1064,8 +1084,45 @@ fn render_inner(walk: &WalkWorld, player: &Player, frame: &mut Frame, profile: b
     let _ = (profile, props_total);
 }
 
-#[inline]
-fn paint_column(frame: &mut Frame, x: usize, top: usize, bottom: usize, colour: Vec3, depth: f32) {
+/// Fills a vertical span of one column.
+///
+/// A span covers the ground between two march steps. Blending from the far
+/// colour at the top row to the near colour at the bottom turns the step
+/// boundaries into a gradient; a flat fill makes a lit hillside look like a
+/// weave of flat bands.
+#[allow(clippy::too_many_arguments)]
+fn paint_terrain_column(
+    frame: &mut Frame,
+    x: usize,
+    top: usize,
+    bottom: usize,
+    near_colour: Vec3,
+    far_colour: Vec3,
+    depth: f32,
+) {
+    let w = frame.width;
+    let height = (bottom - top).max(1) as f32;
+    let inv = 1.0 / height;
+    for y in top..bottom {
+        let f = (y - top) as f32 * inv;
+        let c = far_colour.lerp(near_colour, f);
+        let idx = (y * w + x) * 3;
+        frame.linear[idx] = c.x;
+        frame.linear[idx + 1] = c.y;
+        frame.linear[idx + 2] = c.z;
+        frame.depth[y * w + x] = depth;
+    }
+}
+
+/// Flat fill for water and for the far band under the horizon.
+fn paint_column(
+    frame: &mut Frame,
+    x: usize,
+    top: usize,
+    bottom: usize,
+    colour: Vec3,
+    depth: f32,
+) {
     let w = frame.width;
     for y in top..bottom {
         let idx = (y * w + x) * 3;
@@ -1102,7 +1159,7 @@ fn paint_water(
         * (0.75 + 0.55 * sunlight);
 
     // Grazing angles mirror the sky, which is what makes the far sea pale.
-    let mirror = smoothstep(5.0, 45.0, t) * 0.38;
+    let mirror = smoothstep(3.0, FAR_WATER_DISTANCE, t) * 0.45;
     base = base.lerp(light.sky, mirror);
 
     // The sandy bottom shows through the shallows.
@@ -1197,45 +1254,139 @@ fn draw_prop(
     let top_screen = screen_cy - half;
     let w = frame.width;
 
+    let last = sprite.size - 1;
+    // Bilinear filtering only when the sprite is magnified (close-ups): that is
+    // where nearest-neighbour turns a billboard into a mosaic. Far away one
+    // texel covers several pixels, and the cheap path is indistinguishable.
+    let magnified = step > 1.0;
     for y in y0..y1 {
-        let sy = ((y as f32 + 0.5 - top_screen) * inv_step) as usize;
-        if sy >= sprite.size {
-            continue;
-        }
+        let fy = ((y as f32 + 0.5 - top_screen) * inv_step).clamp(0.0, last as f32);
+        let sy = fy as usize;
+        let wy = fy - sy as f32;
         let row = sy * sprite.size;
+        let row_next = (sy + 1).min(last) * sprite.size;
         let mut pixel = y * w + x0;
         let mut sx_pos = (x0 as f32 + 0.5 - left) * inv_step;
         for _ in x0..x1 {
-            let sx = sx_pos as usize;
-            let sidx = row + sx.min(sprite.size - 1);
-            if sprite.mask[sidx] == 0 {
+            let fx = sx_pos.clamp(0.0, last as f32);
+            let sx = fx as usize;
+
+            if !magnified {
+                let sidx = row + sx;
+                if sprite.mask[sidx] == 0 {
+                    sx_pos += inv_step;
+                    pixel += 1;
+                    continue;
+                }
+                let prop_depth = cz + sprite.delta[sidx] * scale;
+                if frame.depth[pixel] <= prop_depth {
+                    sx_pos += inv_step;
+                    pixel += 1;
+                    continue;
+                }
+                let mut colour = v3(
+                    sprite.linear[sidx * 3],
+                    sprite.linear[sidx * 3 + 1],
+                    sprite.linear[sidx * 3 + 2],
+                );
+                if fog_amount > 0.0 {
+                    colour = colour.lerp(fog_colour, fog_amount);
+                }
+                let base = pixel * 3;
+                frame.linear[base] = colour.x;
+                frame.linear[base + 1] = colour.y;
+                frame.linear[base + 2] = colour.z;
+                frame.depth[pixel] = prop_depth;
                 sx_pos += inv_step;
                 pixel += 1;
                 continue;
             }
-            let prop_depth = cz + sprite.delta[sidx] * scale;
-            if frame.depth[pixel] <= prop_depth {
+
+            let wx = fx - sx as f32;
+            let sx1 = (sx + 1).min(last);
+            // Most of a billboard's square is empty: reject it with four byte
+            // loads before touching any floats.
+            if sprite.mask[row + sx]
+                | sprite.mask[row + sx1]
+                | sprite.mask[row_next + sx]
+                | sprite.mask[row_next + sx1]
+                == 0
+            {
                 sx_pos += inv_step;
                 pixel += 1;
                 continue;
             }
+            let i00 = row + sx;
+            let i10 = row + sx1;
+            let i01 = row_next + sx;
+            let i11 = row_next + sx1;
+
+            // The mask acts as alpha, so sprite edges blend into the world.
+            let w00 = (1.0 - wx) * (1.0 - wy) * sprite.mask[i00] as f32;
+            let w10 = wx * (1.0 - wy) * sprite.mask[i10] as f32;
+            let w01 = (1.0 - wx) * wy * sprite.mask[i01] as f32;
+            let w11 = wx * wy * sprite.mask[i11] as f32;
+            let total = w00 + w10 + w01 + w11;
+            if total <= 0.0 {
+                sx_pos += inv_step;
+                pixel += 1;
+                continue;
+            }
+            let prop_depth = cz
+                + scale
+                    * (sprite.delta[i00] * w00
+                        + sprite.delta[i10] * w10
+                        + sprite.delta[i01] * w01
+                        + sprite.delta[i11] * w11)
+                    / total;
+            if frame.depth[pixel] <= prop_depth + 0.02 {
+                sx_pos += inv_step;
+                pixel += 1;
+                continue;
+            }
+            let inv_total = 1.0 / total;
             let mut colour = v3(
-                sprite.linear[sidx * 3],
-                sprite.linear[sidx * 3 + 1],
-                sprite.linear[sidx * 3 + 2],
+                (sprite.linear[i00 * 3] * w00
+                    + sprite.linear[i10 * 3] * w10
+                    + sprite.linear[i01 * 3] * w01
+                    + sprite.linear[i11 * 3] * w11)
+                    * inv_total,
+                (sprite.linear[i00 * 3 + 1] * w00
+                    + sprite.linear[i10 * 3 + 1] * w10
+                    + sprite.linear[i01 * 3 + 1] * w01
+                    + sprite.linear[i11 * 3 + 1] * w11)
+                    * inv_total,
+                (sprite.linear[i00 * 3 + 2] * w00
+                    + sprite.linear[i10 * 3 + 2] * w10
+                    + sprite.linear[i01 * 3 + 2] * w01
+                    + sprite.linear[i11 * 3 + 2] * w11)
+                    * inv_total,
             );
             if fog_amount > 0.0 {
                 colour = colour.lerp(fog_colour, fog_amount);
             }
             let base = pixel * 3;
+            // `total` is the alpha coverage: 1.0 inside the sprite, less on the
+            // feathered edge.
+            let covered = total.min(1.0);
+            if covered < 0.999 {
+                // Soft edge: mix with whatever is already there.
+                colour = v3(
+                    frame.linear[base] + (colour.x - frame.linear[base]) * covered,
+                    frame.linear[base + 1] + (colour.y - frame.linear[base + 1]) * covered,
+                    frame.linear[base + 2] + (colour.z - frame.linear[base + 2]) * covered,
+                );
+            } else {
+                frame.depth[pixel] = prop_depth;
+            }
             frame.linear[base] = colour.x;
             frame.linear[base + 1] = colour.y;
             frame.linear[base + 2] = colour.z;
-            frame.depth[pixel] = prop_depth;
             sx_pos += inv_step;
             pixel += 1;
         }
     }
+
 }
 
 fn canonical_of(prop: Prop) -> Prop {
