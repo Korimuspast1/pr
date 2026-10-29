@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VOID — язык невозможного. Playground</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0f;color:#e0e0ff;font-family:'JetBrains Mono','Consolas',monospace;min-height:100vh;display:flex;flex-direction:column}
+header{padding:32px;text-align:center;border-bottom:1px solid #1a1a2e}
+header h1{font-size:48px;letter-spacing:8px;color:#fff;text-shadow:0 0 20px #7b2cf0}
+header p{margin-top:12px;color:#7b7bff;font-size:14px;letter-spacing:2px}
+header .sub{color:#888;font-size:12px;margin-top:8px}
+.badges{margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.badge{background:#1a1a2e;border:1px solid #333;padding:6px 14px;border-radius:20px;font-size:12px;color:#aaa}
+.badge b{color:#fff}
+main{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0;max-width:1400px;width:100%;margin:0 auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.editor-wrap,.output-wrap{padding:20px;display:flex;flex-direction:column}
+.editor-wrap h3,.output-wrap h3{font-size:12px;letter-spacing:3px;color:#7b7bff;margin-bottom:12px}
+textarea{background:#11111a;color:#e0e0ff;border:1px solid #2a2a4e;border-radius:8px;padding:16px;font:13px/1.6 'JetBrains Mono',monospace;min-height:420px;resize:vertical;outline:none}
+textarea:focus{border-color:#7b2cf0;box-shadow:0 0 0 3px rgba(123,44,240,.2)}
+.btns{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+button{background:#7b2cf0;color:#fff;border:none;padding:10px 20px;border-radius:8px;font:12px/1 'JetBrains Mono',monospace;letter-spacing:1px;cursor:pointer;transition:.2s}
+button:hover{background:#9a5cff;transform:translateY(-1px)}
+button.ghost{background:transparent;border:1px solid #333;color:#aaa}
+button.ghost:hover{border-color:#7b2cf0;color:#fff}
+#output{background:#0f0f1a;border:1px solid #2a2a4e;border-radius:8px;padding:16px;min-height:420px;white-space:pre-wrap;font:13px/1.7 'JetBrains Mono',monospace;overflow:auto}
+.examples{padding:20px;max-width:1400px;width:100%;margin:0 auto;border-top:1px solid #1a1a2e}
+.examples h3{font-size:12px;letter-spacing:3px;color:#7b7bff;margin-bottom:14px}
+.ex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.ex{border:1px solid #2a2a4e;border-radius:8px;padding:14px;background:#11111a;cursor:pointer;transition:.2s}
+.ex:hover{border-color:#7b2cf0;transform:translateY(-2px)}
+.ex h4{font-size:13px;color:#fff;margin-bottom:6px}
+.ex p{font-size:11px;color:#888;line-height:1.5}
+footer{text-align:center;padding:20px;color:#555;font-size:11px;letter-spacing:1px;border-top:1px solid #1a1a2e}
+code{color:#9a5cff}
+</style>
+</head>
+<body>
+<header>
+<h1>⌀ VOID ⌀</h1>
+<p>ЯЗЫК УРОВНЯ НЕВОЗМОЖНОСТИ — НА КОТОРОМ ВОЗМОЖНО ПИСАТЬ</p>
+<p class="sub">полностью с нуля · 0 зависимостей · наш · двуязычный (ru/en) · парадоксы как тип данных</p>
+<div class="badges">
+<span class="badge"><b>lex+parse+run</b> в одном файле</span>
+<span class="badge"><b>оператор ?!</b> запасная реальность</span>
+<span class="badge"><b>парадокс =></b> ленивые вычисления</span>
+<span class="badge"><b>коллапс</b> волновой функции</span>
+</div>
+</header>
+
+<main>
+<div class="editor-wrap">
+<h3>РЕДАКТОР ⌀ ПИШИ НЕВОЗМОЖНОЕ</h3>
+<textarea id="code"># hello.void — твое первое невозможное
+бездна main {
+    эхо "⌀ Привет, невозможность! ⌀";
+    связать x = 42;
+    эхо "x = " + x;
+
+    # парадокс: если деление невозможно — взять 42
+    парадокс p => 10 / 0 ?! 42;
+    коллапс p -> y;
+    эхо "p = " + y;
+
+    # двуязычие — можно и так:
+    # abyss main { echo "hello"; }
+}</textarea>
+<div class="btns">
+<button onclick="run()">▶ ЗАПУСТИТЬ</button>
+<button class="ghost" onclick="clearOut()">ОЧИСТИТЬ ВЫВОД</button>
+<button class="ghost" onclick="copyLink()">СКОПИРОВАТЬ КОД</button>
+</div>
+</div>
+<div class="output-wrap">
+<h3>ВЫВОД ◊ БЕЗДНА ОТВЕЧАЕТ</h3>
+<div id="output">Нажми ▶ ЗАПУСТИТЬ чтобы выполнить код...
+Подсказка: это демо-плейграунд. Полная мощь — в терминале: python void.py file.void</div>
+</div>
+</main>
+
+<div class="examples">
+<h3>ПРИМЕРЫ — КЛИКНИ ЧТОБЫ ЗАГРУЗИТЬ</h3>
+<div class="ex-grid" id="exGrid"></div>
+</div>
+
+<footer>
+VOID v0.1-невозможность · сделано с нуля · без чужих зависимостей · наше · <code>python void.py file.void</code> · <code>python void.py --repl</code><br>
+Манифест: "Напиши невозможное. Запусти неизбежное." ⌀
+</footer>
+
+<script>
+// Мини-интерпретатор VOID на JS для плейграунда (упрощенный порт Python-версии)
+// Для полного функционала запускай python void.py
+
+const KEYWORDS = new Set(["бездна","abyss","призвать","summon","связать","bind","let","эхо","echo","print","вернуть","return","если","if","иначе","else","пока","while","петля","loop","для","for","в","in","парадокс","paradox","коллапс","collapse","шепот","whisper","закрепить","anchor","пустота","void","истина","true","ложь","false","остановить","break","продолжить","continue","поглотить","import","и","and","или","or","не"]);
+
+const EXAMPLES = [
+ {title:"hello.void", desc:"Привет, невозможность. Первая программа.", code:`бездна main {\n    эхо "⌀ Привет, невозможность! ⌀";\n    эхо "Это VOID — наш язык. С нуля.";\n    связать x = 42;\n    эхо "x = " + x;\n    связать r = пустота ?! "запасная реальность";\n    эхо r;\n}`},
+ {title:"fib.void", desc:"Фибоначчи и факториал — рекурсия сквозь время.", code:`призвать фиб(n) {\n    если n <= 1 { вернуть n; }\n    вернуть фиб(n-1) + фиб(n-2);\n}\nбездна main {\n    для i в 0..10 {\n        эхо фиб(i);\n    }\n}`},
+ {title:"paradox.void", desc:"Сердце языка — парадоксы и ?!", code:`бездна main {\n    парадокс p => 10 / 0 ?! 42;\n    коллапс p -> y;\n    эхо y;\n    связать a = пустота ?! 100;\n    эхо a;\n    связать b = 5*5 ?! 999;\n    эхо b;\n}`},
+ {title:"english.void", desc:"Тот же язык, английские ключевые слова.", code:`abyss main {\n    echo "Hello from VOID";\n    bind x = 10;\n    echo x * 2;\n    summon fib(n) {\n        if n <= 1 { return n; }\n        return fib(n-1) + fib(n-2);\n    }\n    for i in 0..8 { echo fib(i); }\n}`},
+ {title:"quantum.void", desc:"Квантовые кубит-ы и случайность.", code:`бездна main {\n    эхо "Квантовые измерения:";\n    для i в 0..5 {\n        парадокс q => случайно();\n        коллапс q -> v;\n        если v > 0.5 { эхо "  " + i + ": 1 █"; } иначе { эхо "  " + i + ": 0 ░"; }\n    }\n}`},
+ {title:"impossible.void", desc:"Уровень невозможности: максимум.", code:`бездна main {\n    эхо "⌀⌀⌀ УРОВЕНЬ НЕВОЗМОЖНОСТИ ⌀⌀⌀";\n    парадокс a => пустота ?! пустота ?! (10/0 ?! 42);\n    коллапс a -> r;\n    эхо r;\n    связать arr = [1, пустота ?! 2, 10/0 ?! 3];\n    эхо arr;\n}`},
+];
+
+function renderExamples(){
+ const g=document.getElementById('exGrid');
+ EXAMPLES.forEach(ex=>{
+   const d=document.createElement('div');
+   d.className='ex';
+   d.innerHTML=`<h4>${ex.title}</h4><p>${ex.desc}</p>`;
+   d.onclick=()=>{document.getElementById('code').value=ex.code; run(); window.scrollTo({top:0,behavior:'smooth'});};
+   g.appendChild(d);
+ });
+}
+renderExamples();
+
+// Упрощенный раннер — эвристика для демо, не полный парсер
+function run(){
+ const src=document.getElementById('code').value;
+ const out=document.getElementById('output');
+ // Пытаемся эмулировать простые кейсы на JS, иначе показываем подсказку
+ try{
+   let result = emulate(src);
+   out.textContent = result;
+   out.style.color = '#e0e0ff';
+ }catch(e){
+   out.textContent = '⚠️ Ошибка демо-раннера: '+e.message+'\n\nДля полного выполнения запусти в терминале:\n  python void.py file.void\n\n(Этот браузерный раннер — упрощенный, полный интерпретатор только на Python)';
+   out.style.color = '#ff6b6b';
+ }
+}
+
+function emulate(src){
+ // Очень простой эмулятор для хеллоу-ворлдов — честно говорим что это демо
+ // Для красивости — парсим эхо "..." и простые вычисления
+ let lines = src.split('\n');
+ let output = [];
+ let vars={};
+ for(let line of lines){
+   line=line.trim();
+   if(!line||line.startsWith('#')||line.startsWith('шепот')||line.startsWith('whisper')) continue;
+   // эхо "строка"
+   let m = line.match(/^(эхо|echo|print)\s+(.+?);?\s*$/);
+   if(m){
+     let expr=m[2].trim();
+     // строка литерал
+     let sm = expr.match(/^"(.*)"$/);
+     if(sm){ output.push(sm[1]); continue; }
+     // конкатенация строк — упрощенно
+     if(expr.includes('+')){
+       let parts = expr.split('+').map(s=>s.trim());
+       let res = parts.map(p=>{
+         let q=p.match(/^"(.*)"$/);
+         if(q) return q[1];
+         if(vars[p]!==undefined) return String(vars[p]);
+         let n=Number(p); if(!isNaN(n)) return String(n);
+         return p;
+       }).join('');
+       // эмулируем пустота -> пусто
+       res=res.replace(/пустота|void/g,'пустота');
+       output.push(res); continue;
+     }
+     // переменная
+     if(vars[expr]!==undefined){ output.push(String(vars[expr])); continue; }
+     // число
+     let num=Number(expr);
+     if(!isNaN(num)){ output.push(String(num)); continue; }
+     output.push(expr);
+     continue;
+   }
+   // связать x = val
+   let vm=line.match(/^(связать|bind|let)\s+(\w+)\s*=\s*(.+?);?\s*$/);
+   if(vm){
+     let name=vm[2], val=vm[3].trim();
+     let q=val.match(/^"(.*)"$/);
+     if(q) vars[name]=q[1];
+     else if(val==='пустота'||val==='void') vars[name]='пустота';
+     else if(!isNaN(Number(val))) vars[name]=Number(val);
+     else vars[name]=val;
+     continue;
+   }
+ }
+ if(output.length===0){
+   return '⌀ Код распознан, но демо-раннер упрощен.\n⌀ Полный вывод доступен только через Python-интерпретатор:\n\n  python void.py examples/hello.void\n  python void.py --repl\n\nПодсказка: ты пишешь на настоящем языке — запусти его в терминале чтобы увидеть магию.';
+ }
+ return output.join('\n') + '\n\n⌀ (демо-раннер, полный рантайм — python void.py)';
+}
+
+function clearOut(){
+ document.getElementById('output').textContent='Очищено. Нажми ▶ чтобы запустить снова.';
+}
+function copyLink(){
+ const c=document.getElementById('code').value;
+ navigator.clipboard.writeText(c).then(()=>alert('Код скопирован ⌀'));
+}
+</script>
+</body>
+</html>
