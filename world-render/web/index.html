@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Procedural World — рендер на Rust</title>
+<style>
+  :root {
+    --bg: #0e1218;
+    --panel: #151b24;
+    --line: #232c38;
+    --text: #e7edf5;
+    --muted: #8c9aab;
+    --accent: #f0a55e;
+    --accent-2: #5fc7c1;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 700px at 70% -10%, #1b2635 0%, var(--bg) 60%);
+    color: var(--text);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    padding: 22px 28px 6px;
+  }
+  h1 { font-size: 19px; margin: 0; letter-spacing: .2px; font-weight: 650; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  main {
+    display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px;
+    padding: 16px 28px 32px; align-items: start;
+  }
+  @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px;
+  }
+  .field { margin-bottom: 15px; }
+  .field:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 12px; text-transform: uppercase;
+          letter-spacing: .09em; color: var(--muted); margin-bottom: 7px; }
+  select, input[type=number] {
+    width: 100%; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line);
+    background: #0f151d; color: var(--text); font: inherit;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .presets button {
+    padding: 9px 6px; border-radius: 9px; border: 1px solid var(--line);
+    background: #0f151d; color: var(--text); font: inherit; cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .presets button:hover { border-color: #3a4757; }
+  .presets button[aria-pressed=true] {
+    border-color: var(--accent); color: #1a1207; background: var(--accent);
+    font-weight: 600;
+  }
+  .render-btn {
+    width: 100%; padding: 12px; border-radius: 10px; border: 0; cursor: pointer;
+    background: linear-gradient(180deg, #6fd3cd, #3aa8a2); color: #06201f;
+    font: inherit; font-weight: 650; letter-spacing: .01em;
+  }
+  .render-btn:disabled { opacity: .55; cursor: progress; }
+  .hint { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+  .stage { position: relative; border-radius: 14px; overflow: hidden;
+           border: 1px solid var(--line); background: #0a0e13; }
+  .stage img { display: block; width: 100%; height: auto; }
+  .stage .spin {
+    position: absolute; inset: 0; display: none; place-items: center;
+    background: rgba(8, 12, 17, .55); backdrop-filter: blur(2px);
+    font-size: 13px; color: var(--text); gap: 10px;
+  }
+  .stage.busy .spin { display: grid; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-2);
+         animation: pulse 1s infinite ease-in-out; display: inline-block; margin-right: 8px; }
+  @keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
+  .meta { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted);
+          font-size: 12.5px; padding: 10px 2px 0; }
+  .meta b { color: var(--text); font-weight: 550; }
+  code { background: #0f151d; border: 1px solid var(--line); border-radius: 6px;
+         padding: 1px 6px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Procedural World</h1>
+  <span class="sub">остров из шума, отрисованный CPU-рейкастером на Rust — без GPU, без текстур, без зависимостей</span>
+</header>
+
+<main>
+  <form class="panel" id="controls" onsubmit="return false">
+    <div class="field">
+      <label>Время суток</label>
+      <div class="presets" id="presets">
+        <button type="button" data-preset="dawn">Рассвет</button>
+        <button type="button" data-preset="day">День</button>
+        <button type="button" data-preset="sunset">Закат</button>
+        <button type="button" data-preset="night">Ночь</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="seed">Сид мира</label>
+      <div class="row">
+        <input id="seed" type="number" value="7" min="0" max="999999">
+        <button type="button" id="dice" class="presets" style="padding:9px;border-radius:9px;
+          border:1px solid var(--line);background:#0f151d;color:var(--text);cursor:pointer">
+          Случайный
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="size">Разрешение</label>
+      <select id="size">
+        <option value="640x360">640 × 360 — быстро</option>
+        <option value="960x540" selected>960 × 540</option>
+        <option value="1280x720">1280 × 720</option>
+        <option value="1920x1080">1920 × 1080 — медленно</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="quality">Качество сглаживания</label>
+      <select id="quality">
+        <option value="1">1 луч на пиксель</option>
+        <option value="2" selected>4 луча на пиксель</option>
+        <option value="3">9 лучей на пиксель</option>
+      </select>
+    </div>
+
+    <button class="render-btn" id="render">Отрендерить</button>
+    <p class="hint">Клик по картинке — открыть в полном размере. Клавиши 1–4 переключают время суток.</p>
+  </form>
+
+  <section>
+    <div class="stage" id="stage">
+      <img id="shot" alt="Рендер процедурного острова" src="">
+      <div class="spin"><span><span class="dot"></span>трассировка лучей…</span></div>
+    </div>
+    <div class="meta">
+      <span>пресет: <b id="m-preset">—</b></span>
+      <span>сид: <b id="m-seed">—</b></span>
+      <span>размер: <b id="m-size">—</b></span>
+      <span>время: <b id="m-time">—</b></span>
+    </div>
+  </section>
+</main>
+
+<script>
+  const presets = { dawn: "Рассвет", day: "День", sunset: "Закат", night: "Ночь" };
+  let state = { preset: "day", seed: 7, width: 960, height: 540, samples: 2 };
+
+  const stage = document.getElementById("stage");
+  const shot = document.getElementById("shot");
+  const renderBtn = document.getElementById("render");
+
+  function markPreset(name) {
+    document.querySelectorAll("#presets button").forEach((b) => {
+      b.setAttribute("aria-pressed", String(b.dataset.preset === name));
+    });
+  }
+
+  function setMeta(key, value) {
+    document.getElementById(key).textContent = value;
+  }
+
+  function draw() {
+    const url = `/api/render?preset=${encodeURIComponent(state.preset)}` +
+      `&seed=${state.seed}&width=${state.width}&height=${state.height}` +
+      `&samples=${state.samples}`;
+    stage.classList.add("busy");
+    renderBtn.disabled = true;
+    const started = performance.now();
+    const image = new Image();
+    image.onload = () => {
+      shot.src = url;
+      stage.classList.remove("busy");
+      renderBtn.disabled = false;
+      setMeta("m-preset", presets[state.preset] || state.preset);
+      setMeta("m-seed", state.seed);
+      setMeta("m-size", `${state.width} × ${state.height}`);
+      setMeta("m-time", `${((performance.now() - started) / 1000).toFixed(2)} с`);
+      shot.onclick = () => window.open(url, "_blank");
+    };
+    image.onerror = () => {
+      stage.classList.remove("busy");
+      renderBtn.disabled = false;
+      setMeta("m-time", "ошибка сервера");
+    };
+    image.src = url;
+  }
+
+  document.querySelectorAll("#presets button").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.preset = button.dataset.preset;
+      markPreset(state.preset);
+      draw();
+    });
+  });
+
+  document.getElementById("seed").addEventListener("change", (event) => {
+    state.seed = Math.max(0, Math.min(999999, parseInt(event.target.value || "7", 10)));
+    event.target.value = state.seed;
+  });
+
+  document.getElementById("dice").addEventListener("click", () => {
+    state.seed = Math.floor(Math.random() * 100000);
+    document.getElementById("seed").value = state.seed;
+    draw();
+  });
+
+  document.getElementById("size").addEventListener("change", (event) => {
+    const [w, h] = event.target.value.split("x").map(Number);
+    state.width = w;
+    state.height = h;
+  });
+
+  document.getElementById("quality").addEventListener("change", (event) => {
+    state.samples = Number(event.target.value);
+  });
+
+  renderBtn.addEventListener("click", draw);
+
+  document.addEventListener("keydown", (event) => {
+    const names = ["dawn", "day", "sunset", "night"];
+    const index = Number(event.key) - 1;
+    if (index >= 0 && index < names.length) {
+      state.preset = names[index];
+      markPreset(state.preset);
+      draw();
+    }
+  });
+
+  markPreset(state.preset);
+  draw();
+</script>
+</body>
+</html>
