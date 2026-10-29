@@ -25,6 +25,9 @@ use crate::world::{fbm, noise2, smoothstep, HeightField, Mat, Prop, Solid, World
 /// Eye height above the ground, in world units (a person is ~1.7 m tall).
 pub const EYE_HEIGHT: f32 = 1.62;
 
+/// Radians of yaw per pixel of pointer movement.
+pub const DEFAULT_SENSITIVITY: f32 = 0.0012;
+
 #[derive(Clone, Copy, Default)]
 #[allow(dead_code)]
 pub struct Input {
@@ -64,6 +67,8 @@ pub struct Player {
     pub on_ground: bool,
     /// Accumulated walk distance, used for the head bob.
     pub travelled: f32,
+    /// User speed multiplier (1.0 = the default pace).
+    pub speed_scale: f32,
 }
 
 impl Player {
@@ -148,6 +153,7 @@ impl Player {
             vel_y: 0.0,
             on_ground: true,
             travelled: 0.0,
+            speed_scale: 1.0,
         }
     }
 
@@ -163,7 +169,7 @@ impl Player {
 
     /// Mouse look. `dx`/`dy` are raw pointer deltas in pixels.
     pub fn look(&mut self, dx: f32, dy: f32) {
-        let sensitivity = 0.0016;
+        let sensitivity = DEFAULT_SENSITIVITY;
         // `yaw` grows towards +X, which is to the right of the view: dragging
         // the mouse right must add to it, not subtract.
         self.yaw += dx * sensitivity;
@@ -185,7 +191,7 @@ impl Player {
 
         // The island is about 12 m across, so walking speed is scaled to it:
         // 1.6 m/s crosses it in a reasonable half a minute.
-        let speed = if input.run { 3.2 } else { 1.6 };
+        let speed = if input.run { 2.6 } else { 1.2 } * self.speed_scale.clamp(0.2, 4.0);
         let mut wish_x = 0.0;
         let mut wish_z = 0.0;
         let fwd = self.forward();

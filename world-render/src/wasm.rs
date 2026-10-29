@@ -18,6 +18,8 @@ struct Session {
     input: u32,
     /// 0 while building, 100 when the world is ready.
     progress: u32,
+    /// User speed multiplier, kept across respawns and new worlds.
+    speed: f32,
 }
 
 /// Last panic message, exposed to the page so a crash is not just "unreachable".
@@ -49,6 +51,7 @@ thread_local! {
         rgba: vec![0; 4],
         input: 0,
         progress: 0,
+        speed: 1.0,
     });
 }
 
@@ -60,9 +63,10 @@ pub extern "C" fn wr_init(preset_index: u32, seed: u32) -> u32 {
     }));
     let preset = presets::by_index(preset_index as usize);
     let (walk, job) = WalkWorld::new(seed, &preset.scene);
-    let player = Player::spawn(&walk.world);
+    let mut player = Player::spawn(&walk.world);
     SESSION.with(|session| {
         let mut session = session.borrow_mut();
+        player.speed_scale = session.speed;
         session.job = Some(job);
         session.progress = 0;
         session.player = Some(player);
@@ -190,7 +194,22 @@ pub extern "C" fn wr_respawn() {
     SESSION.with(|session| {
         let mut session = session.borrow_mut();
         if let Some(walk) = session.walk.as_ref() {
-            session.player = Some(Player::spawn(&walk.world));
+            let mut player = Player::spawn(&walk.world);
+            player.speed_scale = session.speed;
+            session.player = Some(player);
+        }
+    })
+}
+
+/// Walking speed multiplier (1.0 = default pace, 0.5 = half speed).
+#[no_mangle]
+pub extern "C" fn wr_set_speed(scale: f32) {
+    SESSION.with(|session| {
+        let mut session = session.borrow_mut();
+        let speed = if scale.is_finite() { scale.clamp(0.2, 4.0) } else { 1.0 };
+        session.speed = speed;
+        if let Some(player) = session.player.as_mut() {
+            player.speed_scale = speed;
         }
     })
 }

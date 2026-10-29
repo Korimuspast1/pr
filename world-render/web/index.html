@@ -67,6 +67,14 @@
     background: linear-gradient(180deg, #6fd3cd, #3aa8a2); color: #06201f;
   }
   .err { color: #ff9b9b; font-size: 13px; max-width: 560px; word-break: break-word; }
+  .settings {
+    margin: 18px auto 0; display: grid; gap: 10px; justify-items: center;
+    font-size: 13px; color: var(--muted);
+  }
+  .settings label { display: flex; align-items: center; gap: 10px; }
+  .settings input[type=range] { width: 180px; accent-color: var(--accent-2); }
+  .settings output { min-width: 42px; text-align: left; color: var(--text); font-variant-numeric: tabular-nums; }
+  .settings input[type=checkbox] { accent-color: var(--accent-2); }
   .crosshair {
     position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px;
     border-radius: 50%; background: rgba(255,255,255,.75); box-shadow: 0 0 0 1px rgba(0,0,0,.35);
@@ -110,7 +118,9 @@
 <div class="hud bottom-left">
   <div class="card help">
     <b>WASD</b> / стрелки — идти · <b>мышь</b> — смотреть · <kbd>Shift</kbd> — бежать ·
-    <kbd>Space</kbd> — прыжок · <kbd>Esc</kbd> — освободить курсор · <b>1–4</b> — время суток
+    <kbd>Space</kbd> — прыжок · <kbd>Esc</kbd> — освободить курсор · <b>1–4</b> — время суток ·
+    <kbd>−</kbd>/<kbd>+</kbd> — скорость · <kbd>I</kbd> — инверсия мыши · <kbd>H</kbd> — панели ·
+    <kbd>F</kbd> — полный экран · <kbd>P</kbd> — снимок
   </div>
 </div>
 
@@ -131,7 +141,19 @@
     <div class="stats" id="overlay-progress">0%</div>
     <p class="err" id="error" hidden></p>
     <div style="margin-top:18px; display:none" id="enter-wrap">
-      <button class="cta" id="enter">Войти в мир</button>
+      <div class="settings">
+        <label>скорость ходьбы
+          <input type="range" id="set-speed" min="0.4" max="2" step="0.1" value="1">
+          <output id="set-speed-value">×1.0</output>
+        </label>
+        <label>чувствительность мыши
+          <input type="range" id="set-sens" min="0.3" max="2.5" step="0.1" value="1">
+          <output id="set-sens-value">×1.0</output>
+        </label>
+        <label><input type="checkbox" id="set-invert-x"> инверсия мыши по горизонтали</label>
+        <label><input type="checkbox" id="set-invert-y"> инверсия мыши по вертикали</label>
+      </div>
+      <button class="cta" id="enter" style="margin-top:16px">Войти в мир</button>
       <p style="margin-top:14px; font-size:12.5px">
         Кнопка сразу открывает мир во весь экран и без интерфейса.
         <kbd>F</kbd> — полный экран · <kbd>H</kbd> — показать/скрыть панели ·
@@ -153,8 +175,17 @@
   const enterWrap = document.getElementById("enter-wrap");
   const stats = document.getElementById("stats");
 
+  // Bumped by hand when the page changes, so an old tab is easy to spot.
+  const BUILD = "walk 2026-10-30 · no-gui";
+
   let wasm = null;
   let image = null;
+  const settings = { speed: 1, sens: 1, invertX: false, invertY: false };
+  try {
+    Object.assign(settings, JSON.parse(localStorage.getItem("walk-settings") || "{}"));
+  } catch (error) {
+    // private mode / corrupted storage: defaults are fine
+  }
   let presetIndex = 1;
   // 1.0 means "one canvas pixel per screen pixel"; the pixel budget below and
   // the automatic scaler keep the frame rate usable on slower machines.
@@ -200,7 +231,7 @@
   }
 
   // ~1.1 megapixels is what this renderer does at ~30 fps on a desktop CPU.
-  const PIXEL_BUDGET = 1_100_000;
+  const PIXEL_BUDGET = 1_800_000;
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -297,7 +328,8 @@
         `<b>${canvas.width}×${canvas.height}</b> · ` +
         `x <b>${wasm.wr_player_x().toFixed(1)}</b> ` +
         `y <b>${wasm.wr_player_y().toFixed(1)}</b> ` +
-        `z <b>${wasm.wr_player_z().toFixed(1)}</b>`;
+        `z <b>${wasm.wr_player_z().toFixed(1)}</b>` +
+        `<div style="margin-top:4px;opacity:.65">${BUILD}</div>`;
       fpsAccum = 0;
       fpsFrames = 0;
     }
@@ -351,6 +383,47 @@
     requestAnimationFrame(frame);
   }
 
+  const speedInput = document.getElementById("set-speed");
+  const speedValue = document.getElementById("set-speed-value");
+  const sensInput = document.getElementById("set-sens");
+  const sensValue = document.getElementById("set-sens-value");
+  const invertX = document.getElementById("set-invert-x");
+  const invertY = document.getElementById("set-invert-y");
+
+  function applySettings(persist = true) {
+    speedInput.value = settings.speed;
+    speedValue.textContent = `×${Number(settings.speed).toFixed(1)}`;
+    sensInput.value = settings.sens;
+    sensValue.textContent = `×${Number(settings.sens).toFixed(1)}`;
+    invertX.checked = settings.invertX;
+    invertY.checked = settings.invertY;
+    if (wasm && wasm.wr_set_speed) wasm.wr_set_speed(Number(settings.speed));
+    if (persist) {
+      try {
+        localStorage.setItem("walk-settings", JSON.stringify(settings));
+      } catch (error) {
+        // storage is optional
+      }
+    }
+  }
+
+  speedInput.addEventListener("input", () => {
+    settings.speed = Number(speedInput.value);
+    applySettings();
+  });
+  sensInput.addEventListener("input", () => {
+    settings.sens = Number(sensInput.value);
+    applySettings();
+  });
+  invertX.addEventListener("change", () => {
+    settings.invertX = invertX.checked;
+    applySettings();
+  });
+  invertY.addEventListener("change", () => {
+    settings.invertY = invertY.checked;
+    applySettings();
+  });
+
   document.getElementById("enter").addEventListener("click", enter);
   canvas.addEventListener("click", () => {
     if (!overlay.classList.contains("hidden")) return;
@@ -385,7 +458,11 @@
     const locked = document.pointerLockElement === canvas;
     if (!locked && !dragging) return;
     if (!wasm) return;
-    wasm.wr_look(event.movementX || 0, event.movementY || 0);
+    let dx = (event.movementX || 0) * settings.sens;
+    let dy = (event.movementY || 0) * settings.sens;
+    if (settings.invertX) dx = -dx;
+    if (settings.invertY) dy = -dy;
+    wasm.wr_look(dx, dy);
   });
 
   window.addEventListener("keydown", (event) => {
@@ -405,6 +482,23 @@
     }
     if (event.code === "KeyP") {
       saveScreenshot();
+    }
+    // Pace and mouse behaviour can be tuned while walking, without leaving the
+    // clean view.
+    if (event.code === "Minus" || event.code === "NumpadSubtract") {
+      settings.speed = Math.max(0.4, Number(settings.speed) - 0.1);
+      applySettings();
+      event.preventDefault();
+    }
+    if (event.code === "Equal" || event.code === "NumpadAdd") {
+      settings.speed = Math.min(2.0, Number(settings.speed) + 0.1);
+      applySettings();
+      event.preventDefault();
+    }
+    if (event.code === "KeyI") {
+      settings.invertX = !settings.invertX;
+      settings.invertY = settings.invertX;
+      applySettings();
     }
     if (["Digit1", "Digit2", "Digit3", "Digit4"].includes(event.code)) {
       const index = Number(event.code.slice(-1)) - 1;
@@ -461,6 +555,7 @@
       const bytes = await response.arrayBuffer();
       const { instance } = await WebAssembly.instantiate(bytes, {});
       wasm = instance.exports;
+      applySettings(false);
       startWorld(1, 7);
     } catch (error) {
       fail(`Не удалось загрузить WebAssembly-модуль: ${error.message}`);
