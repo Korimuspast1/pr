@@ -1532,6 +1532,27 @@ namespace FirstPerson
 
 		public void Draw(float viewAlpha = 1f, float hudAlpha = 1f)
 		{
+			if (PhotoMode.Active)
+			{
+				// Photo mode: minimal HUD (crosshair only when aiming), hint bar
+				try
+				{
+					if (Event.current != null && Event.current.type == EventType.Repaint)
+					{
+						GameArt.Label(new Rect(12f, Screen.height - 22f, Screen.width - 24f, 14f), "Photo mode — F10 exit  ·  F9 screenshot  ·  +/- FOV  ·  Backspace reset  ·  HUD hidden", 3.8f, TextAnchor.MiddleLeft, new Color(1,1,1,0.85f));
+						// subtle crosshair dot in center when not in menu
+						if (!_mod.AnyMenuOpen && _mod.PoseViewOut < 0.5f)
+						{
+							float cx = Screen.width * 0.5f; float cy = Screen.height * 0.5f;
+							GUI.color = new Color(1,1,1,0.5f);
+							GUI.DrawTexture(new Rect(cx-1, cy-1, 2, 2), Texture2D.whiteTexture);
+							GUI.color = Color.white;
+						}
+					}
+				} catch {}
+				DrawMovingPanels(Screen.width, Screen.height, 0f, 1f);
+				return;
+			}
 			EnsureAssets();
 			GameArt.Ensure();
 			float num = Screen.width;

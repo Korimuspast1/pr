@@ -108,6 +108,7 @@ namespace FirstPerson
 					new string[2] { "Esc  F2", "Settings. Esc closes a window first" },
 					new string[2] { "F7", "Time of day" },
 					new string[2] { "F9", "Screenshot" },
+					new string[2] { "F10", "Photo mode (hide HUD, +/- FOV, Backspace reset)" },
 					new string[2] { "Enter", "Chat, in multiplayer" },
 					new string[2] { "Hold Caps Lock", "Talk, in multiplayer" }
 				}

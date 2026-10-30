@@ -5113,7 +5113,7 @@ namespace FirstPerson
 			float num4 = (Settings.ScreenShake ? (Feedback.Shake + BoatHelm.Bump * 0.8f) : 0f);
 			float num5 = ((num4 > 0f) ? ((UnityEngine.Random.value - 0.5f) * num4 * 1.2f) : 0f);
 			_view.Pitch = LookSlope(_pitchDegrees + Feedback.Kick * 1.5f + num5 + num3 * 57.29578f);
-			_view.Fov = (Settings.FieldOfView + _fovKick) * (MathF.PI / 180f);
+			_view.Fov = (Settings.FieldOfView + _fovKick + (PhotoMode.Active ? PhotoMode.FovOffset : 0f)) * (MathF.PI / 180f);
 			Swimming = false;
 			Moving = false;
 			float num6 = BoatHelm.HalfLength();
@@ -6356,6 +6356,16 @@ namespace FirstPerson
 			{
 				HelmetLight.Toggle(_host, Toast);
 			}
+		}
+
+		private void PhotoKeys(bool menu)
+		{
+			if (IsTyping()) return;
+			if (PlayInput.GetKeyDown(KeyCode.F10))
+			{
+				PhotoMode.Toggle(Toast);
+			}
+			PhotoMode.Update(menu);
 		}
 
 		private void UpdateCompass(float dt)
@@ -7852,6 +7862,7 @@ namespace FirstPerson
 			HotbarKeys();
 			TorchKeys(AnyMenu);
 			HelmetKeys(AnyMenu);
+			PhotoKeys(AnyMenu);
 			Hitch.Lap("u:inventory, hotbar, torch, h, k, eat, leap");
 			FeatureKeys();
 			if (Royal.ObeliskOpen && PlayInput.GetKeyDown(KeyCode.E) && !IsTyping())
@@ -8625,7 +8636,7 @@ namespace FirstPerson
 				_view.Z = Mathf.Max(_view.Z, _sampler.Cache.SampleHeight(_view.X, _view.Y) + 0.1f);
 			}
 			_view.Pitch = LookSlope(_pitchDegrees + (Feedback.Kick * 1.5f + num17 + num6 + _melee.ViewPitch + _shotgun.ViewKick) * BinocularSteady - (Swimming ? 0f : (_gait.Nod * num20 + _plantNod * BinocularSteady)));
-			_view.Fov = (Settings.FieldOfView + _fovKick + (flag ? 0f : BeastView.Widen)) * (MathF.PI / 180f);
+			_view.Fov = (Settings.FieldOfView + _fovKick + (flag ? 0f : BeastView.Widen) + (PhotoMode.Active ? PhotoMode.FovOffset : 0f)) * (MathF.PI / 180f);
 			PossessionHooks.BodyRadius = Mathf.Clamp(0.17f * num2, 0.1f, 0.6f);
 			float num22 = (Swimming ? (_swimSurface - num2 * 0.3f) : num);
 			float num23 = ((flag || Swimming) ? 0f : _standLift);
