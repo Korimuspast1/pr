@@ -61,6 +61,7 @@ namespace FirstPerson
 					new string[2] { "Z", "Binoculars. Hold, or tap to keep them up" },
 					new string[2] { "H", "Quick heal — equip best bandage/salve" },
 					new string[2] { "R", "Sort bag (outside menus)" },
+					new string[2] { "U near chest", "Quick stack matching items to chest" },
 					new string[2] { "Wheel", "Binoculars zoom. The compass picks its mark" },
 					new string[2] { "Left click", "Eat the food you hold. Bind a wound with a bandage" },
 					new string[2] { "Hold left click", "Hold your torch out. Light it at a fire" }

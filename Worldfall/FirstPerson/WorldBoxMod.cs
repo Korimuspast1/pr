@@ -7887,6 +7887,10 @@ namespace FirstPerson
 			Hitch.Lap("u:f keys");
 			InventoryKeys();
 			InventoryQoLKeys(AnyMenu);
+			if (!AnyMenu && !IsTyping() && _host != null && PlayInput.GetKeyDown(KeyCode.U))
+			{
+				QuickStack.Try(_host, Toast);
+			}
 			HotbarKeys();
 			TorchKeys(AnyMenu);
 			HelmetKeys(AnyMenu);
