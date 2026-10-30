@@ -1,0 +1,1 @@
+8f154593581dda81dedfa7d53baadd2f4ecd7267a047327e7b5d6929366715b4  build/aurora.iso
