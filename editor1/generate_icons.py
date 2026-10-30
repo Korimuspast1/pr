@@ -8,7 +8,7 @@ import resvg_py
 from PIL import Image
 
 root = Path(__file__).resolve().parent
-names = ['plus', 'search', 'file-text', 'folder-open', 'download', 'pencil', 'trash', 'book-open', 'pen-line', 'check', 'editor-mark']
+names = ['plus', 'search', 'file-text', 'folder-open', 'download', 'pencil', 'trash', 'book-open', 'pen-line', 'check', 'editor-mark', 'settings']
 lines = ['/* Generated from the SVG icon assets by generate_icons.py. */', '#ifndef EDITOR_ICONS_H', '#define EDITOR_ICONS_H', 'enum { ' + ', '.join('ICON_' + x.upper().replace('-', '_') for x in names) + ' };', 'static const unsigned char icon_masks[][400] = {']
 for name in names:
     source = (root / 'assets' / 'icons' / (name + '.svg')).read_bytes()
