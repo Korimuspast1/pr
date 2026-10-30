@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#26384b">
+  <meta name="description" content="Оригинальная четырёхминутная анимационная история о летних каникулах, дружбе и секретном штабе.">
+  <title>Как мы построили секретный штаб — история из детства</title>
+  <style>
+    :root { color-scheme: dark; --ink:#243547; --paper:#fff2d7; --muted:#b9c7ce; --mint:#8bd4c2; --peach:#f28f7e; --sun:#ffd67c; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:#243547; color:#fff9ed; font-family:ui-rounded,"Trebuchet MS",system-ui,-apple-system,sans-serif; line-height:1.5; }
+    body::before { content:""; position:fixed; z-index:-1; inset:0; pointer-events:none; background:radial-gradient(circle at 12% 10%,#466277 0,transparent 32%),radial-gradient(circle at 90% 45%,#385767 0,transparent 28%),#243547; }
+    .wrap { width:min(1110px,calc(100% - 40px)); margin:auto; }
+    .top { min-height:90px; display:flex; justify-content:space-between; align-items:center; gap:20px; border-bottom:1px solid #ffffff20; }
+    .brand { display:inline-flex; align-items:center; gap:11px; color:#fff7e5; text-decoration:none; font-size:14px; font-weight:900; letter-spacing:.04em; }
+    .brand svg { flex:none; }
+    .top-link { color:#d7e2df; font-size:13px; font-weight:700; text-decoration:none; }
+    .top-link:hover,.top-link:focus-visible { color:var(--sun); }
+    main { padding:64px 0 65px; }
+    .intro { max-width:850px; margin:0 auto 32px; text-align:center; }
+    .eyebrow { display:inline-flex; align-items:center; gap:9px; margin:0 0 22px; padding:7px 13px; border:1px solid #92cfc15e; border-radius:100px; background:#6cb5a119; color:#b9e7d7; font-size:11px; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
+    .eyebrow::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--mint); box-shadow:0 0 0 4px #8bd4c21f; }
+    h1 { margin:0; font-size:clamp(36px,5.7vw,67px); line-height:1.05; letter-spacing:-.045em; font-weight:950; text-wrap:balance; }
+    h1 span { color:var(--sun); }
+    .intro p { margin:19px auto 0; max-width:580px; color:#d3dfdf; font-size:clamp(15px,1.65vw,18px); }
+    .cinema { position:relative; padding:11px; background:#f9e7c5; border:3px solid #172838; border-radius:20px; box-shadow:0 20px 0 #172838,0 35px 70px #111c2799; }
+    .cinema::before { content:"✦"; position:absolute; z-index:1; right:-24px; top:-34px; color:var(--sun); font-size:42px; transform:rotate(15deg); pointer-events:none; }
+    .video-shell { position:relative; aspect-ratio:16/9; overflow:hidden; border:3px solid #26384b; border-radius:11px; background:#162635; }
+    video { display:block; width:100%; height:100%; object-fit:contain; }
+    .actions { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:29px 5px 0; }
+    .facts { display:flex; flex-wrap:wrap; gap:10px; color:#b8c8ce; font-size:13px; font-weight:700; }
+    .facts span:not(:last-child)::after { content:"•"; margin-left:10px; color:#78919d; }
+    .buttons { display:flex; flex-wrap:wrap; gap:10px; }
+    .button { display:inline-flex; justify-content:center; align-items:center; gap:9px; min-height:45px; padding:10px 16px; border:2px solid #f6e8ca; border-radius:11px; color:#f6e8ca; text-decoration:none; font-size:13px; font-weight:900; transition:transform .16s, background .16s; }
+    .button.primary { color:#243547; background:var(--sun); border-color:var(--sun); }
+    .button:hover { transform:translateY(-2px); background:#ffffff15; }
+    .button.primary:hover { background:#ffe3a0; }
+    .button:focus-visible,.top-link:focus-visible,.brand:focus-visible { outline:3px solid var(--mint); outline-offset:4px; }
+    .note { display:grid; grid-template-columns:auto 1fr; gap:18px; align-items:start; max-width:760px; margin:62px auto 0; padding:22px 26px; border:1px solid #ffffff1f; border-radius:16px; background:#ffffff09; }
+    .note-icon { display:grid; place-items:center; width:42px; height:42px; border-radius:12px; color:#243547; background:var(--mint); font-size:22px; }
+    .note h2 { margin:0 0 4px; font-size:16px; }
+    .note p { margin:0; color:#bfced0; font-size:14px; }
+    footer { padding:27px 0 36px; border-top:1px solid #ffffff20; color:#9eafb7; font-size:12px; }
+    footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px 20px; }
+    footer a { color:#c9d7d6; text-decoration:none; }
+    @media(max-width:650px) {
+      .wrap { width:min(100% - 28px,1110px); }
+      .top { min-height:70px; }
+      main { padding:49px 0; }
+      .intro { margin-bottom:26px; }
+      .cinema { padding:6px; border-radius:13px; box-shadow:0 12px 0 #172838,0 24px 45px #111c2780; }
+      .cinema::before { right:-9px; top:-25px; font-size:30px; }
+      .video-shell { border-radius:7px; border-width:2px; }
+      .actions { align-items:flex-start; flex-direction:column; padding-top:25px; }
+      .note { margin-top:44px; padding:19px; }
+    }
+    @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; } }
+  </style>
+</head>
+<body>
+  <header class="top wrap">
+    <a class="brand" href="#film" aria-label="Дворовые истории — к видео">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true"><circle cx="17" cy="17" r="8" fill="#FFD67C" stroke="#FFF2D7" stroke-width="2"/><path d="M17 1v5M17 28v5M1 17h5M28 17h5M5.7 5.7l3.5 3.5m15.6 15.6 3.5 3.5m0-22.6-3.5 3.5M9.2 24.8l-3.5 3.5" stroke="#FFD67C" stroke-width="2" stroke-linecap="round"/></svg>
+      ДВОРОВЫЕ ИСТОРИИ
+    </a>
+    <a class="top-link" href="https://github.com/Korimuspast1/pr/tree/arena/90e68ab9-pr/childhood-animation">На GitHub ↗</a>
+  </header>
+  <main class="wrap" id="film">
+    <div class="intro">
+      <div class="eyebrow">Анимационная история · 04:00</div>
+      <h1>Как мы построили<br><span>секретный штаб</span></h1>
+      <p>Лето, Пашка, картонная коробка и один очень подозрительный кот. История о том, каким приключением может стать обычный двор.</p>
+    </div>
+    <div class="cinema">
+      <div class="video-shell">
+        <video controls playsinline preload="metadata" poster="poster.jpg" aria-label="Анимация «Как мы построили секретный штаб»">
+          <source src="sekretny-shtab.mp4" type="video/mp4">
+          Ваш браузер не поддерживает видео. <a href="sekretny-shtab.mp4">Скачать MP4</a>.
+        </video>
+      </div>
+    </div>
+    <div class="actions">
+      <div class="facts"><span>4 минуты</span><span>HD 720p</span><span>На русском</span></div>
+      <div class="buttons">
+        <a class="button" href="subtitles.srt" download>↓ Субтитры</a>
+        <a class="button primary" href="sekretny-shtab.mp4" download>↓ Скачать видео</a>
+      </div>
+    </div>
+    <section class="note" aria-label="О мультфильме">
+      <div class="note-icon" aria-hidden="true">✦</div>
+      <div><h2>Сделано с теплом к детству</h2><p>Оригинальный сюжет и рисованная анимация, озвученные синтезированным голосом. Субтитры уже есть в самом видео.</p></div>
+    </section>
+  </main>
+  <footer><div class="wrap"><span>Дворовые истории · Секретный штаб</span><a href="https://github.com/Korimuspast1/pr">Исходный репозиторий ↗</a></div></footer>
+</body>
+</html>
