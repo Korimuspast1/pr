@@ -7866,6 +7866,7 @@ namespace FirstPerson
 			}
 			Hitch.Lap("u:f keys");
 			InventoryKeys();
+			InventoryQoLKeys(AnyMenu);
 			HotbarKeys();
 			TorchKeys(AnyMenu);
 			HelmetKeys(AnyMenu);
@@ -15409,6 +15410,19 @@ namespace FirstPerson
 				return HoldForTest;
 			}
 			return true;
+		}
+
+		private void InventoryQoLKeys(bool menu)
+		{
+			if (menu || IsTyping() || _host == null) return;
+			if (PlayInput.GetKeyDown(KeyCode.H))
+			{
+				InventoryQoL.TryQuickHeal(_host, Toast);
+			}
+			if (PlayInput.GetKeyDown(KeyCode.R) && !Craft.Open && !AnyMenu)
+			{
+				InventoryQoL.SortBag(_host, Toast);
+			}
 		}
 
 		private void InventoryKeys()
