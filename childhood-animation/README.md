@@ -13,7 +13,10 @@ python3 -m pip install -r childhood-animation/requirements.txt
 python3 childhood-animation/make_audio.py
 python3 childhood-animation/render.py --stills  # постер и проверочные кадры
 python3 childhood-animation/render.py           # готовый MP4
+python3 childhood-animation/serve.py            # локальный проигрыватель, порт 4173
 ```
+
+Встроенный сервер поддерживает запросы диапазонов, поэтому видео можно перематывать.
 
 Все рисунки и музыкальное сопровождение создаются кодом. Промежуточные файлы сохраняются в `childhood-animation/.work/` и не попадают в Git. Десять фрагментов синтезированной речи записаны одним выбранным голосом; сценарий находится в `script.json`.
 
