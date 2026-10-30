@@ -18,9 +18,33 @@ REQUEST static volatile struct limine_kernel_address_request addr_req = {.id=LIM
 void outb(uint16_t p, uint8_t v) { __asm__ volatile("outb %0,%1" : : "a"(v), "Nd"(p)); }
 uint8_t inb(uint16_t p) { uint8_t v; __asm__ volatile("inb %1,%0" : "=a"(v) : "Nd"(p)); return v; }
 void io_wait(void) { outb(0x80,0); }
-void *memset(void *d, int c, size_t n) { uint8_t *p=d; for(size_t i=0;i<n;i++) p[i]=(uint8_t)c; return d; }
-void *memcpy(void *d, const void *s, size_t n) { uint8_t *a=d; const uint8_t *b=s; for(size_t i=0;i<n;i++) a[i]=b[i]; return d; }
-void *memmove(void *d, const void *s, size_t n) { uint8_t *a=d; const uint8_t *b=s; if(a<b) return memcpy(d,s,n); for(size_t i=n;i;i--) a[i-1]=b[i-1]; return d; }
+void *memset(void *d, int c, size_t n) {
+    uint8_t *p=d, v=(uint8_t)c;
+    /* Word stores cut the instruction count for large framebuffer/backbuffer clears. */
+    if(n>=8 && (((uintptr_t)p)&7)==0) {
+        uint64_t w=0x0101010101010101ULL*v; uint64_t *q=(uint64_t*)p; size_t words=n/8;
+        for(size_t i=0;i<words;i++) q[i]=w;
+        p=(uint8_t*)(q+words); n&=7;
+    }
+    while(n--) *p++=v;
+    return d;
+}
+void *memcpy(void *d, const void *s, size_t n) {
+    uint8_t *a=d; const uint8_t *b=s;
+    if(n>=8 && ((((uintptr_t)a)|((uintptr_t)b))&7)==0) {
+        uint64_t *wa=(uint64_t*)a; const uint64_t *wb=(const uint64_t*)b; size_t words=n/8;
+        for(size_t i=0;i<words;i++) wa[i]=wb[i];
+        a=(uint8_t*)(wa+words); b=(uint8_t*)(wb+words); n&=7;
+    }
+    while(n--) *a++=*b++;
+    return d;
+}
+void *memmove(void *d, const void *s, size_t n) {
+    uint8_t *a=d; const uint8_t *b=s;
+    if(a<b) return memcpy(d,s,n);
+    for(size_t i=n;i;i--) a[i-1]=b[i-1];
+    return d;
+}
 int memcmp(const void *a, const void *b, size_t n) { const uint8_t *x=a,*y=b; for(size_t i=0;i<n;i++) if(x[i]!=y[i]) return (int)x[i]-y[i]; return 0; }
 size_t strlen(const char *s) { size_t n=0; while(s[n]) n++; return n; }
 int strcmp(const char *a,const char *b) { while(*a && *a==*b){a++;b++;} return (unsigned char)*a-(unsigned char)*b; }
@@ -153,13 +177,25 @@ void kernel_main(void) {
     gfx_init();cpu_init();interrupts_init();timer_init(100);input_init();wm_init();
     logf("[boot] READY desktop=%ux%u firmware=%s\n",gfx_width(),gfx_height(),fw_req.response&&fw_req.response->firmware_type==2?"UEFI64":"BIOS");
     __asm__ volatile("sti");
-    uint64_t last=UINT64_MAX;
+    uint64_t last_scene=UINT64_MAX,last_periodic=0;
+    bool scene_pending=false;
+    const uint64_t scene_interval=(timer_hz()+29)/30; /* coalesce drag redraws to <=30 Hz */
     for(;;) {
         mouse_event me;while(mouse_pop(&me))wm_mouse(&me);
         key_event ke;while(key_pop(&ke))wm_key(&ke);
         uint64_t now=ticks();
-        bool changed=wm_take_dirty();
-        if(changed || last==UINT64_MAX || now-last>=timer_hz()/2) {wm_render();gfx_present();last=now;}
+        if(wm_take_dirty())scene_pending=true;
+        bool cursor_pending=wm_take_cursor_dirty();
+        bool periodic=false;
+        if(now-last_periodic>=timer_hz()/2){scene_pending=true;periodic=true;last_periodic=now;}
+        /* Cursor-only motion must not redraw or re-upload the whole desktop. */
+        if(scene_pending&&(last_scene==UINT64_MAX||now-last_scene>=scene_interval)) {
+            wm_render();
+            if(periodic)wm_present_full();else wm_present();
+            wm_cursor_update();last_scene=now;scene_pending=false;
+        } else if(cursor_pending) {
+            wm_cursor_update();
+        }
         __asm__ volatile("sti; hlt");
     }
 }

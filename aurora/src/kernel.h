@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 #define PANIC(...) panic_at(__FILE__, __LINE__, __VA_ARGS__)
 void outb(uint16_t port, uint8_t value);
 uint8_t inb(uint16_t port);
@@ -58,6 +58,7 @@ typedef struct {
 } canvas;
 void gfx_init(void);
 void gfx_present(void);
+void gfx_present_rect(int x, int y, int w, int h);
 canvas *gfx_canvas(void);
 uint32_t gfx_width(void);
 uint32_t gfx_height(void);
@@ -73,7 +74,11 @@ void wm_init(void);
 void wm_key(const key_event *event);
 void wm_mouse(const mouse_event *event);
 void wm_render(void);
+void wm_present(void);
+void wm_present_full(void);
 bool wm_take_dirty(void);
+bool wm_take_cursor_dirty(void);
+void wm_cursor_update(void);
 int wm_spawn(const char *title, int kind);
 bool wm_close(int id);
 void wm_list(void (*emit)(const char *));

@@ -208,12 +208,26 @@ server.on('upgrade', (req, socket, head) => {
   const { pathname } = new URL(req.url, 'http://localhost');
   if (pathname !== '/websockify') { socket.destroy(); return; }
   wss.handleUpgrade(req, socket, head, (ws) => {
+    try { socket.setNoDelay(true); } catch {}
     const tcp = net.createConnection({ host: VNC_HOST, port: VNC_PORT });
     tcp.setNoDelay(true);
     let opened = false;
+    let inFlight = 0;
+    const HIGH_WATER = 1024 * 1024;
+    const LOW_WATER = 256 * 1024;
     const pending = [];
     tcp.on('connect', () => { opened = true; for (const b of pending) tcp.write(b); pending.length = 0; });
-    tcp.on('data', (d) => { if (ws.readyState === ws.OPEN) ws.send(d, { binary: true }); });
+    tcp.on('data', (d) => {
+      if (ws.readyState !== ws.OPEN) return;
+      inFlight += d.length;
+      ws.send(d, { binary: true }, (err) => {
+        inFlight = Math.max(0, inFlight - d.length);
+        if (err) { try { ws.close(); } catch {} return; }
+        if (tcp.isPaused() && inFlight <= LOW_WATER) tcp.resume();
+      });
+      // Backpressure: do not build an unbounded queue for a slow browser link.
+      if (inFlight >= HIGH_WATER) tcp.pause();
+    });
     tcp.on('error', () => { try { ws.close(); } catch {} });
     tcp.on('close', () => { try { ws.close(); } catch {} });
     ws.on('message', (data) => {

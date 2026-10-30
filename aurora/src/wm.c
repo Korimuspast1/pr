@@ -14,12 +14,31 @@ typedef struct {
 } window;
 static window windows[MAX_WINDOWS];static int order[MAX_WINDOWS],window_count,next_id=1,focused=-1;
 static int pointer_x,pointer_y;static bool pointer_left,previous_left,dragging,menu_open;
-static int drag_index=-1,drag_dx,drag_dy;static bool dirty=true;
+static int drag_index=-1,drag_dx,drag_dy;static bool dirty=true,full_dirty=true;
+static bool damage_valid;static int damage_x0,damage_y0,damage_x1,damage_y1;
+static bool cursor_dirty=true,cursor_valid;static int cursor_x,cursor_y;
+static uint32_t cursor_save[18*18];
 static uint32_t bg,panel,panel2,ink,muted,accent,green,border,red;
 static int screen_w,screen_h;
 _Noreturn static void power_halt(void);
-static void invalidate(void){dirty=true;}
+static void invalidate(void){dirty=true;full_dirty=true;}
+static void damage_add(int x,int y,int w,int h){
+    if(w<=0||h<=0)return;
+    if(x<0){w+=x;x=0;}if(y<0){h+=y;y=0;}
+    if(x>=screen_w||y>=screen_h)return;
+    if(w>screen_w-x)w=screen_w-x;if(h>screen_h-y)h=screen_h-y;
+    if(!damage_valid){damage_x0=x;damage_y0=y;damage_x1=x+w;damage_y1=y+h;damage_valid=true;return;}
+    if(x<damage_x0)damage_x0=x;if(y<damage_y0)damage_y0=y;
+    if(x+w>damage_x1)damage_x1=x+w;if(y+h>damage_y1)damage_y1=y+h;
+}
 bool wm_take_dirty(void){bool d=dirty;dirty=false;return d;}
+void wm_present_full(void){gfx_present();damage_valid=false;full_dirty=false;}
+void wm_present(void){
+    if(full_dirty||!damage_valid)gfx_present();
+    else gfx_present_rect(damage_x0,damage_y0,damage_x1-damage_x0,damage_y1-damage_y0);
+    damage_valid=false;full_dirty=false;
+}
+bool wm_take_cursor_dirty(void){bool d=cursor_dirty;cursor_dirty=false;return d;}
 static int index_of(int id){for(int i=0;i<MAX_WINDOWS;i++)if(windows[i].used&&windows[i].id==id)return i;return -1;}
 static window *focus_window(void){int i=index_of(focused);return i<0?NULL:&windows[i];}
 static void raise_window(int index){if(index<0)return;int id=windows[index].id;int n=0;for(int i=0;i<window_count;i++)if(order[i]!=id)order[n++]=order[i];order[n++]=id;window_count=n;focused=id;invalidate();}
@@ -90,9 +109,15 @@ static bool inside(int x,int y,int w,int h){return pointer_x>=x&&pointer_x<x+w&&
 static int hit_window(void){for(int j=window_count-1;j>=0;j--){int i=index_of(order[j]);if(i>=0&&inside(windows[i].x,windows[i].y,windows[i].w,windows[i].h))return i;}return -1;}
 void wm_mouse(const mouse_event *e){
     bool clicked=e->left&&!previous_left;bool released=!e->left&&previous_left;
-    pointer_x=e->x;pointer_y=e->y;pointer_left=e->left;previous_left=e->left;invalidate();
-    if(dragging&&drag_index>=0&&windows[drag_index].used){window *w=&windows[drag_index];w->x=pointer_x-drag_dx;w->y=pointer_y-drag_dy;if(w->x<0)w->x=0;if(w->y<36)w->y=36;if(w->x+w->w>screen_w)w->x=screen_w-w->w;if(w->y+w->h>screen_h-TASK_HEIGHT)w->y=screen_h-TASK_HEIGHT-w->h;if(released){dragging=false;logf("[wm] drag id=%d x=%d y=%d\n",w->id,w->x,w->y);}return;}
-    if(released)dragging=false;if(!clicked)return;
+    int old_x=pointer_x,old_y=pointer_y;
+    pointer_x=e->x;pointer_y=e->y;pointer_left=e->left;previous_left=e->left;
+    if(pointer_x!=old_x||pointer_y!=old_y)cursor_dirty=true;
+    if(dragging&&drag_index>=0&&windows[drag_index].used){window *w=&windows[drag_index];
+        damage_add(w->x,w->y,w->w,w->h);
+        w->x=pointer_x-drag_dx;w->y=pointer_y-drag_dy;if(w->x<0)w->x=0;if(w->y<36)w->y=36;if(w->x+w->w>screen_w)w->x=screen_w-w->w;if(w->y+w->h>screen_h-TASK_HEIGHT)w->y=screen_h-TASK_HEIGHT-w->h;
+        damage_add(w->x,w->y,w->w,w->h);dirty=true;
+        if(released){dragging=false;logf("[wm] drag id=%d x=%d y=%d\n",w->id,w->x,w->y);}return;}
+    if(released)dragging=false;if(clicked||released)invalidate();if(!clicked)return;
     if(menu_open){int mx=16,my=screen_h-TASK_HEIGHT-216;if(inside(mx,my,260,200)){int item=(pointer_y-my-12)/46;if(item==0)wm_spawn("Terminal",WINDOW_SHELL);if(item==1)wm_spawn("System monitor",WINDOW_MONITOR);if(item==2)wm_spawn("About Aurora",WINDOW_ABOUT);if(item==3){logf("[power] reboot requested from menu\n");cpu_reboot();}menu_open=false;return;}menu_open=false;}
     if(inside(12,screen_h-TASK_HEIGHT+7,128,TASK_HEIGHT-14)){menu_open=!menu_open;return;}
     if(pointer_y>=screen_h-TASK_HEIGHT){int x=154;for(int j=0;j<window_count&&x+170<screen_w-180;j++,x+=178){int i=index_of(order[j]);if(i<0)continue;if(inside(x,screen_h-TASK_HEIGHT+8,170,TASK_HEIGHT-16)){raise_window(i);return;}}if(inside(screen_w-104,screen_h-TASK_HEIGHT+8,42,32)){logf("[power] reboot requested from taskbar\n");cpu_reboot();}if(inside(screen_w-54,screen_h-TASK_HEIGHT+8,42,32)){logf("[power] halt requested from taskbar\n");power_halt();}return;}
@@ -133,7 +158,28 @@ static void draw_window(window *w){canvas *c=gfx_canvas();bool active=w->id==foc
     }
     clip(c,0,0,screen_w,screen_h);
 }
-static void draw_cursor(canvas *c){static const char *shape[18]={"X.................","XX................","XoX...............","XooX..............","XoooX.............","XooooX............","XoooooX...........","XooooooX..........","XoooooooX.........","XooooooooX........","XoooooXXXXX.......","XooXooX...........","XoX.XooX..........","XX..XooX..........","X....XooX.........",".....XooX.........","......XX..........",".................."};for(int y=0;y<18;y++)for(int x=0;x<18;x++)if(shape[y][x]!='.')fill(c,pointer_x+x,pointer_y+y,1,1,shape[y][x]=='X'?rgb(5,10,18):rgb(248,250,252));}
+#define CURSOR_W 18
+#define CURSOR_H 18
+static const char *cursor_shape[CURSOR_H]={"X.................","XX................","XoX...............","XooX..............","XoooX.............","XooooX............","XoooooX...........","XooooooX..........","XoooooooX.........","XooooooooX........","XoooooXXXXX.......","XooXooX...........","XoX.XooX..........","XX..XooX..........","X....XooX.........",".....XooX.........","......XX..........",".................."};
+static void draw_cursor(canvas *c,int px,int py){for(int y=0;y<CURSOR_H;y++)for(int x=0;x<CURSOR_W;x++)if(cursor_shape[y][x]!='.')fill(c,px+x,py+y,1,1,cursor_shape[y][x]=='X'?rgb(5,10,18):rgb(248,250,252));}
+void wm_cursor_update(void){
+    canvas *c=gfx_canvas();clip(c,0,0,screen_w,screen_h);
+    /* The back buffer stays cursor-free. Restore the old front rectangle,
+       then upload only the new 18x18 cursor rectangle. */
+    if(cursor_valid)gfx_present_rect(cursor_x,cursor_y,CURSOR_W,CURSOR_H);
+    int px=pointer_x,py=pointer_y;
+    for(int y=0;y<CURSOR_H;y++)for(int x=0;x<CURSOR_W;x++){
+        int sx=px+x,sy=py+y;
+        cursor_save[y*CURSOR_W+x]=(sx>=0&&sx<screen_w&&sy>=0&&sy<screen_h)?c->pixels[(size_t)sy*c->stride+sx]:0;
+    }
+    draw_cursor(c,px,py);
+    gfx_present_rect(px,py,CURSOR_W,CURSOR_H);
+    for(int y=0;y<CURSOR_H;y++)for(int x=0;x<CURSOR_W;x++){
+        int sx=px+x,sy=py+y;
+        if(sx>=0&&sx<screen_w&&sy>=0&&sy<screen_h)c->pixels[(size_t)sy*c->stride+sx]=cursor_save[y*CURSOR_W+x];
+    }
+    cursor_x=px;cursor_y=py;cursor_valid=true;cursor_dirty=false;
+}
 void wm_render(void){
     uint64_t second=ticks()/timer_hz();canvas *c=gfx_canvas();clip(c,0,0,screen_w,screen_h);
     fill(c,0,0,screen_w,screen_h,bg);
@@ -150,6 +196,6 @@ void wm_render(void){
     int x=154;for(int j=0;j<window_count&&x+170<screen_w-180;j++,x+=178){int i=index_of(order[j]);if(i<0)continue;char label[12];snprintf(label,sizeof label,"#%d %.7s",windows[i].id,windows[i].title);button(c,x,screen_h-TASK_HEIGHT+8,170,32,label,windows[i].id==focused?rgb(35,53,80):panel2);}
     button(c,screen_w-104,screen_h-TASK_HEIGHT+8,42,32,"R",panel2);button(c,screen_w-54,screen_h-TASK_HEIGHT+8,42,32,"H",panel2);
     if(menu_open){int my=screen_h-TASK_HEIGHT-216;fill(c,16,my,260,200,panel);rect(c,16,my,260,200,accent);const char *items[]={"New terminal","System monitor","About Aurora","Restart machine"};for(int i=0;i<4;i++)button(c,28,my+12+i*46,236,38,items[i],panel2);}
-    draw_cursor(c);dirty=false;
+    dirty=false;
 }
-void wm_init(void){screen_w=(int)gfx_width();screen_h=(int)gfx_height();bg=rgb(15,23,42);panel=rgb(23,35,54);panel2=rgb(30,45,66);ink=rgb(230,237,247);muted=rgb(142,163,188);accent=rgb(99,205,218);green=rgb(132,225,177);border=rgb(53,71,95);red=rgb(255,130,147);pointer_x=screen_w/2;pointer_y=screen_h/2;wm_spawn("Terminal",WINDOW_SHELL);wm_spawn("About Aurora",WINDOW_ABOUT);int terminal=order[0];raise_window(index_of(terminal));wm_render();gfx_present();}
+void wm_init(void){screen_w=(int)gfx_width();screen_h=(int)gfx_height();bg=rgb(15,23,42);panel=rgb(23,35,54);panel2=rgb(30,45,66);ink=rgb(230,237,247);muted=rgb(142,163,188);accent=rgb(99,205,218);green=rgb(132,225,177);border=rgb(53,71,95);red=rgb(255,130,147);pointer_x=screen_w/2;pointer_y=screen_h/2;wm_spawn("Terminal",WINDOW_SHELL);wm_spawn("About Aurora",WINDOW_ABOUT);int terminal=order[0];raise_window(index_of(terminal));wm_render();wm_present_full();wm_cursor_update();}

@@ -1,4 +1,4 @@
-# Aurora 1.0.0
+# Aurora 1.0.1
 
 Aurora — небольшая учебная 64-битная ОС на C и x86-64 ассемблере. Это **live-ISO**:
 она загружается с DVD-образа и работает в оперативной памяти. Установщика на жёсткий
@@ -9,7 +9,7 @@ Aurora — небольшая учебная 64-битная ОС на C и x86-
 
 Прямая ссылка на ISO:
 
-<https://github.com/Korimuspast1/pr/raw/refs/tags/aurora-v1.0.0/aurora/dist/aurora.iso>
+<https://github.com/Korimuspast1/pr/raw/refs/tags/aurora-v1.0.1/aurora/dist/aurora.iso>
 
 Контрольная сумма публикуется рядом с ISO в релизе.
 

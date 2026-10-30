@@ -66,6 +66,9 @@ function connect() {
   rfb.resizeSession = false;
   rfb.viewOnly = false;
   rfb.focusOnClick = true;
+  // Lower zlib effort reduces server-side CPU spikes during window drags.
+  rfb.compressionLevel = 1;
+  rfb.qualityLevel = 6;
   rfb.addEventListener('connect', () => {
     connected = true;
     reconnectDelay = 1000;
