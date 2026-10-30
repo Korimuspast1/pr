@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wctype.h>
+#include <math.h>
+#include "icons.h"
 
 #define ID_LIST 101
 #define ID_SEARCH 102
@@ -32,7 +34,7 @@ static HBRUSH bgBrush, sideBrush, inputBrush;
 static wchar_t directory[MAX_PATH], current[MAX_PATH], *text;
 static int dirty, loading, reading = 1, promptDone, promptAccepted;
 static wchar_t promptValue[180];
-static const COLORREF BG = RGB(28,28,33), SIDE = RGB(22,22,27), BORDER = RGB(45,45,53), TEXT = RGB(232,229,237), MUTED = RGB(143,140,153), ACCENT = RGB(177,157,224), TEAL = RGB(137,185,167);
+static const COLORREF BG = RGB(24,27,38), SIDE = RGB(19,23,34), BORDER = RGB(45,52,68), TEXT = RGB(239,243,252), MUTED = RGB(148,160,184), ACCENT = RGB(145,191,255), TEAL = RGB(133,205,195);
 static const wchar_t *welcome = L"# Мой дом\r\n\r\n## Пространство для мыслей\r\n\r\nДобро пожаловать в Editor 1. Здесь можно собирать идеи, вести заметки и сосредоточиться на том, что действительно важно.\r\n\r\n## Заметки\r\n\r\n- Создайте новую заметку в боковой панели\r\n- Переключитесь в режим редактирования, чтобы писать\r\n- Откройте или экспортируйте Markdown и текстовые файлы\r\n\r\n## Идеи\r\n\r\nВаше пространство — ваши правила. Начните с одной мысли.\r\n\r\n> Всё большое начинается с маленькой заметки.\r\n";
 
 static void error(const wchar_t *message) { MessageBoxW(window, message, L"Editor 1", MB_ICONERROR); }
@@ -86,7 +88,7 @@ static void showContent(void) {
    if(!level&&len>=2&&p[0]==L'>'&&p[1]==L' ')skip=2;
    size_t count=len-skip;wchar_t *line=malloc((count+3)*sizeof(wchar_t));if(!line)break;wmemcpy(line,p+skip,count);line[count]=L'\r';line[count+1]=L'\n';line[count+2]=0;
    SendMessageW(editor,EM_SETSEL,(WPARAM)-1,(LPARAM)-1);SendMessageW(editor,EM_REPLACESEL,FALSE,(LPARAM)line);
-   styleRange(position,position+(LONG)count,level==1?RGB(226,206,249):(level?ACCENT:(p[0]==L'>'?MUTED:TEXT)),level==1?23:(level==2?18:(level==3?16:14)),level>0);
+   styleRange(position,position+(LONG)count,level==1?RGB(213,230,255):(level?ACCENT:(p[0]==L'>'?MUTED:TEXT)),level==1?23:(level==2?18:(level==3?16:14)),level>0);
    position+=(LONG)count+1;free(line);if(!end)break;p=end+1;
   }
   SendMessageW(editor,EM_SETREADONLY,TRUE,0);
@@ -115,6 +117,37 @@ static void darkTitle(HWND h) {
 }
 static COLORREF mixColor(COLORREF a,COLORREF b,int amount){return RGB((GetRValue(a)*(100-amount)+GetRValue(b)*amount)/100,(GetGValue(a)*(100-amount)+GetGValue(b)*amount)/100,(GetBValue(a)*(100-amount)+GetBValue(b)*amount)/100);}
 static void rounded(HDC dc,RECT r,COLORREF color,int radius){HBRUSH brush=CreateSolidBrush(color);HGDIOBJ oldBrush=SelectObject(dc,brush);HGDIOBJ oldPen=SelectObject(dc,GetStockObject(NULL_PEN));RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius);SelectObject(dc,oldPen);SelectObject(dc,oldBrush);DeleteObject(brush);}
+// The rounded-box signed distance equation is adapted from the pixel shader in
+// oversmartnader/liquid-glass-windows-trial (MIT). We shade it in software
+// against the application's own backdrop; there is no desktop capture.
+static float glassSdf(float x,float y,float halfW,float halfH,float radius){
+ float dx=fabsf(x)-halfW+radius,dy=fabsf(y)-halfH+radius;
+ return fminf(fmaxf(dx,dy),0.0f)+sqrtf(fmaxf(dx,0)*fmaxf(dx,0)+fmaxf(dy,0)*fmaxf(dy,0))-radius;
+}
+static unsigned char channel(float n){return (unsigned char)(n<0?0:n>255?255:n);}
+static void glassSurface(HDC dc,RECT r,COLORREF base,COLORREF behind,int radius,int hover){
+ int w=r.right-r.left,h=r.bottom-r.top;if(w<2||h<2||w>2000||h>1000)return;
+ BITMAPINFO bi={0};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=w;bi.bmiHeader.biHeight=-h;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
+ void *memory=NULL;HBITMAP bmp=CreateDIBSection(dc,&bi,DIB_RGB_COLORS,&memory,NULL,0);if(!bmp||!memory){if(bmp)DeleteObject(bmp);rounded(dc,r,base,radius*2);return;}
+ unsigned int *pixels=(unsigned int*)memory;
+ for(int y=0;y<h;y++)for(int x=0;x<w;x++){
+  float d=glassSdf(x+0.5f-w*.5f,y+0.5f-h*.5f,w*.5f-.75f,h*.5f-.75f,(float)radius);
+  float coverage=fminf(1.0f,fmaxf(0.0f,0.55f-d));float fy=(float)y/(float)h;
+  float rim=fmaxf(0.0f,1.8f+ d)/1.8f;rim=fminf(1.0f,rim);
+  float sheen=(1.0f-fy)*9.0f+rim*(fy<.5f?26.0f:9.0f)+(float)hover*.075f;
+  float br=GetRValue(base)+sheen,bg=GetGValue(base)+sheen*1.05f,bb=GetBValue(base)+sheen*1.2f;
+  unsigned char R=channel(GetRValue(behind)*(1-coverage)+br*coverage),G=channel(GetGValue(behind)*(1-coverage)+bg*coverage),B=channel(GetBValue(behind)*(1-coverage)+bb*coverage);
+  pixels[y*w+x]=((unsigned int)R<<16)|((unsigned int)G<<8)|B;
+ }
+ HDC mem=CreateCompatibleDC(dc);if(mem){HGDIOBJ old=SelectObject(mem,bmp);BitBlt(dc,r.left,r.top,w,h,mem,0,0,SRCCOPY);SelectObject(mem,old);DeleteDC(mem);}DeleteObject(bmp);
+}
+// Lucide SVGs are converted at build time into alpha masks (see generate_icons.py).
+static void icon(HDC dc,int id,int x,int y,COLORREF color){
+ if(id<0||id>ICON_EDITOR_MARK)return;BITMAPINFO bi={0};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=20;bi.bmiHeader.biHeight=-20;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
+ void *data=NULL;HBITMAP bmp=CreateDIBSection(dc,&bi,DIB_RGB_COLORS,&data,NULL,0);if(!bmp||!data){if(bmp)DeleteObject(bmp);return;}
+ unsigned int *pixels=(unsigned int*)data;for(int i=0;i<400;i++){unsigned int a=icon_masks[id][i];pixels[i]=(a<<24)|((GetRValue(color)*a/255)<<16)|((GetGValue(color)*a/255)<<8)|(GetBValue(color)*a/255);}
+ HDC mem=CreateCompatibleDC(dc);if(mem){HGDIOBJ old=SelectObject(mem,bmp);BLENDFUNCTION blend={AC_SRC_OVER,0,255,AC_SRC_ALPHA};AlphaBlend(dc,x,y,20,20,mem,0,0,20,20,blend);SelectObject(mem,old);DeleteDC(mem);}DeleteObject(bmp);
+}
 static LRESULT CALLBACK buttonProc(HWND h,UINT message,WPARAM w,LPARAM l){
  int i=(int)GetWindowLongPtrW(h,GWLP_USERDATA);
  if(message==WM_MOUSEMOVE && i>=0 && i<7 && !hovered[i]){hovered[i]=1;TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,h,0};TrackMouseEvent(&t);SetTimer(window,2,16,NULL);}
@@ -131,20 +164,23 @@ static LRESULT CALLBACK searchProc(HWND h,UINT message,WPARAM w,LPARAM l){
 static void layout(HWND h) {
  RECT r;GetClientRect(h,&r);int w=r.right, height=r.bottom;int side=256;
  MoveWindow(search,47,105,side-74,27,TRUE);MoveWindow(buttons[0],17,156,side-34,42,TRUE);MoveWindow(list,10,262,side-20,height-346,TRUE);
- int right=w-22;MoveWindow(buttons[1],right-326,19,72,32,TRUE);MoveWindow(buttons[2],right-249,19,74,32,TRUE);MoveWindow(buttons[3],right-170,19,80,32,TRUE);MoveWindow(buttons[4],right-85,19,85,32,TRUE);
+ int right=w-22;MoveWindow(buttons[1],right-410,19,98,34,TRUE);MoveWindow(buttons[2],right-306,19,95,34,TRUE);MoveWindow(buttons[3],right-206,19,100,34,TRUE);MoveWindow(buttons[4],right-101,19,101,34,TRUE);
  int content=side+((w-side-760)>0?(w-side-760)/2:34), contentWidth=w-content-38;if(contentWidth>760)contentWidth=760;if(contentWidth<220)contentWidth=220;
- MoveWindow(buttons[5],content+4,219,110,34,TRUE);MoveWindow(buttons[6],content+118,219,100,34,TRUE);MoveWindow(editor,content,283,contentWidth,height-333,TRUE);
+ MoveWindow(buttons[5],content+4,219,128,34,TRUE);MoveWindow(buttons[6],content+136,219,116,34,TRUE);MoveWindow(editor,content,283,contentWidth,height-333,TRUE);
 }
 static void drawItem(DRAWITEMSTRUCT *d) {
- if(d->CtlType==ODT_LISTBOX){if(d->itemID==(UINT)-1)return;wchar_t name[MAX_PATH];SendMessageW(list,LB_GETTEXT,d->itemID,(LPARAM)name);int selected=d->itemState&ODS_SELECTED;fill(d->hDC,d->rcItem,SIDE);RECT pill=d->rcItem;InflateRect(&pill,-2,-2);if(selected)rounded(d->hDC,pill,RGB(51,46,66),10);RECT icon=d->rcItem;icon.left+=13;icon.right=icon.left+20;drawText(d->hDC,L"▤",icon,ui,selected?ACCENT:MUTED,DT_SINGLELINE|DT_VCENTER);RECT label=d->rcItem;label.left+=38;label.right-=8;drawText(d->hDC,name,label,selected?uiBold:uiSmall,selected?TEXT:RGB(169,166,177),DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);return;}
+ if(d->CtlType==ODT_LISTBOX){if(d->itemID==(UINT)-1)return;wchar_t name[MAX_PATH];SendMessageW(list,LB_GETTEXT,d->itemID,(LPARAM)name);int selected=d->itemState&ODS_SELECTED;fill(d->hDC,d->rcItem,SIDE);RECT pill=d->rcItem;InflateRect(&pill,-2,-2);if(selected)glassSurface(d->hDC,pill,RGB(42,57,82),SIDE,10,0);icon(d->hDC,ICON_FILE_TEXT,d->rcItem.left+11,d->rcItem.top+(d->rcItem.bottom-d->rcItem.top-20)/2,selected?ACCENT:MUTED);RECT label=d->rcItem;label.left+=38;label.right-=8;drawText(d->hDC,name,label,selected?uiBold:uiSmall,selected?TEXT:RGB(169,166,177),DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);return;}
  int id=d->CtlID;int index=-1;for(int i=0;i<7;i++)if(buttons[i]==d->hwndItem)index=i;
  int active=(id==ID_EDIT&&!reading)||(id==ID_READ&&reading);int hover=index>=0?hoverAmount[index]:0;
- COLORREF background=id==ID_NEW?SIDE:((id==ID_EDIT||id==ID_READ)?RGB(36,35,43):BG);fill(d->hDC,d->rcItem,background);
- COLORREF base=id==ID_NEW?RGB(105,82,154):(active?RGB(68,62,83):background);COLORREF over=id==ID_NEW?RGB(132,105,184):RGB(63,59,73);
+ COLORREF background=id==ID_NEW?SIDE:((id==ID_EDIT||id==ID_READ)?RGB(37,46,64):BG);fill(d->hDC,d->rcItem,background);
+ COLORREF base=id==ID_NEW?RGB(55,94,154):(active?RGB(68,83,112):background);COLORREF over=id==ID_NEW?RGB(75,121,187):RGB(63,78,101);
  COLORREF back=mixColor(base,over,hover);if(d->itemState&ODS_SELECTED)back=mixColor(back,TEXT,16);
- RECT pill=d->rcItem;InflateRect(&pill,-1,-1);rounded(d->hDC,pill,back,12);
+ RECT pill=d->rcItem;InflateRect(&pill,-1,-1);if(id==ID_NEW||active||hover>0)glassSurface(d->hDC,pill,back,background,(pill.bottom-pill.top)/2,hover);
  wchar_t label[80];GetWindowTextW(d->hwndItem,label,80);COLORREF color=(d->itemState&ODS_DISABLED)?RGB(91,89,99):(id==ID_NEW||active?TEXT:RGB(181,178,189));
- drawText(d->hDC,label,d->rcItem,(id==ID_NEW||active)?uiBold:uiSmall,color,DT_SINGLELINE|DT_CENTER|DT_VCENTER);
+ int iconId=id==ID_NEW?ICON_PLUS:id==ID_OPEN?ICON_FOLDER_OPEN:id==ID_SAVE?ICON_DOWNLOAD:id==ID_RENAME?ICON_PENCIL:id==ID_DELETE?ICON_TRASH:id==ID_EDIT?ICON_PEN_LINE:ICON_BOOK_OPEN;
+ HFONT font=(id==ID_NEW||active)?uiBold:uiSmall;HGDIOBJ old=SelectObject(d->hDC,font);SIZE size;GetTextExtentPoint32W(d->hDC,label,(int)wcslen(label),&size);SelectObject(d->hDC,old);
+ int group=20+5+size.cx;int x=d->rcItem.left+(d->rcItem.right-d->rcItem.left-group)/2;if(x<d->rcItem.left+3)x=d->rcItem.left+3;
+ icon(d->hDC,iconId,x,d->rcItem.top+(d->rcItem.bottom-d->rcItem.top-20)/2,color);RECT textRect=d->rcItem;textRect.left=x+25;drawText(d->hDC,label,textRect,font,color,DT_SINGLELINE|DT_LEFT|DT_VCENTER|DT_END_ELLIPSIS);
  if(d->itemState&ODS_FOCUS){RECT line=d->rcItem;line.left+=13;line.right-=13;line.top=line.bottom-4;line.bottom-=2;rounded(d->hDC,line,ACCENT,3);}
 }
 static LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {
@@ -152,11 +188,11 @@ static LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {
  case WM_CREATE: {
   window=h; HINSTANCE instance=GetModuleHandleW(NULL); LoadLibraryW(L"Msftedit.dll");
   darkTitle(h);
-  ui=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");uiSmall=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");uiBold=CreateFontW(-13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");bodyFont=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Georgia");titleFont=CreateFontW(-30,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");brandFont=CreateFontW(-17,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");
-  bgBrush=CreateSolidBrush(BG);sideBrush=CreateSolidBrush(SIDE);inputBrush=CreateSolidBrush(RGB(36,36,44));
+  ui=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");uiSmall=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");uiBold=CreateFontW(-13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");bodyFont=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");titleFont=CreateFontW(-30,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");brandFont=CreateFontW(-17,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,0,0,CLEARTYPE_QUALITY,0,L"Segoe UI");
+  bgBrush=CreateSolidBrush(BG);sideBrush=CreateSolidBrush(SIDE);inputBrush=CreateSolidBrush(RGB(35,43,59));
   search=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,0,0,0,0,h,(HMENU)ID_SEARCH,instance,NULL);SendMessageW(search,WM_SETFONT,(WPARAM)uiSmall,TRUE);oldSearchProc=(WNDPROC)SetWindowLongPtrW(search,GWLP_WNDPROC,(LONG_PTR)searchProc);
   list=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT|LBS_SORT,0,0,0,0,h,(HMENU)ID_LIST,instance,NULL);SendMessageW(list,LB_SETITEMHEIGHT,0,37);
-  const wchar_t *labels[]={L"＋  Новая заметка",L"Открыть",L"Экспорт",L"Название",L"Удалить",L"Редактор",L"Чтение"};int ids[]={ID_NEW,ID_OPEN,ID_SAVE,ID_RENAME,ID_DELETE,ID_EDIT,ID_READ};for(int i=0;i<7;i++){buttons[i]=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,0,0,h,(HMENU)(INT_PTR)ids[i],instance,NULL);SendMessageW(buttons[i],WM_SETFONT,(WPARAM)uiSmall,TRUE);SetWindowLongPtrW(buttons[i],GWLP_USERDATA,(LONG_PTR)i);WNDPROC original=(WNDPROC)SetWindowLongPtrW(buttons[i],GWLP_WNDPROC,(LONG_PTR)buttonProc);if(i==0)oldButtonProc=original;}
+  const wchar_t *labels[]={L"Новая заметка",L"Открыть",L"Экспорт",L"Название",L"Удалить",L"Редактор",L"Чтение"};int ids[]={ID_NEW,ID_OPEN,ID_SAVE,ID_RENAME,ID_DELETE,ID_EDIT,ID_READ};for(int i=0;i<7;i++){buttons[i]=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,0,0,h,(HMENU)(INT_PTR)ids[i],instance,NULL);SendMessageW(buttons[i],WM_SETFONT,(WPARAM)uiSmall,TRUE);SetWindowLongPtrW(buttons[i],GWLP_USERDATA,(LONG_PTR)i);WNDPROC original=(WNDPROC)SetWindowLongPtrW(buttons[i],GWLP_WNDPROC,(LONG_PTR)buttonProc);if(i==0)oldButtonProc=original;}
   editor=CreateWindowExW(0,MSFTEDIT_CLASS,L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_NOHIDESEL,0,0,0,0,h,(HMENU)ID_EDITOR,instance,NULL);if(!editor){error(L"Не удалось запустить компонент редактирования Windows.");return -1;}SendMessageW(editor,WM_SETFONT,(WPARAM)bodyFont,TRUE);SendMessageW(editor,EM_SETBKGNDCOLOR,0,BG);SendMessageW(editor,EM_EXLIMITTEXT,0,MAX_NOTE);SendMessageW(editor,EM_SETEVENTMASK,0,ENM_CHANGE);
   wchar_t appdata[MAX_PATH];if(FAILED(SHGetFolderPathW(h,CSIDL_APPDATA|CSIDL_FLAG_CREATE,NULL,SHGFP_TYPE_CURRENT,appdata))){error(L"Не удалось найти папку данных пользователя.");return -1;}swprintf(directory,MAX_PATH,L"%ls\\Editor1",appdata);if(!CreateDirectoryW(directory,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS){error(L"Не удалось создать папку заметок.");return -1;}
   text=duptext(L"");refreshList();int count=(int)SendMessageW(list,LB_GETCOUNT,0,0);if(count>0){wchar_t first[MAX_PATH];SendMessageW(list,LB_GETTEXT,0,(LPARAM)first);loadNote(first);}else{wchar_t path[MAX_PATH];pathFor(L"Мой дом",path,MAX_PATH);if(writeUtf8(path,welcome))loadNote(L"Мой дом");else error(L"Не удалось создать первую заметку.");}
@@ -165,19 +201,19 @@ static LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {
  case WM_GETMINMAXINFO:{MINMAXINFO *i=(MINMAXINFO*)l;i->ptMinTrackSize.x=850;i->ptMinTrackSize.y=600;return 0;}
  case WM_ERASEBKGND:return 1;
  case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(h,&ps);RECT r;GetClientRect(h,&r);fill(dc,r,BG);RECT sidebar={0,0,256,r.bottom};fill(dc,sidebar,SIDE);RECT line={255,0,256,r.bottom};fill(dc,line,BORDER);RECT top={256,69,r.right,70};fill(dc,top,BORDER);RECT foot={256,r.bottom-42,r.right,r.bottom-41};fill(dc,foot,BORDER);
-  RECT logo={19,18,51,50};rounded(dc,logo,RGB(102,79,150),12);drawText(dc,L"e",logo,brandFont,RGB(248,242,255),DT_CENTER|DT_SINGLELINE|DT_VCENTER);
+  RECT logo={19,18,53,52};glassSurface(dc,logo,RGB(61,100,164),SIDE,12,0);icon(dc,ICON_EDITOR_MARK,26,25,RGB(244,249,255));
   RECT brand={61,18,205,39};drawText(dc,L"editor 1",brand,brandFont,TEXT,DT_LEFT|DT_SINGLELINE|DT_VCENTER);RECT under={62,42,224,61};drawText(dc,L"пространство для мыслей",under,uiSmall,MUTED,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
-  RECT searchBox={17,99,239,139};rounded(dc,searchBox,RGB(36,36,44),12);RECT searchIcon={28,100,46,138};drawText(dc,L"⌕",searchIcon,brandFont,MUTED,DT_SINGLELINE|DT_VCENTER);
+  RECT searchBox={17,99,239,139};rounded(dc,searchBox,RGB(35,43,59),32);icon(dc,ICON_SEARCH,27,109,MUTED);
   RECT lib={20,228,230,251};drawText(dc,L"ВАШИ ЗАМЕТКИ",lib,uiBold,MUTED,DT_LEFT|DT_SINGLELINE|DT_VCENTER);wchar_t count[32];swprintf(count,32,L"%d",(int)SendMessageW(list,LB_GETCOUNT,0,0));RECT countRect={210,228,233,251};drawText(dc,count,countRect,uiSmall,MUTED,DT_RIGHT|DT_SINGLELINE|DT_VCENTER);
   RECT bottomLine={20,r.bottom-75,236,r.bottom-74};fill(dc,bottomLine,BORDER);RECT bottom={20,r.bottom-61,230,r.bottom-42};drawText(dc,L"●  Личное пространство",bottom,uiBold,TEAL,DT_LEFT|DT_SINGLELINE|DT_VCENTER);RECT bottom2={32,r.bottom-40,230,r.bottom-23};drawText(dc,L"Хранится на устройстве",bottom2,uiSmall,MUTED,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
-  RECT bread={281,23,r.right-355,48};drawText(dc,L"Моё пространство   /   Заметки",bread,uiSmall,MUTED,DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
+  RECT bread={281,23,r.right-445,48};drawText(dc,L"Моё пространство   /   Заметки",bread,uiSmall,MUTED,DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
   int x=256+((r.right-256-760)>0?(r.right-256-760)/2:34);RECT label={x,100,r.right-20,121};drawText(dc,L"ВАША ЗАМЕТКА   ·   MARKDOWN",label,uiBold,ACCENT,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
   RECT title={x,131,r.right-40,177};drawText(dc,current[0]?current:L"Нет заметок",title,titleFont,TEXT,DT_LEFT|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
   RECT sub={x,181,r.right-20,200};drawText(dc,L"Место для ваших мыслей и идей",sub,uiSmall,MUTED,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
-  RECT toolbar={x,215,x+224,257};rounded(dc,toolbar,RGB(36,35,43),13);
+  RECT toolbar={x,215,x+256,257};rounded(dc,toolbar,RGB(37,46,64),40);
   RECT status={280,r.bottom-33,r.right-20,r.bottom-9};drawText(dc,dirty?L"●  Сохраняем изменения...":L"●  Все изменения сохранены",status,uiSmall,dirty?ACCENT:TEAL,DT_SINGLELINE|DT_VCENTER);RECT statusRight={r.right-220,r.bottom-33,r.right-25,r.bottom-9};drawText(dc,reading?L"Режим чтения":L"Режим редактирования",statusRight,uiSmall,MUTED,DT_RIGHT|DT_SINGLELINE|DT_VCENTER);EndPaint(h,&ps);return 0;}
  case WM_DRAWITEM:drawItem((DRAWITEMSTRUCT*)l);return TRUE;
- case WM_CTLCOLOREDIT:case WM_CTLCOLORLISTBOX:{HDC dc=(HDC)w;SetTextColor(dc,TEXT);if((HWND)l==search){SetBkColor(dc,RGB(36,36,44));return (LRESULT)inputBrush;}SetBkColor(dc,SIDE);return (LRESULT)sideBrush;}
+ case WM_CTLCOLOREDIT:case WM_CTLCOLORLISTBOX:{HDC dc=(HDC)w;SetTextColor(dc,TEXT);if((HWND)l==search){SetBkColor(dc,RGB(35,43,59));return (LRESULT)inputBrush;}SetBkColor(dc,SIDE);return (LRESULT)sideBrush;}
  case WM_COMMAND: {
   int id=LOWORD(w),code=HIWORD(w);
   if(id==ID_SEARCH&&code==EN_CHANGE){refreshList();return 0;}
