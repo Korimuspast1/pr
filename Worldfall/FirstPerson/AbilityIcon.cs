@@ -1,0 +1,29 @@
+namespace FirstPerson
+{
+	internal enum AbilityIcon
+	{
+		Bomb,
+		Bone,
+		Rock,
+		Snow,
+		Fire,
+		Plasma,
+		Acid,
+		Frost,
+		Skull,
+		Heal,
+		Leaf,
+		Shield,
+		Rally,
+		Rage,
+		Slam,
+		Howl,
+		Roar,
+		Charge,
+		Pounce,
+		Venom,
+		Blink,
+		Spore,
+		Wing
+	}
+}

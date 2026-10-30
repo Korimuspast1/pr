@@ -1,0 +1,37 @@
+namespace FirstPerson
+{
+	internal enum QuestKind : byte
+	{
+		Supply,
+		Hunt,
+		Errand,
+		Craft,
+		Matchmaker,
+		Escort,
+		Faith,
+		Pilgrimage,
+		Investigation,
+		Bounty,
+		CourtGift,
+		CourtWalk,
+		CourtValor,
+		CourtBlessing,
+		CourtVerse,
+		TrialSpar,
+		TrialParry,
+		TrialRange,
+		TrialOre,
+		TrialFire,
+		TrialVigil,
+		TrialStory,
+		Meat,
+		Undead,
+		Raid,
+		CourtStars,
+		CourtFishing,
+		CourtFire,
+		CourtKeepsake,
+		CourtRival,
+		CourtProposal
+	}
+}

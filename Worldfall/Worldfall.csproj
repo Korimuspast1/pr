@@ -1,0 +1,97 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>Worldfall</AssemblyName>
+    <RootNamespace>FirstPerson</RootNamespace>
+    <Version>0.9.8.9</Version>
+    <AssemblyVersion>0.9.8.9</AssemblyVersion>
+    <FileVersion>0.9.8.9</FileVersion>
+    <InformationalVersion>0.9.8.9</InformationalVersion>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Deterministic>true</Deterministic>
+    <DebugType>portable</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+
+    <!-- Pass -p:WorldBoxDir=<game install directory>, or set WORLD_BOX_DIR. -->
+    <WorldBoxDir Condition="'$(WorldBoxDir)' == ''">$(WORLD_BOX_DIR)</WorldBoxDir>
+    <WorldBoxDataDir Condition="'$(WorldBoxDataDir)' == '' and Exists('$(WorldBoxDir)/worldbox_Data')">$(WorldBoxDir)/worldbox_Data</WorldBoxDataDir>
+    <WorldBoxDataDir Condition="'$(WorldBoxDataDir)' == '' and Exists('$(WorldBoxDir)/WorldBox_Data')">$(WorldBoxDir)/WorldBox_Data</WorldBoxDataDir>
+    <WorldBoxManagedDir Condition="'$(WorldBoxManagedDir)' == '' and '$(WorldBoxDataDir)' != ''">$(WorldBoxDataDir)/Managed</WorldBoxManagedDir>
+    <WorldBoxReferenceDir Condition="'$(WorldBoxReferenceDir)' == ''">$(WorldBoxManagedDir)</WorldBoxReferenceDir>
+    <WorldBoxModsDir Condition="'$(WorldBoxModsDir)' == '' and '$(WorldBoxDataDir)' != ''">$(WorldBoxDataDir)/StreamingAssets/mods</WorldBoxModsDir>
+
+    <!-- Prefer the publicized game assembly when it is available. -->
+    <WorldBoxPublicizedAssembly Condition="'$(WorldBoxPublicizedAssembly)' == '' and Exists('$(WorldBoxReferenceDir)/Assembly-CSharp-Publicized.dll')">$(WorldBoxReferenceDir)/Assembly-CSharp-Publicized.dll</WorldBoxPublicizedAssembly>
+
+    <!-- Only one Facepunch platform assembly is used for compilation; the mod resolves the runtime variant itself. -->
+    <WorldBoxSteamAssembly Condition="'$(WorldBoxSteamAssembly)' == '' and Exists('$(WorldBoxReferenceDir)/Facepunch.Steamworks.Win64.dll')">$(WorldBoxReferenceDir)/Facepunch.Steamworks.Win64.dll</WorldBoxSteamAssembly>
+    <WorldBoxSteamAssembly Condition="'$(WorldBoxSteamAssembly)' == '' and Exists('$(WorldBoxReferenceDir)/Facepunch.Steamworks.Posix.dll')">$(WorldBoxReferenceDir)/Facepunch.Steamworks.Posix.dll</WorldBoxSteamAssembly>
+    <WorldBoxSteamAssembly Condition="'$(WorldBoxSteamAssembly)' == '' and Exists('$(WorldBoxReferenceDir)/Facepunch.Steamworks.dll')">$(WorldBoxReferenceDir)/Facepunch.Steamworks.dll</WorldBoxSteamAssembly>
+
+    <DeployToWorldBox Condition="'$(DeployToWorldBox)' == ''">false</DeployToWorldBox>
+  </PropertyGroup>
+
+  <!-- The game-owned resources are looked up by their exact manifest names at runtime. -->
+  <ItemGroup>
+    <EmbeddedResource Include="FirstPerson.*">
+      <LogicalName>%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <None Remove="FirstPerson.*" />
+  </ItemGroup>
+
+  <!-- Use the installed game's managed assemblies, but never copy them beside the mod DLL. -->
+  <ItemGroup Condition="'$(WorldBoxReferenceDir)' != '' and Exists('$(WorldBoxReferenceDir)')">
+    <Reference Include="$(WorldBoxReferenceDir)/*.dll"
+               Exclude="$(WorldBoxReferenceDir)/mscorlib.dll;$(WorldBoxReferenceDir)/netstandard.dll;$(WorldBoxReferenceDir)/System.dll;$(WorldBoxReferenceDir)/System.*.dll;$(WorldBoxReferenceDir)/Microsoft.*.dll;$(WorldBoxReferenceDir)/Assembly-CSharp.dll;$(WorldBoxReferenceDir)/Assembly-CSharp-Publicized.dll;$(WorldBoxReferenceDir)/Facepunch.Steamworks*.dll">
+      <HintPath>%(FullPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(WorldBoxPublicizedAssembly)' != ''">
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(WorldBoxPublicizedAssembly)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(WorldBoxPublicizedAssembly)' == '' and '$(WorldBoxReferenceDir)' != '' and Exists('$(WorldBoxReferenceDir)/Assembly-CSharp.dll')">
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(WorldBoxReferenceDir)/Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(WorldBoxSteamAssembly)' != '' and Exists('$(WorldBoxSteamAssembly)')">
+    <Reference Include="$(WorldBoxSteamAssembly)">
+      <HintPath>$(WorldBoxSteamAssembly)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- .NET Framework reference assemblies are not part of the Linux/macOS SDK install. -->
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
+  </ItemGroup>
+
+  <Target Name="ValidateWorldBoxBuildInputs" BeforeTargets="ResolveReferences" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="'$(WorldBoxReferenceDir)' == '' or !Exists('$(WorldBoxReferenceDir)')"
+           Text="WorldBox managed references were not found. Set WorldBoxDir or WorldBoxReferenceDir; see BUILDING.md." />
+    <Error Condition="'$(WorldBoxPublicizedAssembly)' != '' and !Exists('$(WorldBoxPublicizedAssembly)')"
+           Text="WorldBoxPublicizedAssembly does not exist: $(WorldBoxPublicizedAssembly)" />
+    <Error Condition="'$(WorldBoxPublicizedAssembly)' == '' and !Exists('$(WorldBoxReferenceDir)/Assembly-CSharp.dll') and !Exists('$(WorldBoxReferenceDir)/Assembly-CSharp-Publicized.dll')"
+           Text="Assembly-CSharp.dll was not found. Set WorldBoxPublicizedAssembly or point WorldBoxReferenceDir at the game's reference assemblies." />
+    <Error Condition="'$(WorldBoxSteamAssembly)' == '' or !Exists('$(WorldBoxSteamAssembly)')"
+           Text="A Facepunch.Steamworks reference is required. Set WorldBoxSteamAssembly to Facepunch.Steamworks.Win64.dll or Facepunch.Steamworks.Posix.dll; see BUILDING.md." />
+  </Target>
+
+  <Target Name="DeployWorldfall" AfterTargets="Build" Condition="'$(DeployToWorldBox)' == 'true'">
+    <Error Condition="'$(WorldBoxModsDir)' == '' or !Exists('$(WorldBoxModsDir)')"
+           Text="The WorldBox mods folder was not found. Set WorldBoxModsDir or set WorldBoxDir to the game install directory." />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(WorldBoxModsDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

@@ -1,0 +1,2 @@
+<>f__AnonymousType0`3 :: Could not find type definition <>f__AnonymousType0`3 in type system. | InvalidOperationException
+FirstPerson.VrUiTest :: Index was outside the bounds of the array. | DecompilerException

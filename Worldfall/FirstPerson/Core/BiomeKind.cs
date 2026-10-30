@@ -1,0 +1,34 @@
+namespace FirstPerson.Core
+{
+	public enum BiomeKind : byte
+	{
+		None,
+		Grass,
+		Savanna,
+		Desert,
+		Jungle,
+		Swamp,
+		Permafrost,
+		Birch,
+		Maple,
+		Rocklands,
+		Clover,
+		Flower,
+		Lemon,
+		Garlic,
+		Candy,
+		Mushroom,
+		Crystal,
+		Enchanted,
+		Corrupted,
+		Infernal,
+		Wasteland,
+		Celestial,
+		Singularity,
+		Paradox,
+		Tumor,
+		Biomass,
+		Pumpkin,
+		Cybertile
+	}
+}
