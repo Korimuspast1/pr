@@ -8217,6 +8217,15 @@ namespace FirstPerson
 				}
 				DeathTimer = 0f;
 				DeathName = Describe(_host);
+				try
+				{
+					var dAt = _host != null ? _host.current_position : new UnityEngine.Vector2(_view.X, _view.Y);
+					var bm = UserWaypoints.Add(dAt, "☠ " + DeathName);
+					bm.ColorHex = "#ff3b30";
+					UserWaypoints.Save();
+					Toast("Death marked on compass — press K to manage bookmarks");
+					_compassGatherAt = -10f;
+				} catch {}
 				PossessionHooks.Active = false;
 				Log.Info("died: " + DeathName + DeathCause.Of(_host));
 			}
