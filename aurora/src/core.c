@@ -18,6 +18,8 @@ REQUEST static volatile struct limine_kernel_address_request addr_req = {.id=LIM
 void outb(uint16_t p, uint8_t v) { __asm__ volatile("outb %0,%1" : : "a"(v), "Nd"(p)); }
 uint8_t inb(uint16_t p) { uint8_t v; __asm__ volatile("inb %1,%0" : "=a"(v) : "Nd"(p)); return v; }
 void io_wait(void) { outb(0x80,0); }
+void outl(uint16_t p,uint32_t v){__asm__ volatile("outl %0,%1"::"a"(v),"Nd"(p));}
+uint32_t inl(uint16_t p){uint32_t v;__asm__ volatile("inl %1,%0":"=a"(v):"Nd"(p));return v;}
 void *memset(void *d, int c, size_t n) {
     uint8_t *p=d, v=(uint8_t)c;
     /* Word stores cut the instruction count for large framebuffer/backbuffer clears. */
@@ -181,6 +183,7 @@ void kernel_main(void) {
     bool scene_pending=false;
     const uint64_t scene_interval=(timer_hz()+29)/30; /* coalesce drag redraws to <=30 Hz */
     for(;;) {
+        vmmouse_poll();
         mouse_event me;while(mouse_pop(&me))wm_mouse(&me);
         key_event ke;while(key_pop(&ke))wm_key(&ke);
         uint64_t now=ticks();

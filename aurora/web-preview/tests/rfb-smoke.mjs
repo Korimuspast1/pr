@@ -52,6 +52,10 @@ let log = fs.readFileSync(SERIAL, 'utf8');
 if (!log.includes('[shell:1] help')) throw new Error('VNC keyboard FAIL');
 console.log('VNC keyboard PASS');
 
+// QEMU converts VNC absolute pointer events to relative PS/2 deltas.
+// After a guest reboot, home the pointer against the top-left clamp first.
+ptr(ws, 0, 0, 0); await sleep(120);
+ptr(ws, 0, 0, 0); await sleep(120);
 ptr(ws, 300, 90, 0); await sleep(150);
 ptr(ws, 300, 90, 1); await sleep(100);
 for (let i = 1; i <= 8; i++) { ptr(ws, 300 + i * 12, 90 + i * 8, 1); await sleep(50); }

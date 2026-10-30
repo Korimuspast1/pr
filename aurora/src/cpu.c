@@ -57,7 +57,15 @@ void interrupt_dispatch(frame_t *f) {
     if(f->vector==32)tick_count++;
     else if(f->vector==33||f->vector==44) {
         uint8_t status=inb(0x64);
-        if(status&1){uint8_t data=inb(0x60);if(status&0x20)ps2_mouse_byte(data);else ps2_keyboard_byte(data);}
+        if(status&1){
+            uint8_t data=inb(0x60);
+            if(status&0x20){
+                if(vmmouse_active()){
+                    /* VMMouse raises a fake PS/2 IRQ; drain only mouse bytes. */
+                    while((inb(0x64)&0x21)==0x21)(void)inb(0x60);
+                } else ps2_mouse_byte(data);
+            } else ps2_keyboard_byte(data);
+        }
     }
     if(f->vector>=32&&f->vector<48){if(f->vector>=40)outb(0xa0,0x20);outb(0x20,0x20);}
 }

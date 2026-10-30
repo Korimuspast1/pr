@@ -26,7 +26,7 @@ CFLAGS := --target=$(TARGET) -std=c11 -O2 -g0 -Wall -Wextra -Werror -ffreestandi
 ASFLAGS := --target=$(TARGET) -ffreestanding -fno-pic -fno-pie -g0 -c
 LDFLAGS := --target=$(TARGET) -fuse-ld=lld -nostdlib -static -Wl,-z,max-page-size=0x1000 \
   -Wl,--build-id=none -Wl,-T,kernel.ld -Wl,-z,noexecstack
-SOURCES := src/core.c src/cpu.c src/input.c src/graphics.c src/wm.c
+SOURCES := src/core.c src/cpu.c src/input.c src/vmmouse.c src/graphics.c src/wm.c
 OBJECTS := $(BUILD)/boot.o $(patsubst src/%.c,$(BUILD)/%.o,$(SOURCES))
 QEMU_ARGS := -machine pc -accel tcg -cpu qemu64 -smp 1 -m 512M -cdrom $(ISO) \
   -boot order=d -vga std -serial file:$(BUILD)/serial.log -no-shutdown $(QEMU_EXTRA)

@@ -8,6 +8,8 @@
 #define PANIC(...) panic_at(__FILE__, __LINE__, __VA_ARGS__)
 void outb(uint16_t port, uint8_t value);
 uint8_t inb(uint16_t port);
+void outl(uint16_t port, uint32_t value);
+uint32_t inl(uint16_t port);
 void io_wait(void);
 void serial_init(void);
 void serial_write(const char *s);
@@ -37,6 +39,9 @@ void timer_init(unsigned hz);
 uint64_t ticks(void);
 unsigned timer_hz(void);
 void input_init(void);
+bool vmmouse_active(void);
+void vmmouse_init(void);
+void vmmouse_poll(void);
 
 typedef struct { int x, y; bool left, right; bool changed; } mouse_event;
 typedef struct { uint16_t code; char ascii; bool pressed; } key_event;

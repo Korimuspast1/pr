@@ -23,6 +23,7 @@ void ps2_keyboard_byte(uint8_t sc) {
     if(code<128){char c=(shift?shifted:map)[code];if(c>='a'&&c<='z'&&caps)c-=32;else if(c>='A'&&c<='Z'&&caps)c+=32;if(ctrl&&c>='a'&&c<='z')c-=96;if(ctrl&&c>='A'&&c<='Z')c-=64;if(c)push_key((uint8_t)c,c,true);}
 }
 void ps2_mouse_byte(uint8_t b) {
+    if(vmmouse_active())return; /* vmport owns the pointer; discard fake PS/2 deltas. */
     /* Bit 3 is the PS/2 first-byte marker; discard impossible button combinations. */
     if(!packet_index&&(!(b&8)||(b&0xc0)))return;
     packet[packet_index++]=b;if(packet_index<3)return;packet_index=0;
@@ -51,4 +52,5 @@ void input_init(void) {
     if(!wait_write())PANIC("PS/2 timeout");outb(0x64,0x60);if(!wait_write())PANIC("PS/2 timeout");outb(0x60,cfg);
     uint8_t r;mouse_ok=mouse_command(0xf6,&r)&&mouse_command(0xf4,&r);
     flush();logf("[input] PS/2 keyboard=%s mouse=%s; relative packets, set-1 keyboard\n",keyboard_ok?"ACK":"unconfirmed",mouse_ok?"ACK":"unconfirmed");
+    vmmouse_init();
 }

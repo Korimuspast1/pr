@@ -73,6 +73,11 @@ def mouse_rel(qmp, dx, dy):
         dx -= sx; dy -= sy
         time.sleep(0.02)
 
+def mouse_abs(qmp, x, y):
+    qmp.call("input-send-event", events=[
+        {"type": "abs", "data": {"axis": "x", "value": x}},
+        {"type": "abs", "data": {"axis": "y", "value": y}}])
+
 def mouse_button(qmp, down):
     qmp.call("input-send-event", events=[{"type": "btn", "data": {"button": "left", "down": down}}])
 
@@ -127,11 +132,20 @@ def run_case(qemu, iso, mode, out, ovmf_code, ovmf_vars, extra_args):
         type_line(qmp, "monitor\n")
         wait_for(serial, "create id=4 title=System monitor")
         screenshot(qmp, case / "shell.ppm")
-        # Drag the terminal title bar with relative PS/2 events.
-        # Initial pointer is centre (512,384); title bar grab point is (300,90).
-        mouse_rel(qmp, -212, -294); time.sleep(0.15)
-        mouse_button(qmp, True); time.sleep(0.08)
-        for _ in range(8): mouse_rel(qmp, 12, 8); time.sleep(0.04)
+        # Drag the terminal title bar. Prefer the absolute VMMouse path when
+        # the guest enabled it; otherwise fall back to relative PS/2 packets.
+        mice = qmp.call("query-mice")
+        absolute = any(m.get("absolute") for m in mice)
+        if absolute:
+            mouse_abs(qmp, 300 * 32767 // 1023, 90 * 32767 // 767); time.sleep(0.15)
+            mouse_button(qmp, True); time.sleep(0.08)
+            for i in range(1, 9):
+                mouse_abs(qmp, (300 + i * 12) * 32767 // 1023,
+                          (90 + i * 8) * 32767 // 767); time.sleep(0.04)
+        else:
+            mouse_rel(qmp, -212, -294); time.sleep(0.15)
+            mouse_button(qmp, True); time.sleep(0.08)
+            for _ in range(8): mouse_rel(qmp, 12, 8); time.sleep(0.04)
         mouse_button(qmp, False); time.sleep(0.15)
         wait_for(serial, "[wm] drag id=1", timeout=5)
         screenshot(qmp, case / "drag.ppm")
@@ -145,7 +159,7 @@ def run_case(qemu, iso, mode, out, ovmf_code, ovmf_vars, extra_args):
         reboot_case(mode, qemu, iso, out, ovmf_code, ovmf_vars, extra_args)
         halt_case(mode, qemu, iso, out, ovmf_code, ovmf_vars, extra_args)
         result = {"mode": mode, "boot_seconds": round(boot_seconds, 3), "status": "PASS",
-                  "checks": ["long-mode", "firmware", "framebuffer", "ps2-ack", "keyboard", "help", "echo", "uptime", "mem", "windows", "spawn", "close", "monitor", "mouse-drag", "page-fault-panic", "reboot", "halt"]}
+                  "checks": ["long-mode", "firmware", "framebuffer", "ps2-ack", "keyboard", "help", "echo", "uptime", "mem", "windows", "spawn", "close", "monitor", "mouse-drag-absolute" if absolute else "mouse-drag-relative", "page-fault-panic", "reboot", "halt"]}
         (case / "result.json").write_text(json.dumps(result, indent=2) + "\n")
         print(f"PASS {mode}: READY in {boot_seconds:.2f}s; keyboard, shell, drag, panic, reboot, halt")
     finally:
