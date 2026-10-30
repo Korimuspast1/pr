@@ -20,7 +20,7 @@ namespace FirstPerson
 
 		public static string PickedEntry;
 
-		public static readonly string[] Tabs = new string[3] { "Tasks", "Pings", "Standing" };
+		public static readonly string[] Tabs = new string[4] { "Tasks", "Tavern", "Pings", "Standing" };
 
 		public static Vector2 Centre;
 

@@ -5897,6 +5897,7 @@ namespace FirstPerson
 				Log.Error("economy: " + ex4.Message);
 			}
 			TownsUpdate(host, dt);
+			try { TavernBoard.Tick(host, dt, Toast); } catch {}
 			UpdateService(host, dt);
 			UpdateFamilyMap(host, dt);
 			PeopleMet.KeepFamily(host, dt);

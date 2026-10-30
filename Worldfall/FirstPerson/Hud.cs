@@ -10091,11 +10091,14 @@ namespace FirstPerson
 				default:
 					obj3 = "";
 					break;
-				case 1:
+				case 2:
 					obj3 = $" ({_mod.Pings.List.Count})";
 					break;
 				case 0:
 					obj3 = $" ({Quests.Log.Count}/{5})";
+					break;
+				case 1:
+					obj3 = $" ({TavernBoard.Dailies.Count})";
 					break;
 				}
 				string label = obj2 + (string)obj3;
@@ -10111,7 +10114,11 @@ namespace FirstPerson
 			{
 				DrawJournalTasks(area, me);
 			}
-			else if (Journal.Tab == 2)
+			else if (Journal.Tab == 1)
+			{
+				DrawTavernBoard(area, me);
+			}
+			else if (Journal.Tab == 3)
 			{
 				DrawJournalStanding(area, me);
 			}
@@ -10229,6 +10236,33 @@ namespace FirstPerson
 				}
 				Journal.ConfirmGiver = quest.Giver;
 				Journal.ConfirmUntil = Time.unscaledTime + 4f;
+			}
+		}
+
+		private void DrawTavernBoard(Rect area, Vector2 me)
+		{
+			float p = GameArt.P;
+			float y = area.y;
+			GameArt.Label(new Rect(area.x, y, area.width, 8f * p), "Tavern Board — daily tasks (refresh 10m):", 4.2f, TextAnchor.MiddleLeft, GameArt.Grey);
+			y += 9f * p;
+			var dailies = TavernBoard.Dailies;
+			if (dailies.Count == 0)
+			{
+				GameArt.Label(new Rect(area.x, y, area.width, 8f * p), "No tasks — wait for refresh or visit a town.", 3.8f, TextAnchor.MiddleLeft, GameArt.Grey);
+				return;
+			}
+			for (int i=0;i<dailies.Count && i<5;i++)
+			{
+				var d = dailies[i];
+				Rect r = new Rect(area.x, y + i*22f*p, area.width - 64f*p, 20f*p);
+				GameArt.Sliced(r, GameArt.Inner, new Color(0.95f,0.95f,0.92f));
+				GameArt.Label(new Rect(r.x+4f*p, r.y+1f*p, r.width-8f*p, 9f*p), d.Title, 4.0f, TextAnchor.MiddleLeft, Color.black);
+				GameArt.Label(new Rect(r.x+4f*p, r.y+10f*p, r.width-8f*p, 7f*p), $"{d.RewardGold}g +{d.RewardRep} rep", 3.4f, TextAnchor.MiddleLeft, GameArt.Grey);
+				Rect btn = new Rect(r.xMax+4f*p, r.y+2f*p, 60f*p, 16f*p);
+				if (GameButton(btn, "Take", false, true, null, 3.6f))
+				{
+					TavernBoard.Accept(d.Id, _mod.Host, _mod.Toast);
+				}
 			}
 		}
 
