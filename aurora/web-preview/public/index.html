@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aurora OS — живой запуск в браузере</title>
+  <meta name="description" content="Настоящая Aurora OS запускается в QEMU и транслируется в браузер. Без скачивания ISO." />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f172a'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle' fill='%2363cdda' font-family='monospace'%3EA%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">A</span>
+      <div>
+        <h1>Aurora OS</h1>
+        <p>Живой запуск настоящего ядра · без скачивания</p>
+      </div>
+    </div>
+    <div class="badges">
+      <span id="badge-qemu" class="badge">QEMU: …</span>
+      <span id="badge-rfb" class="badge">Экран: подключение…</span>
+      <span id="badge-ready" class="badge">ОС: загрузка…</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage" aria-label="Экран Aurora OS">
+      <div class="stage-head">
+        <div>
+          <strong>Реальный рабочий стол Aurora</strong>
+          <span id="stage-sub">BIOS · 1024×768 · 512 МБ RAM</span>
+        </div>
+        <div class="stage-actions">
+          <button id="btn-connect" class="primary" type="button">Подключиться</button>
+          <button id="btn-fullscreen" type="button">Полный экран</button>
+        </div>
+      </div>
+
+      <div id="screen-wrap" class="screen-wrap">
+        <div id="screen" class="screen" tabindex="0" aria-label="Экран виртуальной машины Aurora OS"></div>
+        <div id="overlay" class="overlay">
+          <div class="spinner" aria-hidden="true"></div>
+          <strong id="overlay-title">Запускаем настоящую Aurora…</strong>
+          <span id="overlay-text">QEMU загружает ISO, браузер подключается к экрану ВМ.</span>
+          <button id="btn-overlay-connect" class="primary" type="button" hidden>Подключиться к экрану</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button id="btn-cad" type="button">Ctrl+Alt+Del</button>
+        <button id="btn-reboot" type="button">Перезагрузить ВМ</button>
+        <button id="btn-serial" type="button" aria-expanded="false">Лог COM1</button>
+        <button id="btn-help" type="button" aria-expanded="false">Как пользоваться</button>
+        <span class="hint">Кликните по экрану, чтобы передать клавиатуру и мышь в ОС.</span>
+      </div>
+
+      <section id="help" class="panel" hidden>
+        <h2>Это не макет интерфейса</h2>
+        <p>
+          Экран ниже — настоящий вывод ядра Aurora, запущенного в QEMU на сервере.
+          Браузер получает кадр по VNC/WebSocket и отправляет обратно события клавиатуры и мыши.
+          Команды выполняются внутри самой ОС, а не в JavaScript-имитации.
+        </p>
+        <ul>
+          <li>Кликните по экрану и введите <code>help</code> в Terminal.</li>
+          <li>Попробуйте <code>mem</code>, <code>uptime</code>, <code>windows</code>, <code>new</code>, <code>monitor</code>.</li>
+          <li>Перетащите окно за заголовок — это делает оконный менеджер ядра.</li>
+          <li><code>fault-test</code> вызывает настоящий page fault и экран паники.</li>
+          <li><code>reboot</code> перезагружает ОС; кнопка «Перезагрузить ВМ» делает аппаратный сброс через QEMU.</li>
+          <li><code>halt</code> останавливает CPU. После этого нажмите «Перезагрузить ВМ».</li>
+        </ul>
+      </section>
+
+      <section id="serial-panel" class="panel" hidden>
+        <div class="panel-head">
+          <h2>COM1 · 115200 8N1</h2>
+          <button id="btn-serial-refresh" type="button">Обновить</button>
+        </div>
+        <pre id="serial-log" aria-live="polite"></pre>
+      </section>
+    </section>
+
+    <aside class="facts">
+      <div class="fact">
+        <h3>Что запущено</h3>
+        <p>Aurora 1.0.0, x86-64, C + ассемблер, Limine BIOS. Текущий сеанс — BIOS-загрузка.</p>
+      </div>
+      <div class="fact">
+        <h3>Что настоящее</h3>
+        <p>Ядро, драйверы PS/2, PIT, PIC, рамочный буфер, оконный менеджер и shell выполняются в ВМ.</p>
+      </div>
+      <div class="fact">
+        <h3>Ограничения</h3>
+        <p>Учебная live-ОС: без сети, USB-стека и установки на диск. Один общий сеанс; ваши действия видят все зрители.</p>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

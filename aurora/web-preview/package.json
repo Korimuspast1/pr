@@ -1,0 +1,13 @@
+{
+  "name": "aurora-web-preview",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser preview of Aurora OS running in QEMU, streamed over VNC/WebSocket.",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
+}
