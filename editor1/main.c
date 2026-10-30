@@ -28,7 +28,9 @@
 
 static HWND window, list, search, editor, buttons[7], promptInput;
 static HFONT ui, uiSmall, uiBold, bodyFont, titleFont, brandFont;
-static WNDPROC oldButtonProc, oldSearchProc;
+static WNDPROC oldButtonProc, oldSearchProc, oldPromptButtonProc;
+static HWND promptButtons[2];
+static int promptHover[2];
 static int hovered[7], hoverAmount[7];
 static HBRUSH bgBrush, sideBrush, inputBrush;
 static wchar_t directory[MAX_PATH], current[MAX_PATH], *text;
@@ -99,8 +101,80 @@ static int loadNote(const wchar_t *name) { if(!saveNote(1))return 0; wchar_t pat
 static void createNoteWith(const wchar_t *content) { if(!saveNote(1))return; wchar_t name[128],path[MAX_PATH];for(int i=1;i<10000;i++){swprintf(name,128,L"Новая заметка %d",i);pathFor(name,path,MAX_PATH);if(GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)break;} if(!writeUtf8(path,content)){error(L"Не удалось создать заметку.");return;}SetWindowTextW(search,L"");loadNote(name);reading=0;showContent();SetFocus(editor); }
 static void importNote(void) { wchar_t file[MAX_PATH]=L"";OPENFILENAMEW of={0};of.lStructSize=sizeof(of);of.hwndOwner=window;of.lpstrFilter=L"Текст и Markdown\0*.md;*.txt;*.markdown\0Все файлы\0*.*\0";of.lpstrFile=file;of.nMaxFile=MAX_PATH;of.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR;if(GetOpenFileNameW(&of)){wchar_t *value=readUtf8(file);if(!value){error(L"Не удалось прочитать файл. Используйте UTF-8 файл размером до 4 МБ.");return;}createNoteWith(value);free(value);} }
 static void exportNote(void) { if(!current[0])return;if(!saveNote(1))return;wchar_t file[MAX_PATH];swprintf(file,MAX_PATH,L"%ls.md",current);OPENFILENAMEW of={0};of.lStructSize=sizeof(of);of.hwndOwner=window;of.lpstrFilter=L"Markdown\0*.md\0Текст\0*.txt\0";of.lpstrDefExt=L"md";of.lpstrFile=file;of.nMaxFile=MAX_PATH;of.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR;if(GetSaveFileNameW(&of)&&!writeUtf8(file,text?text:L""))error(L"Не удалось экспортировать файл."); }
-static LRESULT CALLBACK PromptProc(HWND h,UINT m,WPARAM w,LPARAM l) { switch(m) {case WM_CREATE: CreateWindowW(L"STATIC",L"Название заметки",WS_CHILD|WS_VISIBLE,20,18,320,22,h,0,0,0);promptInput=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",promptValue,WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,20,45,335,28,h,(HMENU)ID_PROMPT,0,0);SendMessageW(promptInput,WM_SETFONT,(WPARAM)ui,TRUE);SendMessageW(promptInput,EM_LIMITTEXT,120,0);CreateWindowW(L"BUTTON",L"Сохранить",WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON,175,88,85,30,h,(HMENU)ID_OK,0,0);CreateWindowW(L"BUTTON",L"Отмена",WS_CHILD|WS_VISIBLE,270,88,85,30,h,(HMENU)ID_CANCEL,0,0);SetFocus(promptInput);SendMessageW(promptInput,EM_SETSEL,0,-1);return 0;case WM_COMMAND:if(LOWORD(w)==ID_OK){GetWindowTextW(promptInput,promptValue,180);if(!validName(promptValue)){MessageBoxW(h,L"Введите корректное название без символов \\ / : * ? \" < > |.",L"Editor 1",MB_ICONWARNING);return 0;}promptAccepted=1;DestroyWindow(h);return 0;}if(LOWORD(w)==ID_CANCEL){DestroyWindow(h);return 0;}break;case WM_CLOSE:DestroyWindow(h);return 0;case WM_DESTROY:promptDone=1;return 0;}return DefWindowProcW(h,m,w,l); }
-static void renameNote(void) { if(!current[0]||!saveNote(1))return;wcscpy(promptValue,current);promptDone=promptAccepted=0;WNDCLASSW wc={0};wc.lpfnWndProc=PromptProc;wc.hInstance=GetModuleHandleW(NULL);wc.lpszClassName=L"Editor1Prompt";wc.hCursor=LoadCursor(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_BTNFACE+1);RegisterClassW(&wc);RECT r;GetWindowRect(window,&r);HWND dialog=CreateWindowExW(WS_EX_DLGMODALFRAME,L"Editor1Prompt",L"Переименовать",WS_CAPTION|WS_SYSMENU|WS_POPUP|WS_VISIBLE,r.left+120,r.top+120,395,165,window,NULL,wc.hInstance,NULL);EnableWindow(window,FALSE);MSG msg;while(!promptDone&&GetMessageW(&msg,NULL,0,0)>0){if(!IsDialogMessageW(dialog,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}EnableWindow(window,TRUE);SetForegroundWindow(window);if(!promptAccepted||!wcscmp(promptValue,current))return;wchar_t old[MAX_PATH],next[MAX_PATH];pathFor(current,old,MAX_PATH);pathFor(promptValue,next,MAX_PATH);if(GetFileAttributesW(next)!=INVALID_FILE_ATTRIBUTES){MessageBoxW(window,L"Заметка с таким названием уже существует.",L"Editor 1",MB_ICONWARNING);return;}if(!MoveFileW(old,next)){error(L"Не удалось переименовать заметку.");return;}wcscpy(current,promptValue);refreshList(); }
+static void drawText(HDC dc,const wchar_t *str,RECT r,HFONT font,COLORREF color,UINT flags);
+static void fill(HDC dc,RECT r,COLORREF color);
+static void rounded(HDC dc,RECT r,COLORREF color,int radius);
+static void glassSurface(HDC dc,RECT r,COLORREF base,COLORREF behind,int radius,int hover);
+static void darkTitle(HWND h);
+static void roundControl(HWND h,int width,int height,int diameter){
+ HRGN region=CreateRoundRectRgn(0,0,width+1,height+1,diameter,diameter);
+ if(region&&!SetWindowRgn(h,region,TRUE))DeleteObject(region);
+}
+static LRESULT CALLBACK promptButtonProc(HWND h,UINT message,WPARAM w,LPARAM l){
+ int i=(h==promptButtons[0])?0:1;
+ if(message==WM_MOUSEMOVE&&!promptHover[i]){promptHover[i]=1;TRACKMOUSEEVENT event={sizeof(event),TME_LEAVE,h,0};TrackMouseEvent(&event);InvalidateRect(h,NULL,FALSE);}
+ if(message==WM_MOUSELEAVE){promptHover[i]=0;InvalidateRect(h,NULL,FALSE);}
+ if(message==WM_SETFOCUS||message==WM_KILLFOCUS)InvalidateRect(h,NULL,FALSE);
+ return CallWindowProcW(oldPromptButtonProc,h,message,w,l);
+}
+static LRESULT CALLBACK PromptProc(HWND h,UINT m,WPARAM w,LPARAM l) {
+ switch(m) {
+ case WM_CREATE: {
+  HINSTANCE instance=GetModuleHandleW(NULL);darkTitle(h);
+  promptInput=CreateWindowExW(0,L"EDIT",promptValue,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,34,85,360,24,h,(HMENU)ID_PROMPT,instance,NULL);
+  SendMessageW(promptInput,WM_SETFONT,(WPARAM)ui,TRUE);SendMessageW(promptInput,EM_LIMITTEXT,120,0);
+  const wchar_t *labels[]={L"Отмена",L"Сохранить"};const int ids[]={ID_CANCEL,ID_OK};const int x[]={192,302};
+  for(int i=0;i<2;i++){
+   promptHover[i]=0;
+   promptButtons[i]=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,x[i],137,100,38,h,(HMENU)(INT_PTR)ids[i],instance,NULL);
+   SendMessageW(promptButtons[i],WM_SETFONT,(WPARAM)uiBold,TRUE);
+   WNDPROC previous=(WNDPROC)SetWindowLongPtrW(promptButtons[i],GWLP_WNDPROC,(LONG_PTR)promptButtonProc);if(i==0)oldPromptButtonProc=previous;
+   roundControl(promptButtons[i],100,38,36);
+  }
+  SetFocus(promptInput);SendMessageW(promptInput,EM_SETSEL,0,-1);return 0;
+ }
+ case WM_ERASEBKGND:return 1;
+ case WM_PAINT: {
+  PAINTSTRUCT ps;HDC dc=BeginPaint(h,&ps);RECT client;GetClientRect(h,&client);fill(dc,client,BG);
+  RECT heading={24,17,client.right-24,43};drawText(dc,L"Переименовать заметку",heading,brandFont,TEXT,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
+  RECT subtitle={24,46,client.right-24,68};drawText(dc,L"Выберите новое название для заметки",subtitle,uiSmall,MUTED,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
+  RECT inputBox={24,76,client.right-24,117};rounded(dc,inputBox,RGB(35,43,59),18);
+  EndPaint(h,&ps);return 0;
+ }
+ case WM_CTLCOLOREDIT: {HDC dc=(HDC)w;SetTextColor(dc,TEXT);SetBkColor(dc,RGB(35,43,59));return (LRESULT)inputBrush;}
+ case WM_DRAWITEM: {
+  DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)l;int primary=(d->CtlID==ID_OK),i=primary?1:0;fill(d->hDC,d->rcItem,BG);
+  COLORREF base=primary?RGB(55,94,154):RGB(42,51,67);if(d->itemState&ODS_SELECTED)base=RGB(79,111,157);
+  RECT pill=d->rcItem;InflateRect(&pill,-1,-1);glassSurface(d->hDC,pill,base,BG,18,promptHover[i]?70:0);
+  wchar_t label[32];GetWindowTextW(d->hwndItem,label,32);drawText(d->hDC,label,d->rcItem,uiBold,TEXT,DT_SINGLELINE|DT_CENTER|DT_VCENTER);
+  if(d->itemState&ODS_FOCUS){RECT focus=d->rcItem;focus.left+=25;focus.right-=25;focus.top=focus.bottom-5;focus.bottom-=3;rounded(d->hDC,focus,ACCENT,2);}return TRUE;
+ }
+ case WM_COMMAND:
+  if(LOWORD(w)==ID_OK){GetWindowTextW(promptInput,promptValue,180);if(!validName(promptValue)){MessageBoxW(h,L"Введите корректное название без символов \\ / : * ? \" < > |.",L"Editor 1",MB_ICONWARNING);return 0;}promptAccepted=1;DestroyWindow(h);return 0;}
+  if(LOWORD(w)==ID_CANCEL){DestroyWindow(h);return 0;}break;
+ case WM_CLOSE:DestroyWindow(h);return 0;
+ case WM_DESTROY:promptDone=1;return 0;
+ }
+ return DefWindowProcW(h,m,w,l);
+}
+static void renameNote(void) {
+ if(!current[0]||!saveNote(1))return;wcscpy(promptValue,current);promptDone=promptAccepted=0;
+ WNDCLASSW wc={0};wc.lpfnWndProc=PromptProc;wc.hInstance=GetModuleHandleW(NULL);wc.lpszClassName=L"Editor1Prompt";wc.hCursor=LoadCursor(NULL,IDC_ARROW);wc.hbrBackground=bgBrush;RegisterClassW(&wc);
+ RECT r;GetWindowRect(window,&r);int width=440,height=230;int x=r.left+((r.right-r.left)-width)/2,y=r.top+((r.bottom-r.top)-height)/2;
+ HWND dialog=CreateWindowExW(WS_EX_DLGMODALFRAME,L"Editor1Prompt",L"Переименовать",WS_CAPTION|WS_SYSMENU|WS_POPUP|WS_CLIPCHILDREN,x,y,width,height,window,NULL,wc.hInstance,NULL);
+ if(!dialog){error(L"Не удалось открыть окно переименования.");return;}
+ EnableWindow(window,FALSE);ShowWindow(dialog,SW_SHOW);SetForegroundWindow(dialog);SetFocus(promptInput);
+ MSG msg;while(!promptDone&&GetMessageW(&msg,NULL,0,0)>0){
+  if(msg.message==WM_KEYDOWN&&msg.wParam==VK_ESCAPE){SendMessageW(dialog,WM_COMMAND,ID_CANCEL,0);continue;}
+  if(msg.message==WM_KEYDOWN&&msg.wParam==VK_RETURN){SendMessageW(dialog,WM_COMMAND,GetFocus()==promptButtons[0]?ID_CANCEL:ID_OK,0);continue;}
+  if(!IsDialogMessageW(dialog,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}
+ }
+ EnableWindow(window,TRUE);SetForegroundWindow(window);
+ if(!promptAccepted||!wcscmp(promptValue,current))return;
+ wchar_t old[MAX_PATH],next[MAX_PATH];pathFor(current,old,MAX_PATH);pathFor(promptValue,next,MAX_PATH);
+ if(GetFileAttributesW(next)!=INVALID_FILE_ATTRIBUTES){MessageBoxW(window,L"Заметка с таким названием уже существует.",L"Editor 1",MB_ICONWARNING);return;}
+ if(!MoveFileW(old,next)){error(L"Не удалось переименовать заметку.");return;}wcscpy(current,promptValue);refreshList();
+}
 static void deleteNote(void) { if(!current[0])return;if(MessageBoxW(window,L"Удалить эту заметку? Это действие нельзя отменить.",L"Editor 1",MB_YESNO|MB_ICONWARNING)!=IDYES)return;wchar_t path[MAX_PATH];pathFor(current,path,MAX_PATH);if(!DeleteFileW(path)){error(L"Не удалось удалить заметку.");return;}current[0]=0;dirty=0;free(text);text=duptext(L"");SetWindowTextW(search,L"");refreshList();if(SendMessageW(list,LB_GETCOUNT,0,0)>0){wchar_t name[MAX_PATH];SendMessageW(list,LB_GETTEXT,0,(LPARAM)name);loadNote(name);}else showContent(); }
 static void drawText(HDC dc,const wchar_t *str,RECT r,HFONT font,COLORREF color,UINT flags){SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);HGDIOBJ old=SelectObject(dc,font);DrawTextW(dc,str,-1,&r,flags);SelectObject(dc,old);}
 static void fill(HDC dc,RECT r,COLORREF color){HBRUSH b=CreateSolidBrush(color);FillRect(dc,&r,b);DeleteObject(b);}
@@ -134,7 +208,7 @@ static void glassSurface(HDC dc,RECT r,COLORREF base,COLORREF behind,int radius,
   float d=glassSdf(x+0.5f-w*.5f,y+0.5f-h*.5f,w*.5f-.75f,h*.5f-.75f,(float)radius);
   float coverage=fminf(1.0f,fmaxf(0.0f,0.55f-d));float fy=(float)y/(float)h;
   float rim=fmaxf(0.0f,1.8f+ d)/1.8f;rim=fminf(1.0f,rim);
-  float sheen=(1.0f-fy)*9.0f+rim*(fy<.5f?26.0f:9.0f)+(float)hover*.075f;
+  float sheen=hover<0?0.0f:(1.0f-fy)*9.0f+rim*(fy<.5f?26.0f:9.0f)+(float)hover*.075f;
   float br=GetRValue(base)+sheen,bg=GetGValue(base)+sheen*1.05f,bb=GetBValue(base)+sheen*1.2f;
   unsigned char R=channel(GetRValue(behind)*(1-coverage)+br*coverage),G=channel(GetGValue(behind)*(1-coverage)+bg*coverage),B=channel(GetBValue(behind)*(1-coverage)+bb*coverage);
   pixels[y*w+x]=((unsigned int)R<<16)|((unsigned int)G<<8)|B;
@@ -166,7 +240,7 @@ static void layout(HWND h) {
  MoveWindow(search,47,105,side-74,27,TRUE);MoveWindow(buttons[0],17,156,side-34,42,TRUE);MoveWindow(list,10,262,side-20,height-346,TRUE);
  int right=w-22;MoveWindow(buttons[1],right-410,19,98,34,TRUE);MoveWindow(buttons[2],right-306,19,95,34,TRUE);MoveWindow(buttons[3],right-206,19,100,34,TRUE);MoveWindow(buttons[4],right-101,19,101,34,TRUE);
  int content=side+((w-side-760)>0?(w-side-760)/2:34), contentWidth=w-content-38;if(contentWidth>760)contentWidth=760;if(contentWidth<220)contentWidth=220;
- MoveWindow(buttons[5],content+4,219,128,34,TRUE);MoveWindow(buttons[6],content+136,219,116,34,TRUE);MoveWindow(editor,content,283,contentWidth,height-333,TRUE);
+ MoveWindow(buttons[5],content+4,219,128,34,TRUE);MoveWindow(buttons[6],content+136,219,116,34,TRUE);roundControl(buttons[5],128,34,34);roundControl(buttons[6],116,34,34);MoveWindow(editor,content,283,contentWidth,height-333,TRUE);
 }
 static void drawItem(DRAWITEMSTRUCT *d) {
  if(d->CtlType==ODT_LISTBOX){if(d->itemID==(UINT)-1)return;wchar_t name[MAX_PATH];SendMessageW(list,LB_GETTEXT,d->itemID,(LPARAM)name);int selected=d->itemState&ODS_SELECTED;fill(d->hDC,d->rcItem,SIDE);RECT pill=d->rcItem;InflateRect(&pill,-2,-2);if(selected)glassSurface(d->hDC,pill,RGB(42,57,82),SIDE,10,0);icon(d->hDC,ICON_FILE_TEXT,d->rcItem.left+11,d->rcItem.top+(d->rcItem.bottom-d->rcItem.top-20)/2,selected?ACCENT:MUTED);RECT label=d->rcItem;label.left+=38;label.right-=8;drawText(d->hDC,name,label,selected?uiBold:uiSmall,selected?TEXT:RGB(169,166,177),DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);return;}
@@ -210,7 +284,7 @@ static LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {
   int x=256+((r.right-256-760)>0?(r.right-256-760)/2:34);RECT label={x,100,r.right-20,121};drawText(dc,L"ВАША ЗАМЕТКА   ·   MARKDOWN",label,uiBold,ACCENT,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
   RECT title={x,131,r.right-40,177};drawText(dc,current[0]?current:L"Нет заметок",title,titleFont,TEXT,DT_LEFT|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
   RECT sub={x,181,r.right-20,200};drawText(dc,L"Место для ваших мыслей и идей",sub,uiSmall,MUTED,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
-  RECT toolbar={x,215,x+256,257};rounded(dc,toolbar,RGB(37,46,64),40);
+  RECT toolbar={x,215,x+256,257};glassSurface(dc,toolbar,RGB(37,46,64),BG,21,-1);
   RECT status={280,r.bottom-33,r.right-20,r.bottom-9};drawText(dc,dirty?L"●  Сохраняем изменения...":L"●  Все изменения сохранены",status,uiSmall,dirty?ACCENT:TEAL,DT_SINGLELINE|DT_VCENTER);RECT statusRight={r.right-220,r.bottom-33,r.right-25,r.bottom-9};drawText(dc,reading?L"Режим чтения":L"Режим редактирования",statusRight,uiSmall,MUTED,DT_RIGHT|DT_SINGLELINE|DT_VCENTER);EndPaint(h,&ps);return 0;}
  case WM_DRAWITEM:drawItem((DRAWITEMSTRUCT*)l);return TRUE;
  case WM_CTLCOLOREDIT:case WM_CTLCOLORLISTBOX:{HDC dc=(HDC)w;SetTextColor(dc,TEXT);if((HWND)l==search){SetBkColor(dc,RGB(35,43,59));return (LRESULT)inputBrush;}SetBkColor(dc,SIDE);return (LRESULT)sideBrush;}
