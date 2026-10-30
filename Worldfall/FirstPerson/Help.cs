@@ -84,6 +84,7 @@ namespace FirstPerson
 				{
 					new string[2] { "E", "Talk, enter, board, store, read a board" },
 					new string[2] { "Hold E", "Everything else. Insult, steal, star, take over, hijack" },
+					new string[2] { "T", "Emote — tap to wave, hold for wheel (6 emotes)" },
 					new string[2] { "Middle click or =", "Take over who you look at" },
 					new string[2] { "C", "Ping what you look at. Hold for the ping wheel" },
 					new string[2] { "B", "Star who you look at" },

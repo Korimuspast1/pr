@@ -1587,6 +1587,7 @@ namespace FirstPerson
 		internal const KeyCode ToolKey = KeyCode.Q;
 
 		internal readonly RadialWheel ToolWheel = new RadialWheel();
+		internal readonly RadialWheel EmoteWheel = new RadialWheel();
 
 		private static readonly Tool[] ToolOrder = new Tool[5]
 		{
@@ -1600,6 +1601,10 @@ namespace FirstPerson
 		private readonly Tool[] _tools = new Tool[8];
 
 		private float _toolDownAt = -1f;
+		private float _emoteDownAt = -1f;
+		private int _emoteDownFrame = -1;
+		private bool _emotePicked;
+		private bool _emoteSwallow;
 
 		private int _toolDownFrame;
 
@@ -3074,6 +3079,7 @@ namespace FirstPerson
 		}
 
 		internal bool ToolWheelOpen => ToolWheel.Open;
+		internal bool EmoteWheelOpen => EmoteWheel.Open;
 
 		private bool TorchClickFree
 		{
@@ -7843,6 +7849,7 @@ namespace FirstPerson
 			}
 			ActionWheelKeys(AnyMenu);
 			ToolWheelKeys(AnyMenu);
+			EmoteWheelKeys(AnyMenu);
 			CivilKeys();
 			Hitch.Lap("u:civil keys");
 			UpdateClickGrace();
@@ -7898,7 +7905,7 @@ namespace FirstPerson
 				return;
 			}
 			Hitch.Lap("u:binoculars, compass, poses, pings");
-			if (!PingWheelSteals() && !PoseWheelSteals() && !ActionWheel.Steal(DebugEyeSet) && !ToolWheel.Steal(DebugEyeSet))
+			if (!PingWheelSteals() && !PoseWheelSteals() && !ActionWheel.Steal(DebugEyeSet) && !ToolWheel.Steal(DebugEyeSet) && !EmoteWheel.Steal(DebugEyeSet))
 			{
 				float num = Input.mouseScrollDelta.y + HotbarWheelForTest;
 				HotbarWheelForTest = 0f;
@@ -21331,6 +21338,70 @@ namespace FirstPerson
 					break;
 				}
 			}
+		}
+
+		private void EmoteWheelKeys(bool menu)
+		{
+			float unscaledTime = Time.unscaledTime;
+			bool flag = !menu && DeathTimer < 0f && !IsTyping() && !Hub.AnyModeActive && _dive == Dive.None && !ActionWheel.Open && !ToolWheel.Open && _host != null;
+			if (_emoteSwallow && !PlayInput.GetMouseButton(0) && !PlayInput.GetMouseButton(1))
+				_emoteSwallow = false;
+			if (_emoteSwallow) PossessionHooks.BlockAttack = true;
+			if (_emoteDownAt < 0f)
+			{
+				if (flag && PlayInput.RawKeyDown(KeyCode.T))
+				{
+					_emoteDownAt = unscaledTime;
+					_emoteDownFrame = Time.frameCount;
+					PlayInput.HeldBack2 = KeyCode.T;
+				}
+				return;
+			}
+			if (!flag)
+			{
+				if (EmoteWheel.Open) EmoteWheel.Close();
+				EndEmoteHold();
+				return;
+			}
+			if (!PlayInput.RawKey(KeyCode.T))
+			{
+				if (_emotePicked) { EndEmoteHold(); return; }
+				if (EmoteWheel.Open)
+				{
+					int num = EmoteWheel.Close();
+					if (num >= 0) Emotes.Do(num, _host, Toast);
+					else Sounds.PlayUI("event:/SFX/UI/WindowClose");
+				}
+				else
+				{
+					Emotes.Do(0, _host, Toast);
+				}
+				EndEmoteHold();
+				return;
+			}
+			if (!EmoteWheel.Open && !_emotePicked && unscaledTime - _emoteDownAt >= 0.25f && Time.frameCount - _emoteDownFrame > 2)
+			{
+				EmoteWheel.Clear();
+				for (int i=0;i<Emotes.Names.Length;i++) EmoteWheel.Add(Emotes.Names[i], false, Emotes.Chat[i]);
+				EmoteWheel.Show();
+			}
+			if (!EmoteWheel.Open) return;
+			PossessionHooks.BlockAttack = true;
+			if (PlayInput.GetMouseButtonDown(0) || PlayInput.GetMouseButtonDown(1))
+			{
+				int num2 = EmoteWheel.Close();
+				_emoteSwallow = true;
+				_emotePicked = true;
+				if (num2 >= 0) Emotes.Do(num2, _host, Toast);
+				EndEmoteHold();
+			}
+		}
+
+		private void EndEmoteHold()
+		{
+			_emoteDownAt = -1f;
+			_emoteDownFrame = -1;
+			_emotePicked = false;
 		}
 
 		private void ToolWheelKeys(bool menu)
