@@ -6348,6 +6348,16 @@ namespace FirstPerson
 			}
 		}
 
+		private void HelmetKeys(bool menu)
+		{
+			if (menu || IsTyping() || _host == null)
+				return;
+			if (PlayInput.GetKeyDown(KeyCode.L))
+			{
+				HelmetLight.Toggle(_host, Toast);
+			}
+		}
+
 		private void UpdateCompass(float dt)
 		{
 			if (_host != _compassHost)
@@ -6355,6 +6365,7 @@ namespace FirstPerson
 				Compass.Drop();
 				_compassHost = _host;
 				_compassPick = (_compassAuto = null);
+				try { HelmetLight.SetForActor(_host); } catch {}
 			}
 			else if (!CanUseCompass && Compass.Active)
 			{
@@ -7840,6 +7851,7 @@ namespace FirstPerson
 			InventoryKeys();
 			HotbarKeys();
 			TorchKeys(AnyMenu);
+			HelmetKeys(AnyMenu);
 			Hitch.Lap("u:inventory, hotbar, torch, h, k, eat, leap");
 			FeatureKeys();
 			if (Royal.ObeliskOpen && PlayInput.GetKeyDown(KeyCode.E) && !IsTyping())
@@ -21620,6 +21632,10 @@ namespace FirstPerson
 			bool flag = Cabin.Inside || Mine.Inside;
 			List<PointLight> lights = (flag ? _roomLights : Renderer.Lights);
 			int count3 = lights.Count;
+			if (HelmetLight.Enabled && !flag)
+			{
+				try { HelmetLight.Emit(eye, _view.Yaw, _pitchDegrees, lights, dt); } catch {}
+			}
 			IList<RoomLight> list = TorchRoomLights();
 			bool flag2 = list != null || Interior.Inside;
 			TorchFire torchFire = (_hands.TorchShown ? _hands.Torch : null);

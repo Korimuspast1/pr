@@ -88,6 +88,7 @@ namespace FirstPerson
 					new string[2] { "C", "Ping what you look at. Hold for the ping wheel" },
 					new string[2] { "B", "Star who you look at" },
 					new string[2] { "K", "Bookmark where you are (Shift+K remove, Ctrl+Shift+K clear)" },
+					new string[2] { "L", "Headlamp on/off (stays on in dark)" },
 					new string[2] { "[  ]", "Leap between favorites" },
 					new string[2] { "Hold E on a door", "Force it" },
 					new string[2] { "Hold E on a window", "Draw every curtain" }
