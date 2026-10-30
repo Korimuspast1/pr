@@ -10288,6 +10288,53 @@ namespace FirstPerson
 					_mod.Toast(Pings.Name(ping.Kind) + " ping taken off");
 				}
 			}
+			// Bookmarks section
+			try
+			{
+				UserWaypoints.EnsureLoaded();
+				var bms = UserWaypoints.All;
+				float by = view.yMax + 6f * p;
+				float bh = 10f * p;
+				GameArt.Label(new Rect(area.x, by, area.width, bh), $"Bookmarks ({bms.Count})  ·  K to add, Shift+K remove nearest:", 4.0f, TextAnchor.MiddleLeft, GameArt.Grey);
+				by += bh + 2f * p;
+				if (bms.Count == 0)
+				{
+					GameArt.Label(new Rect(area.x, by, area.width, 8f * p), "No bookmarks yet. Press K where you stand to save a spot.", 3.6f, TextAnchor.MiddleLeft, GameArt.Grey);
+				}
+				else
+				{
+					for (int bi = 0; bi < bms.Count && bi < 6; bi++)
+					{
+						var bm = bms[bi];
+						Rect br = new Rect(area.x, by + bi * (9f * p), area.width - 42f * p, 8f * p);
+						Color bc = UserWaypoints.ColorOf(bm);
+						GameArt.Flat(new Rect(br.x, br.y + 1f * p, 2f * p, br.height - 2f * p), bc);
+						Vector2 bAt = new Vector2(bm.X, bm.Y);
+						GameArt.Label(new Rect(br.x + 4f * p, br.y, br.width, br.height), bm.Name + "  ·  " + Service.Heading(me, bAt), 3.8f, TextAnchor.MiddleLeft, bc);
+						Rect del = new Rect(br.xMax + 4f * p, br.y, 38f * p, br.height);
+						if (GameButton(del, "Remove", red: false, enabled: true, null, 3.2f, _listMouseIn))
+						{
+							UserWaypoints.Remove(bm.Id);
+							_mod.Toast("Bookmark removed");
+						}
+					}
+				}
+				Rect addR = new Rect(area.x, by + Mathf.Min(6, bms.Count) * 9f * p + 4f * p, 70f * p, 8f * p);
+				if (GameButton(addR, "Add here", red: false, enabled: true, null, 3.6f))
+				{
+					try { var at = _mod.Host != null ? _mod.Host.current_position : Vector2.zero; var nb = UserWaypoints.Add(at); _mod.Toast($"Bookmark \"{nb.Name}\" added"); } catch {}
+				}
+				if (bms.Count > 0)
+				{
+					Rect clr = new Rect(addR.xMax + 6f * p, addR.y, 70f * p, 8f * p);
+					if (GameButton(clr, "Clear all", red: true, enabled: true, null, 3.6f))
+					{
+						UserWaypoints.Clear();
+						_mod.Toast("All bookmarks cleared");
+					}
+				}
+			}
+			catch { }
 			Rect r3 = new Rect(area.xMax - 70f * p, area.yMax - num5, 70f * p, num5);
 			if (GameButton(r3, "Take all off", red: false, list.Count > 0, null, 4.2f))
 			{

@@ -6301,6 +6301,53 @@ namespace FirstPerson
 			return true;
 		}
 
+		private void BookmarkKeys(bool menu)
+		{
+			if (menu || IsTyping() || _host == null || !CanUseCompass)
+				return;
+			bool shift = PlayInput.GetKey(KeyCode.LeftShift) || PlayInput.GetKey(KeyCode.RightShift);
+			bool ctrl = PlayInput.GetKey(KeyCode.LeftControl) || PlayInput.GetKey(KeyCode.RightControl);
+			if (PlayInput.GetKeyDown(KeyCode.K))
+			{
+				if (ctrl && shift)
+				{
+					UserWaypoints.Clear();
+					Toast("All bookmarks cleared");
+					_compassGatherAt = -10f;
+				}
+				else if (shift)
+				{
+					if (UserWaypoints.RemoveNearest(_host.current_position, 12f))
+					{
+						Toast("Bookmark removed");
+						_compassGatherAt = -10f;
+					}
+					else
+					{
+						Toast("No bookmark nearby");
+					}
+				}
+				else
+				{
+					Vector2 at = _host.current_position;
+					try
+					{
+						if (Picked is Actor a && a.isAlive())
+							at = a.current_position;
+						else if (Picked is Building b)
+						{
+							var tile = b.getTile();
+							if (tile != null) at = new Vector2(tile.posV3.x, tile.posV3.y);
+						}
+					}
+					catch { }
+					var bm = UserWaypoints.Add(at);
+					Toast($"Bookmark \"{bm.Name}\" added (K to add, Shift+K remove)");
+					_compassGatherAt = -10f;
+				}
+			}
+		}
+
 		private void UpdateCompass(float dt)
 		{
 			if (_host != _compassHost)
@@ -6426,6 +6473,17 @@ namespace FirstPerson
 					Vector3 vector = Pings.Where(ping);
 					Add("g" + ping.Born.ToString("R"), new Vector2(vector.x, vector.y), null, Pings.Name(PingKind.Go), Pings.ColorOf(PingKind.Go));
 				}
+			}
+			try
+			{
+				UserWaypoints.EnsureLoaded();
+				foreach (var bm in UserWaypoints.All)
+				{
+					Add("b" + bm.Id, new Vector2(bm.X, bm.Y), null, bm.Name, UserWaypoints.ColorOf(bm));
+				}
+			}
+			catch
+			{
 			}
 			Actor marked = Converse.Marked;
 			try
@@ -7806,6 +7864,7 @@ namespace FirstPerson
 			PossessionHooks.BlockAttack = anyMenu || ClickGrace || WheelClick || Work.Target != null || Earthworks.Busy || _dive == Dive.In || Holstered || Time.frameCount - _unholsterFrame < 2 || _blaster.Blocks || _shotgun.Blocks || BinocularsBlock || CompassBlock || (_hotbarFood != null && !AimsAtCarcass(_host)) || Bandages.Wrapping || _torchBlocks || Hub.AnyModeActive;
 			PoseKeys(anyMenu);
 			PingKeys(anyMenu);
+			BookmarkKeys(anyMenu);
 			if (anyMenu)
 			{
 				if (Cursor.lockState != CursorLockMode.None)
