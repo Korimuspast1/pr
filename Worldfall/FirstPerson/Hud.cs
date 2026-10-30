@@ -11756,6 +11756,25 @@ namespace FirstPerson
 				float num5 = 1f + 0.5f * Mathf.Clamp01(1f - (unscaledTime - item.Born) / 0.5f);
 				PingIcon(vector3, Mathf.Round(9f * p * num5), item.Kind, flag ? (0.75f * num2) : num2);
 			}
+			try
+			{
+				UserWaypoints.EnsureLoaded();
+				foreach (var bm in UserWaypoints.All)
+				{
+					Vector2 bPos = new Vector2(bm.X, bm.Y);
+					Vector2 bMap = ToMap(bPos);
+					Vector2 d = bMap - centre;
+					float rim = num - 4.5f * p;
+					bool atRim = d.magnitude > rim;
+					if (atRim) bMap = centre + d.normalized * rim;
+					Color bc = UserWaypoints.ColorOf(bm);
+					// small diamond for bookmark
+					float s = Mathf.Round(6f * p);
+					GUI.color = new Color(bc.r, bc.g, bc.b, atRim ? 0.7f*num2 : num2);
+					GameArt.Flat(new Rect(bMap.x - s*0.5f, bMap.y - s*0.5f, s, s), bc);
+					GUI.color = color;
+				}
+			} catch {}
 			if (HomeAt(host, out var at))
 			{
 				Vector2 vector5 = ToMap(at);
