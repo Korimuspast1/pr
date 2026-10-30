@@ -43,7 +43,7 @@ namespace FirstPerson
 					new string[2] { "A A  D D  S S", "Dodge step that way (tap it twice)" },
 					new string[2] { "Left click", "Attack. Hold to gather or draw a bow" },
 					new string[2] { "Right click", "Guard. Raise it as a blow lands to parry" },
-					new string[2] { "X", "Your kind's ability. Hold to aim" },
+					new string[2] { "X", "Your kind's ability. Hold to aim / Tap X for auto-run" },
 					new string[2] { "R", "Reload the shotgun. Vent the blaster" },
 					new string[2] { "P", "Sit or get up. Hold for poses" }
 				}

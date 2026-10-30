@@ -5898,6 +5898,7 @@ namespace FirstPerson
 			}
 			TownsUpdate(host, dt);
 			try { Fishing.Update(host, dt, Toast); } catch {}
+			try { AutoRun.Update(host, dt); } catch {}
 			try { TavernBoard.Tick(host, dt, Toast); } catch {}
 			try { TavernBoard.Tick(host, dt, Toast); } catch {}
 			UpdateService(host, dt);
@@ -7826,6 +7827,10 @@ namespace FirstPerson
 				Log.Error("phone upkeep: " + ex.Message);
 			}
 			LightUpkeep();
+			if (PlayInput.GetKeyDown(KeyCode.X) && !IsTyping() && !AnyMenu && DeathTimer < 0f)
+			{
+				AutoRun.Toggle(_host, Toast);
+			}
 			if (PlayInput.GetKeyDown(KeyCode.V) && !IsTyping() && ControllableUnit.isControllingUnit())
 			{
 				if (_viewEnabled && Cabin.Inside && AtSea())
