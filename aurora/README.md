@@ -9,7 +9,7 @@ Aurora — небольшая учебная 64-битная ОС на C и x86-
 
 Прямая ссылка на ISO:
 
-<https://github.com/Korimuspast1/pr/releases/latest/download/aurora.iso>
+<https://github.com/Korimuspast1/pr/raw/refs/tags/aurora-v1.0.0/aurora/dist/aurora.iso>
 
 Контрольная сумма публикуется рядом с ISO в релизе.
 
