@@ -80,7 +80,7 @@ static void styleRange(LONG start,LONG end,COLORREF color,int size,int bold) {
  CHARRANGE range={start,end}; SendMessageW(editor,EM_EXSETSEL,0,(LPARAM)&range); CHARFORMAT2W f={0};f.cbSize=sizeof(f);f.dwMask=CFM_COLOR|CFM_SIZE|CFM_BOLD;f.crTextColor=color;f.yHeight=size*20;f.dwEffects=bold?CFE_BOLD:0;SendMessageW(editor,EM_SETCHARFORMAT,SCF_SELECTION,(LPARAM)&f);
 }
 static void showContent(void) {
- loading=1; EnableWindow(editor,current[0]!=0); for(int i=2;i<7;i++)EnableWindow(buttons[i],current[0]!=0); SendMessageW(editor,WM_SETREDRAW,FALSE,0); SendMessageW(editor,EM_SETREADONLY,FALSE,0);
+ loading=1; EnableWindow(editor,current[0]!=0); for(int i=2;i<6;i++)EnableWindow(buttons[i],current[0]!=0); SendMessageW(editor,WM_SETREDRAW,FALSE,0); SendMessageW(editor,EM_SETREADONLY,FALSE,0);
  if (!reading) { SetWindowTextW(editor,text?text:L""); styleRange(0,-1,TEXT,14,0); }
  else {
   // Render a simple, readable Markdown view without altering the original text.
@@ -95,7 +95,7 @@ static void showContent(void) {
   }
   SendMessageW(editor,EM_SETREADONLY,TRUE,0);
  }
- SendMessageW(editor,EM_SETSEL,0,0); SendMessageW(editor,WM_SETREDRAW,TRUE,0);InvalidateRect(editor,NULL,TRUE); loading=0;InvalidateRect(window,NULL,FALSE);InvalidateRect(buttons[5],NULL,FALSE);InvalidateRect(buttons[6],NULL,FALSE);
+ SendMessageW(editor,EM_SETSEL,0,0); SendMessageW(editor,WM_SETREDRAW,TRUE,0);InvalidateRect(editor,NULL,TRUE); loading=0;InvalidateRect(window,NULL,FALSE);InvalidateRect(buttons[5],NULL,FALSE);
 }
 static int loadNote(const wchar_t *name) { if(!saveNote(1))return 0; wchar_t path[MAX_PATH];pathFor(name,path,MAX_PATH);wchar_t *content=readUtf8(path);if(!content){error(L"Не удалось открыть заметку. Поддерживаются UTF-8 файлы размером до 4 МБ.");return 0;} free(text);text=content;wcsncpy(current,name,MAX_PATH-1);current[MAX_PATH-1]=0;dirty=0;showContent();refreshList();return 1; }
 static void createNoteWith(const wchar_t *content) { if(!saveNote(1))return; wchar_t name[128],path[MAX_PATH];for(int i=1;i<10000;i++){swprintf(name,128,L"Новая заметка %d",i);pathFor(name,path,MAX_PATH);if(GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)break;} if(!writeUtf8(path,content)){error(L"Не удалось создать заметку.");return;}SetWindowTextW(search,L"");loadNote(name);reading=0;showContent();SetFocus(editor); }
@@ -136,7 +136,7 @@ static LRESULT CALLBACK PromptProc(HWND h,UINT m,WPARAM w,LPARAM l) {
  case WM_ERASEBKGND:return 1;
  case WM_PAINT: {
   PAINTSTRUCT ps;HDC dc=BeginPaint(h,&ps);RECT client;GetClientRect(h,&client);fill(dc,client,BG);
-  RECT heading={24,17,client.right-24,43};drawText(dc,L"Переименовать заметку",heading,brandFont,TEXT,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
+  RECT heading={24,17,client.right-24,43};drawText(dc,L"Новое название заметки",heading,brandFont,TEXT,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
   RECT subtitle={24,46,client.right-24,68};drawText(dc,L"Выберите новое название для заметки",subtitle,uiSmall,MUTED,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
   RECT inputBox={24,76,client.right-24,117};rounded(dc,inputBox,RGB(35,43,59),18);
   EndPaint(h,&ps);return 0;
@@ -161,7 +161,7 @@ static void renameNote(void) {
  if(!current[0]||!saveNote(1))return;wcscpy(promptValue,current);promptDone=promptAccepted=0;
  WNDCLASSW wc={0};wc.lpfnWndProc=PromptProc;wc.hInstance=GetModuleHandleW(NULL);wc.lpszClassName=L"Editor1Prompt";wc.hCursor=LoadCursor(NULL,IDC_ARROW);wc.hbrBackground=bgBrush;RegisterClassW(&wc);
  RECT r;GetWindowRect(window,&r);int width=440,height=230;int x=r.left+((r.right-r.left)-width)/2,y=r.top+((r.bottom-r.top)-height)/2;
- HWND dialog=CreateWindowExW(WS_EX_DLGMODALFRAME,L"Editor1Prompt",L"Переименовать",WS_CAPTION|WS_SYSMENU|WS_POPUP|WS_CLIPCHILDREN,x,y,width,height,window,NULL,wc.hInstance,NULL);
+ HWND dialog=CreateWindowExW(WS_EX_DLGMODALFRAME,L"Editor1Prompt",L"Новое название — Editor 1",WS_CAPTION|WS_SYSMENU|WS_POPUP|WS_CLIPCHILDREN,x,y,width,height,window,NULL,wc.hInstance,NULL);
  if(!dialog){error(L"Не удалось открыть окно переименования.");return;}
  EnableWindow(window,FALSE);ShowWindow(dialog,SW_SHOW);SetForegroundWindow(dialog);SetFocus(promptInput);
  MSG msg;while(!promptDone&&GetMessageW(&msg,NULL,0,0)>0){
@@ -235,16 +235,50 @@ static LRESULT CALLBACK searchProc(HWND h,UINT message,WPARAM w,LPARAM l){
  if(message==WM_SETFOCUS||message==WM_KILLFOCUS)InvalidateRect(h,NULL,TRUE);
  return result;
 }
+// A single custom window owns the whole segmented switch. There are no
+// overlapping rectangular child buttons or clipping regions at the ends.
+static LRESULT CALLBACK ModeSwitchProc(HWND h,UINT message,WPARAM w,LPARAM l){
+ static int hoveredMode=-1;
+ switch(message){
+ case WM_ERASEBKGND:return 1;
+ case WM_PAINT:{
+  PAINTSTRUCT ps;HDC dc=BeginPaint(h,&ps);RECT r;GetClientRect(h,&r);fill(dc,r,BG);
+  glassSurface(dc,r,RGB(37,46,64),BG,21,-1);
+  RECT active=reading?(RECT){136,4,r.right-4,r.bottom-4}:(RECT){4,4,132,r.bottom-4};
+  glassSurface(dc,active,RGB(68,83,112),RGB(37,46,64),17,hoveredMode==(reading?1:0)?20:0);
+  const wchar_t *labels[]={L"Редактор",L"Чтение"};int icons[]={ICON_PEN_LINE,ICON_BOOK_OPEN};
+  for(int i=0;i<2;i++){
+   RECT part=i?(RECT){136,0,r.right,r.bottom}:(RECT){0,0,136,r.bottom};
+   int selected=(i==0&&!reading)||(i==1&&reading);HFONT font=selected?uiBold:uiSmall;
+   COLORREF color=IsWindowEnabled(h)?(selected?TEXT:RGB(181,185,199)):MUTED;
+   HGDIOBJ old=SelectObject(dc,font);SIZE size;GetTextExtentPoint32W(dc,labels[i],(int)wcslen(labels[i]),&size);SelectObject(dc,old);
+   int x=part.left+(part.right-part.left-(25+size.cx))/2;
+   icon(dc,icons[i],x,(r.bottom-20)/2,color);RECT textRect=part;textRect.left=x+25;
+   drawText(dc,labels[i],textRect,font,color,DT_SINGLELINE|DT_LEFT|DT_VCENTER);
+  }
+  if(GetFocus()==h){RECT line=active;line.left+=30;line.right-=30;line.top=line.bottom-4;line.bottom-=2;rounded(dc,line,ACCENT,3);}
+  EndPaint(h,&ps);return 0;
+ }
+ case WM_MOUSEMOVE:{int x=(short)LOWORD(l);int next=x<136?0:1;if(next!=hoveredMode){hoveredMode=next;InvalidateRect(h,NULL,FALSE);}TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,h,0};TrackMouseEvent(&t);return 0;}
+ case WM_MOUSELEAVE:hoveredMode=-1;InvalidateRect(h,NULL,FALSE);return 0;
+ case WM_LBUTTONDOWN:SetFocus(h);SetCapture(h);return 0;
+ case WM_LBUTTONUP:{if(GetCapture()==h)ReleaseCapture();RECT r;GetClientRect(h,&r);POINT p={(short)LOWORD(l),(short)HIWORD(l)};if(PtInRect(&r,p))SendMessageW(window,WM_COMMAND,p.x<136?ID_EDIT:ID_READ,0);return 0;}
+ case WM_GETDLGCODE:return DLGC_WANTARROWS;
+ case WM_KEYDOWN:if(w==VK_LEFT||w==VK_RIGHT||w==VK_SPACE||w==VK_RETURN){int edit=(w==VK_LEFT)?1:(w==VK_RIGHT)?0:reading;SendMessageW(window,WM_COMMAND,edit?ID_EDIT:ID_READ,0);return 0;}break;
+ case WM_SETFOCUS:case WM_KILLFOCUS:case WM_ENABLE:InvalidateRect(h,NULL,FALSE);break;
+ }
+ return DefWindowProcW(h,message,w,l);
+}
 static void layout(HWND h) {
  RECT r;GetClientRect(h,&r);int w=r.right, height=r.bottom;int side=256;
  MoveWindow(search,47,105,side-74,27,TRUE);MoveWindow(buttons[0],17,156,side-34,42,TRUE);MoveWindow(list,10,262,side-20,height-346,TRUE);
  int right=w-22;MoveWindow(buttons[1],right-410,19,98,34,TRUE);MoveWindow(buttons[2],right-306,19,95,34,TRUE);MoveWindow(buttons[3],right-206,19,100,34,TRUE);MoveWindow(buttons[4],right-101,19,101,34,TRUE);
  int content=side+((w-side-760)>0?(w-side-760)/2:34), contentWidth=w-content-38;if(contentWidth>760)contentWidth=760;if(contentWidth<220)contentWidth=220;
- MoveWindow(buttons[5],content+4,219,128,34,TRUE);MoveWindow(buttons[6],content+136,219,116,34,TRUE);roundControl(buttons[5],128,34,34);roundControl(buttons[6],116,34,34);MoveWindow(editor,content,283,contentWidth,height-333,TRUE);
+ MoveWindow(buttons[5],content,215,256,42,TRUE);MoveWindow(editor,content,283,contentWidth,height-333,TRUE);
 }
 static void drawItem(DRAWITEMSTRUCT *d) {
  if(d->CtlType==ODT_LISTBOX){if(d->itemID==(UINT)-1)return;wchar_t name[MAX_PATH];SendMessageW(list,LB_GETTEXT,d->itemID,(LPARAM)name);int selected=d->itemState&ODS_SELECTED;fill(d->hDC,d->rcItem,SIDE);RECT pill=d->rcItem;InflateRect(&pill,-2,-2);if(selected)glassSurface(d->hDC,pill,RGB(42,57,82),SIDE,10,0);icon(d->hDC,ICON_FILE_TEXT,d->rcItem.left+11,d->rcItem.top+(d->rcItem.bottom-d->rcItem.top-20)/2,selected?ACCENT:MUTED);RECT label=d->rcItem;label.left+=38;label.right-=8;drawText(d->hDC,name,label,selected?uiBold:uiSmall,selected?TEXT:RGB(169,166,177),DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);return;}
- int id=d->CtlID;int index=-1;for(int i=0;i<7;i++)if(buttons[i]==d->hwndItem)index=i;
+ int id=d->CtlID;int index=-1;for(int i=0;i<5;i++)if(buttons[i]==d->hwndItem)index=i;
  int active=(id==ID_EDIT&&!reading)||(id==ID_READ&&reading);int hover=index>=0?hoverAmount[index]:0;
  COLORREF background=id==ID_NEW?SIDE:((id==ID_EDIT||id==ID_READ)?RGB(37,46,64):BG);fill(d->hDC,d->rcItem,background);
  COLORREF base=id==ID_NEW?RGB(55,94,154):(active?RGB(68,83,112):background);COLORREF over=id==ID_NEW?RGB(75,121,187):RGB(63,78,101);
@@ -266,7 +300,10 @@ static LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {
   bgBrush=CreateSolidBrush(BG);sideBrush=CreateSolidBrush(SIDE);inputBrush=CreateSolidBrush(RGB(35,43,59));
   search=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,0,0,0,0,h,(HMENU)ID_SEARCH,instance,NULL);SendMessageW(search,WM_SETFONT,(WPARAM)uiSmall,TRUE);oldSearchProc=(WNDPROC)SetWindowLongPtrW(search,GWLP_WNDPROC,(LONG_PTR)searchProc);
   list=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT|LBS_SORT,0,0,0,0,h,(HMENU)ID_LIST,instance,NULL);SendMessageW(list,LB_SETITEMHEIGHT,0,37);
-  const wchar_t *labels[]={L"Новая заметка",L"Открыть",L"Экспорт",L"Название",L"Удалить",L"Редактор",L"Чтение"};int ids[]={ID_NEW,ID_OPEN,ID_SAVE,ID_RENAME,ID_DELETE,ID_EDIT,ID_READ};for(int i=0;i<7;i++){buttons[i]=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,0,0,h,(HMENU)(INT_PTR)ids[i],instance,NULL);SendMessageW(buttons[i],WM_SETFONT,(WPARAM)uiSmall,TRUE);SetWindowLongPtrW(buttons[i],GWLP_USERDATA,(LONG_PTR)i);WNDPROC original=(WNDPROC)SetWindowLongPtrW(buttons[i],GWLP_WNDPROC,(LONG_PTR)buttonProc);if(i==0)oldButtonProc=original;}
+  const wchar_t *labels[]={L"Новая заметка",L"Открыть",L"Экспорт",L"Название",L"Удалить"};int ids[]={ID_NEW,ID_OPEN,ID_SAVE,ID_RENAME,ID_DELETE};for(int i=0;i<5;i++){buttons[i]=CreateWindowW(L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,0,0,h,(HMENU)(INT_PTR)ids[i],instance,NULL);SendMessageW(buttons[i],WM_SETFONT,(WPARAM)uiSmall,TRUE);SetWindowLongPtrW(buttons[i],GWLP_USERDATA,(LONG_PTR)i);WNDPROC original=(WNDPROC)SetWindowLongPtrW(buttons[i],GWLP_WNDPROC,(LONG_PTR)buttonProc);if(i==0)oldButtonProc=original;}
+  WNDCLASSW modeClass={0};modeClass.lpfnWndProc=ModeSwitchProc;modeClass.hInstance=instance;modeClass.lpszClassName=L"Editor1ModeSwitch";modeClass.hCursor=LoadCursor(NULL,IDC_HAND);RegisterClassW(&modeClass);
+  buttons[5]=CreateWindowW(modeClass.lpszClassName,L"Редактор / Чтение",WS_CHILD|WS_VISIBLE|WS_TABSTOP,0,0,0,0,h,NULL,instance,NULL);
+  if(!buttons[5]){error(L"Не удалось создать переключатель режима.");return -1;}
   editor=CreateWindowExW(0,MSFTEDIT_CLASS,L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_NOHIDESEL,0,0,0,0,h,(HMENU)ID_EDITOR,instance,NULL);if(!editor){error(L"Не удалось запустить компонент редактирования Windows.");return -1;}SendMessageW(editor,WM_SETFONT,(WPARAM)bodyFont,TRUE);SendMessageW(editor,EM_SETBKGNDCOLOR,0,BG);SendMessageW(editor,EM_EXLIMITTEXT,0,MAX_NOTE);SendMessageW(editor,EM_SETEVENTMASK,0,ENM_CHANGE);
   wchar_t appdata[MAX_PATH];if(FAILED(SHGetFolderPathW(h,CSIDL_APPDATA|CSIDL_FLAG_CREATE,NULL,SHGFP_TYPE_CURRENT,appdata))){error(L"Не удалось найти папку данных пользователя.");return -1;}swprintf(directory,MAX_PATH,L"%ls\\Editor1",appdata);if(!CreateDirectoryW(directory,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS){error(L"Не удалось создать папку заметок.");return -1;}
   text=duptext(L"");refreshList();int count=(int)SendMessageW(list,LB_GETCOUNT,0,0);if(count>0){wchar_t first[MAX_PATH];SendMessageW(list,LB_GETTEXT,0,(LPARAM)first);loadNote(first);}else{wchar_t path[MAX_PATH];pathFor(L"Мой дом",path,MAX_PATH);if(writeUtf8(path,welcome))loadNote(L"Мой дом");else error(L"Не удалось создать первую заметку.");}
@@ -284,7 +321,6 @@ static LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {
   int x=256+((r.right-256-760)>0?(r.right-256-760)/2:34);RECT label={x,100,r.right-20,121};drawText(dc,L"ВАША ЗАМЕТКА   ·   MARKDOWN",label,uiBold,ACCENT,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
   RECT title={x,131,r.right-40,177};drawText(dc,current[0]?current:L"Нет заметок",title,titleFont,TEXT,DT_LEFT|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
   RECT sub={x,181,r.right-20,200};drawText(dc,L"Место для ваших мыслей и идей",sub,uiSmall,MUTED,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
-  RECT toolbar={x,215,x+256,257};glassSurface(dc,toolbar,RGB(37,46,64),BG,21,-1);
   RECT status={280,r.bottom-33,r.right-20,r.bottom-9};drawText(dc,dirty?L"●  Сохраняем изменения...":L"●  Все изменения сохранены",status,uiSmall,dirty?ACCENT:TEAL,DT_SINGLELINE|DT_VCENTER);RECT statusRight={r.right-220,r.bottom-33,r.right-25,r.bottom-9};drawText(dc,reading?L"Режим чтения":L"Режим редактирования",statusRight,uiSmall,MUTED,DT_RIGHT|DT_SINGLELINE|DT_VCENTER);EndPaint(h,&ps);return 0;}
  case WM_DRAWITEM:drawItem((DRAWITEMSTRUCT*)l);return TRUE;
  case WM_CTLCOLOREDIT:case WM_CTLCOLORLISTBOX:{HDC dc=(HDC)w;SetTextColor(dc,TEXT);if((HWND)l==search){SetBkColor(dc,RGB(35,43,59));return (LRESULT)inputBrush;}SetBkColor(dc,SIDE);return (LRESULT)sideBrush;}
@@ -295,9 +331,9 @@ static LRESULT CALLBACK WindowProc(HWND h,UINT m,WPARAM w,LPARAM l) {
   if(id==ID_LIST&&code==LBN_SELCHANGE){int idx=(int)SendMessageW(list,LB_GETCURSEL,0,0);if(idx!=LB_ERR){wchar_t name[MAX_PATH];SendMessageW(list,LB_GETTEXT,idx,(LPARAM)name);if(wcscmp(name,current)&&!loadNote(name))refreshList();}return 0;}
   if(id==ID_NEW){createNoteWith(L"");return 0;}if(id==ID_OPEN){importNote();return 0;}if(id==ID_SAVE){exportNote();return 0;}if(id==ID_RENAME){renameNote();return 0;}if(id==ID_DELETE){deleteNote();return 0;}
   if(id==ID_EDIT&&reading){reading=0;showContent();SetFocus(editor);return 0;}if(id==ID_READ&&!reading){if(!saveNote(1))return 0;capture();reading=1;showContent();return 0;}break;}
- case WM_TIMER:if(w==1){KillTimer(h,1);saveNote(1);return 0;}if(w==2){int moving=0;BOOL animations=TRUE;SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION,0,&animations,0);for(int i=0;i<7;i++){int target=hovered[i]?100:0;if(hoverAmount[i]!=target){int step=animations?20:100;if(hoverAmount[i]<target){hoverAmount[i]+=step;if(hoverAmount[i]>target)hoverAmount[i]=target;}else{hoverAmount[i]-=step;if(hoverAmount[i]<target)hoverAmount[i]=target;}InvalidateRect(buttons[i],NULL,FALSE);if(hoverAmount[i]!=target)moving=1;}}if(!moving)KillTimer(h,2);return 0;}break;
+ case WM_TIMER:if(w==1){KillTimer(h,1);saveNote(1);return 0;}if(w==2){int moving=0;BOOL animations=TRUE;SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION,0,&animations,0);for(int i=0;i<5;i++){int target=hovered[i]?100:0;if(hoverAmount[i]!=target){int step=animations?20:100;if(hoverAmount[i]<target){hoverAmount[i]+=step;if(hoverAmount[i]>target)hoverAmount[i]=target;}else{hoverAmount[i]-=step;if(hoverAmount[i]<target)hoverAmount[i]=target;}InvalidateRect(buttons[i],NULL,FALSE);if(hoverAmount[i]!=target)moving=1;}}if(!moving)KillTimer(h,2);return 0;}break;
  case WM_CLOSE:if(saveNote(1))DestroyWindow(h);return 0;
  case WM_DESTROY:free(text);DeleteObject(ui);DeleteObject(uiSmall);DeleteObject(uiBold);DeleteObject(bodyFont);DeleteObject(titleFont);DeleteObject(brandFont);DeleteObject(bgBrush);DeleteObject(sideBrush);DeleteObject(inputBrush);PostQuitMessage(0);return 0;
  }return DefWindowProcW(h,m,w,l);
 }
-int WINAPI wWinMain(HINSTANCE instance,HINSTANCE prev,PWSTR cmd,int show){(void)prev;(void)cmd;WNDCLASSW wc={0};wc.lpfnWndProc=WindowProc;wc.hInstance=instance;wc.lpszClassName=L"Editor1Main";wc.hCursor=LoadCursor(NULL,IDC_ARROW);wc.hIcon=LoadIcon(NULL,IDI_APPLICATION);RegisterClassW(&wc);HWND h=CreateWindowW(wc.lpszClassName,L"Editor 1",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1280,850,NULL,NULL,instance,NULL);if(!h)return 1;ShowWindow(h,show);UpdateWindow(h);ACCEL keys[]={{FVIRTKEY|FCONTROL,'N',ID_NEW},{FVIRTKEY|FCONTROL,'O',ID_OPEN},{FVIRTKEY|FCONTROL,'S',ID_SAVE},{FVIRTKEY,VK_F2,ID_RENAME}};HACCEL accel=CreateAcceleratorTableW(keys,4);MSG msg;while(GetMessageW(&msg,NULL,0,0)>0){if(!TranslateAcceleratorW(h,accel,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}DestroyAcceleratorTable(accel);return (int)msg.wParam;}
+int WINAPI wWinMain(HINSTANCE instance,HINSTANCE prev,PWSTR cmd,int show){(void)prev;(void)cmd;WNDCLASSW wc={0};wc.lpfnWndProc=WindowProc;wc.hInstance=instance;wc.lpszClassName=L"Editor1Main";wc.hCursor=LoadCursor(NULL,IDC_ARROW);wc.hIcon=LoadIcon(NULL,IDI_APPLICATION);RegisterClassW(&wc);HWND h=CreateWindowW(wc.lpszClassName,L"Editor 1 — версия 1.4",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1280,850,NULL,NULL,instance,NULL);if(!h)return 1;ShowWindow(h,show);UpdateWindow(h);ACCEL keys[]={{FVIRTKEY|FCONTROL,'N',ID_NEW},{FVIRTKEY|FCONTROL,'O',ID_OPEN},{FVIRTKEY|FCONTROL,'S',ID_SAVE},{FVIRTKEY,VK_F2,ID_RENAME}};HACCEL accel=CreateAcceleratorTableW(keys,4);MSG msg;while(GetMessageW(&msg,NULL,0,0)>0){if(!TranslateAcceleratorW(h,accel,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}DestroyAcceleratorTable(accel);return (int)msg.wParam;}
