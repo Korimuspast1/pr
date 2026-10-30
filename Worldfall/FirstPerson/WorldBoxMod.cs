@@ -7861,6 +7861,18 @@ namespace FirstPerson
 			CivilKeys();
 			Hitch.Lap("u:civil keys");
 			UpdateClickGrace();
+			if (PlayInput.GetKeyDown(KeyCode.O) && !IsTyping() && !AnyMenu)
+			{
+				TimeTweaks.TogglePause(_host, Toast);
+			}
+			if (PlayInput.GetKeyDown(KeyCode.LeftBracket) && !IsTyping())
+			{
+				TimeTweaks.AdjustSpeed(-1, Toast);
+			}
+			if (PlayInput.GetKeyDown(KeyCode.RightBracket) && !IsTyping())
+			{
+				TimeTweaks.AdjustSpeed(1, Toast);
+			}
 			if (PlayInput.GetKeyDown(KeyCode.F7))
 			{
 				Settings.TimeMode = (Settings.TimeMode + 1) % DayCycle.ModeNames.Length;
