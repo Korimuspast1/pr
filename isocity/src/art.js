@@ -1,8 +1,8 @@
 // Pixel art. Everything here paints into world-pixel coordinates with integer
 // positions and 1px outlines; the renderer only upscales the finished frame.
 
-import { TW, TH, HW, HH, iso, corners, fill, box, diamond, pxLine, pitchedRoof, wallRect, outline } from './iso.js?v=2026-11-01-pixel-4';
-import { T } from './world.js?v=2026-11-01-pixel-4';
+import { TW, TH, HW, HH, iso, corners, fill, box, diamond, pxLine, pitchedRoof, wallRect, outline } from './iso.js?v=2026-11-01-pixel-5';
+import { T } from './world.js?v=2026-11-01-pixel-5';
 
 export const PAL = {
   grass: ['#79ae47', '#7cb24a', '#76a845'],
@@ -13,12 +13,15 @@ export const PAL = {
   roadLine: '#cfd3d9',
   roadDash: '#8d939c',
   curb: '#9aa0a8',
-  zoneR: 'rgba(120, 200, 110, 0.20)',
-  zoneC: 'rgba(110, 165, 235, 0.20)',
-  zoneI: 'rgba(235, 200, 110, 0.20)',
-  zoneREdge: '#5fae58',
-  zoneCEdge: '#5b93d8',
-  zoneIEdge: '#cba64c',
+  zoneR: 'rgba(96, 196, 84, 0.46)',
+  zoneC: 'rgba(84, 150, 236, 0.44)',
+  zoneI: 'rgba(230, 180, 66, 0.46)',
+  zoneREdge: '#2f7a2c',
+  zoneCEdge: '#2c5c9e',
+  zoneIEdge: '#8f6416',
+  zoneRMark: '#a7e894',
+  zoneCMark: '#a9cbf6',
+  zoneIMark: '#f2d38a',
   water: ['#3f86b8', '#387aa9', '#4692c4'],
   waterLine: '#a9dcf0',
   dirt: '#b08a55',
@@ -131,14 +134,27 @@ export function drawGroundTile(ctx, world, x, y, ox, oy) {
   if (t === T.ZONE_R || t === T.ZONE_C || t === T.ZONE_I) {
     const tint = t === T.ZONE_R ? PAL.zoneR : t === T.ZONE_C ? PAL.zoneC : PAL.zoneI;
     const edge = t === T.ZONE_R ? PAL.zoneREdge : t === T.ZONE_C ? PAL.zoneCEdge : PAL.zoneIEdge;
+    const mark = t === T.ZONE_R ? PAL.zoneRMark : t === T.ZONE_C ? PAL.zoneCMark : PAL.zoneIMark;
     fill(ctx, [n, e, s, w], tint);
-    // dashed outline only on the outer border of the zone
+    // small marks so a zone looks painted even at a glance
+    ctx.fillStyle = mark;
+    const ox = (h % 9) - 4;
+    const oy = (h % 5) - 2;
+    ctx.fillRect(n.x + 10 + ox, n.y + 5 + oy, 2, 1);
+    ctx.fillRect(n.x + 18 + ox, n.y + 8 + oy, 1, 1);
+    ctx.fillRect(w.x + 7 - ox, w.y + 4 - oy, 1, 1);
+    // a solid frame on the outside, then a dashed highlight on top of it
+    const frame = (a, b) => pxLine(ctx, a.x, a.y, b.x, b.y, edge);
+    if (world.get(x, y - 1) !== t) frame(n, e);
+    if (world.get(x + 1, y) !== t) frame(e, s);
+    if (world.get(x, y + 1) !== t) frame(s, w);
+    if (world.get(x - 1, y) !== t) frame(w, n);
     const dashed = (a, b) => {
       const steps = 8;
       for (let i = 0; i < steps; i += 2) {
         const t0 = i / steps;
         const t1 = (i + 1) / steps;
-        pxLine(ctx, a.x + (b.x - a.x) * t0, a.y + (b.y - a.y) * t0, a.x + (b.x - a.x) * t1, a.y + (b.y - a.y) * t1, edge);
+        pxLine(ctx, a.x + (b.x - a.x) * t0, a.y + (b.y - a.y) * t0, a.x + (b.x - a.x) * t1, a.y + (b.y - a.y) * t1, mark);
       }
     };
     if (world.get(x, y - 1) !== t) dashed(n, e);

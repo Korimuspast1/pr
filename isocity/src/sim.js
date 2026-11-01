@@ -7,7 +7,7 @@
 //      pockets. The only outside money is the savings a newcomer brings and the
 //      savings a leaver takes away - both are reported separately in the ledger.
 
-import { World, N, T } from './world.js?v=2026-11-01-pixel-4';
+import { World, N, T } from './world.js?v=2026-11-01-pixel-5';
 
 export const MIN_PER_SEC = 10; // game minutes per real second at 1x speed
 export const HOUR = 60;
@@ -77,7 +77,10 @@ export class Sim {
     this.nameIndex = 0;
     this.colors = 0;
 
-    this.ledger = this.emptyLedger();
+    this.ledger = this.emptyLedger();   // today
+    this.total = this.emptyLedger();    // since the town was founded
+    // what the whole city produced, bought and shipped, in units of goods
+    this.goods = { produced: 0, sold: 0, exported: 0, imported: 0, restocked: 0 };
     // money that crossed the border of the city: savings of newcomers, money
     // taken away by leavers, goods sold to and bought from the outside world
     this.external = { in: 0, out: 0 };
@@ -87,6 +90,7 @@ export class Sim {
     this.seedTown();
     this.world.recomputeComponents();
     this.initialBudget = this.budget;
+    this.budgetDayStart = this.budget;
     this.initialMoney = this.internalMoney();
     this.year = 1;
   }
@@ -103,6 +107,7 @@ export class Sim {
       cityWages: 0,
       imports: 0,
       exports: 0,
+      contractor: 0,
       migrationIn: 0,
       migrationOut: 0,
     };
@@ -181,6 +186,7 @@ export class Sim {
         firm.stock = qty;
         this.external.out += cost;
         this.ledger.imports += cost;
+        this.goods.imported += qty;
       }
     }
     this.firms.push(firm);
@@ -281,7 +287,7 @@ export class Sim {
       this.day++;
     }
     if (this.minute % 60 === 0) this.hourly(this.minute);
-    if (this.minute % 6 === 0) this.carHour();
+    if (this.minute % 5 === 0) this.carHour();
 
     switch (this.minute) {
       case 7 * HOUR:
@@ -357,6 +363,7 @@ export class Sim {
       if (workers) {
         firm.stock += workers * 1.05;
         firm.producedToday += workers * 1.05;
+        this.goods.produced += workers * 1.05;
       }
       // goods the shops did not take are sold out of town. That is the only
       // real income the city has from the outside world, and it is reported
@@ -371,6 +378,7 @@ export class Sim {
         firm.soldToday += qty;
         this.exportIncome += total;
         this.ledger.exports += total;
+        this.goods.exported += qty;
       }
     }
 
@@ -390,6 +398,7 @@ export class Sim {
             supplier.revenueToday += total;
             firm.boughtToday += qty;
             this.ledger.restock += total;
+            this.goods.restocked += qty;
             this.spawnTruck(supplier.building, firm.building);
           }
         }
@@ -447,7 +456,7 @@ export class Sim {
           c.earnedToday += each - tax;
           this.budget += tax;
           this.ledger.taxes += tax;
-          this.ledger.construction += each;
+          this.ledger.wages += each;
         }
       }
       if (site.progressNeeded && site.work >= site.progressNeeded) this.finishSite(site);
@@ -469,7 +478,7 @@ export class Sim {
       if (due > 0.01) {
         site.escrow -= due;
         this.external.out += due;
-        this.ledger.construction += due;
+        this.ledger.contractor += due;
       }
       site.work += 1.15;
       if (site.progressNeeded && site.work >= site.progressNeeded) this.finishSite(site);
@@ -934,6 +943,7 @@ export class Sim {
         shop.revenueToday += price;
         c.spentToday += price;
         this.ledger.sales += price;
+        this.goods.sold += 1;
         const tax = price * 0.1;
         shop.cash -= tax;
         this.budget += tax;
@@ -962,8 +972,10 @@ export class Sim {
 
   // ------------------------------------------------------------- money books
   dailyBooks() {
-    // the books are read once a day: today's numbers start from zero here
+    // the books are read once a day: add up today, then start a fresh page
+    for (const key of Object.keys(this.ledger)) this.total[key] += this.ledger[key];
     this.ledger = this.emptyLedger();
+    this.budgetDayStart = this.budget;
     // rent and business rates keep the city budget alive
     for (const c of this.citizens) {
       const rent = 14;
@@ -1045,32 +1057,60 @@ export class Sim {
     return sum;
   }
 
+  /** How much the city budget moved today (exact, from the books). */
+  budgetToday() {
+    return this.budget - (this.budgetDayStart ?? this.budget);
+  }
+
   /** Internal money may only change by the savings that crossed the border. */
   audit() {
     return this.internalMoney() - this.initialMoney - this.external.in - this.exportIncome + this.external.out;
   }
 
   // ---------------------------------------------------------------- trucks
-  /** A car that drives from one part of town to another, just like a delivery. */
+  /**
+   * Traffic. Most cars drive in from the edge of the map, stop at a building
+   * and drive back out, so you can actually watch them arrive and leave.
+   * A few just run errands between two addresses in town.
+   */
   carHour() {
-    if (this.cars.length >= 7) return;
+    if (this.cars.length >= 8) return;
     if (!this.townConnected()) return;
     if (this.minute < 6 * HOUR || this.minute > 23 * HOUR) return;
-    const stops = this.world.buildings.filter((b) => b.state === 'done' && b.door);
-    if (stops.length < 2) return;
+    const stops = this.world.buildings.filter(
+      (b) => b.state === 'done' && b.door && this.connectedToEdge(b.door.x, b.door.y),
+    );
+    if (!stops.length) return;
+
     for (let attempt = 0; attempt < 10; attempt++) {
       const a = stops[Math.floor(this.rng() * stops.length)];
       const b = stops[Math.floor(this.rng() * stops.length)];
-      if (!a || !b || a === b) continue;
-      const path = this.world.pathRoads(a.door, b.door);
-      if (!path || path.length < 5) continue;
+      if (!a || !b) continue;
+      const arrival = this.rng() < 0.55;
+      let path = null;
+      if (arrival) {
+        // in from the border of the map, out again
+        const edge = this.entryFor(a);
+        if (!edge) continue;
+        const inPath = this.world.pathRoads(edge, a.door);
+        const outPath = this.world.pathRoads(a.door, edge);
+        if (!inPath || !outPath || inPath.length < 3 || outPath.length < 2) continue;
+        path = inPath.concat(outPath.slice(1));
+      } else {
+        if (a === b) continue;
+        const there = this.world.pathRoads(a.door, b.door);
+        const back = this.world.pathRoads(b.door, a.door);
+        if (!there || !back || there.length < 4 || back.length < 2) continue;
+        path = there.concat(back.slice(1));
+      }
       this.cars.push({
         path,
         index: 1,
         x: path[0].x,
         y: path[0].y,
         color: CAR_COLORS[Math.floor(this.rng() * CAR_COLORS.length)],
-        speed: 1.9 + this.rng() * 0.9,
+        speed: 1.7 + this.rng() * 0.9,
+        arrival,
       });
       return;
     }

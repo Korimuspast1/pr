@@ -17,6 +17,7 @@ const zoom = Number(process.argv[6] || 2);
 const gx = Number(process.argv[7] || 20);
 const gy = Number(process.argv[8] || 18);
 const days = Number(process.argv[9] || 14);
+const summary = process.argv[10] !== 'nosummary';
 
 function fakeCanvas(w, h) {
   const c = createCanvas(Math.max(1, w), Math.max(1, h));
@@ -39,7 +40,8 @@ for (let i = 0; i < 30; i++) sim.update(0.1);
 
 const canvas = fakeCanvas(W, H);
 const r = new Renderer(canvas, sim);
-r.build = 'pixel-4';
+r.build = 'pixel-5';
+r.summaryOpen = summary;
 r.zoom = zoom;
 r.resize();
 r.centerOn(gx, gy);

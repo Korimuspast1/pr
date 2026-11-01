@@ -2,9 +2,9 @@
 // blow it up by a whole number with smoothing off. That is what keeps the
 // picture crisp and "pixel" at any window size.
 
-import { TW, TH, HW, HH, iso, corners, fill, pxLine, diamond } from './iso.js?v=2026-11-01-pixel-4';
-import { T } from './world.js?v=2026-11-01-pixel-4';
-import { drawGroundTile, drawBuilding, drawCitizen, drawTruck, drawCar, drawProp, PAL } from './art.js?v=2026-11-01-pixel-4';
+import { TW, TH, HW, HH, iso, corners, fill, pxLine, diamond } from './iso.js?v=2026-11-01-pixel-5';
+import { T } from './world.js?v=2026-11-01-pixel-5';
+import { drawGroundTile, drawBuilding, drawCitizen, drawTruck, drawCar, drawProp, PAL } from './art.js?v=2026-11-01-pixel-5';
 
 const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
 const HINT_SIZE = 13;
@@ -40,6 +40,7 @@ export class Renderer {
     this.smoke = [];
     this.toast = null;
     this.showHud = true;
+    this.summaryOpen = false;
     this.build = '';
     this.dpr = 1;
     this.cssW = 0;
@@ -83,10 +84,10 @@ export class Renderer {
   worldBounds() {
     const w = this.sim.world;
     return {
-      minX: -this.origin.x - 8,
-      maxX: this.origin.x + 8,
-      minY: -40,
-      maxY: w.n * TH + 20,
+      minX: -this.origin.x - 40,
+      maxX: this.origin.x + 40,
+      minY: -60,
+      maxY: w.n * TH + 40,
     };
   }
 
@@ -328,11 +329,15 @@ export class Renderer {
     const bh = 30;
     const gap = 6;
     const values = [0, 1, 2, 4];
-    let sx = W - pad - values.length * bw - (values.length - 1) * gap;
+    const speedsW = values.length * bw + (values.length - 1) * gap;
+    let sx = W - pad - speedsW;
     for (let i = 0; i < values.length; i++) {
       speeds.push({ x: sx, y: pad, w: bw, h: bh, v: values[i] });
       sx += bw + gap;
     }
+    const summaryButton = { x: W - pad - speedsW - 8 - 96, y: pad, w: 96, h: bh };
+    const summaryW = Math.min(370, Math.max(280, W - 40));
+    const summary = { x: W - pad - summaryW, y: pad + bh + 10, w: summaryW, h: 430 };
 
     const cell = 56;
     const cgap = 8;
@@ -352,6 +357,8 @@ export class Renderer {
     return {
       pad,
       speeds,
+      summaryButton,
+      summary,
       tools,
       toolbar: { x: tx - 10, y: ty - 10, w: totalW + 20, h: cell + 20 },
       hintY: ty - 48,
@@ -363,6 +370,7 @@ export class Renderer {
     const L = this.layout();
     const hit = (r) => cssX >= r.x && cssX <= r.x + r.w && cssY >= r.y && cssY <= r.y + r.h;
     for (const sp of L.speeds) if (hit(sp)) return { kind: 'speed', v: sp.v };
+    if (hit(L.summaryButton)) return { kind: 'summary' };
     for (const t of L.tools) if (hit(t)) return { kind: 'tool', id: t.id };
     return null;
   }
@@ -381,9 +389,16 @@ export class Renderer {
 
     // ---- status, top left
     const clock = `${String(Math.floor(sim.minute / 60)).padStart(2, '0')}:${String(sim.minute % 60).padStart(2, '0')}`;
+    const delta = sim.budgetToday ? sim.budgetToday() : null;
     const rows = [
       [`день ${sim.day} · ${clock}`, 15, 600, '#f5efe1'],
-      [`бюджет ${Math.round(s.budget).toLocaleString('ru-RU')} ₽`, 15, 600, '#9be08a'],
+      [
+        `бюджет ${Math.round(s.budget).toLocaleString('ru-RU')} ₽` +
+          (delta === null ? '' : ` · ${delta >= 0 ? '+' : '−'}${Math.abs(Math.round(delta)).toLocaleString('ru-RU')} за день`),
+        15,
+        600,
+        '#9be08a',
+      ],
       [`жителей ${s.pop} · работают ${s.employed}/${s.jobs}`, 13, 400, '#e7e1d3'],
       [`дома ${s.houses} · лавки ${s.shops} · заводы ${s.factories}`, 13, 400, '#bfb7a4'],
       [
@@ -394,6 +409,7 @@ export class Renderer {
       ],
     ];
     if (hint) rows.push([hint, 13, 500, '#f2c368']);
+    if (!this.summaryOpen) rows.push(['E — экономика города: доходы, товары, люди', 12, 400, 'rgba(226,220,204,0.45)']);
 
     const lineH = 20;
     const padding = 12;
@@ -425,8 +441,18 @@ export class Renderer {
       const label = sp.v === 0 ? '❙❙' : `×${sp.v}`;
       ctx.fillText(label, sp.x + sp.w / 2, sp.y + sp.h / 2 + 0.5);
     }
+    // ---- summary toggle, next to the speed buttons
+    const sb = L.summaryButton;
+    this.button(ctx, sb.x, sb.y, sb.w, sb.h, this.summaryOpen);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `600 12px ${FONT}`;
+    ctx.fillStyle = this.summaryOpen ? '#22201a' : '#ded7c8';
+    ctx.fillText('экономика', sb.x + sb.w / 2, sb.y + sb.h / 2 + 0.5);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
+
+    if (this.summaryOpen) this.drawSummary(ctx, L.summary);
 
     // ---- toolbar, bottom centre
     this.panel(ctx, L.toolbar.x, L.toolbar.y, L.toolbar.w, L.toolbar.h, 14);
@@ -489,6 +515,145 @@ export class Renderer {
       ctx.textAlign = 'left';
     }
     ctx.imageSmoothingEnabled = false;
+  }
+
+  /** What the whole city earned, spent, produced and bought. */
+  drawSummary(ctx, box) {
+    const sim = this.sim;
+    const s = sim.stats();
+    const L = sim.ledger;
+    const T = sim.total;
+    const G = sim.goods;
+    const money = (v) => `${Math.round(v).toLocaleString('ru-RU')} ₽`;
+    const num = (v) => Math.round(v).toLocaleString('ru-RU');
+    const sign = (v) => `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v)).toLocaleString('ru-RU')}`;
+    const stock = sim.firms.reduce((a, f) => a + f.stock, 0);
+    const spent = L.construction + L.welfare + L.imports + L.contractor;
+    const today = sim.budgetToday();
+
+    const rows = [];
+    const section = (label) => rows.push({ kind: 'section', label });
+    const row = (label, a, b, color) => rows.push({ kind: 'row', label, a, b, color });
+    const note = (label) => rows.push({ kind: 'note', label });
+
+    section('деньги города');
+    row('бюджет', money(s.budget), '', '#9be08a');
+    row('изменение за день', sign(today), '', today >= 0 ? '#9be08a' : '#e0a05a');
+    row('потрачено за день', money(spent), '', '#d8d2c2');
+
+    section('оборот · сегодня / всего');
+    row('аренда жителей', money(L.rent), money(T.rent));
+    row('налоги', money(L.taxes), money(T.taxes));
+    row('выручка лавок', money(L.sales), money(T.sales));
+    row('товар у заводов', money(L.restock), money(T.restock));
+    row('экспорт за границу', money(L.exports), money(T.exports));
+    row('зарплаты', money(L.wages), money(T.wages));
+    row('стройка', money(L.construction), money(T.construction));
+
+    section('товары · всего за игру');
+    row('произведено на заводах', num(G.produced), '');
+    row('куплено жителями', num(G.sold), '');
+    row('вывезено на экспорт', num(G.exported), '');
+    row('завезено извне', num(G.imported), '');
+    row('лежит на полках сейчас', num(stock), '');
+    row('лавок / заводов', `${s.shops} / ${s.factories}`, '');
+
+    section('люди');
+    row('жителей', num(s.pop), '');
+    row('работают', `${s.employed} из ${s.jobs}`, '');
+    row('безработных', num(Math.max(0, s.pop - s.employed)), '');
+    row('голодных', num(s.hungry), '');
+    const avgCash = s.pop ? sim.citizens.reduce((a, c) => a + c.cash, 0) / s.pop : 0;
+    row('средняя касса жителя', money(avgCash), '');
+    note('снаружи приходят только экспорт и сбережения приезжих');
+
+    // pick the roomiest typesetting that still fits between the top bar and
+    // the toolbar, dropping the least important rows last
+    // keep the panel clear of the toolbar at the bottom of the screen
+    const toolbarTop = this.layout().toolbar.y - 16;
+    const room = Math.min(this.cssH - 12, toolbarTop) - box.y;
+    const metrics = (d) => ({
+      padY: 12 * d,
+      titleGap: 36 * d,
+      rowH: 19 * d,
+      headH: 23 * d,
+      noteH: 26 * d,
+      fs: 12 * d,
+      headFs: 10 * d,
+      titleFs: 13 * d,
+      noteFs: 11 * d,
+    });
+    const fit = (m) => {
+      let total = m.padY * 2 + m.titleGap;
+      const used = [];
+      for (const r of rows) {
+        const add = r.kind === 'section' ? m.headH : r.kind === 'note' ? m.noteH : m.rowH;
+        if (total + add > room) break;
+        total += add;
+        used.push(r);
+      }
+      return { total, used };
+    };
+    let m = metrics(1);
+    let list = [];
+    let h = 0;
+    for (const d of [1, 0.94, 0.88, 0.82, 0.76, 0.7, 0.64, 0.58]) {
+      m = metrics(d);
+      const f = fit(m);
+      list = f.used;
+      h = f.total + 6;
+      if (list.length === rows.length) break;
+    }
+
+    const x = box.x;
+    const y = box.y;
+    const w = box.w;
+    this.panel(ctx, x, y, w, h, 12);
+
+    let cy = y + m.padY;
+    ctx.font = `600 ${m.titleFs}px ${FONT}`;
+    ctx.fillStyle = '#f0eadb';
+    ctx.fillText('сводка города', x + 14, cy + m.titleFs);
+    ctx.font = `500 ${m.headFs}px ${FONT}`;
+    ctx.fillStyle = 'rgba(226,220,204,0.45)';
+    ctx.textAlign = 'right';
+    const colRight = x + w - 92 * Math.max(0.8, m.fs / 12);
+    ctx.fillText('сегодня', colRight, cy + m.titleFs);
+    ctx.fillText('всего', x + w - 14, cy + m.titleFs);
+    ctx.textAlign = 'left';
+    cy += m.titleGap;
+
+    for (const r of list) {
+      if (r.kind === 'section') {
+        ctx.font = `600 ${m.headFs}px ${FONT}`;
+        ctx.fillStyle = 'rgba(226,220,204,0.45)';
+        ctx.fillText(r.label.toUpperCase(), x + 14, cy + m.headFs);
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(x + 14, cy + m.headFs + 4, w - 28, 1);
+        cy += m.headH;
+      } else if (r.kind === 'note') {
+        ctx.font = `400 ${m.noteFs}px ${FONT}`;
+        ctx.fillStyle = 'rgba(226,220,204,0.42)';
+        ctx.fillText(r.label, x + 14, cy + m.noteFs);
+        cy += m.noteH;
+      } else {
+        const base = cy + m.rowH - 5;
+        ctx.font = `400 ${m.fs}px ${FONT}`;
+        ctx.fillStyle = r.color || '#ded7c8';
+        ctx.fillText(r.label, x + 14, base);
+        ctx.textAlign = 'right';
+        if (r.b) {
+          ctx.fillStyle = 'rgba(226,220,204,0.55)';
+          ctx.fillText(r.b, x + w - 14, base);
+          ctx.fillStyle = r.color || '#f0eadb';
+          ctx.fillText(r.a, colRight, base);
+        } else {
+          ctx.fillText(r.a, x + w - 14, base);
+        }
+        ctx.textAlign = 'left';
+        cy += m.rowH;
+      }
+    }
   }
 
   roundRect(ctx, x, y, w, h, r) {

@@ -166,6 +166,24 @@ for (const car of sim.cars) {
 console.log('cars on the road:', sim.cars.length, 'off-road:', badCar);
 if (badCar > 0) fail('машина съехала с дороги');
 
+// --------------------------------------------- camera keys work in any layout
+renderer.centerOn(20, 20);
+const camBefore = { ...renderer.cam };
+const press = (ev) => { for (const fn of listeners.keydown || []) fn(ev); };
+const release = (ev) => { for (const fn of listeners.keyup || []) fn(ev); };
+// Caps Lock on, Latin layout: the event carries "W" and code KeyW
+press({ key: 'W', code: 'KeyW', preventDefault() {} });
+tick(6);
+release({ key: 'W', code: 'KeyW' });
+// Russian layout: the same physical key reports "ц"
+press({ key: 'ц', code: 'KeyA', preventDefault() {} });
+tick(4);
+release({ key: 'ц', code: 'KeyA' });
+const camAfter = { ...renderer.cam };
+const moved = Math.abs(camAfter.x - camBefore.x) > 0.5 || Math.abs(camAfter.y - camBefore.y) > 0;
+console.log('WASD moves the camera in any layout:', moved);
+if (!moved) fail('камера не двигается на WASD');
+
 // ------------------------------------------------ zoom does not touch the HUD
 const hudBefore = renderer.layout();
 fire('wheel', W / 2, H / 2, { deltaY: -120 });
@@ -196,6 +214,26 @@ tick(3);
 console.log('entrance bulldozed, connected:', sim.townConnected(), '· pop', popBefore, '->', sim.citizens.length);
 if (sim.townConnected()) fail('после сноса въезда дорога всё ещё считается выездом');
 if (sim.citizens.length > popBefore) fail('без выезда к краю никто не должен приезжать');
+
+// ------------------------------------------------- city books: toggles and fits
+const booksBefore = renderer.summaryOpen;
+for (const fn of listeners.keydown || []) fn({ key: 'e', code: 'KeyE', preventDefault() {} });
+tick(1);
+const booksKey = renderer.summaryOpen;
+const booksBtn = renderer.layout().summaryButton;
+fire('pointerdown', booksBtn.x + booksBtn.w / 2, booksBtn.y + booksBtn.h / 2);
+tick(1);
+console.log('economy panel: E toggles', booksBefore, '->', booksKey, '· button toggles', renderer.summaryOpen);
+if (booksKey === booksBefore) fail('клавиша E не открывает сводку');
+if (renderer.summaryOpen === booksKey) fail('кнопка «экономика» не переключает сводку');
+renderer.summaryOpen = true;
+tick(2);
+const bars = renderer.layout();
+const panelFits = bars.summary.y + 40 < bars.toolbar.y;
+console.log('summary panel stays clear of the toolbar:', panelFits);
+if (!panelFits) fail('сводка налезает на панель инструментов');
+renderer.summaryOpen = false;
+tick(1);
 
 // ------------------------------------------------------------- money and sledge
 renderer.tool = 'bulldoze';

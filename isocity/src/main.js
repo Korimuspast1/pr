@@ -1,7 +1,7 @@
-import { Sim } from './sim.js?v=2026-11-01-pixel-4';
-import { Renderer, TOOLS } from './render.js?v=2026-11-01-pixel-4';
+import { Sim, COSTS, CAPITAL } from './sim.js?v=2026-11-01-pixel-5';
+import { Renderer, TOOLS } from './render.js?v=2026-11-01-pixel-5';
 
-export const BUILD = 'pixel-4';
+export const BUILD = 'pixel-5';
 
 const canvas = document.getElementById('city');
 const sim = new Sim(7);
@@ -13,6 +13,20 @@ let last = performance.now();
 let action = null; // { kind: 'paint' | 'pan', tool, lastTile, startX, startY }
 let hoverTile = null;
 let keys = new Set();
+
+// Keyboard handling that survives Caps Lock, Shift and a Russian layout:
+// e.code gives KeyW/KeyA/KeyS/KeyD no matter what is printed on the key,
+// and e.key is lower-cased so "W" and "w" are the same.
+function keyName(e) {
+  if (e.code && /^Key[A-Z]$/.test(e.code)) return e.code.slice(3).toLowerCase();
+  if (e.code && e.code.startsWith('Arrow')) return e.code;
+  return (e.key || '').toLowerCase();
+}
+
+function held(...names) {
+  for (const n of names) if (keys.has(n)) return true;
+  return false;
+}
 let hintShown = false;
 
 // ------------------------------------------------------------------ helpers
@@ -82,6 +96,7 @@ canvas.addEventListener('pointerdown', (e) => {
   const hit = renderer.hudHit(p.cssX, p.cssY);
   if (hit) {
     if (hit.kind === 'tool') renderer.tool = hit.id;
+    if (hit.kind === 'summary') renderer.summaryOpen = !renderer.summaryOpen;
     if (hit.kind === 'speed') {
       if (hit.v === 0) sim.paused = !sim.paused;
       else {
@@ -188,32 +203,55 @@ canvas.addEventListener(
 canvas.addEventListener('touchend', () => { touch = null; });
 
 window.addEventListener('keydown', (e) => {
-  keys.add(e.key);
-  if (e.key === ' ') e.preventDefault();
-  const toolIndex = TOOLS.findIndex((t) => t.key === e.key);
-  if (toolIndex >= 0) renderer.tool = TOOLS[toolIndex].id;
-  if (e.key === 'p' || e.key === 'P' || e.key === 'з') sim.paused = !sim.paused;
-  if (e.key === '+' || e.key === '=') sim.speed = Math.min(8, sim.speed * 2);
-  if (e.key === '-' || e.key === '_') sim.speed = Math.max(1, sim.speed / 2);
-  if (e.key === 'Tab') {
+  const name = keyName(e);
+  keys.add(name);
+  keys.add((e.key || '').toLowerCase());
+  if (name === ' ') e.preventDefault();
+  const key = (e.key || '').toLowerCase();
+  const toolIndex = TOOLS.findIndex((t) => t.key === key);
+  if (toolIndex >= 0 && key !== '') renderer.tool = TOOLS[toolIndex].id;
+  if (key === 'p' || key === 'з') sim.paused = !sim.paused;
+  if (key === '+' || key === '=' || key === ']') sim.speed = Math.min(8, sim.speed * 2);
+  if (key === '-' || key === '_' || key === '[') sim.speed = Math.max(1, sim.speed / 2);
+  if (key === 'e' || key === 'у') renderer.summaryOpen = !renderer.summaryOpen;
+  if (key === 'Tab') {
     e.preventDefault();
     renderer.showHud = !renderer.showHud;
   }
-  if (e.key === 'h' || e.key === 'H' || e.key === 'р') renderer.showHud = !renderer.showHud;
+  if (key === 'h' || key === 'р') renderer.showHud = !renderer.showHud;
 });
 
-window.addEventListener('keyup', (e) => keys.delete(e.key));
+window.addEventListener('keyup', (e) => {
+  keys.delete(keyName(e));
+  keys.delete((e.key || '').toLowerCase());
+  keys.delete(e.key);
+});
 window.addEventListener('blur', () => keys.clear());
 
 window.addEventListener('resize', () => renderer.resize());
 
-// camera keys
+// camera keys: WASD in any layout, arrows as well
 function cameraKeys(dt) {
-  const speed = 260 * dt;
-  if (keys.has('ArrowLeft') || keys.has('a') || keys.has('ф')) renderer.panBy(-speed, 0);
-  if (keys.has('ArrowRight') || keys.has('d') || keys.has('в')) renderer.panBy(speed, 0);
-  if (keys.has('ArrowUp') || keys.has('w') || keys.has('ц')) renderer.panBy(0, -speed * 0.7);
-  if (keys.has('ArrowDown') || keys.has('s') || keys.has('ы')) renderer.panBy(0, speed * 0.7);
+  const speed = 280 * dt;
+  if (held('ArrowLeft', 'a', 'ф')) renderer.panBy(-speed, 0);
+  if (held('ArrowRight', 'd', 'в')) renderer.panBy(speed, 0);
+  if (held('ArrowUp', 'w', 'ц')) renderer.panBy(0, -speed * 0.75);
+  if (held('ArrowDown', 's', 'ы')) renderer.panBy(0, speed * 0.75);
+}
+
+// ------------------------------------------------- tell the player about money
+// Every new building costs the city budget, so it is announced: that answers
+// the "where did my money go" question without opening any menu.
+let knownSites = 0;
+const NAMES_OF_KINDS = { house: 'дом', shop: 'лавка', factory: 'завод', park: 'парк', cityhall: 'ратуша' };
+function watchBuilding() {
+  if (sim.sites.length > knownSites) {
+    const site = sim.sites[sim.sites.length - 1];
+    const kind = site.building.kind;
+    const price = (COSTS[kind] || 0) + (CAPITAL[kind] || 0);
+    renderer.toastMessage(`стройка: ${NAMES_OF_KINDS[kind] || kind} · −${price} ₽ из бюджета`);
+  }
+  knownSites = sim.sites.length;
 }
 
 // --------------------------------------------------------------------- loop
@@ -224,12 +262,13 @@ function frame(now) {
   acc += dt;
   cameraKeys(dt);
   sim.update(dt);
+  watchBuilding();
   renderer.update(dt);
   renderer.draw();
   requestAnimationFrame(frame);
 }
 
-renderer.toastMessage('начни с дороги до края карты — по ней приедут люди');
+renderer.toastMessage('дорога до края карты → зоны → люди приедут сами · E — экономика города');
 requestAnimationFrame(frame);
 
 // handy for debugging and for the headless smoke test
