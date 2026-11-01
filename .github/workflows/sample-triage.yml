@@ -2,13 +2,14 @@ name: Static triage of external sample
 
 # ВНИМАНИЕ: образец только скачивается и разбирается статически.
 # Он никогда не запускается, не публикуется артефактом и не попадает в репозиторий.
+# В ветку коммитится только текстовый отчёт.
 
 on:
   workflow_dispatch:
   push:
     paths:
       - ".github/workflows/sample-triage.yml"
-      - ".github/scripts/fetch_sample.py"
+      - ".github/scripts/**"
       - "tools/malware-triage/**"
 
 permissions:
@@ -17,48 +18,56 @@ permissions:
 jobs:
   triage:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
+    env:
+      SAMPLE_URL: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file
     steps:
       - uses: actions/checkout@v4
 
+      - name: Инструменты
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq p7zip-full >/dev/null
+          python3 -m pip install --quiet --disable-pip-version-check pyzipper androguard asn1crypto
+
       - name: Скачать образец во временный каталог
-        env:
-          SAMPLE_URL: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file
-        run: |
-          set -euo pipefail
-          python3 .github/scripts/fetch_sample.py "$SAMPLE_URL" "$RUNNER_TEMP/fakevpn.zip"
+        run: python3 .github/scripts/fetch_sample.py "$SAMPLE_URL" "$RUNNER_TEMP/fakevpn.zip"
 
-      - name: Хеши и размер
+      - name: Полный статический разбор
         run: |
           set -euo pipefail
-          ls -l "$RUNNER_TEMP/fakevpn.zip"
-          sha256sum "$RUNNER_TEMP/fakevpn.zip"
-          md5sum "$RUNNER_TEMP/fakevpn.zip"
-
-      - name: Проверить тип файла
-        run: |
-          set -euo pipefail
-          python3 - "$RUNNER_TEMP/fakevpn.zip" <<'PY'
-          import sys
-          p = sys.argv[1]
-          with open(p, "rb") as fh:
-              head = fh.read(8)
-          print("первые байты:", head.hex(), head[:4])
-          PY
-
-      - name: Статический разбор (файл не запускается)
-        run: |
-          set -euo pipefail
+          REPORT="$RUNNER_TEMP/report.txt"
           {
-            echo "Цель: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file"
+            echo "Цель: $SAMPLE_URL"
             echo "Дата разбора (UTC): $(date -u '+%Y-%m-%d %H:%M')"
-            echo "Хеши скачанного файла:"
+            echo
+            echo "################ 1. ХЕШИ ################"
             sha256sum "$RUNNER_TEMP/fakevpn.zip"
             md5sum "$RUNNER_TEMP/fakevpn.zip"
+            ls -l "$RUNNER_TEMP/fakevpn.zip"
             echo
-            python3 tools/malware-triage/triage.py "$RUNNER_TEMP/fakevpn.zip" \
-              --json "$RUNNER_TEMP/report.json"
-          } | tee "$RUNNER_TEMP/report.txt"
+            echo "################ 2. СТРУКТУРА АРХИВА (7z) ################"
+            7z l -slt "$RUNNER_TEMP/fakevpn.zip" 2>&1 | grep -Ei '^(Path|Size|Packed Size|Method|Encrypted|CRC) = ' | head -80
+            echo
+            echo "################ 3. АВТОМАТИЧЕСКИЙ ТРИАЖ ZIP ################"
+            python3 tools/malware-triage/triage.py "$RUNNER_TEMP/fakevpn.zip" || true
+            echo
+            echo "################ 4. РАСПАКОВКА ################"
+            mkdir -p "$RUNNER_TEMP/unpacked"
+            python3 .github/scripts/unlock_zip.py "$RUNNER_TEMP/fakevpn.zip" "$RUNNER_TEMP/unpacked" || true
+          } | tee "$REPORT"
+
+          shopt -s nullglob
+          for f in "$RUNNER_TEMP"/unpacked/*.apk; do
+            {
+              echo
+              echo "################ 5. ТРИАЖ $(basename "$f") ################"
+              python3 tools/malware-triage/triage.py "$f" || true
+              echo
+              python3 tools/malware-triage/apk_analyze.py "$f" || true
+            } | tee -a "$REPORT"
+          done
 
       - name: Опубликовать отчёт в ветку
         run: |
@@ -73,6 +82,4 @@ jobs:
 
       - name: Удалить образец
         if: always()
-        run: rm -f "$RUNNER_TEMP/fakevpn.zip" "$RUNNER_TEMP/report.json" "$RUNNER_TEMP/report.txt" || true
-
-# trigger
+        run: rm -rf "$RUNNER_TEMP"/fakevpn.zip "$RUNNER_TEMP"/unpacked "$RUNNER_TEMP"/report.txt || true
