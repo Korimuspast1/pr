@@ -39,6 +39,7 @@ public class AuthActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AuthClient.init(this);
         setContentView(R.layout.activity_auth);
 
         emailInput = findViewById(R.id.email);
@@ -185,8 +186,22 @@ public class AuthActivity extends Activity {
         if (code.contains("TOO_MANY_ATTEMPTS")) {
             return "Too many attempts. Try again later.";
         }
-        if (code.contains("OPERATION_NOT_ALLOWED")) {
+        if (code.contains("OPERATION_NOT_ALLOWED")
+                || code.contains("CONFIGURATION_NOT_FOUND")
+                || code.contains("SERVICE_DISABLED")) {
             return "Email sign-in is not enabled for this app yet.";
+        }
+        if (code.contains("API_KEY")
+                || code.contains("API key not valid")
+                || code.toLowerCase(java.util.Locale.ROOT).contains("are blocked")) {
+            return "This app is not authorized in Firebase yet. Its SHA-1 fingerprint must be added in the Firebase console.";
+        }
+        if (code.length() > 0) {
+            String first = code.split("\\|")[0].trim();
+            if (first.length() > 90) {
+                first = first.substring(0, 90);
+            }
+            return "Something went wrong. " + first;
         }
         return "Something went wrong. Try again.";
     }

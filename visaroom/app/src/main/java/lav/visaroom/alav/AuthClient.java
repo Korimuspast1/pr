@@ -1,5 +1,12 @@
 package lav.visaroom.alav;
 
+import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
+import android.os.Build;
+
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -9,6 +16,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 /**
  * Firebase Authentication through its official REST API.
@@ -29,7 +37,68 @@ final class AuthClient {
         String refreshToken = "";
     }
 
+    private static volatile String androidPackage;
+    private static volatile String androidCertSha1;
+
     private AuthClient() {
+    }
+
+    /**
+     * The Android API key in Firebase projects is normally restricted to the
+     * registered app. The Firebase SDK labels its requests with the package
+     * name and the SHA-1 of the signing certificate in these headers; a
+     * REST client must do the same or Google rejects the call with
+     * "Requests from this Android client application are blocked".
+     */
+    static void init(Context context) {
+        if (androidPackage != null) {
+            return;
+        }
+        try {
+            Context app = context.getApplicationContext();
+            androidPackage = app.getPackageName();
+            androidCertSha1 = signingSha1(app);
+        } catch (Exception ignored) {
+            // Headers are simply omitted if the signature cannot be read.
+        }
+    }
+
+    private static String signingSha1(Context context) throws Exception {
+        PackageManager pm = context.getPackageManager();
+        String pkg = context.getPackageName();
+        byte[] signatureBytes = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            PackageInfo info = pm.getPackageInfo(pkg, PackageManager.GET_SIGNING_CERTIFICATES);
+            if (info.signingInfo != null) {
+                Signature[] signers = info.signingInfo.getApkContentsSigners();
+                if (signers != null && signers.length > 0) {
+                    signatureBytes = signers[0].toByteArray();
+                }
+            }
+        } else {
+            PackageInfo info = pm.getPackageInfo(pkg, PackageManager.GET_SIGNATURES);
+            if (info.signatures != null && info.signatures.length > 0) {
+                signatureBytes = info.signatures[0].toByteArray();
+            }
+        }
+        if (signatureBytes == null) {
+            return null;
+        }
+        byte[] digest = MessageDigest.getInstance("SHA-1").digest(signatureBytes);
+        StringBuilder hex = new StringBuilder(digest.length * 2);
+        for (byte b : digest) {
+            hex.append(String.format("%02X", b & 0xff));
+        }
+        return hex.toString();
+    }
+
+    private static void applyAndroidHeaders(HttpURLConnection connection) {
+        if (androidPackage != null) {
+            connection.setRequestProperty("X-Android-Package", androidPackage);
+        }
+        if (androidCertSha1 != null) {
+            connection.setRequestProperty("X-Android-Cert", androidCertSha1);
+        }
     }
 
     static Result signIn(String email, String password) {
@@ -77,6 +146,7 @@ final class AuthClient {
             connection.setReadTimeout(15000);
             connection.setDoOutput(true);
             connection.setRequestProperty("Content-Type", "application/json");
+            applyAndroidHeaders(connection);
             connection.setRequestProperty("Authorization", "Bearer " + idToken);
             OutputStream out = connection.getOutputStream();
             out.write(body.toString().getBytes(StandardCharsets.UTF_8));
@@ -119,6 +189,7 @@ final class AuthClient {
         connection.setReadTimeout(15000);
         connection.setDoOutput(true);
         connection.setRequestProperty("Content-Type", "application/json");
+        applyAndroidHeaders(connection);
         if (bearer != null) {
             connection.setRequestProperty("Authorization", "Bearer " + bearer);
         }
@@ -146,7 +217,20 @@ final class AuthClient {
 
     private static String parseErrorCode(JSONObject json) {
         try {
-            return json.getJSONObject("error").optString("message");
+            JSONObject error = json.getJSONObject("error");
+            StringBuilder code = new StringBuilder(error.optString("message"));
+            String status = error.optString("status");
+            if (status.length() > 0) {
+                code.append('|').append(status);
+            }
+            JSONArray details = error.optJSONArray("errors");
+            if (details != null && details.length() > 0) {
+                String reason = details.getJSONObject(0).optString("reason");
+                if (reason.length() > 0) {
+                    code.append('|').append(reason);
+                }
+            }
+            return code.toString();
         } catch (Exception ignored) {
             return "";
         }

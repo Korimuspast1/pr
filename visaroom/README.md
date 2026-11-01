@@ -12,6 +12,10 @@ vector-drawable (аналог SVG в Android).
 Проект: `lool-4d49c` (конфиг — `app/google-services.json`).
 
 1. Authentication → Sign-in method → включить **Email/Password**. Без этого вход не сработает.
+2. Project settings → Android-приложение `lav.visaroom.alav` → Add fingerprint →
+   SHA-1 подписи приложения: `D9:EF:5A:1A:9F:37:9A:12:BD:2F:41:39:47:C7:BB:35:15:0C:D1:1E`.
+   Без этого Google может отклонять запросы с ошибкой «Requests from this Android
+   client application are blocked» (API key ограничен зарегистрированным приложением).
 2. Firestore Database → Create database (Production mode).
 3. Задеплоить правила из папки `../firebase`:
 

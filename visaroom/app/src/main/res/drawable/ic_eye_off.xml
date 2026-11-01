@@ -3,10 +3,7 @@
     android:width="22dp" android:height="22dp"
     android:viewportWidth="24" android:viewportHeight="24">
     <path
-        android:pathData="M2.5,12 C5,6.8 8.4,4.5 12,4.5 C13.5,4.5 15,4.9 16.4,5.7"
-        android:strokeColor="#FF111111" android:strokeWidth="1.7" />
-    <path
-        android:pathData="M21.5,12 C19,17.2 15.6,19.5 12,19.5 C10.5,19.5 9,19.1 7.6,18.3"
+        android:pathData="M2.5,12 C5,6.8 8.4,4.5 12,4.5 C15.6,4.5 19,6.8 21.5,12 C19,17.2 15.6,19.5 12,19.5 C8.4,19.5 5,17.2 2.5,12 Z"
         android:strokeColor="#FF111111" android:strokeWidth="1.7" />
     <path
         android:pathData="M4,4 L20,20"
