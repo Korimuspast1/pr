@@ -1,8 +1,8 @@
 // Pixel art. Everything here paints into world-pixel coordinates with integer
 // positions and 1px outlines; the renderer only upscales the finished frame.
 
-import { TW, TH, HW, HH, iso, corners, fill, box, diamond, pxLine, pitchedRoof, wallRect, outline } from './iso.js?v=2026-11-01-pixel-6';
-import { T } from './world.js?v=2026-11-01-pixel-6';
+import { TW, TH, HW, HH, iso, corners, fill, box, diamond, pxLine, pitchedRoof, wallRect, outline } from './iso.js?v=2026-11-01-pixel-7';
+import { T } from './world.js?v=2026-11-01-pixel-7';
 
 export const PAL = {
   grass: ['#79ae47', '#7cb24a', '#76a845'],
@@ -76,6 +76,19 @@ export function drawGroundTile(ctx, world, x, y, ox, oy) {
   const h = hash(x, y);
 
   if (t === T.ROAD) {
+    if (world.isBridge(x, y)) {
+      fill(ctx, [n, e, s, w], '#8a6a45');
+      // planks across the bridge
+      for (let i = 1; i < 5; i++) {
+        const t0 = i / 5;
+        const a = { x: n.x + (w.x - n.x) * t0, y: n.y + (w.y - n.y) * t0 };
+        const b = { x: e.x + (s.x - e.x) * t0, y: e.y + (s.y - e.y) * t0 };
+        pxLine(ctx, a.x, a.y, b.x, b.y, '#715338');
+      }
+      pxLine(ctx, n.x, n.y, e.x, e.y, '#c8b48c');
+      pxLine(ctx, w.x, w.y, s.x, s.y, '#6b4f34');
+      return;
+    }
     fill(ctx, [n, e, s, w], PAL.road);
     // subtle asphalt speckle
     if (h % 7 === 0) {
@@ -212,9 +225,40 @@ export function drawBuilding(ctx, b, sim, night) {
     case 'cityhall':
       drawHall(ctx, b, night);
       break;
+    case 'water':
+      drawWaterTower(ctx, b, night);
+      break;
+    case 'power':
+      drawPowerPlant(ctx, b, night);
+      break;
+    case 'school':
+      drawSchool(ctx, b, night);
+      break;
+    case 'clinic':
+      drawClinic(ctx, b, night);
+      break;
+    case 'busstop':
+      drawBusStop(ctx, b, night);
+      break;
+    case 'police':
+      drawPolice(ctx, b, night);
+      break;
+    case 'fire':
+      drawFireStation(ctx, b, night);
+      break;
+    case 'landfill':
+      drawLandfill(ctx, b, night);
+      break;
+    case 'warehouse':
+      drawWarehouse(ctx, b, night);
+      break;
+    case 'landmark':
+      drawLandmark(ctx, b, night);
+      break;
     default:
       break;
   }
+  if (b.abandoned) markAbandoned(ctx, b);
 }
 
 function shadow(ctx, b) {
@@ -264,10 +308,12 @@ function roofOutline(ctx, b, z, inset = 0.05) {
 function drawHouse(ctx, b, night) {
   const pal = HOUSE[b.variant % HOUSE.length];
   const { x, y } = b;
-  const h = 17 + (b.variant % 2) * 4;
+  const level = b.level || 1;
+  const h = 17 + (b.variant % 2) * 4 + (level - 1) * 9;
   shadow(ctx, b);
   box(ctx, x, y, b.w, b.d, 0, h, { top: pal.wall, left: shadeTone(pal.wall, -0.16), right: shadeTone(pal.wall, -0.28), outline: PAL.outline });
-  windowGrid(ctx, b, 'x', 1, 2, 5, 8, night);
+  windowGrid(ctx, b, 'x', level > 1 ? 2 : 1, 2, 5, 8, night);
+  if (level > 2) windowGrid(ctx, b, 'x', 1, 3, 4, 7, night);
   wallRect(ctx, x, y, b.w, b.d, b.doorSide, 0.4, 0.62, 0, 9, 0, pal.door);
   wallRect(ctx, x, y, b.w, b.d, b.doorSide, 0.38, 0.64, 9, 10, 0, pal.trim);
   pitchedRoof(ctx, x, y, b.w, b.d, h, 12 + (b.variant % 2) * 3, {
@@ -713,6 +759,275 @@ export function drawCar(ctx, car, night = 0) {
       ctx.fillRect(g.x + 3, baseY - (up > 0 ? 1 : 10), 2, 1);
     }
   }
+}
+
+// ---------------------------------------------------------- public services
+const SVC = {
+  blue: '#4e7fb5',
+  blueDark: '#3a5f8c',
+  red: '#b5533f',
+  redDark: '#8c3a2c',
+  green: '#4f8a52',
+  greenDark: '#3a6a3e',
+  grey: '#9a9384',
+  greyDark: '#6f685c',
+  white: '#ece6d6',
+  roof: '#4a566a',
+  roofDark: '#38414f',
+  yellow: '#d9b45a',
+  yellowDark: '#a9853c',
+};
+
+function sign(ctx, b, color, night) {
+  // a small board over the door, so a building reads as what it is
+  const p = iso(b.door.x, b.door.y, 9);
+  ctx.fillStyle = color;
+  ctx.fillRect(p.x - 3, p.y - 3, 6, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillRect(p.x - 2, p.y - 2, 4, 1);
+  if (night > 0.3) {
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#ffe9a8';
+    ctx.fillRect(p.x - 5, p.y - 2, 10, 6);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawWaterTower(ctx, b, night) {
+  const { x, y } = b;
+  const legH = 12;
+  shadow(ctx, b);
+  // four legs and the tank on top
+  for (const [lx, ly] of [
+    [0.25, 0.3],
+    [0.7, 0.3],
+    [0.25, 0.7],
+    [0.7, 0.7],
+  ]) {
+    const a = iso(x + lx, y + ly, 0);
+    const c = iso(x + lx, y + ly, legH);
+    pxLine(ctx, a.x, a.y, c.x, c.y, SVC.greyDark);
+  }
+  box(ctx, x + 0.2, y + 0.2, 0.6, 0.6, legH, legH + 10, {
+    top: SVC.blue,
+    left: shadeTone(SVC.blue, -0.1),
+    right: shadeTone(SVC.blue, -0.28),
+    outline: PAL.outline,
+  });
+  const top = corners(x + 0.22, y + 0.22, 0.56, 0.56, legH + 10);
+  fill(ctx, top, shadeTone(SVC.blue, 0.22));
+  const p = iso(x + 0.5, y + 0.5, legH + 10);
+  ctx.fillStyle = '#dfeaf2';
+  ctx.fillRect(p.x - 2, p.y - 2, 4, 3);
+  sign(ctx, b, SVC.blueDark, night);
+}
+
+function drawPowerPlant(ctx, b, night) {
+  const { x, y, w, d } = b;
+  const h = 16;
+  shadow(ctx, b);
+  box(ctx, x, y, w, d, 0, h, { top: SVC.grey, left: shadeTone(SVC.grey, -0.16), right: shadeTone(SVC.grey, -0.3), outline: PAL.outline });
+  windowGrid(ctx, b, 'x', 1, 2, 5, 8, night, true);
+  // two cooling stacks
+  chimney(ctx, x + 0.25, y + 0.3, h, SVC.red, true);
+  chimney(ctx, x + 0.65, y + 0.3, h, SVC.red, true);
+  // lightning sign: the town has power here
+  sign(ctx, b, SVC.yellowDark, night);
+}
+
+function drawSchool(ctx, b, night) {
+  const { x, y, w, d } = b;
+  const h = 16;
+  shadow(ctx, b);
+  box(ctx, x, y, w, d, 0, h, { top: '#e6d9b8', left: shadeTone('#e6d9b8', -0.12), right: shadeTone('#e6d9b8', -0.24), outline: PAL.outline });
+  windowGrid(ctx, b, 'x', 1, 3, 5, 8, night);
+  windowGrid(ctx, b, 'y', 1, 2, 5, 8, night);
+  pitchedRoof(ctx, x, y, w, d, h, 8, {
+    left: SVC.red,
+    right: shadeTone(SVC.red, 0.15),
+    gableBack: shadeTone(SVC.red, -0.3),
+    gableFront: '#f0e6cc',
+    outline: PAL.outline,
+  });
+  sign(ctx, b, SVC.blueDark, night);
+}
+
+function drawClinic(ctx, b, night) {
+  const { x, y, w, d } = b;
+  const h = 15;
+  shadow(ctx, b);
+  box(ctx, x, y, w, d, 0, h, { top: '#f0f2ef', left: shadeTone('#f0f2ef', -0.14), right: shadeTone('#f0f2ef', -0.26), outline: PAL.outline });
+  windowGrid(ctx, b, 'x', 1, 2, 5, 8, night);
+  pitchedRoof(ctx, x, y, w, d, h, 7, {
+    left: '#7fa3b5',
+    right: shadeTone('#7fa3b5', 0.16),
+    gableBack: shadeTone('#7fa3b5', -0.3),
+    gableFront: '#f6f8f6',
+    outline: PAL.outline,
+  });
+  // red cross
+  const p = iso(x + w * 0.5, y + d * 0.5, h + 9);
+  ctx.fillStyle = '#c8553f';
+  ctx.fillRect(p.x - 4, p.y - 1, 8, 2);
+  ctx.fillRect(p.x - 1, p.y - 4, 2, 8);
+  sign(ctx, b, SVC.greenDark, night);
+}
+
+function drawBusStop(ctx, b, night) {
+  const { x, y } = b;
+  shadow(ctx, b);
+  // a little shelter with a bench and a timetable
+  const a = iso(x + 0.2, y + 0.65, 0);
+  const c = iso(x + 0.2, y + 0.65, 10);
+  ctx.strokeStyle = SVC.greyDark;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(c.x, c.y);
+  ctx.stroke();
+  const p1 = iso(x + 0.75, y + 0.65, 0);
+  const p2 = iso(x + 0.75, y + 0.65, 10);
+  pxLine(ctx, p1.x, p1.y, p2.x, p2.y, SVC.greyDark);
+  const roof = corners(x + 0.1, y + 0.55, 0.8, 0.4, 10);
+  fill(ctx, roof, SVC.blueDark);
+  // bench
+  const bench = corners(x + 0.35, y + 0.7, 0.3, 0.15, 4);
+  fill(ctx, bench, '#8a6a44');
+  // the bus sign itself
+  const s = iso(x + 0.5, y + 0.45, 13);
+  ctx.fillStyle = SVC.yellow;
+  ctx.fillRect(s.x - 3, s.y - 3, 6, 6);
+  ctx.fillStyle = '#3a3f48';
+  ctx.fillRect(s.x - 2, s.y - 2, 4, 1);
+  if (night > 0.3) {
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#ffe9a8';
+    ctx.fillRect(s.x - 6, s.y - 4, 12, 8);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawPolice(ctx, b, night) {
+  const { x, y, w, d } = b;
+  const h = 15;
+  shadow(ctx, b);
+  box(ctx, x, y, w, d, 0, h, { top: SVC.blue, left: shadeTone(SVC.blue, -0.15), right: shadeTone(SVC.blue, -0.3), outline: PAL.outline });
+  windowGrid(ctx, b, 'x', 1, 2, 5, 8, night, true);
+  pitchedRoof(ctx, x, y, w, d, h, 6, {
+    left: SVC.roof,
+    right: shadeTone(SVC.roof, 0.16),
+    gableBack: SVC.roofDark,
+    gableFront: SVC.white,
+    outline: PAL.outline,
+  });
+  const p = iso(x + w * 0.5, y + d * 0.5, h + 8);
+  ctx.fillStyle = '#f4e9b8';
+  ctx.fillRect(p.x - 2, p.y - 2, 4, 3);
+  ctx.fillStyle = SVC.blueDark;
+  ctx.fillRect(p.x - 1, p.y - 1, 1, 1);
+  sign(ctx, b, SVC.blueDark, night);
+}
+
+function drawFireStation(ctx, b, night) {
+  const { x, y, w, d } = b;
+  const h = 14;
+  shadow(ctx, b);
+  box(ctx, x, y, w, d, 0, h, { top: SVC.red, left: shadeTone(SVC.red, -0.14), right: shadeTone(SVC.red, -0.28), outline: PAL.outline });
+  // garage door
+  wallRect(ctx, x, y, w, d, b.doorSide, 0.28, 0.72, 0, 9, 0, '#5c3030');
+  pitchedRoof(ctx, x, y, w, d, h, 6, {
+    left: SVC.redDark,
+    right: shadeTone(SVC.redDark, 0.14),
+    gableBack: shadeTone(SVC.redDark, -0.25),
+    gableFront: SVC.white,
+    outline: PAL.outline,
+  });
+  sign(ctx, b, '#8f3a2c', night);
+}
+
+function drawLandfill(ctx, b, night) {
+  const { x, y } = b;
+  // a dump: dirt lot, heaps and a fence
+  const c = corners(x + 0.05, y + 0.05, 0.9, 0.9);
+  fill(ctx, c, '#7d6b4c');
+  for (let i = 0; i < 4; i++) {
+    const p = iso(x + 0.25 + (i % 2) * 0.4, y + 0.25 + Math.floor(i / 2) * 0.4, 0);
+    ctx.fillStyle = i % 2 ? '#6b5b42' : '#8a7654';
+    ctx.fillRect(p.x - 4, p.y - 4, 8, 4);
+    ctx.fillStyle = '#5c4d38';
+    ctx.fillRect(p.x - 4, p.y - 1, 8, 1);
+  }
+  // fence posts
+  for (let i = 0; i <= 3; i++) {
+    const t = i / 3;
+    const a = iso(x + 0.05 + t * 0.9, y + 0.05, 0);
+    const bq = iso(x + 0.05 + t * 0.9, y + 0.05, 5);
+    pxLine(ctx, a.x, a.y, bq.x, bq.y, '#a8977a');
+  }
+  sign(ctx, b, '#7a6a4a', night);
+}
+
+function drawWarehouse(ctx, b, night) {
+  const { x, y, w, d } = b;
+  const h = 14;
+  shadow(ctx, b);
+  box(ctx, x, y, w, d, 0, h, { top: '#b9b0a0', left: shadeTone('#b9b0a0', -0.12), right: shadeTone('#b9b0a0', -0.26), outline: PAL.outline });
+  // a long loading door and a flat roof with a small office
+  wallRect(ctx, x, y, w, d, b.doorSide, 0.1, 0.55, 0, 10, 0, '#6f6a5e');
+  for (let v = 2; v < 10; v += 3) {
+    wallRect(ctx, x, y, w, d, b.doorSide, 0.1, 0.55, v, v + 1, 0, '#8b8577');
+  }
+  roofOutline(ctx, b, h, 0.03);
+  const r = corners(x + 0.05, y + 0.05, w - 0.1, d - 0.1, h);
+  fill(ctx, r, '#8f8878');
+  box(ctx, x + w - 0.9, y + 0.15, 0.55, 0.5, h, h + 6, { top: '#d3cbb8', left: '#b3ab98', right: '#948d7d', outline: PAL.outline });
+  sign(ctx, b, '#6b6455', night);
+}
+
+function drawLandmark(ctx, b, night) {
+  const { x, y, w, d } = b;
+  shadow(ctx, b);
+  const cx = x + w / 2;
+  const cy = y + d / 2;
+  // a stone tower with a spire and a flag: the thing tourists come to see
+  const base = corners(x + 0.25, y + 0.25, w - 0.5, d - 0.5);
+  fill(ctx, base, '#cfc6b0');
+  box(ctx, x + 0.3, y + 0.3, w - 0.6, d - 0.6, 0, 26, {
+    top: '#e8e0cc',
+    left: shadeTone('#e8e0cc', -0.12),
+    right: shadeTone('#e8e0cc', -0.26),
+    outline: PAL.outline,
+  });
+  for (let i = 1; i < 4; i++) {
+    wallRect(ctx, x + 0.3, y + 0.3, w - 0.6, d - 0.6, 'x', i / 4 - 0.03, i / 4 + 0.03, 4, 22, 0, '#b9a98a');
+  }
+  const p = iso(cx, cy, 26);
+  fill(ctx, [{ x: p.x - 6, y: p.y }, { x: p.x, y: p.y - 10 }, { x: p.x + 6, y: p.y }], '#8f7f60');
+  pxLine(ctx, p.x, p.y - 10, p.x, p.y - 20, '#d8d2c2');
+  fill(ctx, [
+    { x: p.x + 1, y: p.y - 20 },
+    { x: p.x + 9, y: p.y - 17 },
+    { x: p.x + 9, y: p.y - 12 },
+    { x: p.x + 1, y: p.y - 15 },
+  ], '#d9a13c');
+  if (night > 0.3) {
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#ffe9a8';
+    ctx.fillRect(p.x - 10, p.y - 10, 20, 20);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function markAbandoned(ctx, b) {
+  // boarded windows and a dull grey wash: this lot is abandoned
+  const c = corners(b.x + 0.02, b.y + 0.02, b.w - 0.04, b.d - 0.04);
+  ctx.globalAlpha = 0.35;
+  fill(ctx, c, '#5b5b52');
+  ctx.globalAlpha = 1;
+  const p = iso(b.door.x, b.door.y, 6);
+  ctx.fillStyle = '#3a3934';
+  ctx.fillRect(p.x - 4, p.y - 3, 8, 2);
+  ctx.fillRect(p.x - 4, p.y, 8, 2);
 }
 
 // ------------------------------------------------------------------- helper

@@ -28,7 +28,55 @@ export function buildDemoTown(sim, opts = {}) {
       sim.zone(x, y, pick(x, y));
     }
   }
+  // a couple of parks raise the value of the streets around them
+  place(sim, 'parkHard', 16, 20);
+  place(sim, 'parkHard', 24, 20);
+
+  // a player builds the first utilities right away
+  place(sim, 'water', 19, 16);
+  place(sim, 'power', 21, 16);
   return sim;
+}
+
+/** Try to put one service on a free tile near the town centre. */
+export function place(sim, kind, gx, gy) {
+  const w = sim.world;
+  for (let r = 0; r < 6; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const x = gx + dx;
+        const y = gy + dy;
+        if (!w.inBounds(x, y)) continue;
+        if (w.get(x, y) === T.ROAD || w.get(x, y) === T.WATER) continue;
+        if (w.occ[y * w.n + x] >= 0) continue;
+        if (!w.hasRoadNeighbour(x, y)) continue;
+        const res =
+          kind === 'warehouse' ? sim.buildWarehouse(x, y) : kind === 'parkHard' ? sim.buildPark(x, y) : sim.buildService(kind, x, y);
+        if (res.ok) return res;
+      }
+    }
+  }
+  return { ok: false };
+}
+
+/**
+ * A stand-in for the player: once a day the town adds whatever service is
+ * missing and already unlocked, while there is money for it. Tests use this so
+ * they exercise the systems instead of starving the town.
+ */
+export function maintainServices(sim) {
+  const order = ['water', 'power', 'busstop', 'school', 'clinic', 'landfill', 'warehouse', 'police', 'fire', 'landmark'];
+  const counts = sim.serviceCounts();
+  const houses = sim.countDone('house');
+  for (const kind of order) {
+    if (!sim.systems.isUnlocked(kind)) continue;
+    const want = kind === 'water' ? Math.ceil(houses / 14) : kind === 'busstop' ? 2 : kind === 'power' ? Math.ceil(houses / 18) : 1;
+    if ((counts[kind] || 0) >= Math.max(1, want)) continue;
+    const spot = kind === 'water' ? [19, 16] : [18 + Object.keys(counts).length * 2, 16];
+    const res = place(sim, kind, spot[0], spot[1]);
+    if (res.ok) return res;
+  }
+  return { ok: false };
 }
 
 function defaultZone(x, y) {

@@ -2,21 +2,169 @@
 // blow it up by a whole number with smoothing off. That is what keeps the
 // picture crisp and "pixel" at any window size.
 
-import { TW, TH, HW, HH, iso, corners, fill, pxLine, diamond } from './iso.js?v=2026-11-01-pixel-6';
-import { T } from './world.js?v=2026-11-01-pixel-6';
-import { drawGroundTile, drawBuilding, drawCitizen, drawTruck, drawCar, drawProp, PAL } from './art.js?v=2026-11-01-pixel-6';
+import { TW, TH, HW, HH, iso, corners, fill, pxLine, diamond } from './iso.js?v=2026-11-01-pixel-7';
+import { T } from './world.js?v=2026-11-01-pixel-7';
+import { drawGroundTile, drawBuilding, drawCitizen, drawTruck, drawCar, drawProp, PAL } from './art.js?v=2026-11-01-pixel-7';
+import { POLICIES, SERVICES } from './mechanics.js?v=2026-11-01-pixel-7';
 
 const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
 const HINT_SIZE = 13;
 
 const TOOLS = [
-  { id: 'bulldoze', key: '1', label: 'снос' },
-  { id: 'road', key: '2', label: 'дорога' },
-  { id: 'zoneR', key: '3', label: 'жильё' },
-  { id: 'zoneC', key: '4', label: 'торговля' },
-  { id: 'zoneI', key: '5', label: 'промзона' },
-  { id: 'park', key: '6', label: 'парк' },
+  { id: 'bulldoze', key: '1', label: 'снос', row: 0 },
+  { id: 'road', key: '2', label: 'дорога', row: 0 },
+  { id: 'zoneR', key: '3', label: 'жильё', row: 0 },
+  { id: 'zoneC', key: '4', label: 'торговля', row: 0 },
+  { id: 'zoneI', key: '5', label: 'промзона', row: 0 },
+  { id: 'park', key: '6', label: 'парк', row: 0 },
+  // public services and city works, unlocked by population milestones
+  // city services: no hotkeys, they are chosen with the mouse
+  { id: 'water', key: '', label: 'вода', row: 1, service: true },
+  { id: 'power', key: '', label: 'энергия', row: 1, service: true },
+  { id: 'school', key: '', label: 'школа', row: 1, service: true },
+  { id: 'busstop', key: '', label: 'автобус', row: 1, service: true },
+  { id: 'clinic', key: '', label: 'клиника', row: 1, service: true },
+  { id: 'landfill', key: '', label: 'свалка', row: 1, service: true },
+  { id: 'warehouse', key: '', label: 'склад', row: 1, service: true },
+  { id: 'police', key: '', label: 'полиция', row: 1, service: true },
+  { id: 'fire', key: '', label: 'пожарные', row: 1, service: true },
+  { id: 'landmark', key: '', label: 'туризм', row: 1, service: true },
 ];
+
+
+/** Small toolbar glyphs for the ten city services (12 px tall). */
+const SERVICE_ICONS = {
+  water: (ctx, cx, cy, gold) => {
+    ctx.fillStyle = '#5aa9e6';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 8);
+    ctx.quadraticCurveTo(cx + 7, cy + 1, cx, cy + 6);
+    ctx.quadraticCurveTo(cx - 7, cy + 1, cx, cy - 8);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillRect(cx - 3, cy, 2, 3);
+  },
+  power: (ctx, cx, cy, gold) => {
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, cy + 7);
+    ctx.lineTo(cx - 2, cy - 8);
+    ctx.moveTo(cx + 6, cy + 7);
+    ctx.lineTo(cx + 2, cy - 8);
+    ctx.moveTo(cx - 4, cy + 1);
+    ctx.lineTo(cx + 4, cy + 1);
+    ctx.moveTo(cx - 5, cy - 4);
+    ctx.lineTo(cx + 5, cy - 4);
+    ctx.stroke();
+    ctx.fillStyle = '#f2d492';
+    ctx.beginPath();
+    ctx.moveTo(cx + 1, cy - 3);
+    ctx.lineTo(cx - 3, cy + 4);
+    ctx.lineTo(cx + 1, cy + 4);
+    ctx.lineTo(cx - 1, cy + 9);
+    ctx.lineTo(cx + 5, cy + 1);
+    ctx.lineTo(cx + 1, cy + 1);
+    ctx.closePath();
+    ctx.fill();
+  },
+  school: (ctx, cx, cy, gold, active) => {
+    ctx.fillStyle = '#e8dcc0';
+    ctx.fillRect(cx - 9, cy - 2, 18, 9);
+    ctx.fillStyle = active ? '#c25b4b' : '#a94f42';
+    ctx.beginPath();
+    ctx.moveTo(cx - 11, cy - 2);
+    ctx.lineTo(cx, cy - 9);
+    ctx.lineTo(cx + 11, cy - 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#5c6a78';
+    ctx.fillRect(cx - 2, cy + 2, 4, 5);
+  },
+  busstop: (ctx, cx, cy, gold) => {
+    ctx.fillStyle = '#8e8577';
+    ctx.fillRect(cx - 1, cy - 4, 2, 11);
+    ctx.fillStyle = '#5b93d8';
+    ctx.fillRect(cx - 8, cy - 9, 16, 8);
+    ctx.fillStyle = '#eaf1fb';
+    ctx.beginPath();
+    ctx.arc(cx - 4, cy - 5, 1.6, 0, Math.PI * 2);
+    ctx.arc(cx + 4, cy - 5, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  },
+  clinic: (ctx, cx, cy, gold) => {
+    ctx.fillStyle = '#eef2f3';
+    ctx.fillRect(cx - 8, cy - 8, 16, 16);
+    ctx.fillStyle = '#d9534f';
+    ctx.fillRect(cx - 2, cy - 6, 4, 12);
+    ctx.fillRect(cx - 6, cy - 2, 12, 4);
+  },
+  landfill: (ctx, cx, cy, gold) => {
+    ctx.fillStyle = '#7d8a6a';
+    ctx.fillRect(cx - 8, cy - 2, 16, 7);
+    ctx.fillStyle = '#5d6a4e';
+    ctx.fillRect(cx - 9, cy - 4, 18, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.fillRect(cx - 4, cy + 1, 3, 4);
+    ctx.fillRect(cx + 1, cy + 1, 3, 4);
+  },
+  warehouse: (ctx, cx, cy, gold) => {
+    ctx.fillStyle = '#8e9aa6';
+    ctx.fillRect(cx - 10, cy - 4, 20, 9);
+    ctx.fillStyle = '#b8c2cc';
+    ctx.beginPath();
+    ctx.moveTo(cx - 11, cy - 4);
+    ctx.lineTo(cx - 4, cy - 9);
+    ctx.lineTo(cx + 4, cy - 9);
+    ctx.lineTo(cx + 11, cy - 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#5f6a76';
+    ctx.fillRect(cx - 3, cy, 2, 5);
+    ctx.fillRect(cx + 1, cy, 2, 5);
+  },
+  police: (ctx, cx, cy, gold) => {
+    ctx.fillStyle = '#4a6fa5';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 9);
+    ctx.lineTo(cx + 8, cy - 5);
+    ctx.lineTo(cx + 6, cy + 3);
+    ctx.lineTo(cx, cy + 8);
+    ctx.lineTo(cx - 6, cy + 3);
+    ctx.lineTo(cx - 8, cy - 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#f2d492';
+    ctx.fillRect(cx - 1, cy - 5, 2, 8);
+  },
+  fire: (ctx, cx, cy, gold) => {
+    ctx.fillStyle = '#e07a3c';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 9);
+    ctx.quadraticCurveTo(cx + 8, cy - 1, cx + 3, cy + 7);
+    ctx.quadraticCurveTo(cx, cy + 9, cx - 3, cy + 6);
+    ctx.quadraticCurveTo(cx - 7, cy, cx, cy - 9);
+    ctx.fill();
+    ctx.fillStyle = '#f6d76a';
+    ctx.beginPath();
+    ctx.arc(cx, cy + 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+  },
+  landmark: (ctx, cx, cy, gold) => {
+    ctx.fillStyle = '#d8cfae';
+    ctx.fillRect(cx - 9, cy + 4, 18, 4);
+    ctx.fillRect(cx - 6, cy - 3, 3, 8);
+    ctx.fillRect(cx - 1, cy - 3, 3, 8);
+    ctx.fillRect(cx + 4, cy - 3, 3, 8);
+    ctx.fillStyle = '#c9a24a';
+    ctx.beginPath();
+    ctx.moveTo(cx - 7, cy - 3);
+    ctx.lineTo(cx, cy - 9);
+    ctx.lineTo(cx + 7, cy - 3);
+    ctx.closePath();
+    ctx.fill();
+  },
+};
 
 export class Renderer {
   constructor(canvas, sim) {
@@ -41,6 +189,7 @@ export class Renderer {
     this.toast = null;
     this.showHud = true;
     this.summaryOpen = false;
+    this.mechanicsOpen = false;
     this.build = '';
     this.dpr = 1;
     this.cssW = 0;
@@ -236,8 +385,15 @@ export class Renderer {
     const items = [];
     for (const b of sim.world.buildings) {
       if (b.kind === 'park') continue;
-      items.push({ k: (b.x + b.w) + (b.y + b.d), draw: () => drawBuilding(ctx, b, sim, this.night()) });
+      items.push({
+        k: (b.x + b.w) + (b.y + b.d),
+        draw: () => {
+          drawBuilding(ctx, b, sim, this.night());
+          if (b.fire) this.drawFire(ctx, b);
+        },
+      });
     }
+    if (sim.waste > 12) this.drawTrash(ctx);
     for (const p of sim.world.props) {
       items.push({ k: p.x + p.y + 1, draw: () => drawProp(ctx, p, sim) });
     }
@@ -254,6 +410,32 @@ export class Renderer {
     }
     items.sort((a, b) => a.k - b.k);
     for (const it of items) it.draw();
+  }
+
+  /** Flames on a burning building; the fire brigade arrives with the fire. */
+  drawFire(ctx, b) {
+    const t = this.time * 6;
+    for (let i = 0; i < 5; i++) {
+      const p = iso(b.x + 0.25 + (i % 3) * 0.22, b.y + 0.3 + Math.floor(i / 3) * 0.25, 6 + ((t + i * 1.7) % 6));
+      const h = 3 + ((Math.sin(t + i) + 1) * 1.5);
+      ctx.fillStyle = i % 2 ? '#e8a13a' : '#e0573d';
+      ctx.fillRect(p.x - 2, p.y - h, 4, h + 2);
+      ctx.fillStyle = '#f7dd8a';
+      ctx.fillRect(p.x - 1, p.y - h + 1, 2, h);
+    }
+  }
+
+  /** Litter on the streets when the dumps are full. */
+  drawTrash(ctx) {
+    for (const b of this.sim.world.buildings) {
+      if (b.state !== 'done' || b.kind === 'park') continue;
+      const h = (b.id * 7919) % 5;
+      if (h > 2) continue;
+      const p = iso(b.door.x + 0.2, b.door.y + 0.3, 0);
+      ctx.fillStyle = '#7a7158';
+      ctx.fillRect(p.x - 2, p.y - 2, 3, 2);
+      ctx.fillRect(p.x + 2, p.y - 1, 2, 1);
+    }
   }
 
   drawSmoke(ctx) {
@@ -338,30 +520,48 @@ export class Renderer {
     const summaryButton = { x: W - pad - speedsW - 8 - 96, y: pad, w: 96, h: bh };
     const summaryW = Math.min(370, Math.max(280, W - 40));
     const summary = { x: W - pad - summaryW, y: pad + bh + 10, w: summaryW, h: 430 };
+    const mechW = Math.min(340, Math.max(260, W - 40));
+    const mechanics = { x: pad, y: pad + 132, w: mechW, h: 430 };
 
-    const cell = 56;
-    const cgap = 8;
-    const totalW = TOOLS.length * cell + (TOOLS.length - 1) * cgap;
+    // two rows: town building above, city services below
+    const cell = 50;
+    const cgap = 6;
+    const rowGap = 6;
+    const rows = [TOOLS.filter((t) => t.row === 0), TOOLS.filter((t) => t.row === 1)];
+    const rowW = rows.map((r) => r.length * cell + (r.length - 1) * cgap);
+    const totalW = Math.max(...rowW);
+    const toolbarH = rows.length * cell + rowGap;
     const tx = Math.round((W - totalW) / 2);
-    const ty = H - cell - 18;
-    const tools = TOOLS.map((t, i) => ({
-      x: tx + i * (cell + cgap),
-      y: ty,
-      w: cell,
-      h: cell,
-      id: t.id,
-      key: t.key,
-      label: t.label,
-    }));
+    const ty = H - toolbarH - 16;
+    const tools = [];
+    rows.forEach((rowTools, ri) => {
+      const rw = rowW[ri];
+      const rx = Math.round((W - rw) / 2);
+      rowTools.forEach((t, i) => {
+        tools.push({
+          x: rx + i * (cell + cgap),
+          y: ty + ri * (cell + rowGap),
+          w: cell,
+          h: cell,
+          id: t.id,
+          key: t.key,
+          label: t.label,
+          service: !!t.service,
+          locked: t.service ? !this.sim.systems.isUnlocked(t.id) : false,
+        });
+      });
+    });
 
     return {
       pad,
       speeds,
       summaryButton,
       summary,
+      mechanics,
+      toolsButton: { x: summaryButton.x - 104, y: pad, w: 96, h: bh },
       tools,
-      toolbar: { x: tx - 10, y: ty - 10, w: totalW + 20, h: cell + 20 },
-      hintY: ty - 48,
+      toolbar: { x: tx - 10, y: ty - 10, w: totalW + 20, h: toolbarH + 20 },
+      hintY: ty - 46,
     };
   }
 
@@ -371,7 +571,15 @@ export class Renderer {
     const hit = (r) => cssX >= r.x && cssX <= r.x + r.w && cssY >= r.y && cssY <= r.y + r.h;
     for (const sp of L.speeds) if (hit(sp)) return { kind: 'speed', v: sp.v };
     if (hit(L.summaryButton)) return { kind: 'summary' };
+    if (hit(L.toolsButton)) return { kind: 'mechanics' };
     for (const t of L.tools) if (hit(t)) return { kind: 'tool', id: t.id };
+    if (this.mechanicsOpen) {
+      for (const r of this.mechHits || []) {
+        if (cssX >= r.x && cssX <= r.x + r.w && cssY >= r.y && cssY <= r.y + r.h) {
+          return { kind: 'mech', action: r.action };
+        }
+      }
+    }
     return null;
   }
 
@@ -402,6 +610,12 @@ export class Renderer {
       [`жителей ${s.pop} · работают ${s.employed}/${s.jobs}`, 13, 400, '#e7e1d3'],
       [`дома ${s.houses} · лавки ${s.shops} · заводы ${s.factories}`, 13, 400, '#bfb7a4'],
       [
+        `${s.season} · налог ${Math.round(s.tax * 100)}%` + (s.loan > 0 ? ` · долг ${Math.round(s.loan)} ₽` : '') + ` · мусор ${s.waste.toFixed(0)}`,
+        13,
+        400,
+        '#bfb7a4',
+      ],
+      [
         `${s.hungry ? `голодных ${s.hungry} · ` : ''}настроение ${Math.round(s.avgMood * 100)}%`,
         13,
         400,
@@ -409,7 +623,10 @@ export class Renderer {
       ],
     ];
     if (hint) rows.push([hint, 13, 500, '#f2c368']);
-    if (!this.summaryOpen) rows.push(['E — экономика города: доходы, товары, люди', 12, 400, 'rgba(226,220,204,0.45)']);
+    const hints = [];
+    if (!this.summaryOpen) hints.push('E — экономика города: доходы, товары, люди');
+    if (!this.mechanicsOpen) hints.push('M — механики: службы, среда, политика');
+    if (hints.length) rows.push([hints.join('  ·  '), 12, 400, 'rgba(226,220,204,0.45)']);
 
     const lineH = 20;
     const padding = 12;
@@ -421,6 +638,7 @@ export class Renderer {
     const panelH = rows.length * lineH + padding * 2 - 4;
     panelW = Math.ceil(panelW) + padding * 2;
     this.panel(ctx, L.pad, L.pad, panelW, panelH, 10);
+    this.statusBottom = L.pad + panelH;
 
     let lineY = L.pad + padding + 12;
     for (const [text, size, weight, color] of rows) {
@@ -441,6 +659,17 @@ export class Renderer {
       const label = sp.v === 0 ? '❙❙' : `×${sp.v}`;
       ctx.fillText(label, sp.x + sp.w / 2, sp.y + sp.h / 2 + 0.5);
     }
+    // ---- mechanics toggle
+    const mb = L.toolsButton;
+    this.button(ctx, mb.x, mb.y, mb.w, mb.h, this.mechanicsOpen);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `600 12px ${FONT}`;
+    ctx.fillStyle = this.mechanicsOpen ? '#22201a' : '#ded7c8';
+    ctx.fillText('механики', mb.x + mb.w / 2, mb.y + mb.h / 2 + 0.5);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+
     // ---- summary toggle, next to the speed buttons
     const sb = L.summaryButton;
     this.button(ctx, sb.x, sb.y, sb.w, sb.h, this.summaryOpen);
@@ -453,6 +682,11 @@ export class Renderer {
     ctx.textBaseline = 'alphabetic';
 
     if (this.summaryOpen) this.drawSummary(ctx, L.summary);
+    if (this.mechanicsOpen) {
+      // never cover the status panel: it grows with the hint lines
+      L.mechanics.y = Math.max(L.mechanics.y, this.statusBottom + 10);
+      this.drawMechanics(ctx, L.mechanics);
+    }
 
     // ---- toolbar, bottom centre
     this.panel(ctx, L.toolbar.x, L.toolbar.y, L.toolbar.w, L.toolbar.h, 14);
@@ -465,15 +699,30 @@ export class Renderer {
       ctx.strokeStyle = active ? 'rgba(232,196,106,0.85)' : 'rgba(255,255,255,0.10)';
       this.roundRect(ctx, t.x + 0.5, t.y + 0.5, t.w - 1, t.h - 1, 10);
       ctx.stroke();
-      this.toolIcon(ctx, t.id, t.x + t.w / 2, t.y + 22, active);
-      ctx.font = `500 10px ${FONT}`;
+      this.toolIcon(ctx, t.id, t.x + t.w / 2, t.y + 18, active);
+      ctx.font = `500 9px ${FONT}`;
       ctx.fillStyle = active ? '#f0d79a' : 'rgba(224,216,200,0.72)';
       ctx.textAlign = 'center';
-      ctx.fillText(t.label, t.x + t.w / 2, t.y + t.h - 8);
-      ctx.font = `600 10px ${FONT}`;
-      ctx.fillStyle = 'rgba(232,226,212,0.42)';
-      ctx.fillText(t.key, t.x + 9, t.y + 14);
+      ctx.fillText(t.label, t.x + t.w / 2, t.y + t.h - 7);
+      if (t.key) {
+        ctx.font = `600 9px ${FONT}`;
+        ctx.fillStyle = 'rgba(232,226,212,0.42)';
+        ctx.fillText(t.key, t.x + 6, t.y + 12);
+      }
       ctx.textAlign = 'left';
+      if (t.locked) {
+        ctx.fillStyle = 'rgba(10,14,20,0.62)';
+        this.roundRect(ctx, t.x, t.y, t.w, t.h, 10);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(232,226,212,0.7)';
+        ctx.textAlign = 'center';
+        ctx.font = `600 15px ${FONT}`;
+        ctx.fillText('🔒', t.x + t.w / 2, t.y + t.h / 2 + 3);
+        ctx.textAlign = 'left';
+        ctx.font = `600 9px ${FONT}`;
+        ctx.fillStyle = 'rgba(232,226,212,0.55)';
+        ctx.fillText(t.label, t.x + 5, t.y + t.h - 5);
+      }
     }
 
     // ---- tool hint above the toolbar
@@ -656,6 +905,118 @@ export class Renderer {
     }
   }
 
+  /** Live state of the systems: what is covered, what is missing, policies. */
+  drawMechanics(ctx, box) {
+    const sim = this.sim;
+    const s = sim.stats();
+    const sys = sim.systems;
+    const built = sim.world.buildings.filter((b) => b.state === 'done' && b.kind !== 'park');
+    const countServed = (field) => built.filter((b) => sys.served(field, b.door.x, b.door.y)).length;
+    const num = (v) => Math.round(v).toLocaleString('ru-RU');
+
+    const rows = [];
+    const section = (label) => rows.push({ kind: 'section', label });
+    const row = (label, value, action, on) => rows.push({ kind: 'row', label, value, action, on });
+
+    section('службы · охват зданий');
+    row('вода', `${countServed('water')} / ${built.length}`, null, countServed('water') > 0);
+    row('энергия', `${countServed('power')} / ${built.length}`, null, countServed('power') > 1);
+    row('школы', `${s.provided.school || 0} · учеников ${s.students}`, null, (s.provided.school || 0) > 0);
+    row('поликлиники', `${s.provided.clinic || 0} · больных ${s.sick}`, null, (s.provided.clinic || 0) > 0);
+    row('полиция', `${s.provided.police || 0} · краж ${sim.metrics.crimes}`, null, (s.provided.police || 0) > 0);
+    row('пожарные', `${s.provided.fire || 0} · пожаров ${sim.metrics.fires}`, null, (s.provided.fire || 0) > 0);
+    row('свалка', `${s.provided.landfill || 0} · мусор ${s.waste.toFixed(0)}`, null, s.waste < 8);
+    row('остановки', `${s.provided.busstop || 0}`, null, (s.provided.busstop || 0) > 0);
+    row('склады', `${s.provided.warehouse || 0}`, null, (s.provided.warehouse || 0) > 0);
+    row('туризм · доход', `${Math.round(sim.metrics.tourism)} ₽`, null, (s.provided.landmark || 0) > 0);
+
+    section('среда');
+    row('загрязнение', `${(s.pollution * 100).toFixed(0)}%`, null, s.pollution < 0.25);
+    row('шум', `${(s.noise * 100).toFixed(0)}%`, null, s.noise < 0.3);
+    row('цена земли', `${s.landValue.toFixed(1)}`, null, s.landValue > 12);
+    row('машин на улицах', `${sim.cars.length}`, null, true);
+
+    section('люди');
+    row('детей в школе', `${s.students}`, null, true);
+    row('с образованием', `${s.educated}`, null, s.educated > 0);
+    row('пенсионеры', `${s.retired}`, null, true);
+    row('родилось / умерло', `${sim.metrics.births} / ${sim.metrics.deaths}`, null, true);
+
+    section('деньги и политика');
+    row('налог', `${Math.round(sim.tax * 100)}%`, 'taxUp', true);
+    row('долг города', `${num(sim.loan)} ₽`, 'loan', sim.loan > 0);
+    row('проценты за день', `${Math.round(sim.loan * sim.loanRate)} ₽`, null, true);
+    for (const [id, p] of Object.entries(POLICIES)) {
+      row(p.label, sim.policies[id] ? 'вкл' : 'выкл', `policy:${id}`, sim.policies[id]);
+    }
+    row('взять кредит 500 ₽', '', 'borrow', true);
+    row('погасить 500 ₽', '', 'repay', sim.loan > 0);
+
+    // fit into the free space under the status panel
+    const toolbarTop = this.layout().toolbar.y - 16;
+    const room = Math.min(this.cssH - 12, toolbarTop) - box.y;
+    const metrics = (d) => ({ padY: 10 * d, rowH: 17 * d, headH: 20 * d, fs: 12 * d, headFs: 9.5 * d, titleFs: 13 * d });
+    const fit = (m) => {
+      let total = m.padY * 2 + 26;
+      const used = [];
+      for (const r of rows) {
+        const add = r.kind === 'section' ? m.headH : m.rowH;
+        if (total + add > room) break;
+        total += add;
+        used.push(r);
+      }
+      return { total, used };
+    };
+    let m = metrics(1);
+    let list = [];
+    let h = 0;
+    for (const d of [1, 0.94, 0.88, 0.82, 0.76, 0.7]) {
+      m = metrics(d);
+      const f = fit(m);
+      list = f.used;
+      h = f.total + 4;
+      if (list.length === rows.length) break;
+    }
+
+    const x = box.x;
+    const y = box.y;
+    const w = box.w;
+    this.panel(ctx, x, y, w, h, 12);
+    ctx.font = `600 ${m.titleFs}px ${FONT}`;
+    ctx.fillStyle = '#f0eadb';
+    ctx.fillText('механики города', x + 14, y + m.padY + m.titleFs);
+    let cy = y + m.padY + 24;
+    this.mechHits = [];
+
+    for (const r of list) {
+      if (r.kind === 'section') {
+        ctx.font = `600 ${m.headFs}px ${FONT}`;
+        ctx.fillStyle = 'rgba(226,220,204,0.45)';
+        ctx.fillText(r.label.toUpperCase(), x + 14, cy + m.headFs);
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(x + 14, cy + m.headFs + 4, w - 28, 1);
+        cy += m.headH;
+        continue;
+      }
+      const base = cy + m.rowH - 5;
+      const clickable = !!r.action;
+      if (clickable) {
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        this.roundRect(ctx, x + 8, cy + 1, w - 16, m.rowH - 2, 6);
+        ctx.fill();
+        this.mechHits.push({ x: x + 8, y: cy + 1, w: w - 16, h: m.rowH - 2, action: r.action });
+      }
+      ctx.font = `400 ${m.fs}px ${FONT}`;
+      ctx.fillStyle = r.on === false ? 'rgba(224,180,150,0.9)' : '#ded7c8';
+      ctx.fillText(r.label, x + 14, base);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = r.on === false ? '#e0a05a' : '#f0eadb';
+      ctx.fillText(r.value || '', x + w - 14, base);
+      ctx.textAlign = 'left';
+      cy += m.rowH;
+    }
+  }
+
   roundRect(ctx, x, y, w, h, r) {
     const rr = Math.min(r, w / 2, h / 2);
     ctx.beginPath();
@@ -697,6 +1058,15 @@ export class Renderer {
       return this.tool === 'road'
         ? 'доведи дорогу до края карты — по ней приедут люди и привезут материалы'
         : 'без дороги к краю карты город не строится и никто не приезжает';
+    }
+    const svc = SERVICES[this.tool];
+    if (svc) {
+      if (!sim.systems.isUnlocked(this.tool)) return `${svc.short}: откроется, когда в городе будет ${svc.unlock} жителей`;
+      return `${svc.short} ${svc.cost} ₽ · ${svc.note} · содержание ${svc.upkeep} ₽/день`;
+    }
+    if (this.tool === 'warehouse') {
+      if (!sim.systems.isUnlocked('warehouse')) return 'склад: откроется, когда в городе будет 22 жителя';
+      return 'склад 300 ₽: закупает товар оптом и снабжает лавки по 6.5 ₽ за единицу';
     }
     switch (this.tool) {
       case 'road':
@@ -772,6 +1142,8 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(cx - 2, cy - 5, 3, 0, Math.PI * 2);
       ctx.fill();
+    } else if (SERVICE_ICONS[id]) {
+      SERVICE_ICONS[id](ctx, cx, cy, gold, active);
     }
   }
 

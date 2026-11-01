@@ -1,7 +1,8 @@
-import { Sim, COSTS, CAPITAL } from './sim.js?v=2026-11-01-pixel-6';
-import { Renderer, TOOLS } from './render.js?v=2026-11-01-pixel-6';
+import { Sim, COSTS, CAPITAL } from './sim.js?v=2026-11-01-pixel-7';
+import { SERVICES } from './mechanics.js?v=2026-11-01-pixel-7';
+import { Renderer, TOOLS } from './render.js?v=2026-11-01-pixel-7';
 
-export const BUILD = 'pixel-6';
+export const BUILD = 'pixel-7';
 
 const canvas = document.getElementById('city');
 const sim = new Sim(7);
@@ -52,6 +53,8 @@ function applyTool(tile) {
   else if (tool === 'zoneR') res = sim.zone(tile.x, tile.y, 'r');
   else if (tool === 'zoneC') res = sim.zone(tile.x, tile.y, 'c');
   else if (tool === 'zoneI') res = sim.zone(tile.x, tile.y, 'i');
+  else if (tool === 'warehouse') res = sim.buildWarehouse(tile.x, tile.y);
+  else if (SERVICES[tool]) res = sim.buildService(tool, tile.x, tile.y);
   if (res && !res.ok && res.reason) renderer.toastMessage(res.reason, true);
   else if (res && res.ok && !sim.townConnected() && !hintShown) {
     hintShown = true;
@@ -95,8 +98,29 @@ canvas.addEventListener('pointerdown', (e) => {
   const p = bufferPoint(e);
   const hit = renderer.hudHit(p.cssX, p.cssY);
   if (hit) {
-    if (hit.kind === 'tool') renderer.tool = hit.id;
-    if (hit.kind === 'summary') renderer.summaryOpen = !renderer.summaryOpen;
+    if (hit.kind === 'tool') {
+      const tool = TOOLS.find((t) => t.id === hit.id);
+      if (tool?.service && !sim.systems.isUnlocked(hit.id)) {
+        const svc = SERVICES[hit.id];
+        renderer.toastMessage(`${svc.label}: нужно ${svc.unlock} жителей`, true);
+      } else {
+        renderer.tool = hit.id;
+      }
+    }
+    if (hit.kind === 'summary') {
+      renderer.summaryOpen = !renderer.summaryOpen;
+      if (renderer.summaryOpen) renderer.mechanicsOpen = false;
+    }
+    if (hit.kind === 'mechanics') {
+      renderer.mechanicsOpen = !renderer.mechanicsOpen;
+      if (renderer.mechanicsOpen) renderer.summaryOpen = false;
+    }
+    if (hit.kind === 'mech') {
+      if (hit.action === 'taxUp') sim.setTax(sim.tax >= 0.3 ? 0.05 : sim.tax + 0.05);
+      else if (hit.action === 'borrow') sim.takeLoan(500);
+      else if (hit.action === 'repay') sim.repayLoan(500);
+      else if (hit.action.startsWith('policy:')) sim.togglePolicy(hit.action.slice(7));
+    }
     if (hit.kind === 'speed') {
       if (hit.v === 0) sim.paused = !sim.paused;
       else {
@@ -213,7 +237,14 @@ window.addEventListener('keydown', (e) => {
   if (key === 'p' || key === 'з') sim.paused = !sim.paused;
   if (key === '+' || key === '=' || key === ']') sim.speed = Math.min(8, sim.speed * 2);
   if (key === '-' || key === '_' || key === '[') sim.speed = Math.max(1, sim.speed / 2);
-  if (key === 'e' || key === 'у') renderer.summaryOpen = !renderer.summaryOpen;
+  if (key === 'e' || key === 'у') {
+    renderer.summaryOpen = !renderer.summaryOpen;
+    if (renderer.summaryOpen) renderer.mechanicsOpen = false;
+  }
+  if (key === 'm' || key === 'ь') {
+    renderer.mechanicsOpen = !renderer.mechanicsOpen;
+    if (renderer.mechanicsOpen) renderer.summaryOpen = false;
+  }
   if (key === 'Tab') {
     e.preventDefault();
     renderer.showHud = !renderer.showHud;
@@ -243,14 +274,15 @@ function cameraKeys(dt) {
 // The simulation queues important events (a house is being built, someone
 // arrived, someone left) and the UI turns them into short messages. That is the
 // answer to "where did my money go" without opening any menu.
-const KIND_NAMES = { house: 'дом', shop: 'лавка', factory: 'завод', park: 'парк', cityhall: 'ратуша' };
+const KIND_NAMES = { house: 'дом', shop: 'лавка', factory: 'завод', park: 'парк', cityhall: 'ратуша', warehouse: 'склад' };
 function watchEvents() {
   if (!sim.events.length) return;
   const events = sim.events.splice(0, sim.events.length);
   for (const ev of events) {
-    if (ev.type === 'build') renderer.toastMessage(`стройка: ${KIND_NAMES[ev.kind] || ev.kind} · −${ev.price} ₽ из бюджета`);
+    if (ev.type === 'build') renderer.toastMessage(`стройка: ${KIND_NAMES[ev.kind] || SERVICES[ev.kind]?.label || ev.kind} · −${ev.price} ₽ из бюджета`);
     else if (ev.type === 'arrive') renderer.toastMessage(`${ev.name} переехал(а) в город · +${Math.round(ev.cash)} ₽`);
     else if (ev.type === 'leave') renderer.toastMessage(`${ev.name} уехал(а) из города · −${Math.round(ev.cash)} ₽`, true);
+    else if (ev.type === 'toast') renderer.toastMessage(ev.text, !!ev.error);
   }
 }
 

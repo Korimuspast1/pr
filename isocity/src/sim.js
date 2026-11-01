@@ -7,21 +7,33 @@
 //      pockets. The only outside money is the savings a newcomer brings and the
 //      savings a leaver takes away - both are reported separately in the ledger.
 
-import { World, N, T } from './world.js?v=2026-11-01-pixel-6';
+import { World, N, T } from './world.js?v=2026-11-01-pixel-7';
+import { Systems, SERVICES, POLICIES, MILESTONES, seasonOf } from './mechanics.js?v=2026-11-01-pixel-7';
 
 export const MIN_PER_SEC = 10; // game minutes per real second at 1x speed
 export const HOUR = 60;
 
 export const COSTS = {
   road: 12,
+  bridge: 60,
   park: 60,
   house: 100,
   shop: 150,
   factory: 240,
+  warehouse: 260,
+  apartment: 160,
 };
 
 // working capital the town hands to a new business so it can stock its shelves
-export const CAPITAL = { shop: 100, factory: 140 };
+export const CAPITAL = { shop: 100, factory: 140, warehouse: 120 };
+
+// what a public service building costs the town every day (see mechanics.js)
+export const SERVICE_KINDS = Object.keys(SERVICES);
+
+// salaries and habits of a citizen, in game terms
+const SCHOOL_AGE = 18;
+const RETIRE_AGE = 65;
+const PENSION = 22; // ₽ per retired citizen per day, paid by the town
 
 const HOURS = 8; // length of a working shift
 
@@ -40,6 +52,14 @@ export const EXPORT_PRICE = 4.4;
 const CAR_COLORS = ['#d9564c', '#e6dcc6', '#5b8fd0', '#e0a83c', '#6fae72', '#9d8ec7', '#d9803f'];
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+// public services pay a little better than shops: the town competes for staff
+function svcWageFor(kind) {
+  if (SERVICES[kind]) return 38;
+  if (kind === 'cityhall') return 42;
+  if (kind === 'shop') return 52;
+  return 56;
+}
 const rnd = (rng, a, b) => a + rng() * (b - a);
 
 let nextCitizenId = 1;
@@ -68,7 +88,7 @@ export class Sim {
     this.pending = 0;
 
     // an empty plot of land: the town has its budget and nothing else yet
-    this.budget = 2000;
+    this.budget = 3200;
     this.citizens = [];
     this.firms = [];
     this.sites = [];
@@ -89,8 +109,33 @@ export class Sim {
     this.exportIncome = 0;
     this.works = 0; // road & park money waiting to be paid out as wages
 
+    // ---- systems around the buildings
+    this.systems = new Systems(this);
+    this.tax = 0.15; // income tax the town takes from every wage
+    this.loan = 0; // what the town owes the bank
+    this.loanRate = 0.004; // daily interest
+    this.policies = { nightShift: false, recycling: false, freeTransit: false };
+    this.season = seasonOf(1);
+    this.waste = 0; // garbage that no landfill could take
+    this.history = []; // one row per day for the little chart
+    this.milestones = [];
+    this.metrics = {
+      fires: 0,
+      crimes: 0,
+      births: 0,
+      deaths: 0,
+      retired: 0,
+      sick: 0,
+      graduated: 0,
+      tourism: 0,
+      propertyTax: 0,
+      upkeep: 0,
+    };
+    this.systemsDirty = true;
+
     this.seedTown();
     this.world.recomputeComponents();
+    this.systems.recompute();
     this.initialBudget = this.budget;
     this.budgetDayStart = this.budget;
     this.initialMoney = this.internalMoney();
@@ -110,6 +155,14 @@ export class Sim {
       imports: 0,
       exports: 0,
       contractor: 0,
+      propertyTax: 0,
+      maintenance: 0,
+      interest: 0,
+      tourism: 0,
+      waste: 0,
+      crime: 0,
+      credit: 0,
+      grants: 0,
       migrationIn: 0,
       migrationOut: 0,
     };
@@ -143,6 +196,13 @@ export class Sim {
 
   /** Short line for the HUD that tells the player what is missing right now. */
   statusHint() {
+    const ready = this.world.buildings.filter((b) => b.state === 'done');
+    if (ready.length && this.citizens.length === 0 && !ready.some((b) => b.kind === 'water')) {
+      return 'построй водонапорную башню — без воды жители не приедут';
+    }
+    if (this.tax > 0.25) return 'налог высокий: жители недовольны, доходы падают';
+    if (this.loan > 800) return 'долг растёт: проценты съедают бюджет';
+    if (this.waste > 6) return 'мусор некуда девать — поставь свалку';
     if (!this.townConnected()) {
       return this.world.countRoads() === 0
         ? 'проведи дорогу от края карты — по ней приедут люди'
@@ -164,10 +224,10 @@ export class Sim {
       cash: opts.capital ?? 0,
       stock: 0,
       workers: [],
-      wage: building.kind === 'cityhall' ? 42 : building.kind === 'shop' ? 52 : 56,
-      baseWage: building.kind === 'cityhall' ? 42 : building.kind === 'shop' ? 52 : 56,
-      price: building.kind === 'shop' ? 11 : building.kind === 'factory' ? 6.5 : 0,
-      basePrice: building.kind === 'shop' ? 11 : building.kind === 'factory' ? 6.5 : 0,
+      wage: svcWageFor(building.kind),
+      baseWage: svcWageFor(building.kind),
+      price: building.kind === 'shop' ? 11 : building.kind === 'factory' || building.kind === 'warehouse' ? 6.5 : 0,
+      basePrice: building.kind === 'shop' ? 11 : building.kind === 'factory' || building.kind === 'warehouse' ? 6.5 : 0,
       revenueToday: 0,
       wageBillToday: 0,
       soldToday: 0,
@@ -176,7 +236,8 @@ export class Sim {
       salesEwma: building.kind === 'shop' ? 8 : 12,
       arrears: 0,
     };
-    firm.jobs = opts.public ? 2 : building.kind === 'shop' ? 1 : 3;
+    const svc = SERVICES[building.kind];
+    firm.jobs = opts.jobs ?? (svc ? svc.jobs : building.kind === 'shop' ? 1 : building.kind === 'warehouse' ? 2 : 3);
     // a new shop fills its shelves from outside: the town imports goods and
     // pays for them, so this is money going out, not money appearing
     if (building.kind === 'shop' && !opts.public) {
@@ -215,6 +276,15 @@ export class Sim {
       cash: opts.founding ? 80 : 0,
       hunger: 0.3,
       mood: 0.7,
+      age: opts.age ?? (opts.child ? 4 : 20 + Math.floor(this.rng() * 38)),
+      // grown-ups bring the schooling they got elsewhere; a school in town
+      // teaches the children, and grown-ups who never finished can catch up
+      edu: opts.edu ?? (opts.child ? 0 : this.rng() < 0.35 ? 0.5 + this.rng() * 0.5 : 0.1 + this.rng() * 0.25),
+      health: 1,
+      sick: false,
+      sickDays: 0,
+      retired: false,
+      school: false,
       unpaid: 0,
       jobless: 0,
       moving: false,
@@ -237,10 +307,15 @@ export class Sim {
         if (home && home.residents) home.residents = home.residents.filter((r) => r !== c);
         return null;
       }
-      // newcomers bring their own savings: it is outside money, reported as such
-      c.cash = 60;
-      this.external.in += c.cash;
-      this.ledger.migrationIn += c.cash;
+      // newcomers bring their own savings: it is outside money, reported as
+      // such. A baby born in town brings nothing.
+      if (opts.savings !== false) {
+        c.cash = 60;
+        this.external.in += c.cash;
+        this.ledger.migrationIn += c.cash;
+      } else {
+        c.cash = 0;
+      }
       c.x = edge.x + 0.5;
       c.y = edge.y + 0.5;
       c.state = 'newcomer';
@@ -291,6 +366,8 @@ export class Sim {
     }
     if (this.minute % 60 === 0) this.hourly(this.minute);
     if (this.minute % 5 === 0) this.carHour();
+    if (this.minute === 8 * HOUR) this.schoolRun();
+    if (this.minute === 13 * HOUR) this.schoolOut();
 
     switch (this.minute) {
       case 7 * HOUR:
@@ -323,6 +400,11 @@ export class Sim {
   }
 
   hourly(minute) {
+    // the world changes under the simulation: coverage, pollution, noise
+    this.systems.recompute();
+    this.systemsDirty = false;
+    this.fireHour();
+    this.checkMilestoneGrants();
     for (let i = this.firms.length - 1; i >= 0; i--) this.firmHour(this.firms[i], minute);
     this.assignBuilders();
     this.buildersHour();
@@ -333,9 +415,24 @@ export class Sim {
     this.checkDepartures();
   }
 
+  /** Reaching a population milestone unlocks services and pays a grant. */
+  checkMilestoneGrants() {
+    const reached = this.systems.checkMilestones(this.citizens.length);
+    for (const m of reached) {
+      this.budget += m.grant;
+      this.external.in += m.grant;
+      this.ledger.grants += m.grant;
+      this.milestones.push(m);
+      this.note({ type: 'toast', text: `${m.label}: +${m.grant} ₽ и новые службы` });
+    }
+  }
+
   firmHour(firm, minute) {
-    const atWork = minute >= 8 * HOUR && minute < 16 * HOUR;
-    const present = firm.workers.filter((c) => c.state === 'work' || c.state === 'toWork');
+    const nightOk = this.policies.nightShift && (firm.kind === 'factory' || firm.kind === 'warehouse');
+    const atWork = (minute >= 8 * HOUR && minute < 16 * HOUR) || (nightOk && (minute >= 20 * HOUR || minute < 6 * HOUR));
+    const present = firm.workers.filter(
+      (c) => (c.state === 'work' || c.state === 'toWork') && !c.sick && !c.retired && c.age >= SCHOOL_AGE,
+    );
     if (atWork && present.length) {
       const due = (firm.wage / HOURS) * present.length;
       const pool = firm.public ? Math.min(this.budget, due) : Math.min(firm.cash, due);
@@ -344,7 +441,7 @@ export class Sim {
         else firm.cash -= pool;
         const each = pool / present.length;
         for (const c of present) {
-          const tax = each * 0.15;
+          const tax = each * this.tax;
           c.cash += each - tax;
           c.earnedToday += each - tax;
           this.budget += tax;
@@ -362,11 +459,17 @@ export class Sim {
     }
 
     if (firm.kind === 'factory' && atWork) {
+      // a factory without electricity just stands there
+      const powered = this.systems.served('power', firm.building.door.x, firm.building.door.y);
       const workers = firm.workers.filter((c) => c.state === 'work').length;
-      if (workers) {
-        firm.stock += workers * 1.05;
-        firm.producedToday += workers * 1.05;
-        this.goods.produced += workers * 1.05;
+      const shiftBonus = this.policies.nightShift ? 1.15 : 1;
+      const skill = 1 + 0.25 * this.avgEducation(firm);
+      if (workers) firm.powerless = !powered;
+      if (workers && powered) {
+        const made = workers * 1.05 * shiftBonus * skill;
+        firm.stock += made;
+        firm.producedToday += made;
+        this.goods.produced += made;
       }
       // goods the shops did not take are sold out of town. That is the only
       // real income the city has from the outside world, and it is reported
@@ -385,10 +488,47 @@ export class Sim {
       }
     }
 
+    // a warehouse buys from factories, so shops can restock from it
+    if (firm.kind === 'warehouse' && atWork) {
+      const target = 48;
+      if (firm.stock < target) {
+        const supplier = this.bestSupplier(firm.building.door);
+        if (!supplier && firm.stock < 6) {
+          // no warehouse and no factory: buy goods outside town, dearer
+          const importPrice = 9;
+          const qty = Math.floor(Math.min(8, firm.cash / importPrice));
+          if (qty > 0) {
+            const total = qty * importPrice;
+            firm.cash -= total;
+            firm.stock += qty;
+            firm.boughtToday += qty;
+            this.external.out += total;
+            this.ledger.imports += total;
+            this.goods.imported += qty;
+          }
+        }
+        if (supplier) {
+          const qty = Math.floor(Math.min(target - firm.stock, supplier.stock, firm.cash / supplier.price));
+          if (qty > 0) {
+            const total = qty * supplier.price;
+            firm.cash -= total;
+            supplier.cash += total;
+            firm.stock += qty;
+            supplier.stock -= qty;
+            supplier.soldToday += qty;
+            supplier.revenueToday += total;
+            this.ledger.restock += total;
+            this.goods.restocked += qty;
+            this.spawnTruck(supplier.building, firm.building);
+          }
+        }
+      }
+    }
+
     if (firm.kind === 'shop') {
       const target = Math.min(26, Math.max(6, firm.salesEwma * 2.4));
       if (firm.stock < target) {
-        const supplier = this.factoryWithStock();
+        const supplier = this.bestSupplier(firm.building.door);
         if (supplier) {
           const qty = Math.floor(Math.min(target - firm.stock, supplier.stock, firm.cash / supplier.price));
           if (qty > 0) {
@@ -409,13 +549,37 @@ export class Sim {
     }
   }
 
-  factoryWithStock() {
+  /**
+   * Cheapest place with goods a shop (or a warehouse) can reach: a warehouse
+   * first, then a factory. `fromDoor` limits the choice to one road network.
+   */
+  bestSupplier(fromDoor) {
     let best = null;
+    let bestScore = Infinity;
     for (const f of this.firms) {
-      if (f.kind !== 'factory' || f.stock < 1) continue;
-      if (!best || f.price < best.price) best = f;
+      if (f.kind !== 'factory' && f.kind !== 'warehouse') continue;
+      if (f.stock < 1) continue;
+      if (fromDoor && !this.world.sameNetwork(f.building.door, fromDoor)) continue;
+      const dist = fromDoor ? Math.hypot(f.building.door.x - fromDoor.x, f.building.door.y - fromDoor.y) : 0;
+      const score = f.price * 10 + dist * 0.4 - (f.kind === 'warehouse' ? 14 : 0);
+      if (score < bestScore) {
+        bestScore = score;
+        best = f;
+      }
     }
     return best;
+  }
+
+  factoryWithStock() {
+    return this.bestSupplier(null);
+  }
+
+  /** Average education of the workers of one firm (0..1). */
+  avgEducation(firm) {
+    if (!firm.workers.length) return 0;
+    let sum = 0;
+    for (const c of firm.workers) sum += c.edu || 0;
+    return sum / firm.workers.length;
   }
 
   /** Idle townsfolk take city jobs: they build roads and parks for the money
@@ -443,6 +607,8 @@ export class Sim {
     const active = this.sites.filter((s) => s.state === 'site');
     if (!active.length) return;
     for (const site of active) {
+      // a builder may have left town or died: never pay a ghost
+      site.builders = site.builders.filter((c) => this.citizens.includes(c));
       if (!site.builders.length) {
         site.idle = (site.idle || 0) + 1;
         continue;
@@ -499,7 +665,13 @@ export class Sim {
     }
     site.builders = [];
     if (b.kind !== 'house' && b.kind !== 'park') this.addFirm(b, { capital: site.capital });
-    if (b.kind === 'house') b.residents = b.residents || [];
+    if (b.kind === 'house') {
+      b.residents = b.residents || [];
+      b.level = 1;
+      b.capacity = 2;
+    }
+    b.waste = 0;
+    b.site = null;
     this.note({ type: 'done', kind: b.kind });
     const idx = this.sites.indexOf(site);
     if (idx >= 0) this.sites.splice(idx, 1);
@@ -507,13 +679,28 @@ export class Sim {
   }
 
   // ------------------------------------------------------------ development
+  /** Beds people can actually move into: a house needs water and repair. */
   freeHomeSlots() {
     let free = 0;
     for (const b of this.world.buildings) {
-      if (b.kind !== 'house' || b.state !== 'done') continue;
-      free += 2 - (b.residents ? b.residents.length : 0);
+      if (b.kind !== 'house' || b.state !== 'done' || b.abandoned) continue;
+      if (!this.systems.served('water', b.door.x, b.door.y)) continue;
+      const cap = b.capacity || 2;
+      free += Math.max(0, cap - (b.residents ? b.residents.length : 0));
     }
     return free;
+  }
+
+  /** Houses that can take somebody in right now. */
+  openHomes() {
+    return this.world.buildings.filter(
+      (b) =>
+        b.kind === 'house' &&
+        b.state === 'done' &&
+        !b.abandoned &&
+        this.systems.served('water', b.door.x, b.door.y) &&
+        (b.residents || []).length < (b.capacity || 2),
+    );
   }
 
   vacancies() {
@@ -606,10 +793,12 @@ export class Sim {
       if (this.budget < needed + 40) continue;
       // houses grow where there are jobs, businesses grow where people live
       const compFilter = kind === 'house' ? this.jobComponents() : this.residentComponents();
+      // new homes are only built where the water tower reaches
+      if (kind === 'house' && !this.world.buildings.some((b) => b.kind === 'water' && b.state === 'done')) continue;
       // factories prefer a 2x2 lot but happily take a single tile
       const sizes = kind === 'factory' ? [2, 1] : [1];
       for (const size of sizes) {
-        const spot = this.findSpot(zone, size, compFilter);
+        const spot = this.findSpot(zone, size, compFilter, kind === 'house' ? 'water' : null);
         if (!spot) continue;
         this.startSite(kind, spot.x, spot.y, size);
         return;
@@ -636,7 +825,7 @@ export class Sim {
     return set;
   }
 
-  findSpot(zone, size, compFilter) {
+  findSpot(zone, size, compFilter, needService) {
     const w = this.world;
     const candidates = [];
     for (let y = 0; y < w.n; y++) {
@@ -656,6 +845,7 @@ export class Sim {
       const door = w.doorFor(c.x, c.y, size, size);
       // materials arrive by road: a lot behind a cut-off street stays empty
       if (!door || !w.hasGate(door.x, door.y)) continue;
+      if (needService && !this.systems.served(needService, door.x, door.y)) continue;
       if (compFilter && compFilter.size) {
         if (!compFilter.has(w.componentAt(door.x, door.y))) continue;
       }
@@ -669,6 +859,7 @@ export class Sim {
 
   note(ev) {
     if (this.events.length > 40) this.events.shift();
+    if (ev.building) delete ev.building;
     this.events.push(ev);
   }
 
@@ -721,12 +912,12 @@ export class Sim {
     if (!this.townConnected()) return;
     // people move in when there is a bed free and the town still has work
     if (this.freeHomeSlots() <= 0) return;
+    // a town with no water tower cannot take anybody in
+    if (!this.world.buildings.some((b) => b.kind === 'water' && b.state === 'done')) return;
     if (this.unemployedCount() >= 4) return;
     if (this.citizens.length >= 60) return;
     if (this.rng() > 0.5) return;
-    const homes = this.world.buildings.filter(
-      (b) => b.kind === 'house' && b.state === 'done' && (b.residents || []).length < 2,
-    );
+    const homes = this.openHomes();
     // the house itself has to stand on the entrance network
     const home = homes.find((b) => this.connectedToEdge(b.door.x, b.door.y));
     if (!home) return;
@@ -779,6 +970,7 @@ export class Sim {
   assignJobs() {
     for (const c of this.citizens) {
       if (c.work || c.state === 'leaving') continue;
+      if (this.isDependent(c) || c.sick) continue;
       const firm = this.firmWithVacancy(c);
       if (!firm) continue;
       firm.workers.push(c);
@@ -788,6 +980,11 @@ export class Sim {
         c.site = null;
       }
     }
+  }
+
+  /** Children and pensioners eat and sleep, but do not go to work. */
+  isDependent(c) {
+    return c.retired || c.age < SCHOOL_AGE;
   }
 
   firmWithVacancy(c) {
@@ -810,7 +1007,21 @@ export class Sim {
   morning() {
     for (const c of this.citizens) {
       if (c.state === 'leaving') continue;
+      if (c.sick) {
+        this.setState(c, 'home');
+        c.visible = false;
+        continue;
+      }
       c.visible = true;
+      if (this.isDependent(c)) {
+        this.setState(c, c.age < SCHOOL_AGE ? 'idle' : 'walk');
+        if (c.age < SCHOOL_AGE && this.systems.served('education', c.x, c.y)) {
+          this.setState(c, 'toSchool');
+          if (c.home) this.walkTo(c, c.home.door);
+          else this.wander(c);
+        } else this.wander(c);
+        continue;
+      }
       if (c.work) {
         this.setState(c, 'toWork');
         this.walkTo(c, c.work.building.door);
@@ -824,6 +1035,38 @@ export class Sim {
       }
     }
     this.assignJobs();
+  }
+
+  /** Children walk to school, pensioners walk in the park. */
+  schoolRun() {
+    for (const c of this.citizens) {
+      if (c.state === 'leaving' || c.sick) continue;
+      if (c.age < SCHOOL_AGE) {
+        c.school = this.systems.served('education', c.x, c.y);
+        if (c.school) {
+          this.setState(c, 'toSchool');
+          c.visible = true;
+          if (c.home) this.walkTo(c, c.home.door);
+          else this.wander(c);
+        } else {
+          this.setState(c, 'idle');
+          this.wander(c);
+        }
+      } else if (c.retired) {
+        this.setState(c, 'walk');
+        c.visible = true;
+        this.wander(c);
+      }
+    }
+  }
+
+  schoolOut() {
+    for (const c of this.citizens) {
+      if (c.state === 'toSchool' || c.state === 'school' || c.state === 'walk') {
+        if (c.age < SCHOOL_AGE && c.school) c.edu = clamp(c.edu + 0.03, 0, 1);
+        this.goHomeState(c);
+      }
+    }
   }
 
   /** Half of the workers step out at midday, so the streets stay alive. */
@@ -942,6 +1185,11 @@ export class Sim {
   buy(c) {
     const shop = c.shopTarget || this.nearestShop(c);
     if (!shop || shop.stock < 1) return false;
+    // a shop without power cannot run its tills: half of the customers leave
+    if (!this.systems.served('power', shop.building.door.x, shop.building.door.y) && this.rng() < 0.5) {
+      c.mood = clamp(c.mood - 0.02, 0, 1);
+      return false;
+    }
     const want = c.hunger > 0.9 ? 2 : 1;
     let bought = 0;
     for (let i = 0; i < want && shop.stock >= 1; i++) {
@@ -987,9 +1235,12 @@ export class Sim {
     for (const key of Object.keys(this.ledger)) this.total[key] += this.ledger[key];
     this.ledger = this.emptyLedger();
     this.budgetDayStart = this.budget;
-    // rent and business rates keep the city budget alive
+    this.season = this.currentSeason();
+    const season = this.season;
+
+    // ---- rent, business rates and property tax keep the budget alive
     for (const c of this.citizens) {
-      const rent = 14;
+      const rent = 16 + (c.age < SCHOOL_AGE ? 4 : c.retired ? 2 : 0);
       const pay = Math.min(rent, Math.max(0, c.cash - 4));
       if (pay > 0.01) {
         c.cash -= pay;
@@ -999,6 +1250,7 @@ export class Sim {
         c.unpaid += 1;
       }
     }
+    this.collectPropertyTax();
     for (const f of this.firms) {
       if (f.public) continue;
       const tax = Math.max(0, f.revenueToday) * 0.12;
@@ -1014,6 +1266,41 @@ export class Sim {
       f.boughtToday = 0;
       f.producedToday = 0;
     }
+
+    // ---- services, policies and heating are paid to the outside world
+    this.payUpkeep(season);
+
+    // ---- the bank wants its interest, and the town repays what it can
+    if (this.loan > 0.01) {
+      const interest = this.loan * this.loanRate;
+      this.budget -= interest;
+      this.external.out += interest;
+      this.ledger.interest += interest;
+      if (this.budget > 900) {
+        const pay = Math.min(this.loan, (this.budget - 900) * 0.3);
+        if (pay > 0.01) {
+          this.loan -= pay;
+          this.budget -= pay;
+          this.external.out += pay;
+          this.ledger.interest += pay;
+        }
+      }
+    }
+
+    // ---- tourists bring money from outside, but only in a nice town
+    this.collectTourism(season);
+
+    // ---- pensions: the town looks after those who worked all their lives
+    this.payPensions();
+
+    // ---- waste, health, education, births, ageing and crime
+    this.handleWaste();
+    this.updateHealth();
+    this.updateEducation();
+    this.updateAging();
+    this.checkCrime();
+
+    // ---- everyday needs and the effect of the whole neighbourhood
     for (const c of this.citizens) {
       c.hunger = clamp(c.hunger + 0.6, 0, 2);
       if (c.hunger < 0.9) c.mood = clamp(c.mood + 0.05, 0, 1);
@@ -1024,13 +1311,392 @@ export class Sim {
       c.earnedToday = 0;
       c.spentToday = 0;
     }
+    this.recalcMood(season);
+    this.upgradeHouses();
+    this.checkAbandonment();
+    this.assignJobs();
+    this.assignBuilders();
+    this.recordHistory();
+    this.systems.recompute();
+  }
+
+  // ------------------------------------------------------------ the budget
+  /** Land value tax: what the town collects from every standing building. */
+  collectPropertyTax() {
+    let sum = 0;
     for (const b of this.world.buildings) {
-      if (b.kind === 'house' && b.state === 'done' && (b.residents || []).length === 0 && b.emptyDays !== undefined) {
-        // empty houses stay for a while, they keep their zone
+      if (b.state !== 'done' || b.kind === 'park') continue;
+      const value = this.systems.landValueAt(b.door.x, b.door.y);
+      const rate = b.kind === 'house' ? 0.35 : 0.5;
+      const tax = (value / 40) * rate * 14;
+      let payer = null;
+      if (b.kind === 'house') payer = (b.residents || [])[0] || null;
+      else payer = b.firm || null;
+      if (!tax || tax < 0.01) continue;
+      if (payer && payer.cash >= tax) {
+        payer.cash -= tax;
+        this.budget += tax;
+        sum += tax;
+      }
+    }
+    this.ledger.propertyTax += sum;
+    this.metrics.propertyTax = sum;
+  }
+
+  /** Upkeep of public buildings, policies and winter heating leave the city. */
+  payUpkeep(season) {
+    let upkeep = 0;
+    for (const b of this.world.buildings) {
+      if (b.state !== 'done') continue;
+      const svc = SERVICES[b.kind];
+      if (svc) upkeep += svc.upkeep;
+    }
+    for (const [id, on] of Object.entries(this.policies)) {
+      if (on) upkeep += POLICIES[id].perDay;
+    }
+    // every standing building needs heat in the cold season
+    const built = this.world.buildings.filter((b) => b.state === 'done').length;
+    upkeep += built * season.heat * 0.35;
+    if (upkeep <= 0.01) return;
+    const paid = Math.min(upkeep, Math.max(0, this.budget));
+    if (paid > 0.01) {
+      this.budget -= paid;
+      this.external.out += paid;
+      this.ledger.maintenance += paid;
+    }
+    this.metrics.upkeep = paid;
+  }
+
+  collectTourism(season) {
+    let landmarks = 0;
+    let parks = 0;
+    for (const b of this.world.buildings) {
+      if (b.state !== 'done' || b.abandoned) continue;
+      if (b.kind === 'landmark') landmarks++;
+      if (b.kind === 'park') parks++;
+    }
+    if (!landmarks) return;
+    const connected = this.world.buildings.some((b) => b.kind === 'landmark' && this.connectedToEdge(b.door.x, b.door.y));
+    if (!connected) return;
+    const mood = this.stats().avgMood;
+    const income = landmarks * 26 * (1 + Math.min(1.2, parks * 0.12)) * season.tourism * (0.6 + mood * 0.7);
+    this.budget += income;
+    this.external.in += income;
+    this.ledger.tourism += income;
+    this.metrics.tourism += income;
+  }
+
+  payPensions() {
+    for (const c of this.citizens) {
+      if (!c.retired) continue;
+      const pay = Math.min(PENSION, Math.max(0, this.budget));
+      if (pay <= 0) break;
+      this.budget -= pay;
+      c.cash += pay;
+      this.ledger.cityWages += pay;
+    }
+  }
+
+  // ----------------------------------------------------------- daily systems
+  handleWaste() {
+    const recycling = this.policies.recycling ? 0.5 : 1;
+    let made = 0;
+    for (const b of this.world.buildings) {
+      if (b.state !== 'done' || b.kind === 'park') continue;
+      const per = b.kind === 'house' ? 0.4 * (b.capacity || 2) * 0.5 : b.kind === 'factory' ? 2 : b.kind === 'shop' ? 0.9 : 0.5;
+      made += per * recycling;
+    }
+    let capacity = 0;
+    for (const b of this.world.buildings) {
+      if (b.kind === 'landfill' && b.state === 'done' && !b.abandoned) {
+        capacity += SERVICES.landfill.capacity * 0.25; // a day of landfill capacity
+      }
+    }
+    // a lorry takes a few units out of town every day; without a landfill the
+    // rest simply piles up in the streets
+    const built = this.world.buildings.filter((b) => b.state === 'done').length;
+    const hauled = Math.min(8 + built * 0.8, made);
+    const dumpCost = hauled * 1.1;
+    if (this.budget >= dumpCost) {
+      this.budget -= dumpCost;
+      this.external.out += dumpCost;
+      this.ledger.waste += dumpCost;
+    }
+    const taken = Math.min(made, capacity + hauled);
+    const left = Math.max(0, made - taken);
+    this.waste = clamp(this.waste + left - 1.2, 0, 60);
+    this.metrics.waste = this.waste;
+  }
+
+  updateHealth() {
+    const sim = this;
+    let sick = 0;
+    for (const c of this.citizens) {
+      const b = c.home;
+      const polluted = b ? this.systems.pollutionAt(b.door.x, b.door.y) : 0;
+      const clinic = b ? this.systems.served('health', b.door.x, b.door.y) : false;
+      if (c.sick) {
+        c.sickDays += 1;
+        const heal = (clinic ? 0.6 : 0.42) + (c.health > 0.7 ? 0.1 : 0);
+        if (this.rng() < heal) {
+          c.sick = false;
+          c.sickDays = 0;
+          c.health = clamp(c.health + 0.3, 0, 1);
+        } else {
+          c.health = clamp(c.health - 0.08, 0, 1);
+        }
+      } else {
+        const risk =
+          0.008 + polluted * 0.03 + Math.min(0.06, Math.max(0, this.waste - 10) * 0.004) - (clinic ? 0.02 : 0);
+        if (this.rng() < Math.max(0, risk)) {
+          c.sick = true;
+          c.sickDays = 0;
+        } else if (clinic) {
+          c.health = clamp(c.health + 0.1, 0, 1);
+        }
+      }
+      if (c.sick) sick++;
+    }
+    this.metrics.sick = sick;
+  }
+
+  updateEducation() {
+    for (const c of this.citizens) {
+      const covered = c.home ? this.systems.served('education', c.home.door.x, c.home.door.y) : false;
+      if (c.age < SCHOOL_AGE) {
+        if (c.school || covered) c.edu = clamp(c.edu + 0.05, 0, 1);
+      } else if (c.age < 45 && covered && !c.retired && c.edu < 0.9) {
+        // evening classes: a school nearby slowly lifts the whole street
+        c.edu = clamp(c.edu + 0.01, 0, 1);
+      }
+    }
+  }
+
+  updateAging() {
+    const children = [];
+    for (const c of this.citizens) {
+      const was = c.age;
+      c.age += 0.5;
+      if (was < SCHOOL_AGE && c.age >= SCHOOL_AGE) this.metrics.graduated += 1;
+      if (c.age >= RETIRE_AGE && !c.retired) {
+        c.retired = true;
+        c.retiredOn = this.day;
+        if (c.work) {
+          c.work.workers = c.work.workers.filter((w) => w !== c);
+          c.work = null;
+        }
+        this.metrics.retired += 1;
+      }
+      // old age: somewhere after 78 the odds catch up with everybody
+      if (c.age > 78 && this.rng() < (c.age - 78) * 0.02) {
+        this.buryCitizen(c);
+      }
+    }
+    // births: a house with room, two grown-ups and a good mood gets a baby
+    for (const b of this.world.buildings) {
+      if (b.kind !== 'house' || b.state !== 'done' || b.abandoned) continue;
+      const residents = b.residents || [];
+      if (residents.length === 0 || residents.length >= (b.capacity || 2)) continue;
+      const grown = residents.filter((r) => r.age >= SCHOOL_AGE && r.age < RETIRE_AGE && !r.sick);
+      if (grown.length < 2) continue;
+      if (residents.some((r) => r.age < SCHOOL_AGE)) continue;
+      const mood = grown.reduce((a, r) => a + r.mood, 0) / grown.length;
+      if (mood < 0.62) continue;
+      if (this.rng() > 0.22) continue;
+      const baby = this.spawnCitizen(b, { child: true, savings: false });
+      if (baby) {
+        baby.mood = 0.8;
+        children.push(baby);
+        this.metrics.births += 1;
+        this.note({ type: 'toast', text: `в семье ${grown[0].name} родился ребёнок` });
       }
     }
     this.assignJobs();
-    this.assignBuilders();
+    return children;
+  }
+
+  buryCitizen(c) {
+    for (const site of this.sites) site.builders = site.builders.filter((b) => b !== c);
+    for (const site of this.sites) if (!site.builders.length) site.idle = 99;
+    // savings of the deceased stay in the city: they go to the town budget
+    this.budget += Math.max(0, c.cash);
+    c.cash = 0;
+    if (c.home) c.home.residents = (c.home.residents || []).filter((r) => r !== c);
+    if (c.work) {
+      c.work.workers = c.work.workers.filter((w) => w !== c);
+      c.work = null;
+    }
+    this.removeCitizen(c);
+    this.metrics.deaths += 1;
+  }
+
+  checkCrime() {
+    const safe = this.world.buildings.some((b) => b.kind === 'police' && b.state === 'done' && !b.abandoned);
+    if (safe) return;
+    if (this.firms.length < 2) return;
+    if (this.rng() > 0.12) return;
+    const open = this.firms.filter((f) => !f.public && !f.building.abandoned && f.cash > 30);
+    if (!open.length) return;
+    const victim = open[Math.floor(this.rng() * open.length)];
+    const stolen = Math.min(victim.cash * 0.25, 45);
+    victim.cash -= stolen;
+    this.external.out += stolen; // the thief left town with it
+    this.ledger.crime += stolen;
+    this.metrics.crimes += 1;
+    this.note({ type: 'toast', text: `кража в ${victim.kind === 'factory' ? 'заводе' : victim.kind === 'shop' ? 'лавке' : 'конторе'} · −${Math.round(stolen)} ₽`, error: true });
+  }
+
+  /** Mood from the whole neighbourhood, not only from a full belly. */
+  recalcMood(season) {
+    for (const c of this.citizens) {
+      const b = c.home;
+      if (!b) {
+        c.mood = clamp(c.mood - 0.05, 0, 1);
+        continue;
+      }
+      const pollution = this.systems.pollutionAt(b.door.x, b.door.y);
+      const noise = this.systems.noiseAt(b.door.x, b.door.y);
+      const value = this.systems.landValueAt(b.door.x, b.door.y);
+      let d = 0;
+      d += value > 16 ? 0.02 : -0.01;
+      d -= pollution * 0.012;
+      d -= noise * 0.008;
+      d -= Math.min(0.05, Math.max(0, this.waste - 10) * 0.004);
+      d += season.mood;
+      if (this.policies.freeTransit && this.systems.served('transit', b.door.x, b.door.y)) d += 0.02;
+      if (this.policies.nightShift && this.systems.noiseAt(b.door.x, b.door.y) > 0.6) d -= 0.02;
+      if (this.systems.served('transit', b.door.x, b.door.y)) d += 0.01;
+      if (!this.systems.served('water', b.door.x, b.door.y)) d -= 0.04;
+      if (!this.systems.served('power', b.door.x, b.door.y)) d -= 0.03;
+      if (this.loan > 400) d -= 0.01;
+      c.mood = clamp(c.mood + d, 0, 1);
+    }
+  }
+
+  /** A house in a good place with water and power grows into an apartment. */
+  upgradeHouses() {
+    for (const b of this.world.buildings) {
+      if (b.kind !== 'house' || b.state !== 'done' || b.abandoned) continue;
+      if (this.rng() > 0.25) continue;
+      this.upgradeHouse(b);
+    }
+  }
+
+  checkAbandonment() {
+    for (const b of this.world.buildings) {
+      if (b.state !== 'done') continue;
+      if (b.kind === 'house') {
+        const residents = b.residents || [];
+        if (residents.length === 0) {
+          b.emptyDays = (b.emptyDays || 0) + 1;
+          const value = this.systems.landValueAt(b.door.x, b.door.y);
+          if (b.emptyDays > 6 && value < 14) {
+            b.abandoned = true;
+            this.note({ type: 'toast', text: 'заброшенный дом: земля здесь дешёвая и нет условий', error: true });
+          }
+        } else {
+          b.emptyDays = 0;
+          const unhappy = residents.filter((r) => r.mood < 0.25).length;
+          if (unhappy === residents.length && residents.length > 0) {
+            b.abandoned = true;
+          } else if (b.abandoned && this.systems.served('water', b.door.x, b.door.y) && this.systems.served('power', b.door.x, b.door.y)) {
+            b.abandoned = false;
+          }
+        }
+      } else if (b.firm && !b.firm.public) {
+        const broke = b.firm.cash < -20;
+        b.brokeDays = broke ? (b.brokeDays || 0) + 1 : 0;
+        if (b.brokeDays > 4) b.abandoned = true;
+        else if (b.abandoned && b.firm.cash > 60) b.abandoned = false;
+      }
+    }
+    // abandoned buildings lose their firm jobs
+    for (const b of this.world.buildings) {
+      if (b.state !== 'done') continue;
+      if (b.abandoned && b.firm) {
+        if (!b.firm.closed) {
+          for (const w of b.firm.workers.slice()) w.work = null;
+          b.firm.workers = [];
+          b.firm.closed = true;
+        }
+      } else if (b.firm) {
+        b.firm.closed = false;
+      }
+    }
+  }
+
+  recordHistory() {
+    const s = this.stats();
+    this.history.push({
+      day: this.day,
+      budget: Math.round(s.budget),
+      pop: s.pop,
+      mood: s.avgMood,
+      pollution: this.systems.last.pollution,
+      value: this.systems.last.value,
+    });
+    if (this.history.length > 60) this.history.shift();
+  }
+
+  // ------------------------------------------------------------- fire & order
+  fireHour() {
+    for (const b of this.world.buildings.slice()) {
+      if (b.state !== 'done' || b.kind === 'park') continue;
+      if (b.fire) {
+        const covered = this.systems.served('fire', b.door.x, b.door.y);
+        b.fire += 1;
+        if (covered && b.fire >= 2) {
+          b.fire = 0;
+          this.note({ type: 'toast', text: 'пожар потушен' });
+        } else if (b.fire >= 3) {
+          b.fire = 0;
+          this.metrics.fires += 1;
+          this.note({ type: 'toast', text: 'пожар: здание сгорело', error: true });
+          this.demolishBuilding(b);
+        }
+        continue;
+      }
+      if (this.rng() > 0.00004) continue;
+      b.fire = 1;
+      this.note({
+        type: 'toast',
+        text: this.systems.served('fire', b.door.x, b.door.y) ? 'пожар! едет расчёт' : 'пожар! пожарной части нет',
+        error: true,
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------- politics
+  setTax(value) {
+    this.tax = clamp(value, 0.05, 0.35);
+    this.note({ type: 'toast', text: `ставка налога: ${Math.round(this.tax * 100)}%` });
+    return this.tax;
+  }
+
+  takeLoan(amount = 500) {
+    this.loan += amount;
+    this.budget += amount;
+    this.external.in += amount;
+    this.ledger.credit += amount;
+    this.note({ type: 'toast', text: `кредит: +${amount} ₽ под ${(this.loanRate * 100).toFixed(1)}% в день` });
+    return { ok: true, loan: this.loan, budget: this.budget };
+  }
+
+  repayLoan(amount = 500) {
+    const pay = Math.min(this.loan, amount, Math.max(0, this.budget));
+    if (pay <= 0) return { ok: false, reason: 'нечего платить' };
+    this.loan -= pay;
+    this.budget -= pay;
+    this.external.out += pay;
+    this.ledger.credit += pay;
+    return { ok: true, loan: this.loan };
+  }
+
+  togglePolicy(id) {
+    if (!POLICIES[id]) return false;
+    this.policies[id] = !this.policies[id];
+    this.note({ type: 'toast', text: `${POLICIES[id].label}: ${this.policies[id] ? 'включено' : 'выключено'}` });
+    return this.policies[id];
   }
 
   adaptFirm(f) {
@@ -1098,6 +1764,8 @@ export class Sim {
       const b = stops[Math.floor(this.rng() * stops.length)];
       if (!a || !b) continue;
       const arrival = this.rng() < 0.55;
+    // a bus stop nearby means fewer people drive
+    if (this.systems.served('transit', a.door.x, a.door.y) && this.rng() < 0.5) continue;
       let path = null;
       if (arrival) {
         // in from the border of the map, out again
@@ -1128,7 +1796,15 @@ export class Sim {
   }
 
   updateCar(car, dt) {
-    let remain = car.speed * dt;
+    // traffic jams: every other car on the same tile slows this one down
+    let neighbours = 0;
+    for (const other of this.cars) {
+      if (other === car) continue;
+      if (Math.abs(other.x - car.x) + Math.abs(other.y - car.y) < 1.4) neighbours++;
+    }
+    const jam = 1 / (1 + neighbours * 0.45);
+    car.slow = neighbours > 0;
+    let remain = car.speed * jam * dt;
     while (remain > 0 && car.index < car.path.length) {
       const p = car.path[car.index];
       const dx = p.x - car.x;
@@ -1161,16 +1837,97 @@ export class Sim {
     if (!w.inBounds(x, y)) return { ok: false };
     const t = w.get(x, y);
     if (t === T.ROAD) return { ok: false };
+    if (t === T.ZONE_R || t === T.ZONE_C || t === T.ZONE_I) return { ok: false };
     // never wipe a building by accident: the bulldozer is there for that
     if (w.occ[y * w.n + x] >= 0) return { ok: false, reason: 'тут здание, сначала снос' };
-    if (this.budget < COSTS.road) return { ok: false, reason: 'нет денег на дорогу' };
-    this.budget -= COSTS.road;
-    this.works += COSTS.road;
-    this.ledger.construction += COSTS.road;
+    // water is crossed by a bridge: five times the price of a street
+    const bridge = t === T.WATER;
+    const cost = bridge ? COSTS.bridge : COSTS.road;
+    if (this.budget < cost) return { ok: false, reason: bridge ? 'нет денег на мост' : 'нет денег на дорогу' };
+    this.budget -= cost;
+    this.works += cost;
+    this.ledger.construction += cost;
     w.removePropsIn(x, y);
     w.set(x, y, T.ROAD);
+    if (bridge) w.bridges.add(y * w.n + x);
     w.recomputeComponents();
-    return { ok: true, cost: COSTS.road };
+    if (bridge) this.note({ type: 'toast', text: 'мост построен' });
+    return { ok: true, cost };
+  }
+
+  // -------------------------------------------------------------- services
+  /** Is this service kind available yet (population milestone)? */
+  serviceUnlocked(kind) {
+    const svc = SERVICES[kind];
+    if (!svc) return false;
+    return this.systems.isUnlocked(kind);
+  }
+
+  /** Place a public building: school, clinic, power plant, bus stop... */
+  buildService(kind, x, y) {
+    const svc = SERVICES[kind];
+    const w = this.world;
+    if (!svc) return { ok: false };
+    if (!this.serviceUnlocked(kind)) return { ok: false, reason: `${svc.label}: нужно ${svc.unlock} жителей` };
+    if (!w.inBounds(x, y)) return { ok: false };
+    if (!this.townConnected()) return { ok: false, reason: 'нет дороги до края карты — материалы не привезти' };
+    const size = svc.size || 1;
+    const t = w.get(x, y);
+    if (t === T.ROAD || t === T.WATER || t === T.PARK) return { ok: false };
+    if (this.budget < svc.cost) return { ok: false, reason: 'нет денег на постройку' };
+    if (!w.canBuild(kind, x, y, size, size)) return { ok: false, reason: 'место занято' };
+    const b = w.addBuilding(kind, x, y, size, size, { variant: 0 });
+    if (!b) return { ok: false, reason: 'место занято' };
+    this.budget -= svc.cost;
+    this.ledger.construction += svc.cost;
+    this.external.out += svc.cost; // hired outside crew and materials
+    this.metrics.upkeep += svc.upkeep;
+    if (svc.jobs > 0) this.addFirm(b, { public: true, capital: 0 });
+    this.systems.recompute();
+    this.systemsDirty = true;
+    this.note({ type: 'build', kind, price: svc.cost });
+    return { ok: true, cost: svc.cost };
+  }
+
+  /** A warehouse is a business the player places on industrial land. */
+  buildWarehouse(x, y) {
+    const w = this.world;
+    if (!w.inBounds(x, y)) return { ok: false };
+    if (!this.serviceUnlocked('warehouse')) return { ok: false, reason: 'склад: нужно 22 жителя' };
+    if (!this.townConnected()) return { ok: false, reason: 'нет дороги до края карты' };
+    const cost = COSTS.warehouse + CAPITAL.warehouse;
+    if (this.budget < cost) return { ok: false, reason: 'нет денег на склад' };
+    if (!w.canBuild('warehouse', x, y, 2, 2, T.ZONE_I)) return { ok: false, reason: 'склад ставится на свободную промзону 2×2' };
+    const b = w.addBuilding('warehouse', x, y, 2, 2, { variant: 0 });
+    if (!b) return { ok: false };
+    this.budget -= cost;
+    this.ledger.construction += COSTS.warehouse;
+    this.external.out += COSTS.warehouse + CAPITAL.warehouse;
+    this.addFirm(b, { capital: CAPITAL.warehouse });
+    this.systems.recompute();
+    this.note({ type: 'build', kind: 'warehouse', price: cost });
+    return { ok: true, cost };
+  }
+
+  /** A house with money and services around it grows into an apartment. */
+  upgradeHouse(b) {
+    if (!b || b.kind !== 'house' || b.state !== 'done') return false;
+    if (b.level >= 3) return false;
+    if (!this.systems.served('water', b.door.x, b.door.y)) return false;
+    if (!this.systems.served('power', b.door.x, b.door.y)) return false;
+    const value = this.systems.landValueAt(b.door.x, b.door.y);
+    if (value < 18 + b.level * 8) return false;
+    const cost = COSTS.apartment;
+    if (this.budget < cost) return false;
+    this.budget -= cost;
+    this.ledger.construction += cost;
+    this.external.out += cost;
+    b.level = (b.level || 1) + 1;
+    b.capacity = 2 * b.level;
+    b.upgradedOn = this.day;
+    this.note({ type: 'toast', text: `дом вырос до ${b.level} уровня: ${b.capacity} жителей` });
+    this.world.version++;
+    return true;
   }
 
   zone(x, y, kind) {
@@ -1210,7 +1967,12 @@ export class Sim {
     const t = w.get(x, y);
     if (t === T.GRASS) return { ok: false };
     w.removePropsIn(x, y);
-    w.set(x, y, T.GRASS);
+    if (t === T.ROAD && w.isBridge(x, y)) {
+      w.bridges.delete(y * w.n + x);
+      w.set(x, y, T.WATER);
+    } else {
+      w.set(x, y, T.GRASS);
+    }
     if (t === T.ROAD) w.recomputeComponents();
     return { ok: true };
   }
@@ -1233,11 +1995,16 @@ export class Sim {
       }
     }
     if (b.site) {
-      this.budget += b.site.escrow + (b.site.capital || 0);
-      b.site.escrow = 0;
-      b.site.capital = 0;
-      this.sites = this.sites.filter((s) => s !== b.site);
-      for (const c of b.site.builders) c.site = null;
+      // only money that still sits in escrow comes back
+      const site = b.site;
+      if (this.sites.includes(site)) {
+        this.budget += site.escrow;
+        this.ledger.construction += site.escrow;
+        site.escrow = 0;
+        this.sites = this.sites.filter((s) => s !== site);
+      }
+      for (const c of site.builders) c.site = null;
+      b.site = null;
     }
     for (let j = b.y; j < b.y + b.d; j++) {
       for (let i = b.x; i < b.x + b.w; i++) {
@@ -1268,10 +2035,18 @@ export class Sim {
   }
 
   updateCitizen(c, dt) {
+    if (c.sick && c.state !== 'home' && c.state !== 'sleep') {
+      c.visible = false;
+      this.setState(c, 'home');
+    }
+    if (c.state === 'school') {
+      c.moving = false;
+      return;
+    }
     if (c.state === 'home' || c.state === 'sleep' || c.state === 'work' || c.state === 'builder') {
       c.moving = false;
       if (c.state === 'home') {
-        if (this.minute >= 8 * HOUR && this.minute < 16 * HOUR && c.work) {
+        if (this.minute >= 8 * HOUR && this.minute < 16 * HOUR && c.work && !c.sick && !this.isDependent(c)) {
           this.setState(c, 'toWork');
           this.walkTo(c, c.work.building.door);
         }
@@ -1315,6 +2090,18 @@ export class Sim {
         break;
       case 'toSite':
         if (arrived) this.setState(c, 'builder');
+        break;
+      case 'toSchool':
+        if (arrived) {
+          this.setState(c, 'school');
+          c.visible = false;
+        }
+        break;
+      case 'walk':
+        if (arrived) {
+          this.setState(c, 'home');
+          c.visible = false;
+        }
         break;
       case 'leaving':
         if (arrived) {
@@ -1381,6 +2168,22 @@ export class Sim {
   }
 
   // ------------------------------------------------------------------- HUD
+  /** How many of each public service the town runs. */
+  serviceCounts() {
+    const out = {};
+    for (const b of this.world.buildings) {
+      if (b.state !== 'done' || b.abandoned) continue;
+      if (!SERVICES[b.kind]) continue;
+      out[b.kind] = (out[b.kind] || 0) + 1;
+    }
+    return out;
+  }
+
+  /** Season and how much heating the town needs right now. */
+  currentSeason() {
+    return seasonOf(this.day);
+  }
+
   stats() {
     const pop = this.citizens.length;
     const employed = this.citizens.filter((c) => c.work).length;
@@ -1399,6 +2202,18 @@ export class Sim {
       factories: this.countDone('factory'),
       sites: this.sites.length,
       works: this.works,
+      students: this.citizens.filter((c) => c.age < SCHOOL_AGE).length,
+      retired: this.citizens.filter((c) => c.retired).length,
+      sick: this.citizens.filter((c) => c.sick).length,
+      educated: this.citizens.filter((c) => c.age >= SCHOOL_AGE && c.edu > 0.5).length,
+      tax: this.tax,
+      loan: this.loan,
+      season: this.season.name,
+      waste: this.waste,
+      landValue: this.systems.last.value,
+      pollution: this.systems.last.pollution,
+      noise: this.systems.last.noise,
+      provided: this.serviceCounts(),
       budget: this.budget,
       money: this.internalMoney(),
       drift: this.audit(),

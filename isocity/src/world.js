@@ -37,6 +37,7 @@ export class World {
     this.buildings = [];
     this.props = [];
     this.comp = new Int16Array(n * n);
+    this.bridges = new Set(); // road tiles that are bridges over water
     // road networks that reach the border of the map: the only way in or out
     this.edgeComps = new Set();
     this.version = 0; // bumps whenever the ground looks different
@@ -57,6 +58,46 @@ export class World {
         }
       }
     }
+    this.carveWater();
+  }
+
+  /**
+   * Water on a blank map: a river along the south and a lake in the north-east.
+   * Roads may cross water, but only as bridges - and a bridge costs five times
+   * a normal road tile.
+   */
+  carveWater() {
+    const n = this.n;
+    for (let x = 0; x < n; x++) {
+      // the river wiggles a little so it does not look like a ruler
+      const shift = Math.round(Math.sin(x / 5) * 1.2);
+      for (let k = 0; k < 2; k++) {
+        const y = n - 5 + k + shift;
+        if (y < 0 || y >= n) continue;
+        this.tiles[y * n + x] = T.WATER;
+      }
+    }
+    // a round lake in the north-east
+    const cx = n - 7;
+    const cy = 6;
+    for (let y = cy - 4; y <= cy + 4; y++) {
+      for (let x = cx - 5; x <= cx + 5; x++) {
+        if (!this.inBounds(x, y)) continue;
+        const d = Math.hypot((x - cx) / 5, (y - cy) / 3.4);
+        if (d <= 1) this.tiles[y * n + x] = T.WATER;
+      }
+    }
+    // no trees standing in the water
+    this.props = this.props.filter((p) => this.get(Math.floor(p.x), Math.floor(p.y)) !== T.WATER);
+    this.version++;
+  }
+
+  isWater(x, y) {
+    return this.get(x, y) === T.WATER;
+  }
+
+  isBridge(x, y) {
+    return this.bridges.has(y * this.n + x);
   }
 
   inBounds(x, y) {

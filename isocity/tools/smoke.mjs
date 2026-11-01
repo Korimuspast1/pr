@@ -108,8 +108,47 @@ for (let y = 0; y <= 15; y++) paint(20, y);
 // to the main road so the whole block is on the entrance network
 for (let x = 15; x <= 25; x++) paint(x, 19);
 for (let y = 16; y <= 19; y++) paint(20, y);
+// (20,16) is already zoned, so tie the two streets together on the east side
+for (let y = 16; y <= 18; y++) paint(25, y);
 tick(2);
 console.log('road to the edge painted, connected:', sim.townConnected(), 'budget', sim.budget.toFixed(0));
+
+// ------------------------------ bridges cross the river (the water costs more)
+const bridgeBefore = sim.budget;
+renderer.tool = 'road';
+paint(20, 33);
+paint(20, 34);
+paint(21, 34);
+paint(20, 35);
+paint(20, 36);
+tick(2);
+const bSpent = bridgeBefore - sim.budget;
+const bridges = [...sim.world.bridges].length;
+const riverBack = sim.bulldoze(21, 34);
+console.log('bridge over the river: tiles', bridges, '· spent', bSpent.toFixed(0), '₽ · river back after sledge', !!riverBack.ok);
+if (bridges < 2) fail('мост через реку не построился');
+if (bSpent < 60) fail('мост должен стоить дороже обычной дороги');
+if (!riverBack.ok) fail('снесённый мост не вернул реку');
+
+// ------------------------------- tool cells: services are picked with the mouse
+function pickTool(id) {
+  const cell = renderer.layout().tools.find((t) => t.id === id);
+  if (!cell) return false;
+  fire('pointerdown', cell.x + cell.w / 2, cell.y + cell.h / 2);
+  tick(1);
+  return renderer.tool === id;
+}
+if (renderer.layout().tools.length !== 16) fail('в панели должно быть 16 инструментов');
+if (!pickTool('water')) fail('водонапорную башню нельзя выбрать мышью');
+renderer.tool = 'water';
+paint(17, 18);
+tick(2);
+const tower = sim.world.buildings.find((b) => b.kind === 'water');
+console.log('water tower built:', !!tower, '· coverage recomputed:', !!sim.systems.last);
+if (!tower) fail('водонапорная башня не построилась');
+
+// the tower must cover its own block, otherwise nothing ever gets built
+if (!sim.systems.served('water', 18, 16)) fail('башня не покрывает свой же квартал');
 if (!sim.townConnected()) fail('дорога до края карты не распознана');
 
 // housetops at home plate
@@ -129,6 +168,12 @@ for (let x = 22; x <= 24; x++) for (let y = 17; y <= 21; y++) {
   paint(x, y);
 }
 console.log('zones painted, budget', sim.budget.toFixed(0));
+
+// -------------------------------------------- locked services say what they need
+const powerCell = renderer.layout().tools.find((t) => t.id === 'power');
+const popNow = sim.citizens.length;
+console.log('power unlocked at pop', sim.systems.isUnlocked('power'), '· milestone needs', 8, '· pop now', popNow);
+if (popNow < 8 && powerCell.locked !== true) fail('службы должны открываться по населению');
 
 // let the town live: advance the simulation directly so the test stays fast,
 // then let the real frame loop draw a few frames
@@ -237,6 +282,51 @@ const panelFits = bars.summary.y + 40 < bars.toolbar.y;
 console.log('summary panel stays clear of the toolbar:', panelFits);
 if (!panelFits) fail('сводка налезает на панель инструментов');
 renderer.summaryOpen = false;
+tick(1);
+
+// ------------------------------------------------------- the mechanics panel
+const mechBefore = renderer.mechanicsOpen;
+const mechBtn = renderer.layout().toolsButton;
+fire('pointerdown', mechBtn.x + mechBtn.w / 2, mechBtn.y + mechBtn.h / 2);
+tick(1);
+console.log('mechanics panel: button toggles', mechBefore, '->', renderer.mechanicsOpen);
+if (renderer.mechanicsOpen === mechBefore) fail('кнопка «механики» не открывает панель');
+const mechBox = renderer.layout().mechanics;
+if (mechBox.y + 40 > renderer.layout().toolbar.y) fail('панель механик налезает на тулбар');
+const rows = renderer.mechHits || [];
+console.log('mechanics rows you can click:', rows.map((r) => r.action).join(' '));
+if (rows.length < 7) fail('в панели механик слишком мало живых строк');
+
+// a policy really flips in the simulation, not only in the drawing
+const taxRow = rows.find((r) => r.action === 'taxUp');
+const taxBefore = sim.tax;
+if (taxRow) {
+  fire('pointerdown', taxRow.x + taxRow.w / 2, taxRow.y + taxRow.h / 2);
+  tick(1);
+}
+console.log('tax', (taxBefore * 100).toFixed(0) + '%', '->', (sim.tax * 100).toFixed(0) + '%');
+if (taxRow && Math.abs(sim.tax - taxBefore) < 1e-6) fail('кнопка налога в панели механик не работает');
+
+const policyRow = rows.find((r) => r.action.startsWith('policy:'));
+const policyId = policyRow ? policyRow.action.slice(7) : null;
+const polBefore = policyId ? !!sim.policies[policyId] : null;
+if (policyRow) {
+  fire('pointerdown', policyRow.x + policyRow.w / 2, policyRow.y + policyRow.h / 2);
+  tick(1);
+}
+console.log('policy', policyId, polBefore, '->', policyId ? sim.policies[policyId] : '-');
+if (policyRow && sim.policies[policyId] === polBefore) fail('политика не переключается из панели');
+if (policyRow) sim.togglePolicy(policyId);
+
+const loanRow = rows.find((r) => r.action === 'borrow');
+const loanBefore = sim.loan;
+if (loanRow) {
+  fire('pointerdown', loanRow.x + loanRow.w / 2, loanRow.y + loanRow.h / 2);
+  tick(1);
+}
+console.log('loan', loanBefore, '->', sim.loan);
+if (loanRow && sim.loan <= loanBefore) fail('кредит не выдаётся из панели');
+renderer.mechanicsOpen = false;
 tick(1);
 
 // ------------------------------------------------------------- money and sledge
