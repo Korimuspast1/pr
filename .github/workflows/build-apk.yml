@@ -62,7 +62,23 @@ jobs:
           fi
 
       - name: Build release APK (R8 obfuscated)
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee "$GITHUB_WORKSPACE/build-output.txt"
+
+      # CI logs are the only place compile errors appear; on failure keep
+      # the tail of the log in git so it can be read outside Actions.
+      - name: Commit build log on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p build-transfer
+          tail -n 300 build-output.txt > build-transfer/build-log.txt || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f build-transfer/build-log.txt
+          git diff --cached --quiet || git commit -m "CI: build failure log [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}" || true
 
       - name: Check APK contents
         run: |
