@@ -2,9 +2,9 @@
 // blow it up by a whole number with smoothing off. That is what keeps the
 // picture crisp and "pixel" at any window size.
 
-import { TW, TH, HW, HH, iso, corners, fill, pxLine, diamond } from './iso.js';
-import { T } from './world.js';
-import { drawGroundTile, drawBuilding, drawCitizen, drawTruck, drawProp, PAL } from './art.js';
+import { TW, TH, HW, HH, iso, corners, fill, pxLine, diamond } from './iso.js?v=2026-11-01-pixel-3';
+import { T } from './world.js?v=2026-11-01-pixel-3';
+import { drawGroundTile, drawBuilding, drawCitizen, drawTruck, drawProp, PAL } from './art.js?v=2026-11-01-pixel-3';
 
 const TOOLS = [
   { id: 'bulldoze', key: '1', label: 'снос' },
@@ -37,6 +37,7 @@ export class Renderer {
     this.smoke = [];
     this.toast = null;
     this.showHud = true;
+    this.build = '';
     this.resize();
     this.centerOn(17.5, 18.5);
   }
@@ -299,7 +300,7 @@ export class Renderer {
     // ---- top-left status
     const pad = 4;
     const lines = [
-      [`день ${sim.day}, ${String(Math.floor(sim.minute / 60)).padStart(2, '0')}:${String(sim.minute % 60).padStart(2, '0')}`, '#e8e2d4'],
+      [`день ${sim.day}, ${String(Math.floor(sim.minute / 60)).padStart(2, '0')}:${String(sim.minute % 60).padStart(2, '0')}${this.build ? ` · ${this.build}` : ''}`, '#e8e2d4'],
       [`бюджет ${Math.round(s.budget)}`, '#9be08a'],
       [`жителей ${s.pop} · работают ${s.employed}/${s.jobs}`, '#e8e2d4'],
       [`дома ${s.houses} · лавки ${s.shops} · заводы ${s.factories}`, '#c8bda8'],

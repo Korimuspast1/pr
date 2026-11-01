@@ -7,7 +7,7 @@
 //      pockets. The only outside money is the savings a newcomer brings and the
 //      savings a leaver takes away - both are reported separately in the ledger.
 
-import { World, N, T } from './world.js';
+import { World, N, T } from './world.js?v=2026-11-01-pixel-3';
 
 export const MIN_PER_SEC = 10; // game minutes per real second at 1x speed
 export const HOUR = 60;

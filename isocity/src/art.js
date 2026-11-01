@@ -1,8 +1,8 @@
 // Pixel art. Everything here paints into world-pixel coordinates with integer
 // positions and 1px outlines; the renderer only upscales the finished frame.
 
-import { TW, TH, HW, HH, iso, corners, fill, box, diamond, pxLine, pitchedRoof, wallRect, outline } from './iso.js';
-import { T } from './world.js';
+import { TW, TH, HW, HH, iso, corners, fill, box, diamond, pxLine, pitchedRoof, wallRect, outline } from './iso.js?v=2026-11-01-pixel-3';
+import { T } from './world.js?v=2026-11-01-pixel-3';
 
 export const PAL = {
   grass: ['#79ae47', '#7cb24a', '#76a845'],

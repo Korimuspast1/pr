@@ -1,9 +1,13 @@
-import { Sim } from './sim.js';
-import { Renderer, TOOLS } from './render.js';
+import { Sim } from './sim.js?v=2026-11-01-pixel-3';
+import { Renderer, TOOLS } from './render.js?v=2026-11-01-pixel-3';
+
+export const BUILD = 'pixel-3';
 
 const canvas = document.getElementById('city');
 const sim = new Sim(7);
 const renderer = new Renderer(canvas, sim);
+renderer.build = BUILD;
+console.info(`[город] сборка ${BUILD}: пиксель, зоны, стройка`);
 
 let last = performance.now();
 let action = null; // { kind: 'paint' | 'pan', tool, lastTile, startX, startY }
