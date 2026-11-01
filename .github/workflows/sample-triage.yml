@@ -114,6 +114,28 @@ jobs:
           fi
           tail -120 "$REPORT"
 
+      - name: Payload второй стадии
+        run: |
+          set -uo pipefail
+          mkdir -p "$RUNNER_TEMP/payload"
+          {
+            echo
+            echo "################ 6. PAYLOAD ВТОРОЙ СТАДИИ ################"
+            shopt -s nullglob
+            for f in "$RUNNER_TEMP"/unpacked/*.apk; do
+              python3 tools/malware-triage/extract_payload.py "$f" "$RUNNER_TEMP/payload" 111 || true
+            done
+            for f in "$RUNNER_TEMP"/payload/*.apk; do
+              echo
+              echo "--- разбор извлечённого payload: $(basename "$f") ---"
+              python3 tools/malware-triage/apk_analyze.py "$f" | head -70 || true
+            done
+            echo
+            echo "хэши всех APK (для сверки):"
+            sha256sum "$RUNNER_TEMP"/unpacked/*.apk "$RUNNER_TEMP"/payload/*.apk 2>/dev/null || true
+          } >> "$REPORT" 2>&1
+          tail -50 "$REPORT"
+
       - name: Опубликовать отчёт в ветку
         if: always()
         run: |

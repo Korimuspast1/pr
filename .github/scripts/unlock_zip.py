@@ -98,6 +98,9 @@ def main() -> int:
         print(f"  {safe}: {len(blob)} байт")
     with open(os.path.join(outdir, "list.txt"), "w", encoding="utf-8") as fh:
         fh.write("\n".join(paths))
+    if encrypted:
+        with open(os.path.join(outdir, "password.txt"), "w", encoding="utf-8") as fh:
+            fh.write(used or "")
     return 0
 
 
