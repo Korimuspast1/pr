@@ -5,12 +5,8 @@ name: Static triage of external sample
 # В ветку коммитится только текстовый отчёт.
 
 on:
+  # только ручной запуск: иначе workflow качал бы образец при каждой правке
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/sample-triage.yml"
-      - ".github/scripts/**"
-      - "tools/malware-triage/**"
 
 permissions:
   contents: write
