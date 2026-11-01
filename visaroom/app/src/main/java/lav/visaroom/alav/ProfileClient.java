@@ -258,6 +258,37 @@ final class ProfileClient {
         }
     }
 
+    static String loadUidByPublicId(String idToken, long publicId) {
+        if (!validPublicId(publicId)) {
+            return "";
+        }
+        try {
+            Response r = request("GET", Vault.firestoreBaseUrl() + "publicIds/" + publicId,
+                    idToken, null);
+            if (r.code != 200) {
+                return "";
+            }
+            JSONObject fields = new JSONObject(r.text).optJSONObject("fields");
+            return fields == null ? "" : str(fields, "uid", "");
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    static String loadUidByUsername(String idToken, String usernameLower) {
+        try {
+            Response r = request("GET", Vault.firestoreBaseUrl() + "usernames/" + usernameLower,
+                    idToken, null);
+            if (r.code != 200) {
+                return "";
+            }
+            JSONObject fields = new JSONObject(r.text).optJSONObject("fields");
+            return fields == null ? "" : str(fields, "uid", "");
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
     static PublicProfile loadPublicProfile(String idToken, String uid) {
         PublicProfile p = new PublicProfile();
         try {

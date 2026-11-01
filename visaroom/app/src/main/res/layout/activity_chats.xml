@@ -43,17 +43,6 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/account_email"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:paddingLeft="16dp"
-                android:paddingRight="16dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
-
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -876,6 +865,48 @@
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
 
+                <LinearLayout
+                    android:id="@+id/moderation_section"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:paddingLeft="24dp"
+                        android:text="MODERATION"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/setting_admin_find"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_chat_row"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="56dp"
+                        android:paddingLeft="24dp"
+                        android:paddingRight="24dp"
+                        android:text="Find user by username or ID"
+                        android:textColor="@color/text_main"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingLeft="24dp"
+                        android:paddingRight="24dp"
+                        android:text="Open a profile to change the ID, remove the username, clear the bio or remove the photo."
+                        android:textColor="@color/text_hint"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -921,7 +952,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:gravity="center"
-                    android:text="visaroom 1.2.0"
+                    android:text="visaroom 1.2.1"
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
             </LinearLayout>

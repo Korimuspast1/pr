@@ -10,8 +10,9 @@ Package: `lav.visaroom.alav`, min Android 8.0 (API 26).
 уведомления, двухэтапная проверка вторым паролем и приватность: показ био,
 аватара и ID другим пользователям). Профиль человека открывается по тапу на его
 имя/аватар в поиске и в чате. Аккаунт-администратор (по email владельца,
-проверяется и в правилах) может на чужом профиле сменить ID, убрать юзернейм,
-очистить био и удалить фото. Второй пароль хранится только как PBKDF2-хэш.
+проверяется и в правилах) открывает профиль через поиск или
+**Settings → Moderation** и может там — в том числе на своём профиле —
+сменить ID, убрать юзернейм, очистить био и удалить фото. Второй пароль хранится только как PBKDF2-хэш.
 Внутри официального чата есть поиск по сообщениям. Интерфейс на английском,
 чёрно-белый, иконки — свои vector-drawable (аналог SVG в Android).
 
@@ -25,25 +26,34 @@ Package: `lav.visaroom.alav`, min Android 8.0 (API 26).
 
 1. Authentication → Sign-in method → включить **Email/Password**. Без этого вход не сработает.
 2. Project settings → Android-приложение `lav.visaroom.alav` → Add fingerprint →
-   SHA-1 подписи приложения: `D9:EF:5A:1A:9F:37:9A:12:BD:2F:41:39:47:C7:BB:35:15:0C:D1:1E`.
+   SHA-1 подписи приложения: `76:AA:50:71:53:C4:F8:E3:61:B0:A4:A7:8E:4A:00:EC:C5:AD:70:CE`.
    Без этого Google может отклонять запросы с ошибкой «Requests from this Android
    client application are blocked» (API key ограничен зарегистрированным приложением).
 3. Firestore Database → Create database (Production mode).
-4. Задеплоить обновлённые правила из папки `../firebase`:
+4. Опубликовать правила из папки `../firebase` в **Firebase Console**:
+   - слева **Build → Firestore Database → Rules** — заменить весь текст
+     содержимым `../firebase/firestore.rules` и нажать **Publish**;
+   - слева **Build → Storage → Rules** — заменить весь текст содержимым
+     `../firebase/storage.rules` и нажать **Publish**;
+   - **Realtime Database приложение не использует**, создавать её только ради
+     правил не нужно. Если такая база уже создана, открыть
+     **Build → Realtime Database → Rules**, вставить
+     `../firebase/database.rules.json` и нажать **Publish**.
+
+   Вместо ручной вставки можно задеплоить все правила одной командой
+   из папки `../firebase`:
 
    ```bash
    cd ../firebase
    npx firebase-tools deploy --only firestore:rules,storage,database
    ```
 
-   Или вставить содержимое файлов вручную в Console → Firestore/Storage/Realtime Database → Rules.
-
 Аккаунты создаются в обычном Firebase Auth. Приложение ходит в Firebase по официальному
 REST API, поэтому Firebase SDK внутри APK нет — меньше кода, который можно вытащить.
 
 ## Сборка
 
-Готовый подписанный APK: `../release/visaroom-1.2.0.apk` (подпись проверена apksigner,
+Готовый подписанный APK: `../release/visaroom-1.2.1.apk` (подпись проверена apksigner,
 workflow `Verify signed APK`).
 
 R8-сборка идёт в GitHub Actions (`.github/workflows/build-apk.yml`). Если в репозитории

@@ -5,6 +5,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Build;
+import android.util.Base64;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -236,6 +237,37 @@ final class AuthClient {
                 || result.errorCode.contains("USER_DISABLED")
                 || result.errorCode.contains("USER_NOT_FOUND");
         return null;
+    }
+
+    /**
+     * Reads the email claim from a Firebase ID token. Used only for UI
+     * (whether to show moderation controls); real authority is enforced
+     * by the Firestore rules against the verified token.
+     */
+    static String emailFromIdToken(String idToken) {
+        try {
+            if (idToken == null) {
+                return "";
+            }
+            String[] parts = idToken.split("\\.");
+            if (parts.length < 2) {
+                return "";
+            }
+            String part = parts[1];
+            int rem = part.length() % 4;
+            if (rem > 0) {
+                StringBuilder padded = new StringBuilder(part);
+                for (int i = 0; i < 4 - rem; i++) {
+                    padded.append('=');
+                }
+                part = padded.toString();
+            }
+            byte[] payload = Base64.decode(part, Base64.URL_SAFE | Base64.NO_WRAP);
+            return new JSONObject(new String(payload, StandardCharsets.UTF_8))
+                    .optString("email", "");
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     private static String parseErrorCode(JSONObject json) {

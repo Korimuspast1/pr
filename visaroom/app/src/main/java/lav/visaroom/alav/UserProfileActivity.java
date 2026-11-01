@@ -108,7 +108,13 @@ public class UserProfileActivity extends Activity {
         if (!session.ok) {
             return null;
         }
-        TokenStore.save(this, null, session.refreshToken);
+        String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
+        if (tokenEmail.length() > 0) {
+            iAmAdmin = Admin.isAdminEmail(tokenEmail);
+            TokenStore.save(this, tokenEmail, session.refreshToken);
+        } else {
+            TokenStore.save(this, null, session.refreshToken);
+        }
         if (session.uid.length() > 0) {
             myUid = session.uid;
             TokenStore.saveUid(this, session.uid);
@@ -170,9 +176,11 @@ public class UserProfileActivity extends Activity {
             avatarView.setImageResource(R.drawable.ic_logo);
         }
 
-        boolean showAdmin = iAmAdmin && !targetUid.equals(myUid) && targetUid.length() > 0;
+        boolean showAdmin = iAmAdmin && targetUid.length() > 0;
         adminPanel.setVisibility(showAdmin ? View.VISIBLE : View.GONE);
-        statusView.setText("");
+        statusView.setText(iAmAdmin && priv == null
+                ? "Admin data could not be loaded. Publish the Firebase rules first."
+                : "");
     }
 
     private Bitmap circular(Bitmap source) {

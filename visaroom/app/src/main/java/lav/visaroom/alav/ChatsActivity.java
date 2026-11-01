@@ -83,6 +83,7 @@ public class ChatsActivity extends Activity {
     private Switch showBioSwitch;
     private Switch showAvatarSwitch;
     private Switch showIdSwitch;
+    private View moderationSection;
     private int currentPage;
     private long publicId;
     private boolean twoFaEnabledState;
@@ -120,16 +121,20 @@ public class ChatsActivity extends Activity {
         String uid = TokenStore.uid(this);
         userId = uid == null ? "" : uid;
 
-        TextView accountEmail = findViewById(R.id.account_email);
-        accountEmail.setText(Admin.isAdminEmail(userEmail)
-                ? userEmail + " - Admin" : userEmail);
         emailView.setText(userEmail);
+        updateAdminUi();
         idView.setText(userId.length() == 0 ? "Loading..." : userId);
 
         loadLocalProfile();
         displayAvatar();
         applyChatTextSize();
         loadProfileFromCloud();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateAdminUi();
     }
 
     @Override
@@ -182,6 +187,7 @@ public class ChatsActivity extends Activity {
         textSizeValue = findViewById(R.id.setting_text_size_value);
         backgroundValue = findViewById(R.id.setting_background_value);
         twoFaValue = findViewById(R.id.setting_2fa_value);
+        moderationSection = findViewById(R.id.moderation_section);
     }
 
     private void setupNavigation() {
@@ -335,6 +341,8 @@ public class ChatsActivity extends Activity {
         });
         findViewById(R.id.setting_2fa).setOnClickListener(v -> showTwoFaDialog());
         updateTwoFaUi();
+        findViewById(R.id.setting_admin_find).setOnClickListener(v -> showAdminFindDialog());
+        updateAdminUi();
 
         findViewById(R.id.setting_text_size).setOnClickListener(v -> {
             int next = (AppSettings.textSizeIndex(this) + 1) % 3;
@@ -680,7 +688,13 @@ public class ChatsActivity extends Activity {
         }
         latestIdToken = result.idToken;
         latestIdTokenAt = System.currentTimeMillis();
-        TokenStore.save(this, null, result.refreshToken);
+        String tokenEmail = AuthClient.emailFromIdToken(result.idToken);
+        if (tokenEmail.length() > 0) {
+            userEmail = tokenEmail;
+            TokenStore.save(this, tokenEmail, result.refreshToken);
+        } else {
+            TokenStore.save(this, null, result.refreshToken);
+        }
         if (result.uid.length() > 0) {
             userId = result.uid;
             TokenStore.saveUid(this, result.uid);
@@ -754,6 +768,84 @@ public class ChatsActivity extends Activity {
             box.addView(fields[i], params);
         }
         return box;
+    }
+
+    private void updateAdminUi() {
+        if (moderationSection != null) {
+            moderationSection.setVisibility(
+                    Admin.isAdminEmail(userEmail) ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private EditText textField(String hint) {
+        EditText input = new EditText(this);
+        input.setHint(hint);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setSingleLine(true);
+        input.setBackgroundResource(R.drawable.bg_input);
+        input.setPadding(dp(14), 0, dp(14), 0);
+        return input;
+    }
+
+    private void showAdminFindDialog() {
+        if (!Admin.isAdminEmail(userEmail)) {
+            updateAdminUi();
+            return;
+        }
+        EditText input = textField("@username or ID");
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Find user")
+                .setMessage("Enter a username or a numeric ID (100000-5000000).")
+                .setView(dialogBox(input))
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Find", null)
+                .create();
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String raw = input.getText().toString().trim();
+            if (raw.length() == 0) {
+                Toast.makeText(this, "Enter a username or ID.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            dialog.dismiss();
+            Toast.makeText(this, "Searching...", Toast.LENGTH_SHORT).show();
+            executor.execute(() -> {
+                String token = ensureIdToken();
+                String foundUid = "";
+                String foundName = "";
+                if (token != null) {
+                    if (raw.matches("\\d+")) {
+                        try {
+                            long wanted = Long.parseLong(raw);
+                            foundUid = ProfileClient.loadUidByPublicId(token, wanted);
+                            if (foundUid.length() > 0) {
+                                foundName = ProfileClient
+                                        .loadPublicProfile(token, foundUid).username;
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    } else {
+                        String lower = cleanQuery(raw);
+                        if (USERNAME.matcher(lower).matches()) {
+                            foundUid = ProfileClient.loadUidByUsername(token, lower);
+                            foundName = raw.startsWith("@") ? raw.substring(1) : raw;
+                        }
+                    }
+                }
+                final String uidResult = foundUid;
+                final String nameResult = foundName;
+                runOnUiThread(() -> {
+                    updateAdminUi();
+                    if (uidResult.length() == 0) {
+                        Toast.makeText(this,
+                                "User not found. Check the username/ID and the Firebase rules.",
+                                Toast.LENGTH_LONG).show();
+                    } else {
+                        showPublicProfile(uidResult, nameResult);
+                    }
+                });
+            });
+        });
     }
 
     private void showTwoFaDialog() {
@@ -909,6 +1001,7 @@ public class ChatsActivity extends Activity {
                     updateTwoFaUi();
                 }
                 updateIdDisplay();
+                updateAdminUi();
             });
         });
     }
@@ -1094,8 +1187,7 @@ public class ChatsActivity extends Activity {
             runOnUiThread(() -> {
                 setProfileLoading(false);
                 emailView.setText(userEmail);
-                TextView accountEmail = findViewById(R.id.account_email);
-                accountEmail.setText(userEmail);
+                updateAdminUi();
                 idView.setText(userId);
                 showProfileStatus("Email changed.");
             });
