@@ -131,6 +131,29 @@ jobs:
               python3 tools/malware-triage/apk_analyze.py "$f" | head -70 || true
             done
             echo
+            echo "--- проверка зашифрованного asset дроппера ---"
+            if [ -f "$RUNNER_TEMP/unpacked/Button VPN.apk" ]; then
+              python3 - "$RUNNER_TEMP/unpacked/Button VPN.apk" "$RUNNER_TEMP/api_patch.bin" <<'PY'
+          import sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as z:
+              data = z.read("assets/api_patch.bin")
+          open(sys.argv[2], "wb").write(data)
+          print(f"api_patch.bin: {len(data)} байт, начало {data[:16].hex()}")
+          with open("/tmp/ap_hdr.bin", "wb") as fh:
+              fh.write(data[:12] + b"\x00")
+          with open("/tmp/ap_next.bin", "wb") as fh:
+              fh.write(data[12:16])
+          PY
+              PW2="$(ZIPCRACK_NEXT=/tmp/ap_next.bin "$RUNNER_TEMP/zipcrack" "$RUNNER_TEMP/rockyou.txt" \
+                       /tmp/ap_hdr.bin 4 504b0304 2>/dev/null | head -1)"
+              echo "пароль для api_patch.bin: ${PW2:-нет}"
+              if [ -n "$PW2" ]; then
+                python3 tools/malware-triage/zipcrypto_decrypt.py "$RUNNER_TEMP/api_patch.bin" \
+                  "$RUNNER_TEMP/payload2.apk" "$PW2" || true
+                sha256sum "$RUNNER_TEMP/payload2.apk" "$RUNNER_TEMP/unpacked/Button VPN(1).apk" 2>/dev/null || true
+              fi
+            fi
+            echo
             echo "хэши всех APK (для сверки):"
             sha256sum "$RUNNER_TEMP"/unpacked/*.apk "$RUNNER_TEMP"/payload/*.apk 2>/dev/null || true
           } >> "$REPORT" 2>&1
