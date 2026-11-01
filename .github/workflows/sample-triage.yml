@@ -18,9 +18,10 @@ permissions:
 jobs:
   triage:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     env:
       SAMPLE_URL: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file
+      REPORT: ${{ github.workspace }}/reports/fakevpn-static-triage.txt
     steps:
       - uses: actions/checkout@v4
 
@@ -28,16 +29,16 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y -qq p7zip-full >/dev/null
+          sudo apt-get install -y -qq p7zip-full john >/dev/null
           python3 -m pip install --quiet --disable-pip-version-check pyzipper androguard asn1crypto
 
       - name: Скачать образец во временный каталог
         run: python3 .github/scripts/fetch_sample.py "$SAMPLE_URL" "$RUNNER_TEMP/fakevpn.zip"
 
-      - name: Полный статический разбор
+      - name: Хеши и структура архива
         run: |
           set -euo pipefail
-          REPORT="$RUNNER_TEMP/report.txt"
+          mkdir -p reports
           {
             echo "Цель: $SAMPLE_URL"
             echo "Дата разбора (UTC): $(date -u '+%Y-%m-%d %H:%M')"
@@ -54,26 +55,72 @@ jobs:
             python3 tools/malware-triage/triage.py "$RUNNER_TEMP/fakevpn.zip" || true
             echo
             echo "################ 4. РАСПАКОВКА ################"
-            mkdir -p "$RUNNER_TEMP/unpacked"
-            python3 .github/scripts/unlock_zip.py "$RUNNER_TEMP/fakevpn.zip" "$RUNNER_TEMP/unpacked" || true
-          } | tee "$REPORT"
+          } > "$REPORT"
+          cat "$REPORT"
 
+      - name: Распаковать (с подбором пароля при необходимости)
+        run: |
+          set -uo pipefail
+          mkdir -p "$RUNNER_TEMP/unpacked"
+          if python3 .github/scripts/unlock_zip.py "$RUNNER_TEMP/fakevpn.zip" "$RUNNER_TEMP/unpacked" >> "$REPORT" 2>&1; then
+            echo "распаковано без подбора" >> "$REPORT"
+            exit 0
+          fi
+          {
+            echo
+            echo "Типовые пароли не подошли — подбираю по словарю rockyou (ZipCrypto)."
+            echo "john: $(command -v john || echo нет), zip2john: $(command -v zip2john || echo нет)"
+          } >> "$REPORT"
+
+          curl -sSL --retry 2 -o "$RUNNER_TEMP/rockyou.txt" \
+            https://github.com/brannondorsey/naive-hashcat/releases/download/data/rockyou.txt || true
+          echo "словарь: $(wc -l < "$RUNNER_TEMP/rockyou.txt" 2>/dev/null || echo 0) строк" >> "$REPORT"
+
+          ZIP2JOHN="$(command -v zip2john || true)"
+          if [ -z "$ZIP2JOHN" ] && [ -f /usr/share/john/zip2john ]; then ZIP2JOHN=/usr/share/john/zip2john; fi
+          if [ -z "$ZIP2JOHN" ]; then
+            echo "zip2john не найден — подбор невозможен" >> "$REPORT"
+            exit 0
+          fi
+          "$ZIP2JOHN" "$RUNNER_TEMP/fakevpn.zip" > "$RUNNER_TEMP/hash.txt" 2>/dev/null \
+            || python3 "$ZIP2JOHN" "$RUNNER_TEMP/fakevpn.zip" > "$RUNNER_TEMP/hash.txt" 2>/dev/null || true
+          head -c 300 "$RUNNER_TEMP/hash.txt" >> "$REPORT" || true
+          timeout 900 john --wordlist="$RUNNER_TEMP/rockyou.txt" --pot="$RUNNER_TEMP/pot.txt" \
+            "$RUNNER_TEMP/hash.txt" >> "$REPORT" 2>&1 || true
+          PW="$(john --show --pot="$RUNNER_TEMP/pot.txt" "$RUNNER_TEMP/hash.txt" 2>/dev/null | head -1 | cut -d: -f2)"
+          echo "найденный пароль: ${PW:-нет}" >> "$REPORT"
+          if [ -n "$PW" ]; then
+            python3 .github/scripts/unlock_zip.py "$RUNNER_TEMP/fakevpn.zip" "$RUNNER_TEMP/unpacked" \
+              --password="$PW" >> "$REPORT" 2>&1 || true
+          fi
+
+      - name: Разбор APK
+        run: |
+          set -uo pipefail
           shopt -s nullglob
+          found=0
           for f in "$RUNNER_TEMP"/unpacked/*.apk; do
+            found=1
             {
               echo
               echo "################ 5. ТРИАЖ $(basename "$f") ################"
               python3 tools/malware-triage/triage.py "$f" || true
               echo
               python3 tools/malware-triage/apk_analyze.py "$f" || true
-            } | tee -a "$REPORT"
+            } >> "$REPORT" 2>&1
           done
+          if [ "$found" = 0 ]; then
+            echo "" >> "$REPORT"
+            echo "APK не извлечены — разбор содержимого не выполнен." >> "$REPORT"
+          fi
+          tail -120 "$REPORT"
 
       - name: Опубликовать отчёт в ветку
+        if: always()
         run: |
           set -euo pipefail
           mkdir -p reports
-          cp "$RUNNER_TEMP/report.txt" reports/fakevpn-static-triage.txt
+          ls -l reports
           git config user.name "triage-bot"
           git config user.email "triage-bot@users.noreply.github.com"
           git add reports/fakevpn-static-triage.txt
@@ -82,4 +129,4 @@ jobs:
 
       - name: Удалить образец
         if: always()
-        run: rm -rf "$RUNNER_TEMP"/fakevpn.zip "$RUNNER_TEMP"/unpacked "$RUNNER_TEMP"/report.txt || true
+        run: rm -rf "$RUNNER_TEMP"/fakevpn.zip "$RUNNER_TEMP"/unpacked "$RUNNER_TEMP"/rockyou.txt "$RUNNER_TEMP"/hash.txt "$RUNNER_TEMP"/pot.txt || true
