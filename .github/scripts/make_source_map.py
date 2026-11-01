@@ -16,6 +16,7 @@ import traceback
 
 API_RE = re.compile(r"(L[a-zA-Z0-9_/$]+;->[a-zA-Z0-9_$]+\()")
 STR_RE = re.compile(r'"(https?://[^"]+|assets/[^"]+|[A-Za-z0-9_/]+\.(?:bin|dat|cache|idx|dex|apk))"')
+SMALI_STR_RE = re.compile(r'const-string(?:/jumbo)?\s+v\d+,\s*"(https?://[^"]+|assets/[^"]+|[A-Za-z0-9_/]+\.(?:bin|dat|cache|idx|dex|apk))"')
 
 
 def collect(root: str, dest_root: str, log) -> None:
@@ -85,6 +86,21 @@ def collect(root: str, dest_root: str, log) -> None:
         # вызовы API и строки
         api: dict[str, int] = {}
         strings: set[str] = set()
+        # вызовы API надёжнее брать из smali: там сохраняются дескрипторы методов
+        for base, _, files in os.walk(apk_root):
+            for f in files:
+                if not f.endswith(".smali"):
+                    continue
+                try:
+                    with open(os.path.join(base, f), encoding="utf-8", errors="replace") as fh:
+                        body = fh.read()
+                except OSError:
+                    continue
+                for m in API_RE.finditer(body):
+                    api[m.group(1)] = api.get(m.group(1), 0) + 1
+                for m in SMALI_STR_RE.finditer(body):
+                    strings.add(m.group(1))
+
         for base, _, files in os.walk(java_root):
             for f in files:
                 if not f.endswith(".java"):
