@@ -1,18 +1,19 @@
-import { Sim } from './sim.js?v=2026-11-01-pixel-3';
-import { Renderer, TOOLS } from './render.js?v=2026-11-01-pixel-3';
+import { Sim } from './sim.js?v=2026-11-01-pixel-4';
+import { Renderer, TOOLS } from './render.js?v=2026-11-01-pixel-4';
 
-export const BUILD = 'pixel-3';
+export const BUILD = 'pixel-4';
 
 const canvas = document.getElementById('city');
 const sim = new Sim(7);
 const renderer = new Renderer(canvas, sim);
 renderer.build = BUILD;
-console.info(`[город] сборка ${BUILD}: пиксель, зоны, стройка`);
+console.info(`[город] сборка ${BUILD}: пиксель, чёткий HUD, въезд с края карты`);
 
 let last = performance.now();
 let action = null; // { kind: 'paint' | 'pan', tool, lastTile, startX, startY }
 let hoverTile = null;
 let keys = new Set();
+let hintShown = false;
 
 // ------------------------------------------------------------------ helpers
 function bufferPoint(e) {
@@ -27,33 +28,6 @@ function bufferPoint(e) {
   };
 }
 
-function hudHit(bx, by) {
-  const W = renderer.bufW;
-  const H = renderer.bufH;
-  // speed buttons
-  if (by >= 4 && by <= 20) {
-    const bw = 16;
-    const startX = W - 4 - 4 * (bw + 2) + 2;
-    for (let i = 0; i < 4; i++) {
-      const x = startX + i * (bw + 2);
-      if (bx >= x && bx <= x + bw) return { kind: 'speed', v: [0, 1, 2, 4][i] };
-    }
-  }
-  // toolbar
-  const cell = 26;
-  const gap = 2;
-  const totalW = TOOLS.length * (cell + gap) - gap;
-  const tx = Math.round((W - totalW) / 2);
-  const ty = H - cell - 6;
-  if (by >= ty - 4 && by <= ty + cell + 4 && bx >= tx - 4 && bx <= tx + totalW + 4) {
-    for (let i = 0; i < TOOLS.length; i++) {
-      const x = tx + i * (cell + gap);
-      if (bx >= x && bx <= x + cell) return { kind: 'tool', id: TOOLS[i].id };
-    }
-  }
-  return null;
-}
-
 function applyTool(tile) {
   if (!tile) return;
   const tool = renderer.tool;
@@ -65,6 +39,10 @@ function applyTool(tile) {
   else if (tool === 'zoneC') res = sim.zone(tile.x, tile.y, 'c');
   else if (tool === 'zoneI') res = sim.zone(tile.x, tile.y, 'i');
   if (res && !res.ok && res.reason) renderer.toastMessage(res.reason, true);
+  else if (res && res.ok && !sim.townConnected() && !hintShown) {
+    hintShown = true;
+    renderer.toastMessage('дорога не доходит до края карты — никто не приедет', true);
+  }
 }
 
 function paintTo(tile) {
@@ -101,7 +79,7 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture?.(e.pointerId);
   const p = bufferPoint(e);
-  const hit = renderer.showHud ? hudHit(p.bx, p.by) : null;
+  const hit = renderer.hudHit(p.cssX, p.cssY);
   if (hit) {
     if (hit.kind === 'tool') renderer.tool = hit.id;
     if (hit.kind === 'speed') {
@@ -251,7 +229,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-renderer.toastMessage('стрите город: дорога → зоны → люди приедут сами');
+renderer.toastMessage('начни с дороги до края карты — по ней приедут люди');
 requestAnimationFrame(frame);
 
 // handy for debugging and for the headless smoke test

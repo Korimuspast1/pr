@@ -44,11 +44,20 @@ globalThis.requestAnimationFrame = (fn) => { pending = fn; };
 globalThis.performance = globalThis.performance || { now: () => Date.now() };
 
 const { BUILD } = await import('../src/main.js');
+const { buildDemoTown } = await import('./demo-town.mjs');
 const { sim, renderer } = window.city;
 
-// let the town grow: advance the sim directly, then render real frames
-for (let i = 0; i < 1440 * 6; i++) sim.update(0.1);
+// a player-like plan, then let the town grow: advance the sim directly and
+// render real frames through the app's own loop
+buildDemoTown(sim);
+const days = Number(process.argv[6] || 14);
+const minute = Number(process.argv[7] || 560);
+for (let i = 0; i < 1440 * days; i++) sim.update(0.1);
+sim.absMinute = sim.absMinute - (sim.absMinute % 1440) + minute;
+sim.minute = minute;
+for (let i = 0; i < 20; i++) sim.update(0.1);
 sim.paused = false;
+renderer.centerOn(20, 19);
 
 let t = 0;
 for (let i = 0; i < frames; i++) {

@@ -7,7 +7,7 @@
 //      pockets. The only outside money is the savings a newcomer brings and the
 //      savings a leaver takes away - both are reported separately in the ledger.
 
-import { World, N, T } from './world.js?v=2026-11-01-pixel-3';
+import { World, N, T } from './world.js?v=2026-11-01-pixel-4';
 
 export const MIN_PER_SEC = 10; // game minutes per real second at 1x speed
 export const HOUR = 60;
@@ -34,6 +34,10 @@ const NAMES = [
 
 const SHIRTS = ['#e0574d', '#3f7fb5', '#e2a33c', '#5aa469', '#8c6bb1', '#d9739b', '#4aa39c', '#c9713f'];
 const SKINS = ['#e8bb92', '#d9a276', '#c78a5f', '#f0cba6'];
+// price the outside market pays for a unit of factory output
+export const EXPORT_PRICE = 4.4;
+
+const CAR_COLORS = ['#d9564c', '#e6dcc6', '#5b8fd0', '#e0a83c', '#6fae72', '#9d8ec7', '#d9803f'];
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const rnd = (rng, a, b) => a + rng() * (b - a);
@@ -63,21 +67,25 @@ export class Sim {
     this.paused = false;
     this.pending = 0;
 
-    this.budget = 900;
+    // an empty plot of land: the town has its budget and nothing else yet
+    this.budget = 2000;
     this.citizens = [];
     this.firms = [];
     this.sites = [];
     this.trucks = [];
+    this.cars = [];
     this.nameIndex = 0;
     this.colors = 0;
 
     this.ledger = this.emptyLedger();
+    // money that crossed the border of the city: savings of newcomers, money
+    // taken away by leavers, goods sold to and bought from the outside world
     this.external = { in: 0, out: 0 };
+    this.exportIncome = 0;
     this.works = 0; // road & park money waiting to be paid out as wages
 
     this.seedTown();
     this.world.recomputeComponents();
-    this.assignJobs(); // roads exist now, so the founders can actually get hired
     this.initialBudget = this.budget;
     this.initialMoney = this.internalMoney();
     this.year = 1;
@@ -93,6 +101,8 @@ export class Sim {
       construction: 0,
       welfare: 0,
       cityWages: 0,
+      imports: 0,
+      exports: 0,
       migrationIn: 0,
       migrationOut: 0,
     };
@@ -100,34 +110,42 @@ export class Sim {
 
   // ------------------------------------------------------------- the start
   seedTown() {
-    const w = this.world;
-    for (let x = 13; x <= 26; x++) w.set(x, 20, T.ROAD);
-    for (let y = 16; y <= 24; y++) w.set(20, y, T.ROAD);
+    // Nothing is pre-built any more. Bare land, the city budget and one rule:
+    // roads, goods and people only come in through the edge of the map.
+    this.world.recomputeComponents();
+  }
 
-    const hall = w.addBuilding('cityhall', 16, 17, 3, 3, { variant: 0 });
-    this.addFirm(hall, { public: true });
+  // ------------------------------------------------------- the way in and out
+  /** Some road reaches the border of the map: the only entrance to the town. */
+  townConnected() {
+    return this.world.edgeComps.size > 0;
+  }
 
-    const shop = w.addBuilding('shop', 21, 19, 1, 1, { variant: 0 });
-    const shopFirm = this.addFirm(shop, { capital: 240 });
-    shopFirm.stock = 18;
+  /** Is this road on the entrance network (so people can reach it from outside)? */
+  connectedToEdge(x, y) {
+    return this.world.hasGate(x, y);
+  }
 
-    const factory = w.addBuilding('factory', 22, 21, 2, 2, { variant: 0 });
-    const factoryFirm = this.addFirm(factory, { capital: 320 });
-    factoryFirm.stock = 10;
+  /** A border road tile on the same network as `home` - where newcomers step in. */
+  entryFor(home) {
+    const comp = home ? this.world.componentAt(home.door.x, home.door.y) : 0;
+    const roads = this.world.edgeRoads(comp || undefined);
+    if (!roads.length) return null;
+    return roads[Math.floor(this.rng() * roads.length)];
+  }
 
-    const houses = [
-      w.addBuilding('house', 14, 21, 1, 1, { variant: 0 }),
-      w.addBuilding('house', 16, 21, 1, 1, { variant: 1 }),
-      w.addBuilding('house', 18, 21, 1, 1, { variant: 2 }),
-      w.addBuilding('house', 19, 22, 1, 1, { variant: 0 }),
-    ];
-    for (const h of houses) h.residents = [];
-
-    // the founders: two people per house, six jobs are waiting for them
-    for (const h of houses) {
-      for (let i = 0; i < 2; i++) this.spawnCitizen(h, { founding: true });
+  /** Short line for the HUD that tells the player what is missing right now. */
+  statusHint() {
+    if (!this.townConnected()) {
+      return this.world.countRoads() === 0
+        ? 'проведи дорогу от края карты — по ней приедут люди'
+        : 'дорога не доходит до края карты: ни стройки, ни жителей';
     }
-    this.assignJobs();
+    if (this.countDone('house') === 0 && this.sites.length === 0) {
+      return 'размечай жилую зону у дороги — город построит первый дом';
+    }
+    if (this.citizens.length === 0) return 'первый дом готов: жители приедут с края карты';
+    return null;
   }
 
   addFirm(building, opts = {}) {
@@ -152,6 +170,19 @@ export class Sim {
       arrears: 0,
     };
     firm.jobs = opts.public ? 2 : building.kind === 'shop' ? 1 : 3;
+    // a new shop fills its shelves from outside: the town imports goods and
+    // pays for them, so this is money going out, not money appearing
+    if (building.kind === 'shop' && !opts.public) {
+      const importPrice = 7.5;
+      const qty = Math.min(14, Math.floor(firm.cash / importPrice));
+      if (qty > 0) {
+        const cost = qty * importPrice;
+        firm.cash -= cost;
+        firm.stock = qty;
+        this.external.out += cost;
+        this.ledger.imports += cost;
+      }
+    }
     this.firms.push(firm);
     building.firm = firm;
     if (opts.public) this.cityHall = firm;
@@ -192,33 +223,29 @@ export class Sim {
       c.state = 'home';
     }
     if (!opts.founding) {
+      // nobody can arrive without a road that leaves the map
+      const edge = this.entryFor(home);
+      if (!edge) {
+        if (home && home.residents) home.residents = home.residents.filter((r) => r !== c);
+        return null;
+      }
       // newcomers bring their own savings: it is outside money, reported as such
       c.cash = 60;
       this.external.in += c.cash;
       this.ledger.migrationIn += c.cash;
-      const edge = this.edgeRoadTile();
       c.x = edge.x + 0.5;
       c.y = edge.y + 0.5;
       c.state = 'newcomer';
-      this.walkTo(c, home ? home.door : edge);
+      this.walkTo(c, home.door);
     }
     this.citizens.push(c);
     return c;
   }
 
-  edgeRoadTile() {
-    const w = this.world;
-    const roads = [];
-    for (let i = 0; i < w.n; i++) {
-      if (w.isRoad(i, 0)) roads.push({ x: i, y: 0 });
-      if (w.isRoad(i, w.n - 1)) roads.push({ x: i, y: w.n - 1 });
-      if (w.isRoad(0, i)) roads.push({ x: 0, y: i });
-      if (w.isRoad(w.n - 1, i)) roads.push({ x: w.n - 1, y: i });
-    }
+  edgeRoadTile(comp) {
+    const roads = this.world.edgeRoads(comp);
     if (roads.length) return roads[Math.floor(this.rng() * roads.length)];
-    // no road reaches the border yet: come in at the city hall
-    const hall = this.cityHall?.building;
-    return hall ? hall.door : { x: 20, y: 20 };
+    return null;
   }
 
   tileOf(pos) {
@@ -254,6 +281,7 @@ export class Sim {
       this.day++;
     }
     if (this.minute % 60 === 0) this.hourly(this.minute);
+    if (this.minute % 6 === 0) this.carHour();
 
     switch (this.minute) {
       case 7 * HOUR:
@@ -264,6 +292,9 @@ export class Sim {
         break;
       case 16 * HOUR:
         this.shiftEnd();
+        break;
+      case 12 * HOUR + 30:
+        this.lunch();
         break;
       case 18 * HOUR + 30:
         this.evening();
@@ -284,7 +315,9 @@ export class Sim {
 
   hourly(minute) {
     for (let i = this.firms.length - 1; i >= 0; i--) this.firmHour(this.firms[i], minute);
+    this.assignBuilders();
     this.buildersHour();
+    this.contractorHour();
     this.cityCrewHour();
     this.develop(minute);
     this.maybeMigrate(minute);
@@ -324,6 +357,20 @@ export class Sim {
       if (workers) {
         firm.stock += workers * 1.05;
         firm.producedToday += workers * 1.05;
+      }
+      // goods the shops did not take are sold out of town. That is the only
+      // real income the city has from the outside world, and it is reported
+      // as outside money in the ledger.
+      const surplus = firm.stock - 12;
+      if (surplus > 0.5) {
+        const qty = Math.min(surplus, 7);
+        const total = qty * EXPORT_PRICE;
+        firm.stock -= qty;
+        firm.cash += total;
+        firm.revenueToday += total;
+        firm.soldToday += qty;
+        this.exportIncome += total;
+        this.ledger.exports += total;
       }
     }
 
@@ -384,7 +431,11 @@ export class Sim {
     const active = this.sites.filter((s) => s.state === 'site');
     if (!active.length) return;
     for (const site of active) {
-      if (!site.builders.length) continue;
+      if (!site.builders.length) {
+        site.idle = (site.idle || 0) + 1;
+        continue;
+      }
+      site.idle = 0;
       site.work += site.builders.length * 2.6;
       const due = Math.min(site.escrow, site.builders.length * 14);
       if (due > 0.01) {
@@ -399,6 +450,28 @@ export class Sim {
           this.ledger.construction += each;
         }
       }
+      if (site.progressNeeded && site.work >= site.progressNeeded) this.finishSite(site);
+    }
+  }
+
+  /**
+   * If a site has no townsfolk to work on it, the town hires a crew from
+   * outside. Their pay leaves the city (reported as outside money), so the
+   * books stay honest - it is not printed money, it is a real expense.
+   */
+  contractorHour() {
+    if (this.minute < 6 * HOUR || this.minute > 21 * HOUR) return;
+    for (const site of this.sites.slice()) {
+      if (site.state !== 'site' || site.builders.length) continue;
+      // give the townsfolk a day to take the job before paying an outside crew
+      if (this.citizens.length > 0 && (site.idle || 0) < 8) continue;
+      const due = Math.min(site.escrow, 12);
+      if (due > 0.01) {
+        site.escrow -= due;
+        this.external.out += due;
+        this.ledger.construction += due;
+      }
+      site.work += 1.15;
       if (site.progressNeeded && site.work >= site.progressNeeded) this.finishSite(site);
     }
   }
@@ -440,6 +513,13 @@ export class Sim {
     return this.world.buildings.filter((b) => b.kind === kind && b.state === 'done').length;
   }
 
+  /** Built plus already under construction: stops the town from starting the
+   *  same project three times while the first one is still a hole in the ground. */
+  countPlanned(kind) {
+    const sites = this.sites.filter((s) => s.building.kind === kind).length;
+    return this.countDone(kind) + sites;
+  }
+
   unemployedCount() {
     return this.citizens.filter((c) => !c.work).length;
   }
@@ -468,37 +548,60 @@ export class Sim {
    * What the town needs next: a bed for a worker, a shop when shelves are
    * empty, or a workplace when people are idle. One lot per hour at most.
    */
-  chooseKind() {
+  /**
+   * Everything the town would like to build right now, most urgent first.
+   * The list matters: if there is no free lot for a factory, the town still
+   * builds a house for the next family instead of standing still.
+   */
+  wishlist() {
+    if (!this.townConnected()) return [];
     const pop = this.citizens.length;
-    const shops = this.countDone('shop');
-    const factories = this.countDone('factory');
+    const shops = this.countPlanned('shop');
+    const factories = this.countPlanned('factory');
+    const houses = this.countPlanned('house');
     const emptyShelves = this.firms.filter((f) => f.kind === 'shop' && f.stock < 3).length;
     const jobNeed = this.unemployedCount();
     const bedNeed = this.vacancies() - this.freeHomeSlots();
+    const list = [];
 
-    if (emptyShelves > 0 && shops > 0 && factories * 12 < shops * 10) return 'factory';
-    if (bedNeed > 0 && pop < 70) return 'house';
-    if (jobNeed >= 2 && shops < Math.max(1, Math.floor(pop / 4) + 1)) return 'shop';
-    if (jobNeed >= 2) return 'factory';
-    if (jobNeed >= 1 && shops === 0) return 'shop';
-    return null;
+    // an empty town bootstraps itself: one bed first, then work for its people
+    if (houses === 0 && this.sites.length === 0) list.push('house');
+    if (shops === 0 && houses > 0 && jobNeed >= 1) list.push('shop');
+    if (factories === 0 && shops > 0) list.push('factory');
+
+    if (emptyShelves > 0 && shops > 0 && factories * 12 < shops * 10) list.push('factory');
+    if (bedNeed > 0 && pop < 70) list.push('house');
+    if (jobNeed >= 2 && shops < Math.max(1, Math.floor(pop / 4) + 1)) list.push('shop');
+    if (jobNeed >= 2) list.push('factory');
+    if (jobNeed >= 1 && shops === 0) list.push('shop');
+    return list;
+  }
+
+  chooseKind() {
+    return this.wishlist()[0] || null;
   }
 
   /** Build one new lot of whatever the town needs, if the budget allows. */
   develop(minute) {
     if (minute < 6 * HOUR || minute > 21 * HOUR) return;
     if (this.sites.length >= 3) return;
-    const kind = this.chooseKind();
-    if (!kind) return;
-    const zone = kind === 'house' ? T.ZONE_R : kind === 'shop' ? T.ZONE_C : T.ZONE_I;
-    const size = kind === 'factory' ? 2 : 1;
-    const needed = COSTS[kind] + (CAPITAL[kind] || 0);
-    if (this.budget < needed + 40) return;
-    // houses grow where there are jobs, businesses grow where people live
-    const compFilter = kind === 'house' ? this.jobComponents() : this.residentComponents();
-    const spot = this.findSpot(zone, size, compFilter);
-    if (!spot) return;
-    this.startSite(kind, spot.x, spot.y, size);
+    // materials come by road: without a road to the edge nothing is built
+    if (!this.townConnected()) return;
+    for (const kind of this.wishlist()) {
+      const zone = kind === 'house' ? T.ZONE_R : kind === 'shop' ? T.ZONE_C : T.ZONE_I;
+      const needed = COSTS[kind] + (CAPITAL[kind] || 0);
+      if (this.budget < needed + 40) continue;
+      // houses grow where there are jobs, businesses grow where people live
+      const compFilter = kind === 'house' ? this.jobComponents() : this.residentComponents();
+      // factories prefer a 2x2 lot but happily take a single tile
+      const sizes = kind === 'factory' ? [2, 1] : [1];
+      for (const size of sizes) {
+        const spot = this.findSpot(zone, size, compFilter);
+        if (!spot) continue;
+        this.startSite(kind, spot.x, spot.y, size);
+        return;
+      }
+    }
   }
 
   /** Road networks that have people living on them. */
@@ -537,9 +640,11 @@ export class Sim {
     }
     for (const c of candidates) {
       if (!w.canBuild('x', c.x, c.y, size, size, zone)) continue;
+      const door = w.doorFor(c.x, c.y, size, size);
+      // materials arrive by road: a lot behind a cut-off street stays empty
+      if (!door || !w.hasGate(door.x, door.y)) continue;
       if (compFilter && compFilter.size) {
-        const door = w.doorFor(c.x, c.y, size, size);
-        if (!door || !compFilter.has(w.componentAt(door.x, door.y))) continue;
+        if (!compFilter.has(w.componentAt(door.x, door.y))) continue;
       }
       // do not grow on a tile another site is waiting for
       const taken = this.sites.some((s) => c.x >= s.x && c.y >= s.y && c.x < s.x + s.w && c.y < s.y + s.d);
@@ -593,16 +698,20 @@ export class Sim {
   // -------------------------------------------------------------- migration
   maybeMigrate(minute) {
     if (minute % 2 !== 0) return;
+    // no road to the border of the map - simply nobody can drive into town
+    if (!this.townConnected()) return;
     // people move in when there is a bed free and the town still has work
     if (this.freeHomeSlots() <= 0) return;
     if (this.unemployedCount() >= 4) return;
     if (this.citizens.length >= 60) return;
     if (this.rng() > 0.5) return;
-    const home = this.world.buildings.find(
+    const homes = this.world.buildings.filter(
       (b) => b.kind === 'house' && b.state === 'done' && (b.residents || []).length < 2,
     );
+    // the house itself has to stand on the entrance network
+    const home = homes.find((b) => this.connectedToEdge(b.door.x, b.door.y));
     if (!home) return;
-    this.spawnCitizen(home, {});
+    if (!this.spawnCitizen(home, {})) return;
     this.assignJobs();
   }
 
@@ -629,7 +738,15 @@ export class Sim {
       c.site.builders = c.site.builders.filter((b) => b !== c);
       c.site = null;
     }
-    const edge = this.edgeRoadTile();
+    const comp = c.home ? this.world.componentAt(c.home.door.x, c.home.door.y) : 0;
+    const edge = this.edgeRoadTile(comp || undefined);
+    if (!edge) {
+      // no road reaches the border: they cannot walk out, so they simply leave
+      this.external.out += c.cash;
+      this.ledger.migrationOut += c.cash;
+      this.removeCitizen(c);
+      return;
+    }
     this.walkTo(c, edge);
   }
 
@@ -687,6 +804,23 @@ export class Sim {
       }
     }
     this.assignJobs();
+  }
+
+  /** Half of the workers step out at midday, so the streets stay alive. */
+  lunch() {
+    for (const c of this.citizens) {
+      if (c.state !== 'work' || !c.work) continue;
+      if (this.rng() < 0.4) continue;
+      const shop = this.nearestShop(c);
+      if (!shop) continue;
+      c.shopTarget = shop;
+      c.lunch = true;
+      c.visible = true;
+      this.setState(c, 'toShop');
+      c.x = c.work.building.door.x + 0.5;
+      c.y = c.work.building.door.y + 0.5;
+      this.walkTo(c, shop.building.door);
+    }
   }
 
   shiftStart() {
@@ -828,9 +962,11 @@ export class Sim {
 
   // ------------------------------------------------------------- money books
   dailyBooks() {
+    // the books are read once a day: today's numbers start from zero here
+    this.ledger = this.emptyLedger();
     // rent and business rates keep the city budget alive
     for (const c of this.citizens) {
-      const rent = 12;
+      const rent = 14;
       const pay = Math.min(rent, Math.max(0, c.cash - 4));
       if (pay > 0.01) {
         c.cash -= pay;
@@ -870,7 +1006,6 @@ export class Sim {
         // empty houses stay for a while, they keep their zone
       }
     }
-    this.ledger = this.emptyLedger();
     this.assignJobs();
     this.assignBuilders();
   }
@@ -912,10 +1047,56 @@ export class Sim {
 
   /** Internal money may only change by the savings that crossed the border. */
   audit() {
-    return this.internalMoney() - this.initialMoney - this.external.in + this.external.out;
+    return this.internalMoney() - this.initialMoney - this.external.in - this.exportIncome + this.external.out;
   }
 
   // ---------------------------------------------------------------- trucks
+  /** A car that drives from one part of town to another, just like a delivery. */
+  carHour() {
+    if (this.cars.length >= 7) return;
+    if (!this.townConnected()) return;
+    if (this.minute < 6 * HOUR || this.minute > 23 * HOUR) return;
+    const stops = this.world.buildings.filter((b) => b.state === 'done' && b.door);
+    if (stops.length < 2) return;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const a = stops[Math.floor(this.rng() * stops.length)];
+      const b = stops[Math.floor(this.rng() * stops.length)];
+      if (!a || !b || a === b) continue;
+      const path = this.world.pathRoads(a.door, b.door);
+      if (!path || path.length < 5) continue;
+      this.cars.push({
+        path,
+        index: 1,
+        x: path[0].x,
+        y: path[0].y,
+        color: CAR_COLORS[Math.floor(this.rng() * CAR_COLORS.length)],
+        speed: 1.9 + this.rng() * 0.9,
+      });
+      return;
+    }
+  }
+
+  updateCar(car, dt) {
+    let remain = car.speed * dt;
+    while (remain > 0 && car.index < car.path.length) {
+      const p = car.path[car.index];
+      const dx = p.x - car.x;
+      const dy = p.y - car.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist <= remain) {
+        car.x = p.x;
+        car.y = p.y;
+        remain -= dist;
+        car.index++;
+      } else {
+        car.x += (dx / dist) * remain;
+        car.y += (dy / dist) * remain;
+        remain = 0;
+      }
+    }
+    return car.index >= car.path.length;
+  }
+
   spawnTruck(from, to) {
     if (this.trucks.length > 3) return;
     const path = this.world.pathRoads(from.door, to.door);
@@ -1030,6 +1211,9 @@ export class Sim {
     for (let i = this.trucks.length - 1; i >= 0; i--) {
       if (this.updateTruck(this.trucks[i], dt)) this.trucks.splice(i, 1);
     }
+    for (let i = this.cars.length - 1; i >= 0; i--) {
+      if (this.updateCar(this.cars[i], dt)) this.cars.splice(i, 1);
+    }
   }
 
   updateCitizen(c, dt) {
@@ -1062,7 +1246,14 @@ export class Sim {
       case 'toShop':
         if (arrived) {
           this.buy(c);
-          this.goHomeState(c);
+          if (c.lunch && c.work) {
+            c.lunch = false;
+            this.setState(c, 'toWork');
+            this.walkTo(c, c.work.building.door);
+            if (this.minute >= 16 * HOUR) this.goHomeState(c);
+          } else {
+            this.goHomeState(c);
+          }
         }
         break;
       case 'toHome':
@@ -1108,7 +1299,7 @@ export class Sim {
       } else {
         c.x += (dx / dist) * remain;
         c.y += (dy / dist) * remain;
-        c.phase += remain * 3.2;
+        c.phase += remain * 1.9;
         c.moving = true;
         remain = 0;
       }

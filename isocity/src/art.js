@@ -1,8 +1,8 @@
 // Pixel art. Everything here paints into world-pixel coordinates with integer
 // positions and 1px outlines; the renderer only upscales the finished frame.
 
-import { TW, TH, HW, HH, iso, corners, fill, box, diamond, pxLine, pitchedRoof, wallRect, outline } from './iso.js?v=2026-11-01-pixel-3';
-import { T } from './world.js?v=2026-11-01-pixel-3';
+import { TW, TH, HW, HH, iso, corners, fill, box, diamond, pxLine, pitchedRoof, wallRect, outline } from './iso.js?v=2026-11-01-pixel-4';
+import { T } from './world.js?v=2026-11-01-pixel-4';
 
 export const PAL = {
   grass: ['#79ae47', '#7cb24a', '#76a845'],
@@ -80,6 +80,15 @@ export function drawGroundTile(ctx, world, x, y, ox, oy) {
       ctx.fillRect(n.x + (h % 9), n.y + 6 + (h % 3), 2, 1);
     }
     drawRoadMarks(ctx, world, x, y, ox, oy);
+    // a street with no way to the edge of the map is marked as cut off:
+    // no cars, no deliveries, no new neighbours
+    if (!world.hasGate(x, y)) {
+      const m = { x: (n.x + s.x) / 2, y: (n.y + s.y) / 2 };
+      ctx.fillStyle = 'rgba(232,176,74,0.85)';
+      ctx.fillRect(m.x - 3, m.y - 1, 6, 2);
+      ctx.fillStyle = 'rgba(24,20,14,0.55)';
+      ctx.fillRect(m.x - 1, m.y - 1, 2, 2);
+    }
     return;
   }
 
@@ -292,14 +301,18 @@ function drawShop(ctx, b, night) {
 
 function drawFactory(ctx, b, night) {
   const { x, y, w, d } = b;
-  const h = 20;
+  // a single-lot workshop is lower than a full 2x2 plant, so a row of small
+  // factories reads as a street of workshops instead of a wall of towers
+  const big = w > 1 || d > 1;
+  const h = big ? 20 : 14;
   shadow(ctx, b);
   box(ctx, x, y, w, d, 0, h, { top: FACTORY.wall, left: shadeTone(FACTORY.wall2, -0.12), right: shadeTone(FACTORY.wall, -0.22), outline: PAL.outline });
   for (let v = 4; v < h; v += 5) {
     pxLine(ctx, iso(x, y + d, v).x, iso(x, y + d, v).y, iso(x + w, y + d, v).x, iso(x + w, y + d, v).y, shadeTone(FACTORY.wall2, -0.24));
     pxLine(ctx, iso(x + w, y, v).x, iso(x + w, y, v).y, iso(x + w, y + d, v).x, iso(x + w, y + d, v).y, shadeTone(FACTORY.wall, -0.34));
   }
-  windowGrid(ctx, b, 'x', 1, 3, 5, 9, night);
+  windowGrid(ctx, b, 'x', 1, big ? 3 : 1, 5, 9, night);
+  if (big) windowGrid(ctx, b, 'y', 1, 3, 5, 9, night);
   // roller door
   wallRect(ctx, x, y, w, d, b.doorSide, 0.3, 0.7, 0, 11, 0, FACTORY.door);
   for (let v = 2; v < 11; v += 3) {
@@ -309,8 +322,8 @@ function drawFactory(ctx, b, night) {
   roofOutline(ctx, b, h, 0.02);
   const r = corners(x + 0.05, y + 0.05, w - 0.1, d - 0.1, h);
   fill(ctx, r, shadeTone(FACTORY.roof, 0.08));
-  box(ctx, x + 0.4, y + 0.3, 0.45, 0.45, h, h + 5, { top: '#8b8378', left: '#6f6a60', right: '#5d584f', outline: PAL.outline });
-  chimney(ctx, x + w - 0.35, y + 0.25, h, FACTORY.roof, true);
+  box(ctx, x + 0.4, y + 0.3, 0.45, 0.45, h, h + 4, { top: '#b8b0a2', left: '#9a9284', right: '#7e776b', outline: PAL.outline });
+  chimney(ctx, x + w - 0.35, y + 0.25, h, FACTORY.roof, big);
 }
 
 function drawHall(ctx, b, night) {
@@ -352,13 +365,21 @@ function drawHall(ctx, b, night) {
 }
 
 function chimney(ctx, cx, cy, h, roofColor, tall = false) {
-  const top = h + (tall ? 16 : 9);
+  const top = h + (tall ? 13 : 8);
+  // brick stack: warm body, light band near the top, pale soot cap
+  const body = '#a9705a';
   box(ctx, cx, cy, 0.2, 0.2, h, top, {
-    top: '#8d8377',
-    left: shadeTone(roofColor, -0.2),
-    right: shadeTone(roofColor, -0.4),
+    top: '#c9c2b4',
+    left: shadeTone(body, -0.05),
+    right: shadeTone(body, -0.26),
     outline: PAL.outline,
   });
+  const band = iso(cx + 0.1, cy + 0.1, top - 3);
+  ctx.fillStyle = '#e0d6c4';
+  ctx.fillRect(band.x - 3, band.y - 1, 6, 2);
+  const cap = iso(cx + 0.1, cy + 0.1, top);
+  ctx.fillStyle = '#b9b0a0';
+  ctx.fillRect(cap.x - 3, cap.y, 6, 2);
 }
 
 function drawSite(ctx, b, sim) {
@@ -517,46 +538,57 @@ export function drawProp(ctx, p, sim) {
 // ------------------------------------------------------------------- people
 export function drawCitizen(ctx, c) {
   const g = iso(c.x, c.y, 0);
-  const walking = c.moving;
-  const frame = walking ? (Math.floor(c.phase) % 2) : 0;
-  const bob = walking ? frame : 0;
-
-  ctx.fillStyle = 'rgba(18,24,16,0.28)';
-  ctx.fillRect(g.x - 2, g.y, 5, 2);
-
+  const stride = c.moving ? Math.floor(c.phase) % 4 : 0;
+  const spread = stride === 1 || stride === 3 ? 1 : 0;
+  const bob = stride === 1 || stride === 3 ? 1 : 0;
   const y = g.y - bob;
-  // legs
-  ctx.fillStyle = '#3c4150';
-  if (frame === 0) {
-    ctx.fillRect(g.x - 2, y - 4, 1, 4);
-    ctx.fillRect(g.x + 1, y - 4, 1, 4);
-  } else {
-    ctx.fillRect(g.x - 3, y - 4, 1, 4);
-    ctx.fillRect(g.x + 2, y - 4, 1, 4);
-  }
-  // body
-  ctx.fillStyle = c.color;
-  ctx.fillRect(g.x - 2, y - 9, 4, 5);
-  // arms
-  ctx.fillStyle = shadeTone(c.color, -0.2);
-  ctx.fillRect(g.x - 3, y - 8, 1, 3);
-  ctx.fillRect(g.x + 2, y - 8, 1, 3);
-  // head
+  const shirt = c.color;
+  const shade = shadeTone(shirt, -0.28);
+  const light = shadeTone(shirt, 0.22);
+
+  // shadow on the pavement
+  ctx.fillStyle = 'rgba(16,22,16,0.28)';
+  ctx.fillRect(g.x - 3, g.y, 7, 2);
+
+  // legs, one step apart while walking
+  ctx.fillStyle = '#4a5468';
+  ctx.fillRect(g.x - 2 - spread, y - 5, 2, 4);
+  ctx.fillRect(g.x + 1 + spread, y - 5, 2, 4);
+  ctx.fillStyle = '#2a2f38';
+  ctx.fillRect(g.x - 2 - spread, y - 2, 2, 2);
+  ctx.fillRect(g.x + 1 + spread, y - 2, 2, 2);
+
+  // torso: shirt colour with one shaded side, no heavy outline
+  ctx.fillStyle = shirt;
+  ctx.fillRect(g.x - 2, y - 11, 5, 6);
+  ctx.fillStyle = light;
+  ctx.fillRect(g.x - 2, y - 11, 5, 1);
+  ctx.fillStyle = shade;
+  ctx.fillRect(g.x + 2, y - 10, 1, 5);
+
+  // arms swinging with the stride
+  ctx.fillStyle = shade;
+  ctx.fillRect(g.x - 3, y - 10 + (stride === 1 ? 1 : 0), 1, 4);
+  ctx.fillRect(g.x + 3, y - 10 + (stride === 3 ? 1 : 0), 1, 4);
+
+  // head, hair and a face pixel
   ctx.fillStyle = c.skin;
-  ctx.fillRect(g.x - 1, y - 12, 3, 3);
-  // hair
-  ctx.fillStyle = '#463229';
-  ctx.fillRect(g.x - 1, y - 13, 3, 1);
-  ctx.fillRect(g.x - 1, y - 12, 1, 1);
-  // mood pixel
+  ctx.fillRect(g.x - 2, y - 15, 4, 4);
+  ctx.fillStyle = '#4a3529';
+  ctx.fillRect(g.x - 2, y - 16, 4, 1);
+  ctx.fillRect(g.x - 2, y - 15, 1, 1);
+  ctx.fillStyle = '#2b2119';
+  ctx.fillRect(g.x + 1, y - 14, 1, 1);
+
+  // hungry citizens get a red mark over their head
   if (c.hunger > 1.5) {
     ctx.fillStyle = '#e0574d';
-    ctx.fillRect(g.x + 3, y - 15, 1, 2);
-    ctx.fillRect(g.x + 3, y - 12, 1, 1);
+    ctx.fillRect(g.x - 1, y - 20, 2, 3);
+    ctx.fillRect(g.x - 1, y - 16, 2, 1);
   }
 }
 
-export function drawTruck(ctx, t) {
+export function drawTruck(ctx, t, night = 0) {
   const g = iso(t.x, t.y, 0);
   const next = t.path[Math.min(t.index, t.path.length - 1)];
   const dx = next.x - t.x;
@@ -604,6 +636,66 @@ export function drawTruck(ctx, t) {
     ctx.fillRect(g.x - 3, g.y - 13, 3, 2);
     ctx.fillStyle = '#3a6f96';
     ctx.fillRect(g.x - 4, g.y - 10, 5, 1);
+  }
+}
+
+/** A private car: low body, roof, wheels, headlights after dark. */
+export function drawCar(ctx, car, night = 0) {
+  const g = iso(car.x, car.y, 0);
+  const next = car.path[Math.min(car.index, car.path.length - 1)];
+  const dx = next.x - car.x;
+  const dy = next.y - car.y;
+  const alongX = Math.abs(dx) >= Math.abs(dy);
+  const dir = alongX ? (dx >= 0 ? 1 : -1) : dy >= 0 ? 1 : -1;
+  const body = car.color || '#d9564c';
+  const dark = shadeTone(body, -0.4);
+
+  ctx.fillStyle = 'rgba(16,22,16,0.26)';
+  ctx.fillRect(g.x - 6, g.y, 12, 2);
+
+  if (alongX) {
+    const x0 = dir > 0 ? g.x - 7 : g.x - 1;
+    ctx.fillStyle = '#22262c';
+    ctx.fillRect(x0 + 1, g.y - 1, 3, 2);
+    ctx.fillRect(x0 + 5, g.y - 1, 3, 2);
+    ctx.fillStyle = dark;
+    ctx.fillRect(x0, g.y - 6, 10, 5);
+    ctx.fillStyle = body;
+    ctx.fillRect(x0 + 1, g.y - 7, 8, 6);
+    ctx.fillStyle = shadeTone(body, 0.22);
+    ctx.fillRect(x0 + 1, g.y - 7, 8, 1);
+    ctx.fillStyle = '#b9d7e4';
+    ctx.fillRect(x0 + (dir > 0 ? 4 : 2), g.y - 6, 3, 3);
+    ctx.fillStyle = '#2b313a';
+    ctx.fillRect(x0 + (dir > 0 ? 3 : 6), g.y - 6, 1, 3);
+    if (dir > 0) {
+      ctx.fillStyle = night > 0.25 ? '#ffe9a8' : '#e8dcb6';
+      ctx.fillRect(x0 + 8, g.y - 4, 2, 1);
+    } else {
+      ctx.fillStyle = night > 0.25 ? '#ffe9a8' : '#e8dcb6';
+      ctx.fillRect(x0, g.y - 4, 2, 1);
+    }
+  } else {
+    const up = dir > 0 ? 1 : -1;
+    const baseY = g.y - (dir > 0 ? 0 : 2);
+    ctx.fillStyle = '#22262c';
+    ctx.fillRect(g.x - 5, baseY - 1, 3, 2);
+    ctx.fillRect(g.x + 2, baseY - 1, 3, 2);
+    ctx.fillStyle = dark;
+    ctx.fillRect(g.x - 5, baseY - 8, 10, 6);
+    ctx.fillStyle = body;
+    ctx.fillRect(g.x - 4, baseY - 9, 8, 7);
+    ctx.fillStyle = shadeTone(body, 0.22);
+    ctx.fillRect(g.x - 4, baseY - 9, 8, 1);
+    ctx.fillStyle = '#b9d7e4';
+    ctx.fillRect(g.x - 3, baseY - (up > 0 ? 7 : 4), 6, 3);
+    ctx.fillStyle = '#2b313a';
+    ctx.fillRect(g.x - 1, baseY - (up > 0 ? 7 : 4), 1, 3);
+    if (night > 0.25) {
+      ctx.fillStyle = '#ffe9a8';
+      ctx.fillRect(g.x - 4, baseY - (up > 0 ? 1 : 10), 2, 1);
+      ctx.fillRect(g.x + 3, baseY - (up > 0 ? 1 : 10), 2, 1);
+    }
   }
 }
 

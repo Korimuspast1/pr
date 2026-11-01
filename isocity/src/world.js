@@ -37,6 +37,8 @@ export class World {
     this.buildings = [];
     this.props = [];
     this.comp = new Int16Array(n * n);
+    // road networks that reach the border of the map: the only way in or out
+    this.edgeComps = new Set();
     this.version = 0; // bumps whenever the ground looks different
     this.walkVersion = 0; // bumps whenever roads change
 
@@ -134,7 +136,50 @@ export class World {
         }
       }
     }
+    this.edgeComps.clear();
+    for (let i = 0; i < this.n; i++) {
+      this._noteEdge(i, 0);
+      this._noteEdge(i, this.n - 1);
+      this._noteEdge(0, i);
+      this._noteEdge(this.n - 1, i);
+    }
     this.walkVersion++;
+  }
+
+  _noteEdge(x, y) {
+    const c = this.comp[y * this.n + x];
+    if (c > 0) this.edgeComps.add(c);
+  }
+
+  /** True when this road tile belongs to a network that leaves the map. */
+  hasGate(x, y) {
+    const c = this.componentAt(x, y);
+    return c > 0 && this.edgeComps.has(c);
+  }
+
+  /** Border road tiles of one network (all of them when comp is omitted). */
+  edgeRoads(comp) {
+    const out = [];
+    for (let i = 0; i < this.n; i++) {
+      const pairs = [
+        [i, 0],
+        [i, this.n - 1],
+        [0, i],
+        [this.n - 1, i],
+      ];
+      for (const [x, y] of pairs) {
+        if (!this.isRoad(x, y)) continue;
+        if (comp && this.comp[y * this.n + x] !== comp) continue;
+        out.push({ x, y });
+      }
+    }
+    return out;
+  }
+
+  countRoads() {
+    let n = 0;
+    for (let i = 0; i < this.tiles.length; i++) if (this.tiles[i] === T.ROAD) n++;
+    return n;
   }
 
   componentAt(x, y) {

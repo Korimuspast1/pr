@@ -2,9 +2,12 @@
 // blow it up by a whole number with smoothing off. That is what keeps the
 // picture crisp and "pixel" at any window size.
 
-import { TW, TH, HW, HH, iso, corners, fill, pxLine, diamond } from './iso.js?v=2026-11-01-pixel-3';
-import { T } from './world.js?v=2026-11-01-pixel-3';
-import { drawGroundTile, drawBuilding, drawCitizen, drawTruck, drawProp, PAL } from './art.js?v=2026-11-01-pixel-3';
+import { TW, TH, HW, HH, iso, corners, fill, pxLine, diamond } from './iso.js?v=2026-11-01-pixel-4';
+import { T } from './world.js?v=2026-11-01-pixel-4';
+import { drawGroundTile, drawBuilding, drawCitizen, drawTruck, drawCar, drawProp, PAL } from './art.js?v=2026-11-01-pixel-4';
+
+const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+const HINT_SIZE = 13;
 
 const TOOLS = [
   { id: 'bulldoze', key: '1', label: 'снос' },
@@ -38,23 +41,40 @@ export class Renderer {
     this.toast = null;
     this.showHud = true;
     this.build = '';
+    this.dpr = 1;
+    this.cssW = 0;
+    this.cssH = 0;
     this.resize();
     this.centerOn(17.5, 18.5);
   }
 
   // ------------------------------------------------------------------ setup
   resize() {
+    // Two layers live on one canvas:
+    //   * the city, drawn into a small buffer and blown up by whole pixels,
+    //   * the HUD, drawn straight at screen resolution in CSS pixels.
+    // That is why the interface keeps its size and stays sharp at any zoom.
+    const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
     const cssW = Math.max(320, this.canvas.clientWidth || window.innerWidth);
     const cssH = Math.max(240, this.canvas.clientHeight || window.innerHeight);
+    this.dpr = dpr;
+    this.cssW = cssW;
+    this.cssH = cssH;
     this.pxScale = 2 * this.zoom;
-    const bufW = Math.floor(cssW / this.pxScale);
-    const bufH = Math.floor(cssH / this.pxScale);
+    const bufW = Math.max(1, Math.floor(cssW / this.pxScale));
+    const bufH = Math.max(1, Math.floor(cssH / this.pxScale));
     this.bufW = bufW;
     this.bufH = bufH;
     this.buf.width = bufW;
     this.buf.height = bufH;
-    this.canvas.width = bufW * this.pxScale;
-    this.canvas.height = bufH * this.pxScale;
+    this.canvas.width = Math.round(bufW * this.pxScale * dpr);
+    this.canvas.height = Math.round(bufH * this.pxScale * dpr);
+    // keep the CSS box exactly equal to the backing store: the browser has
+    // nothing to rescale, so every art pixel lands on whole screen pixels
+    if (this.canvas.style) {
+      this.canvas.style.width = `${this.canvas.width / dpr}px`;
+      this.canvas.style.height = `${this.canvas.height / dpr}px`;
+    }
     this.bctx.imageSmoothingEnabled = false;
     this.ctx.imageSmoothingEnabled = false;
     this.clampCamera();
@@ -206,8 +226,8 @@ export class Renderer {
 
     ctx.restore();
 
-    if (this.showHud) this.drawHud(ctx);
     this.present();
+    if (this.showHud) this.drawHud(this.ctx);
   }
 
   drawDepth(ctx) {
@@ -226,7 +246,10 @@ export class Renderer {
       items.push({ k: c.x + c.y + 1, draw: () => drawCitizen(ctx, c) });
     }
     for (const t of sim.trucks) {
-      items.push({ k: t.x + t.y + 1, draw: () => drawTruck(ctx, t) });
+      items.push({ k: t.x + t.y + 1, draw: () => drawTruck(ctx, t, this.night()) });
+    }
+    for (const car of sim.cars || []) {
+      items.push({ k: car.x + car.y + 1, draw: () => drawCar(ctx, car, this.night()) });
     }
     items.sort((a, b) => a.k - b.k);
     for (const it of items) it.draw();
@@ -277,7 +300,8 @@ export class Renderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.drawImage(this.buf, 0, 0, this.bufW, this.bufH, 0, 0, this.bufW * this.pxScale, this.bufH * this.pxScale);
+    // fill the window even when the buffer does not divide evenly by the scale
+    ctx.drawImage(this.buf, 0, 0, this.bufW, this.bufH, 0, 0, this.canvas.width, this.canvas.height);
   }
 
   canPaint(x, y) {
@@ -291,156 +315,299 @@ export class Renderer {
   }
 
   // -------------------------------------------------------------------- HUD
+  // The interface is drawn on the screen canvas in CSS pixels, on top of the
+  // pixel city. It therefore keeps its size at every zoom level and its text
+  // stays smooth instead of being blown up with the map.
+  layout() {
+    const W = this.cssW;
+    const H = this.cssH;
+    const pad = 14;
+
+    const speeds = [];
+    const bw = 40;
+    const bh = 30;
+    const gap = 6;
+    const values = [0, 1, 2, 4];
+    let sx = W - pad - values.length * bw - (values.length - 1) * gap;
+    for (let i = 0; i < values.length; i++) {
+      speeds.push({ x: sx, y: pad, w: bw, h: bh, v: values[i] });
+      sx += bw + gap;
+    }
+
+    const cell = 56;
+    const cgap = 8;
+    const totalW = TOOLS.length * cell + (TOOLS.length - 1) * cgap;
+    const tx = Math.round((W - totalW) / 2);
+    const ty = H - cell - 18;
+    const tools = TOOLS.map((t, i) => ({
+      x: tx + i * (cell + cgap),
+      y: ty,
+      w: cell,
+      h: cell,
+      id: t.id,
+      key: t.key,
+      label: t.label,
+    }));
+
+    return {
+      pad,
+      speeds,
+      tools,
+      toolbar: { x: tx - 10, y: ty - 10, w: totalW + 20, h: cell + 20 },
+      hintY: ty - 48,
+    };
+  }
+
+  hudHit(cssX, cssY) {
+    if (!this.showHud) return null;
+    const L = this.layout();
+    const hit = (r) => cssX >= r.x && cssX <= r.x + r.w && cssY >= r.y && cssY <= r.y + r.h;
+    for (const sp of L.speeds) if (hit(sp)) return { kind: 'speed', v: sp.v };
+    for (const t of L.tools) if (hit(t)) return { kind: 'tool', id: t.id };
+    return null;
+  }
+
   drawHud(ctx) {
     const sim = this.sim;
     const s = sim.stats();
-    const W = this.bufW;
-    const H = this.bufH;
+    const W = this.cssW;
+    const H = this.cssH;
+    const L = this.layout();
+    const hint = sim.statusHint ? sim.statusHint() : null;
 
-    // ---- top-left status
-    const pad = 4;
-    const lines = [
-      [`день ${sim.day}, ${String(Math.floor(sim.minute / 60)).padStart(2, '0')}:${String(sim.minute % 60).padStart(2, '0')}${this.build ? ` · ${this.build}` : ''}`, '#e8e2d4'],
-      [`бюджет ${Math.round(s.budget)}`, '#9be08a'],
-      [`жителей ${s.pop} · работают ${s.employed}/${s.jobs}`, '#e8e2d4'],
-      [`дома ${s.houses} · лавки ${s.shops} · заводы ${s.factories}`, '#c8bda8'],
-      [`настроение ${(s.avgMood * 100).toFixed(0)}%${s.hungry ? ` · голодных ${s.hungry}` : ''}`, s.avgMood > 0.55 ? '#9be08a' : '#e0a05a'],
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.textBaseline = 'alphabetic';
+    ctx.globalAlpha = 1;
+
+    // ---- status, top left
+    const clock = `${String(Math.floor(sim.minute / 60)).padStart(2, '0')}:${String(sim.minute % 60).padStart(2, '0')}`;
+    const rows = [
+      [`день ${sim.day} · ${clock}`, 15, 600, '#f5efe1'],
+      [`бюджет ${Math.round(s.budget).toLocaleString('ru-RU')} ₽`, 15, 600, '#9be08a'],
+      [`жителей ${s.pop} · работают ${s.employed}/${s.jobs}`, 13, 400, '#e7e1d3'],
+      [`дома ${s.houses} · лавки ${s.shops} · заводы ${s.factories}`, 13, 400, '#bfb7a4'],
+      [
+        `${s.hungry ? `голодных ${s.hungry} · ` : ''}настроение ${Math.round(s.avgMood * 100)}%`,
+        13,
+        400,
+        s.avgMood > 0.55 ? '#a9c9a0' : '#e0a05a',
+      ],
     ];
+    if (hint) rows.push([hint, 13, 500, '#f2c368']);
+
+    const lineH = 20;
+    const padding = 12;
     let panelW = 0;
-    ctx.font = '8px ui-monospace, monospace';
-    for (const [text] of lines) panelW = Math.max(panelW, ctx.measureText(text).width);
-    panelW = Math.ceil(panelW) + pad * 2 + 2;
-    const panelH = lines.length * 9 + pad * 2;
-    this.panel(ctx, pad, pad, panelW, panelH);
-    lines.forEach(([text, color], i) => {
+    for (const [text, size, weight] of rows) {
+      ctx.font = `${weight} ${size}px ${FONT}`;
+      panelW = Math.max(panelW, ctx.measureText(text).width);
+    }
+    const panelH = rows.length * lineH + padding * 2 - 4;
+    panelW = Math.ceil(panelW) + padding * 2;
+    this.panel(ctx, L.pad, L.pad, panelW, panelH, 10);
+
+    let lineY = L.pad + padding + 12;
+    for (const [text, size, weight, color] of rows) {
+      ctx.font = `${weight} ${size}px ${FONT}`;
       ctx.fillStyle = color;
-      ctx.fillText(text, pad + 4, pad + 4 + i * 9 + 6);
-    });
+      ctx.fillText(text, L.pad + padding, lineY);
+      lineY += lineH;
+    }
 
-    // ---- speed buttons, top-right
-    const speeds = [
-      { label: 'II', v: 0 },
-      { label: '1', v: 1 },
-      { label: '2', v: 2 },
-      { label: '4', v: 4 },
-    ];
-    const bw = 16;
-    let bx = W - pad - speeds.length * (bw + 2) + 2;
-    for (const sp of speeds) {
+    // ---- speed buttons, top right
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const sp of L.speeds) {
       const active = sim.paused ? sp.v === 0 : sim.speed === sp.v;
-      this.button(ctx, bx, pad, bw, 12, active);
-      ctx.fillStyle = active ? '#1b2229' : '#e8e2d4';
-      ctx.fillText(sp.label, bx + bw / 2 - ctx.measureText(sp.label).width / 2, pad + 9);
-      bx += bw + 2;
+      this.button(ctx, sp.x, sp.y, sp.w, sp.h, active);
+      ctx.font = `600 13px ${FONT}`;
+      ctx.fillStyle = active ? '#22201a' : '#ded7c8';
+      const label = sp.v === 0 ? '❙❙' : `×${sp.v}`;
+      ctx.fillText(label, sp.x + sp.w / 2, sp.y + sp.h / 2 + 0.5);
+    }
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+
+    // ---- toolbar, bottom centre
+    this.panel(ctx, L.toolbar.x, L.toolbar.y, L.toolbar.w, L.toolbar.h, 14);
+    for (const t of L.tools) {
+      const active = this.tool === t.id;
+      ctx.fillStyle = active ? 'rgba(232,196,106,0.20)' : 'rgba(255,255,255,0.05)';
+      this.roundRect(ctx, t.x, t.y, t.w, t.h, 10);
+      ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = active ? 'rgba(232,196,106,0.85)' : 'rgba(255,255,255,0.10)';
+      this.roundRect(ctx, t.x + 0.5, t.y + 0.5, t.w - 1, t.h - 1, 10);
+      ctx.stroke();
+      this.toolIcon(ctx, t.id, t.x + t.w / 2, t.y + 22, active);
+      ctx.font = `500 10px ${FONT}`;
+      ctx.fillStyle = active ? '#f0d79a' : 'rgba(224,216,200,0.72)';
+      ctx.textAlign = 'center';
+      ctx.fillText(t.label, t.x + t.w / 2, t.y + t.h - 8);
+      ctx.font = `600 10px ${FONT}`;
+      ctx.fillStyle = 'rgba(232,226,212,0.42)';
+      ctx.fillText(t.key, t.x + 9, t.y + 14);
+      ctx.textAlign = 'left';
     }
 
-    // ---- toolbar
-    const cell = 26;
-    const gap = 2;
-    const totalW = TOOLS.length * (cell + gap) - gap;
-    const tx = Math.round((W - totalW) / 2);
-    const ty = H - cell - 6;
-    this.panel(ctx, tx - 4, ty - 4, totalW + 8, cell + 8);
-    for (let i = 0; i < TOOLS.length; i++) {
-      const t = TOOLS[i];
-      const x = tx + i * (cell + gap);
-      this.toolIcon(ctx, t.id, x, ty, cell, this.tool === t.id);
-    }
+    // ---- tool hint above the toolbar
+    const text = this.toolHint();
+    ctx.font = `400 ${HINT_SIZE}px ${FONT}`;
+    const hintW = Math.ceil(ctx.measureText(text).width) + 24;
+    const hx = Math.round((W - hintW) / 2);
+    this.panel(ctx, hx, L.hintY, hintW, 26, 13);
+    ctx.fillStyle = '#d8d2c2';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, W / 2, L.hintY + 13.5);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
 
-    // ---- hint line on its own strip so it stays readable over the city
-    ctx.font = '7px ui-monospace, monospace';
-    const hint = this.toolHint();
-    const hw = Math.ceil(ctx.measureText(hint).width) + 10;
-    this.panel(ctx, Math.round((W - hw) / 2), ty - 18, hw, 12);
-    ctx.fillStyle = '#cdc6b6';
-    ctx.fillText(hint, Math.round((W - hw) / 2) + 5, ty - 9);
-
+    // ---- toast
     if (this.toast) {
-      const a = Math.min(1, this.toast.life);
-      ctx.globalAlpha = a;
-      ctx.font = '8px ui-monospace, monospace';
-      const tw = ctx.measureText(this.toast.text).width;
-      this.panel(ctx, (W - tw) / 2 - 6, ty - 30, tw + 12, 14);
-      ctx.fillStyle = this.toast.error ? '#f0a08a' : '#e8e2d4';
-      ctx.fillText(this.toast.text, (W - tw) / 2, ty - 20);
+      ctx.globalAlpha = Math.max(0, Math.min(1, this.toast.life));
+      ctx.font = `500 13px ${FONT}`;
+      const tw = Math.ceil(ctx.measureText(this.toast.text).width) + 26;
+      const tx = Math.round((W - tw) / 2);
+      const ty = L.hintY - 40;
+      this.panel(ctx, tx, ty, tw, 30, 12, this.toast.error ? 'rgba(52,20,18,0.92)' : undefined);
+      ctx.fillStyle = this.toast.error ? '#ffb39c' : '#f0eadb';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.toast.text, W / 2, ty + 15.5);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
       ctx.globalAlpha = 1;
     }
+
+    // ---- build stamp, bottom right: makes a stale cached page obvious
+    if (this.build) {
+      ctx.font = `500 11px ${FONT}`;
+      ctx.fillStyle = 'rgba(232,226,212,0.38)';
+      ctx.textAlign = 'right';
+      ctx.fillText(this.build, W - L.pad, H - 12);
+      ctx.textAlign = 'left';
+    }
+    ctx.imageSmoothingEnabled = false;
   }
 
-  panel(ctx, x, y, w, h) {
-    ctx.fillStyle = 'rgba(16,22,28,0.86)';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = 'rgba(255,255,255,0.10)';
-    ctx.fillRect(x, y, w, 1);
-    ctx.fillRect(x, y, 1, h);
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(x, y + h - 1, w, 1);
-    ctx.fillRect(x + w - 1, y, 1, h);
+  roundRect(ctx, x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.lineTo(x + w - rr, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+    ctx.lineTo(x + w, y + h - rr);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+    ctx.lineTo(x + rr, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+    ctx.lineTo(x, y + rr);
+    ctx.quadraticCurveTo(x, y, x + rr, y);
+    ctx.closePath();
+  }
+
+  panel(ctx, x, y, w, h, r = 8, fill) {
+    this.roundRect(ctx, x, y, w, h, r);
+    ctx.fillStyle = fill || 'rgba(12,17,24,0.84)';
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.11)';
+    this.roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, r);
+    ctx.stroke();
   }
 
   button(ctx, x, y, w, h, active) {
-    ctx.fillStyle = active ? '#e8c46a' : 'rgba(255,255,255,0.10)';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = active ? '#8a6d22' : 'rgba(255,255,255,0.18)';
-    ctx.fillRect(x, y + h - 1, w, 1);
+    this.roundRect(ctx, x, y, w, h, 8);
+    ctx.fillStyle = active ? '#e8c46a' : 'rgba(255,255,255,0.07)';
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = active ? 'rgba(255,240,200,0.75)' : 'rgba(255,255,255,0.12)';
+    this.roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, 8);
+    ctx.stroke();
   }
 
   toolHint() {
+    const sim = this.sim;
+    if (!sim.townConnected()) {
+      return this.tool === 'road'
+        ? 'доведи дорогу до края карты — по ней приедут люди и привезут материалы'
+        : 'без дороги к краю карты город не строится и никто не приезжает';
+    }
     switch (this.tool) {
       case 'road':
-        return 'дорога 20₽ · клик/протяжка · людей можно селить только вдоль дорог';
+        return 'дорога 12 ₽ · клик или протяжка · жители ходят только по дорогам';
       case 'zoneR':
-        return 'жилая зона: дома вырастут сами, если есть работа';
+        return 'жилая зона: дома вырастут сами, когда появятся рабочие места';
       case 'zoneC':
         return 'торговля: лавки появятся, когда жителям нужно больше хлеба';
       case 'zoneI':
         return 'промзона: заводы дают работу и товар для лавок';
       case 'park':
-        return 'парк 60₽: скамейки и деревья, поднимает настроение';
+        return 'парк 60 ₽: деревья и скамейки, поднимают настроение';
       default:
-        return 'снос: ПКМ тоже сносит · перетаскивание ср. кнопкой — камера';
+        return 'снос: ПКМ тоже сносит · колесо — масштаб · WASD — камера';
     }
   }
 
-  toolIcon(ctx, id, x, y, s, active) {
-    const bg = active ? 'rgba(232,196,106,0.22)' : 'rgba(255,255,255,0.05)';
-    ctx.fillStyle = bg;
-    ctx.fillRect(x, y, s, s);
-    ctx.fillStyle = active ? '#e8c46a' : 'rgba(255,255,255,0.16)';
-    ctx.fillRect(x, y, s, 1);
-    ctx.fillRect(x, y, 1, s);
-    const cx = x + s / 2;
-    const cy = y + s / 2;
-    ctx.font = '8px ui-monospace, monospace';
+  toolIcon(ctx, id, cx, cy, active) {
+    const gold = active ? '#f2d492' : '#cfc8b8';
     if (id === 'bulldoze') {
-      ctx.fillStyle = '#e0a05a';
-      ctx.fillRect(cx - 5, cy - 1, 10, 2);
-      ctx.fillRect(cx - 2, cy - 5, 4, 4);
-      ctx.fillStyle = '#8a8f98';
-      ctx.fillRect(cx - 6, cy + 1, 12, 2);
+      ctx.strokeStyle = gold;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 7, cy - 5);
+      ctx.lineTo(cx + 7, cy + 5);
+      ctx.moveTo(cx + 7, cy - 5);
+      ctx.lineTo(cx - 7, cy + 5);
+      ctx.stroke();
     } else if (id === 'road') {
-      ctx.fillStyle = '#7b818c';
-      ctx.fillRect(cx - 7, cy - 3, 14, 5);
-      ctx.fillStyle = '#d6d9de';
-      ctx.fillRect(cx - 5, cy - 1, 3, 1);
-      ctx.fillRect(cx + 1, cy - 1, 3, 1);
+      ctx.fillStyle = active ? '#5b6068' : '#4b5057';
+      this.roundRect(ctx, cx - 12, cy - 6, 24, 12, 3);
+      ctx.fill();
+      ctx.fillStyle = gold;
+      for (let i = -1; i <= 1; i++) ctx.fillRect(cx + i * 8 - 2, cy - 1, 5, 2);
     } else if (id.startsWith('zone')) {
       const col = id === 'zoneR' ? '#6fbf5f' : id === 'zoneC' ? '#5b93d8' : '#cba64c';
       ctx.fillStyle = col;
-      ctx.fillRect(cx - 6, cy - 4, 12, 8);
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      for (let i = 0; i < 3; i++) ctx.fillRect(cx - 6, cy - 4 + i * 3, 12, 1);
+      ctx.globalAlpha = active ? 0.95 : 0.8;
+      this.roundRect(ctx, cx - 11, cy - 7, 22, 14, 3);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      for (let i = 0; i < 3; i++) ctx.fillRect(cx - 11, cy - 5 + i * 5, 22, 1);
+      if (id === 'zoneR') {
+        ctx.fillStyle = '#f0f0e4';
+        ctx.fillRect(cx - 3, cy - 2, 6, 5);
+        ctx.fillStyle = '#c25b4b';
+        ctx.beginPath();
+        ctx.moveTo(cx - 5, cy - 2);
+        ctx.lineTo(cx, cy - 6);
+        ctx.lineTo(cx + 5, cy - 2);
+        ctx.closePath();
+        ctx.fill();
+      } else if (id === 'zoneC') {
+        ctx.fillStyle = '#f0e0c0';
+        ctx.fillRect(cx - 4, cy - 3, 8, 6);
+        ctx.fillStyle = '#9c6a3c';
+        ctx.fillRect(cx - 4, cy - 5, 8, 2);
+      } else {
+        ctx.fillStyle = '#cfc8b8';
+        ctx.fillRect(cx - 5, cy - 4, 10, 7);
+        ctx.fillStyle = '#8e8577';
+        ctx.fillRect(cx - 1, cy - 8, 2, 4);
+      }
     } else if (id === 'park') {
       ctx.fillStyle = '#5d9342';
-      ctx.fillRect(cx - 5, cy - 2, 10, 4);
-      ctx.fillStyle = '#6b4a33';
-      ctx.fillRect(cx - 1, cy + 2, 2, 3);
-      ctx.fillStyle = '#7cc05a';
-      ctx.fillRect(cx - 3, cy - 5, 6, 4);
+      ctx.fillRect(cx - 1, cy, 2, 6);
+      ctx.fillStyle = active ? '#8fd08a' : '#7cc05a';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 3, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.16)';
+      ctx.beginPath();
+      ctx.arc(cx - 2, cy - 5, 3, 0, Math.PI * 2);
+      ctx.fill();
     }
-    ctx.fillStyle = 'rgba(232,226,212,0.55)';
-    const idx = TOOLS.findIndex((t) => t.id === id);
-    ctx.fillText(String(idx + 1), x + 2, y + 9);
   }
 
   toastMessage(text, error = false) {

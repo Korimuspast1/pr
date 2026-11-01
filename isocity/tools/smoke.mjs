@@ -1,12 +1,19 @@
 // Boots the real app in a fake browser (node canvas) and drives it like a
-// player: paints roads, zones, parks, bulldozes, zooms, and checks that the
-// simulation stays consistent and that no money appears out of nowhere.
+// player: paints a road to the edge of the map, zones the land, lets the town
+// grow, then checks every rule that matters:
+//
+//   * an empty map really is empty, and nothing grows without a road to the edge
+//   * a road that reaches the border lets people and materials in
+//   * every walker stands on a road tile, never inside a building
+//   * cars drive on roads and the HUD does not scale with the zoom
+//   * no money appears out of nowhere (audit = 0)
 
 import { createCanvas } from '@napi-rs/canvas';
 
 const W = 1280;
 const H = 800;
 
+const listeners = {};
 function makeCanvas(w, h) {
   const c = createCanvas(w || 1, h || 1);
   c.clientWidth = w || W;
@@ -18,7 +25,6 @@ function makeCanvas(w, h) {
   return c;
 }
 
-const listeners = {};
 const main = makeCanvas(W, H);
 globalThis.window = {
   devicePixelRatio: 1,
@@ -61,45 +67,77 @@ function fire(kind, x, y, extra = {}) {
   for (const fn of listeners[kind] || []) fn(ev);
 }
 
-tick(10);
+const isoXY = (gx, gy) => ({ x: (gx - gy) * 16, y: (gx + gy) * 8 });
 
-// --- paint a road grid with the mouse, exactly like a player would
-renderer.tool = 'road';
-const toScreen = (gx, gy) => {
-  const p = renderer.worldToScreen(...Object.values(isoXY(gx, gy)));
-  return p;
-};
-function isoXY(gx, gy) {
-  return { x: (gx - gy) * 16, y: (gx + gy) * 8 };
-}
-
-function paint(kind, gx, gy) {
+function paint(gx, gy, button = 0) {
   const world = isoXY(gx + 0.5, gy + 0.5);
   const screen = renderer.worldToScreen(world.x, world.y);
-  fire(kind, screen.x, screen.y);
-  fire('pointerup', screen.x, screen.y, {});
+  fire('pointerdown', screen.x, screen.y, { button });
+  fire('pointerup', screen.x, screen.y, { button });
 }
 
-// roads around the start
-for (let x = 15; x <= 25; x++) { paint('pointerdown', x, 15); paint('pointerdown', x, 25); }
-for (let y = 15; y <= 25; y++) { paint('pointerdown', 15, y); paint('pointerdown', 25, y); }
-console.log('roads painted, budget', sim.budget.toFixed(0));
+const fail = (msg) => {
+  console.error('FAIL:', msg);
+  process.exitCode = 1;
+};
 
-// zones
+tick(10);
+
+// ---------------------------------------------------------------- empty start
+if (sim.citizens.length !== 0) fail('карта должна начинаться без жителей');
+if (sim.world.buildings.length !== 0) fail('карта должна начинаться без зданий');
+if (sim.townConnected()) fail('в пустом городе неоткуда въехать');
+console.log('empty map:', sim.citizens.length, 'citizens,', sim.world.buildings.length, 'buildings, gate', sim.townConnected());
+
+// ------------------------------------------- a dead-end street changes nothing
+renderer.tool = 'road';
+for (let x = 15; x <= 25; x++) paint(x, 15);
 renderer.tool = 'zoneR';
-for (let x = 16; x <= 24; x++) for (let y = 16; y <= 24; y++) paint('pointerdown', x, y);
+for (let x = 16; x <= 24; x++) paint(x, 16);
+for (let i = 0; i < 1440 * 3; i++) sim.update(0.1);
+tick(3);
+const deadEnd = sim.stats();
+console.log('dead-end street after 3 days:', JSON.stringify({ pop: deadEnd.pop, houses: deadEnd.houses, sites: deadEnd.sites, gate: sim.townConnected() }));
+if (sim.townConnected()) fail('улица без выезда не должна считаться въездом');
+if (deadEnd.pop !== 0 || deadEnd.houses !== 0) fail('без дороги к краю карты никто не должен приезжать и строиться');
+
+// ------------------------------------------------ connect the street to the edge
+renderer.tool = 'road';
+for (let y = 0; y <= 15; y++) paint(20, y);
+// a second street so the blocks have street frontage on both sides, joined
+// to the main road so the whole block is on the entrance network
+for (let x = 15; x <= 25; x++) paint(x, 19);
+for (let y = 16; y <= 19; y++) paint(20, y);
+tick(2);
+console.log('road to the edge painted, connected:', sim.townConnected(), 'budget', sim.budget.toFixed(0));
+if (!sim.townConnected()) fail('дорога до края карты не распознана');
+
+// housetops at home plate
+renderer.tool = 'zoneR';
+for (let x = 16; x <= 24; x++) for (let y = 16; y <= 22; y++) {
+  if (y === 17 || y === 21) continue;
+  paint(x, y);
+}
 renderer.tool = 'zoneC';
-for (let x = 20; x <= 22; x++) for (let y = 20; y <= 22; y++) paint('pointerdown', x, y);
-renderer.tool = 'park';
-paint('pointerdown', 17, 17);
-console.log('zones painted');
+for (let x = 16; x <= 19; x++) for (let y = 17; y <= 21; y++) {
+  if (y === 19) continue;
+  paint(x, y);
+}
+renderer.tool = 'zoneI';
+for (let x = 22; x <= 24; x++) for (let y = 17; y <= 21; y++) {
+  if (y === 19) continue;
+  paint(x, y);
+}
+console.log('zones painted, budget', sim.budget.toFixed(0));
 
 // let the town live: advance the simulation directly so the test stays fast,
 // then let the real frame loop draw a few frames
-for (let i = 0; i < 1440 * 10; i++) sim.update(0.1);
+for (let i = 0; i < 1440 * 12; i++) sim.update(0.1);
 tick(5);
 const s = sim.stats();
 console.log('after 12 days:', JSON.stringify({ pop: s.pop, jobs: s.jobs, employed: s.employed, houses: s.houses, shops: s.shops, factories: s.factories, sites: s.sites, budget: Math.round(s.budget), mood: s.avgMood.toFixed(2) }));
+if (s.pop <= 0) fail('с дорогой до края карты люди должны приезжать');
+if (s.houses <= 0) fail('зоны должны застраиваться сами');
 
 // every walker must be standing on a road tile
 let offRoad = 0;
@@ -109,22 +147,65 @@ for (const c of sim.citizens) {
   if (!sim.world.isRoad(tile.x, tile.y)) offRoad++;
 }
 console.log('citizens off-road:', offRoad);
+if (offRoad > 0) fail('кто-то ходит не по дороге');
 
-// zoom, speed buttons, keyboard
+// there must be people and cars on the streets in the middle of the day
+sim.absMinute = sim.absMinute - (sim.absMinute % 1440) + 10 * 60;
+sim.minute = 10 * 60;
+for (let i = 0; i < 40; i++) sim.update(0.1);
+const walkers = sim.citizens.filter((c) => c.visible && c.state !== 'home' && c.state !== 'work').length;
+console.log('walkers on the streets at 10:00:', walkers);
+if (walkers === 0) fail('днём на улицах никого не видно');
+if (sim.cars.length === 0) fail('по городу не ездят машины');
+
+// cars keep to the roads too
+let badCar = 0;
+for (const car of sim.cars) {
+  if (!sim.world.isRoad(Math.floor(car.x), Math.floor(car.y))) badCar++;
+}
+console.log('cars on the road:', sim.cars.length, 'off-road:', badCar);
+if (badCar > 0) fail('машина съехала с дороги');
+
+// ------------------------------------------------ zoom does not touch the HUD
+const hudBefore = renderer.layout();
 fire('wheel', W / 2, H / 2, { deltaY: -120 });
-fire('pointerdown', W - 30, 12);
+tick(2);
+const hudAfter = renderer.layout();
+console.log('zoom', renderer.zoom, '· HUD size stable:', JSON.stringify(hudBefore.tools[0]) === JSON.stringify(hudAfter.tools[0]), '· css', renderer.cssW + 'x' + renderer.cssH, '· buffer', renderer.bufW + 'x' + renderer.bufH);
+if (JSON.stringify(hudBefore.tools[0]) !== JSON.stringify(hudAfter.tools[0])) fail('HUD поехал вместе с зумом');
+
+// speed buttons and hotkeys hit the new HUD layer
+const speedButton = renderer.layout().speeds[2];
+fire('pointerdown', speedButton.x + speedButton.w / 2, speedButton.y + speedButton.h / 2);
+tick(2);
 for (const fn of listeners.keydown || []) fn({ key: '3', preventDefault() {} });
-tick(5);
-console.log('zoom', renderer.zoom, 'paused', sim.paused, 'tool', renderer.tool);
+tick(2);
+const toolCell = renderer.layout().tools[1];
+fire('pointerdown', toolCell.x + toolCell.w / 2, toolCell.y + toolCell.h / 2);
+tick(2);
+console.log('speed ×', sim.speed, '· paused', sim.paused, '· tool', renderer.tool);
+if (sim.speed !== 2) fail('кнопка скорости не сработала');
 
-// bulldoze something and check the money went back to the budget
-const before = sim.budget;
+// ------------------------------- cutting the only road to the edge stops arrivals
 renderer.tool = 'bulldoze';
-paint('pointerdown', 16, 16);
-console.log('bulldoze ok, budget', before.toFixed(0), '->', sim.budget.toFixed(0));
+paint(20, 0);
+tick(2);
+const popBefore = sim.citizens.length;
+for (let i = 0; i < 1440 * 3; i++) sim.update(0.1);
+tick(3);
+console.log('entrance bulldozed, connected:', sim.townConnected(), '· pop', popBefore, '->', sim.citizens.length);
+if (sim.townConnected()) fail('после сноса въезда дорога всё ещё считается выездом');
+if (sim.citizens.length > popBefore) fail('без выезда к краю никто не должен приезжать');
 
-const audit = sim.audit();
-console.log('money audit (0 = nothing printed):', audit.toFixed(6));
-console.log(pending ? 'ok: loop still running' : 'ERROR: loop stopped');
-if (Math.abs(audit) > 0.01) throw new Error('money was created or destroyed');
-if (offRoad > 0) throw new Error('citizens are walking off the roads');
+// ------------------------------------------------------------- money and sledge
+renderer.tool = 'bulldoze';
+const house = sim.world.buildings.find((b) => b.kind === 'house');
+const before = sim.budget;
+paint(house.door.x, house.door.y);
+tick(2);
+console.log('bulldoze ok, budget', before.toFixed(0), '->', sim.budget.toFixed(0));
+console.log('money audit (0 = nothing printed):', sim.audit().toFixed(6));
+if (Math.abs(sim.audit()) > 0.01) fail('в городе напечатали или сожгли деньги');
+
+tick(30);
+console.log('ok: loop still running');
