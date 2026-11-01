@@ -1,10 +1,10 @@
 Цель: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file
-Дата разбора (UTC): 2026-11-01 02:12
+Дата разбора (UTC): 2026-11-01 02:14
 
 ################ 1. ХЕШИ ################
 6ceee54407bc963308d59f3f18f117e4e1f251b819e792e4fe9e26253a43e4cc  /home/runner/work/_temp/fakevpn.zip
 e0c0d377545c40f3b7bdc98f9ef7a421  /home/runner/work/_temp/fakevpn.zip
--rw-r--r-- 1 runner runner 853572 Nov  1 02:12 /home/runner/work/_temp/fakevpn.zip
+-rw-r--r-- 1 runner runner 853572 Nov  1 02:14 /home/runner/work/_temp/fakevpn.zip
 
 ################ 2. СТРУКТУРА АРХИВА (7z) ################
 Path = /home/runner/work/_temp/fakevpn.zip
@@ -64,3 +64,10 @@ SHA-256:     6ceee54407bc963308d59f3f18f117e4e1f251b819e792e4fe9e26253a43e4cc
   'Button VPN(1).apk' size=427124 method=deflate flag=0x0001 encrypted=True aes_extra=False
   'Button VPN.apk' size=467806 method=deflate flag=0x0001 encrypted=True aes_extra=False
 ПАРОЛЬ НЕ НАЙДЕН среди типовых — файлы извлечь не удалось
+
+Типовые пароли не подошли — подбираю по словарю rockyou (ZipCrypto).
+john: /usr/sbin/john, zip2john: нет
+словарь: 14344391 строк
+zip2john не найден — подбор невозможен
+
+APK не извлечены — разбор содержимого не выполнен.
