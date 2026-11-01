@@ -1,0 +1,13 @@
+{
+  "name": "isocity-tools",
+  "private": true,
+  "type": "module",
+  "description": "Offline helpers: headless economy test and PNG renderer",
+  "scripts": {
+    "test": "node economy-test.mjs 30",
+    "preview": "node render-preview.mjs ../docs"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^0.1.60"
+  }
+}

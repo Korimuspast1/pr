@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Изометрия · тестовый город</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #10151a;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      #city {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        touch-action: none;
+        cursor: grab;
+      }
+      #city:active { cursor: grabbing; }
+      .credit {
+        position: fixed;
+        right: 14px;
+        bottom: 12px;
+        font-size: 11px;
+        letter-spacing: 0.02em;
+        color: rgba(255, 255, 255, 0.38);
+        pointer-events: none;
+        user-select: none;
+      }
+      @media (max-width: 640px) {
+        .credit { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="city"></canvas>
+    <div class="credit">изометрия · замкнутая экономика</div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
