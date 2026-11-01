@@ -1,10 +1,10 @@
 Цель: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file
-Дата разбора (UTC): 2026-11-01 02:24
+Дата разбора (UTC): 2026-11-01 02:27
 
 ################ 1. ХЕШИ ################
 6ceee54407bc963308d59f3f18f117e4e1f251b819e792e4fe9e26253a43e4cc  /home/runner/work/_temp/fakevpn.zip
 e0c0d377545c40f3b7bdc98f9ef7a421  /home/runner/work/_temp/fakevpn.zip
--rw-r--r-- 1 runner runner 853572 Nov  1 02:24 /home/runner/work/_temp/fakevpn.zip
+-rw-r--r-- 1 runner runner 853572 Nov  1 02:27 /home/runner/work/_temp/fakevpn.zip
 
 ################ 2. СТРУКТУРА АРХИВА (7z) ################
 Path = /home/runner/work/_temp/fakevpn.zip
@@ -473,3 +473,13 @@ URL: 0  IP: 0  Telegram-ссылки: 0  bot-token: 0
   +4: разрешение android.permission.WRITE_EXTERNAL_STORAGE: запись файлов
   +4: разрешение android.permission.READ_EXTERNAL_STORAGE: чтение файлов
 Вердикт: ОРАНЖЕВЫЙ — серьёзные подозрения
+
+################ 6. PAYLOAD ВТОРОЙ СТАДИИ ################
+--- Поиск payload в Button VPN(1).apk ---
+  payload в assets не найден (возможно, качается из сети)
+--- Поиск payload в Button VPN.apk ---
+  payload в assets не найден (возможно, качается из сети)
+
+хэши всех APK (для сверки):
+c3a5895b6d38af17da610c1e66d20888dc10b5c94bebf30d5c7acefa3c92ad85  /home/runner/work/_temp/unpacked/Button VPN(1).apk
+b44d0b07913b5512f12af4044af0f043be9f824a67d7457e00a898d9f178a369  /home/runner/work/_temp/unpacked/Button VPN.apk
