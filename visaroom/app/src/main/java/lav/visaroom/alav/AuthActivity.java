@@ -88,6 +88,7 @@ public class AuthActivity extends Activity {
             runOnUiThread(() -> {
                 if (result.ok) {
                     TokenStore.save(AuthActivity.this, null, result.refreshToken);
+                    TokenStore.saveUid(AuthActivity.this, result.uid);
                     openChats();
                 } else if (result.sessionExpired) {
                     TokenStore.clear(AuthActivity.this);
@@ -152,6 +153,7 @@ public class AuthActivity extends Activity {
             runOnUiThread(() -> {
                 if (result.ok) {
                     TokenStore.save(AuthActivity.this, result.email, result.refreshToken);
+                    TokenStore.saveUid(AuthActivity.this, result.uid);
                     openChats();
                 } else {
                     setLoading(false);

@@ -24,6 +24,7 @@ final class TokenStore {
     private static final String PREFS = "s";
     private static final String KEY_EMAIL = "a";
     private static final String KEY_TOKEN = "b";
+    private static final String KEY_UID = "c";
     private static final String ALIAS = "vr_session";
     private static final String TRANSFORM = "AES/GCM/NoPadding";
 
@@ -47,6 +48,20 @@ final class TokenStore {
         } catch (Exception ignored) {
             // If the keystore is unavailable the session simply is not kept.
         }
+    }
+
+    static void saveUid(Context context, String uid) {
+        if (uid == null || uid.length() == 0) {
+            return;
+        }
+        try {
+            prefs(context).edit().putString(KEY_UID, encrypt(uid)).apply();
+        } catch (Exception ignored) {
+        }
+    }
+
+    static String uid(Context context) {
+        return read(context, KEY_UID);
     }
 
     static String email(Context context) {

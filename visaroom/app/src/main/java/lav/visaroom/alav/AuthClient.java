@@ -92,7 +92,7 @@ final class AuthClient {
         return hex.toString();
     }
 
-    private static void applyAndroidHeaders(HttpURLConnection connection) {
+    static void applyAndroidHeaders(HttpURLConnection connection) {
         if (androidPackage != null) {
             connection.setRequestProperty("X-Android-Package", androidPackage);
         }
@@ -107,6 +107,29 @@ final class AuthClient {
 
     static Result signUp(String email, String password) {
         return passwordAuth(Vault.signUpUrl(), email, password);
+    }
+
+    static Result updateEmail(String idToken, String newEmail) {
+        Result result = new Result();
+        try {
+            JSONObject body = new JSONObject();
+            body.put("idToken", idToken);
+            body.put("email", newEmail);
+            body.put("returnSecureToken", true);
+            JSONObject json = postJson(Vault.updateUrl(), body, null, result);
+            if (json == null) {
+                return result;
+            }
+            result.ok = true;
+            result.email = json.optString("email");
+            result.uid = json.optString("localId");
+            result.idToken = json.optString("idToken");
+            result.refreshToken = json.optString("refreshToken");
+            return result;
+        } catch (Exception ignored) {
+            result.networkError = true;
+            return result;
+        }
     }
 
     static Result refresh(String refreshToken) {

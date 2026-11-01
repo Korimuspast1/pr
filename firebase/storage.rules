@@ -12,7 +12,9 @@ service firebase.storage {
     }
 
     match /users/{uid}/avatar.jpg {
-      allow get: if signedIn() && request.auth.uid == uid;
+      // Avatars are visible to signed-in users (profiles and search).
+      // Listing files is still denied, and writes stay owner-only.
+      allow get: if signedIn();
       allow list: if false;
       allow write: if signedIn()
         && request.auth.uid == uid

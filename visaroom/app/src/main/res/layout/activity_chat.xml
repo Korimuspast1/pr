@@ -10,7 +10,7 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingRight="16dp"
+        android:paddingRight="8dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp">
 
@@ -64,6 +64,14 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
         </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/search_toggle"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Search messages"
+            android:src="@drawable/ic_search_black" />
     </LinearLayout>
 
     <View
@@ -72,37 +80,69 @@
         android:background="@color/border" />
 
     <LinearLayout
+        android:id="@+id/message_search_bar"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="16dp"
+        android:paddingRight="6dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
 
-        <ImageView
+        <EditText
+            android:id="@+id/message_search"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_input"
+            android:hint="Search messages"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:textColor="@color/text_main"
+            android:textColorHint="@color/text_hint"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/search_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="10dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <ImageButton
+            android:id="@+id/search_close"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:contentDescription=""
-            android:src="@drawable/ic_bubble" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="No messages yet"
-            android:textColor="@color/text_main"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:gravity="center"
-            android:text="Official announcements will appear here."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Close search"
+            android:src="@drawable/ic_close" />
     </LinearLayout>
+
+    <View
+        android:id="@+id/search_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/border"
+        android:visibility="gone" />
+
+    <ScrollView
+        android:id="@+id/messages_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/messages_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp" />
+    </ScrollView>
 
     <View
         android:layout_width="match_parent"
