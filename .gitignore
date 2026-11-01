@@ -17,3 +17,4 @@ visaroom-private-keep-secret/
 downloads/
 *.p12
 *.pfx
+build-transfer/
