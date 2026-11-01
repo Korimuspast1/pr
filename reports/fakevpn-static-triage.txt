@@ -1,10 +1,10 @@
 Цель: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file
-Дата разбора (UTC): 2026-11-01 02:27
+Дата разбора (UTC): 2026-11-01 02:29
 
 ################ 1. ХЕШИ ################
 6ceee54407bc963308d59f3f18f117e4e1f251b819e792e4fe9e26253a43e4cc  /home/runner/work/_temp/fakevpn.zip
 e0c0d377545c40f3b7bdc98f9ef7a421  /home/runner/work/_temp/fakevpn.zip
--rw-r--r-- 1 runner runner 853572 Nov  1 02:27 /home/runner/work/_temp/fakevpn.zip
+-rw-r--r-- 1 runner runner 853572 Nov  1 02:29 /home/runner/work/_temp/fakevpn.zip
 
 ################ 2. СТРУКТУРА АРХИВА (7z) ################
 Path = /home/runner/work/_temp/fakevpn.zip
@@ -70,7 +70,7 @@ SHA-256:     6ceee54407bc963308d59f3f18f117e4e1f251b819e792e4fe9e26253a43e4cc
 заголовков: 2 -> /home/runner/work/_temp/hdr.bin
   Button VPN(1).apk: контрольный байт 0x63
   Button VPN.apk: контрольный байт 0x42
-паролей в словаре: 14344391, заголовков: 2
+паролей в словаре: 14344391, заголовков: 2, префикс: 0 байт
 кандидатов: 257
 кандидатов от zipcrack: 257
 проверено кандидатов: 14
@@ -480,6 +480,5 @@ URL: 0  IP: 0  Telegram-ссылки: 0  bot-token: 0
 --- Поиск payload в Button VPN.apk ---
   payload в assets не найден (возможно, качается из сети)
 
-хэши всех APK (для сверки):
-c3a5895b6d38af17da610c1e66d20888dc10b5c94bebf30d5c7acefa3c92ad85  /home/runner/work/_temp/unpacked/Button VPN(1).apk
-b44d0b07913b5512f12af4044af0f043be9f824a67d7457e00a898d9f178a369  /home/runner/work/_temp/unpacked/Button VPN.apk
+--- проверка зашифрованного asset дроппера ---
+api_patch.bin: 427136 байт, начало 8779b5bb70573ed75a9e436f828553f8
