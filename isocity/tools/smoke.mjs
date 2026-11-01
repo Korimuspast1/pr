@@ -134,6 +134,10 @@ console.log('zones painted, budget', sim.budget.toFixed(0));
 // then let the real frame loop draw a few frames
 for (let i = 0; i < 1440 * 12; i++) sim.update(0.1);
 tick(5);
+const seen = renderer.toast ? renderer.toast.text : '';
+console.log('player is told:', seen);
+if (!/стройка|переехал|уехал/.test(seen)) fail('игрок не видит, куда уходят деньги');
+
 const s = sim.stats();
 console.log('after 12 days:', JSON.stringify({ pop: s.pop, jobs: s.jobs, employed: s.employed, houses: s.houses, shops: s.shops, factories: s.factories, sites: s.sites, budget: Math.round(s.budget), mood: s.avgMood.toFixed(2) }));
 if (s.pop <= 0) fail('с дорогой до края карты люди должны приезжать');

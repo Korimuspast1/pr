@@ -1,7 +1,7 @@
-import { Sim, COSTS, CAPITAL } from './sim.js?v=2026-11-01-pixel-5';
-import { Renderer, TOOLS } from './render.js?v=2026-11-01-pixel-5';
+import { Sim, COSTS, CAPITAL } from './sim.js?v=2026-11-01-pixel-6';
+import { Renderer, TOOLS } from './render.js?v=2026-11-01-pixel-6';
 
-export const BUILD = 'pixel-5';
+export const BUILD = 'pixel-6';
 
 const canvas = document.getElementById('city');
 const sim = new Sim(7);
@@ -240,18 +240,18 @@ function cameraKeys(dt) {
 }
 
 // ------------------------------------------------- tell the player about money
-// Every new building costs the city budget, so it is announced: that answers
-// the "where did my money go" question without opening any menu.
-let knownSites = 0;
-const NAMES_OF_KINDS = { house: 'дом', shop: 'лавка', factory: 'завод', park: 'парк', cityhall: 'ратуша' };
-function watchBuilding() {
-  if (sim.sites.length > knownSites) {
-    const site = sim.sites[sim.sites.length - 1];
-    const kind = site.building.kind;
-    const price = (COSTS[kind] || 0) + (CAPITAL[kind] || 0);
-    renderer.toastMessage(`стройка: ${NAMES_OF_KINDS[kind] || kind} · −${price} ₽ из бюджета`);
+// The simulation queues important events (a house is being built, someone
+// arrived, someone left) and the UI turns them into short messages. That is the
+// answer to "where did my money go" without opening any menu.
+const KIND_NAMES = { house: 'дом', shop: 'лавка', factory: 'завод', park: 'парк', cityhall: 'ратуша' };
+function watchEvents() {
+  if (!sim.events.length) return;
+  const events = sim.events.splice(0, sim.events.length);
+  for (const ev of events) {
+    if (ev.type === 'build') renderer.toastMessage(`стройка: ${KIND_NAMES[ev.kind] || ev.kind} · −${ev.price} ₽ из бюджета`);
+    else if (ev.type === 'arrive') renderer.toastMessage(`${ev.name} переехал(а) в город · +${Math.round(ev.cash)} ₽`);
+    else if (ev.type === 'leave') renderer.toastMessage(`${ev.name} уехал(а) из города · −${Math.round(ev.cash)} ₽`, true);
   }
-  knownSites = sim.sites.length;
 }
 
 // --------------------------------------------------------------------- loop
@@ -262,7 +262,7 @@ function frame(now) {
   acc += dt;
   cameraKeys(dt);
   sim.update(dt);
-  watchBuilding();
+  watchEvents();
   renderer.update(dt);
   renderer.draw();
   requestAnimationFrame(frame);

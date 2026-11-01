@@ -2,9 +2,9 @@
 // blow it up by a whole number with smoothing off. That is what keeps the
 // picture crisp and "pixel" at any window size.
 
-import { TW, TH, HW, HH, iso, corners, fill, pxLine, diamond } from './iso.js?v=2026-11-01-pixel-5';
-import { T } from './world.js?v=2026-11-01-pixel-5';
-import { drawGroundTile, drawBuilding, drawCitizen, drawTruck, drawCar, drawProp, PAL } from './art.js?v=2026-11-01-pixel-5';
+import { TW, TH, HW, HH, iso, corners, fill, pxLine, diamond } from './iso.js?v=2026-11-01-pixel-6';
+import { T } from './world.js?v=2026-11-01-pixel-6';
+import { drawGroundTile, drawBuilding, drawCitizen, drawTruck, drawCar, drawProp, PAL } from './art.js?v=2026-11-01-pixel-6';
 
 const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
 const HINT_SIZE = 13;

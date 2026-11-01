@@ -40,7 +40,7 @@ for (let i = 0; i < 30; i++) sim.update(0.1);
 
 const canvas = fakeCanvas(W, H);
 const r = new Renderer(canvas, sim);
-r.build = 'pixel-5';
+r.build = 'pixel-6';
 r.summaryOpen = summary;
 r.zoom = zoom;
 r.resize();

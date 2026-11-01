@@ -7,7 +7,7 @@
 //      pockets. The only outside money is the savings a newcomer brings and the
 //      savings a leaver takes away - both are reported separately in the ledger.
 
-import { World, N, T } from './world.js?v=2026-11-01-pixel-5';
+import { World, N, T } from './world.js?v=2026-11-01-pixel-6';
 
 export const MIN_PER_SEC = 10; // game minutes per real second at 1x speed
 export const HOUR = 60;
@@ -81,6 +81,8 @@ export class Sim {
     this.total = this.emptyLedger();    // since the town was founded
     // what the whole city produced, bought and shipped, in units of goods
     this.goods = { produced: 0, sold: 0, exported: 0, imported: 0, restocked: 0 };
+    // things worth telling the player about (the UI turns these into toasts)
+    this.events = []; // capped, the UI drains it every frame
     // money that crossed the border of the city: savings of newcomers, money
     // taken away by leavers, goods sold to and bought from the outside world
     this.external = { in: 0, out: 0 };
@@ -243,6 +245,7 @@ export class Sim {
       c.y = edge.y + 0.5;
       c.state = 'newcomer';
       this.walkTo(c, home.door);
+      this.note({ type: 'arrive', name: c.name, cash: c.cash });
     }
     this.citizens.push(c);
     return c;
@@ -497,6 +500,7 @@ export class Sim {
     site.builders = [];
     if (b.kind !== 'house' && b.kind !== 'park') this.addFirm(b, { capital: site.capital });
     if (b.kind === 'house') b.residents = b.residents || [];
+    this.note({ type: 'done', kind: b.kind });
     const idx = this.sites.indexOf(site);
     if (idx >= 0) this.sites.splice(idx, 1);
     this.world.version++;
@@ -663,6 +667,11 @@ export class Sim {
     return null;
   }
 
+  note(ev) {
+    if (this.events.length > 40) this.events.shift();
+    this.events.push(ev);
+  }
+
   startSite(kind, x, y, size) {
     const cost = COSTS[kind];
     const capital = CAPITAL[kind] || 0;
@@ -673,6 +682,7 @@ export class Sim {
       this.budget += cost + capital;
       return null;
     }
+    this.note({ type: 'build', kind, price: cost + capital });
     const site = {
       building: b,
       x,
@@ -736,6 +746,7 @@ export class Sim {
   }
 
   startLeaving(c) {
+    this.note({ type: 'leave', name: c.name, cash: c.cash });
     c.state = 'leaving';
     c.path = null;
     if (c.work) {
