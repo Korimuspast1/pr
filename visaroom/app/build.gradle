@@ -24,6 +24,7 @@ android {
         release {
             if (keystorePath) {
                 storeFile = file(keystorePath)
+                storeType = keystorePath.endsWith(".p12") ? "PKCS12" : "JKS"
                 storePassword = keystorePassword
                 keyAlias = keyAliasName
                 keyPassword = keystorePassword

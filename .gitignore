@@ -15,3 +15,5 @@ keystore-info.txt
 mapping.txt
 visaroom-private-keep-secret/
 downloads/
+*.p12
+*.pfx
