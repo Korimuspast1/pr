@@ -102,6 +102,87 @@ assets/app_icon.webp        1 192 Б
 Сценарий: фейковое окно поверх банка → перехват логина и SMS-кода → перевод
 денег; плюс слежка (экран, микрофон, камера, контакты).
 
+## Исходный код
+
+Декомпиляция выгружена в [`sample-sources/`](sample-sources/): манифесты,
+ресурсы, карта классов и карта вызовов API по каждому APK. Полные java/smali
+исходники (30 и 577 классов) лежат в артефакте Actions
+`malware-sources-do-not-run` — в репозиторий они намеренно не коммитятся,
+это работоспособный троян.
+
+Что видно в исходниках:
+
+**Дроппер** (`Button_VPN/AndroidManifest.xml`):
+
+```xml
+<queries>
+    <package android:name="com.buttonvpn.hjexqm"/>   <!-- цель — второй APK -->
+</queries>
+<service android:name="kit.node.FlowFactory"
+         android:permission="android.permission.BIND_VPN_SERVICE">
+    <intent-filter><action android:name="android.net.VpnService"/></intent-filter>
+</service>
+<receiver android:name="core.async.DefaultProvider">
+    <action android:name="io.beam.agent.v40ab3b.INSTALL_STATUS"/>
+</receiver>
+```
+
+Он объявляет настоящий `VpnService` (чтобы просить «разрешение VPN» и выглядеть
+легитимно), но его работа — поставить `com.buttonvpn.hjexqm` и получить отчёт
+`INSTALL_STATUS`. Имена классов — мусор (`kit.node.FlowFactory`,
+`core.async.DefaultProvider`, `sdk.store.LeanAdapter`), тело зашифровано
+(`Base64->decode` вызывается 102 раза, `MessageDigest` — 16).
+
+**Троян** (`Button_VPN_1_/AndroidManifest.xml`): 11 сервисов, 5 ресиверов,
+1 провайдер, 8 активностей; маскируется под системные компоненты Google
+(`com.google.android.gms.common.api.GoogleApiActivity`,
+`com.system.framework.LoadingActivity`, действия `A11Y_HUB` и `HEARTBEAT`).
+Дополнительно: `AccountAuthenticator` и `SyncAdapter` (закрепление в системе),
+приём `SMS_DELIVER` / `WAP_PUSH_DELIVER`, `NotificationListenerService`.
+
+Конфиг службы доступности (`res/xml/accessibility_service_config.xml`) — самое
+показательное:
+
+```xml
+android:canRetrieveWindowContent="true"
+android:canPerformGestures="true"        <!-- нажимать за пользователя -->
+android:canTakeScreenshot="true"         <!-- снимать экран -->
+android:accessibilityFlags="...|flagRequestFilterKeyEvents|flagRetrieveInteractiveWindows"
+android:isAccessibilityTool="true"       <!-- притворяется полезным инструментом -->
+android:packageNames="@null"             <!-- все приложения сразу -->
+```
+
+`flagRequestFilterKeyEvents` — перехват нажатий клавиш, то есть кейлоггер.
+`canTakeScreenshot` + `canPerformGestures` — полный цикл «прочитать экран банка →
+ввести данные → нажать подтверждение».
+
+В строках кода есть `vless.dex` — динамически подгружаемый модуль VLESS-прокси.
+Похоже, VPN-часть сделана настоящей: она нужна, чтобы приложение работало как
+обещано, пока фон занимается деньгами.
+
+## Чистая замена: `notmalware`
+
+Собранное с нуля приложение — [`android/notmalware`](../android/notmalware),
+готовый APK: [`android/notmalware/out/notmalware.apk`](../android/notmalware/out/notmalware.apk)
+(70 КБ, SHA-256 `660105b4b1dfa9dda4b558cb3b782c24724bb1a6d3b019c4fad9f48a2e1c7310`).
+
+| | |
+| --- | --- |
+| Название | `notmalware` |
+| Package | `app.notmalware` |
+| Иконка | своя, из `art/icon-1024.png` |
+| Разрешения | **0** — в манифесте нет ни одного `<uses-permission>` |
+| Компоненты | 1 activity; сервисов, ресиверов, провайдеров нет |
+| Сеть | нет `INTERNET`, нет сокетов, нет WebView |
+| Код | один `MainActivity.java`, ~200 строк, без сторонних SDK |
+
+Проверено после сборки: `aapt2 dump permissions` — пусто,
+`aapt2 dump xmltree` — ни `<service>`, ни `<receiver>`, ни `<provider>`.
+Внутри APK 11 файлов: манифест, dex на 1,7 КБ, иконки и подпись.
+
+Это не «вылеченный» Button VPN, а другое приложение: от оригинала в нём нет
+ни строки. VPN-функций в нём тоже нет — их просто неоткуда взять чисто.
+
 ## Признаки семейства и контекст
 
 - Пара «маленький загрузчик + большой троян» — стандартная двухступенчатая схема.
