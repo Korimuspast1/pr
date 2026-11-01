@@ -1,0 +1,5 @@
+Вызовы Android API (по частоте):
+
+Строковые константы (URL, assets, имена файлов):
+  https://plus.google.com/
+  vless.dex

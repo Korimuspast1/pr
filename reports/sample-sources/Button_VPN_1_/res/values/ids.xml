@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item type="id" name="adjust_height" />
+    <item type="id" name="adjust_width" />
+    <item type="id" name="auto" />
+    <item type="id" name="dark" />
+    <item type="id" name="icon_only" />
+    <item type="id" name="light" />
+    <item type="id" name="none" />
+    <item type="id" name="standard" />
+    <item type="id" name="wide" />
+</resources>

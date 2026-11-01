@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:compileSdkVersion="34" android:compileSdkVersionCodename="14" package="com.buttonvpn.service.v1ecdcd69" platformBuildVersionCode="34" platformBuildVersionName="14">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <queries>
+        <package android:name="com.buttonvpn.hjexqm"/>
+    </queries>
+    <application android:allowBackup="false" android:appComponentFactory="io.port.CoreDelegate" android:extractNativeLibs="true" android:icon="@mipmap/ic_launcher" android:label="Button VPN" android:name="sdk.store.LeanAdapter" android:supportsRtl="true" android:theme="@android:style/Theme.NoTitleBar">
+        <activity android:configChanges="keyboard|keyboardHidden|orientation|screenSize" android:exported="true" android:name="kit.bind.CoreWorker">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <receiver android:exported="true" android:name="core.async.DefaultProvider">
+            <intent-filter>
+                <action android:name="io.beam.agent.v40ab3b.INSTALL_STATUS"/>
+            </intent-filter>
+        </receiver>
+        <service android:exported="false" android:name="kit.node.FlowFactory" android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService"/>
+            </intent-filter>
+        </service>
+    </application>
+</manifest>

@@ -1,0 +1,14 @@
+APK: Button VPN.apk
+sha256: b44d0b07913b5512f12af4044af0f043be9f824a67d7457e00a898d9f178a369
+
+== пакет и разрешения ==
+package="com.buttonvpn.service.v1ecdcd69"
+android:name="android.permission.INTERNET"
+android:name="android.permission.READ_EXTERNAL_STORAGE"
+android:name="android.permission.REQUEST_INSTALL_PACKAGES"
+android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+
+== статистика декомпиляции ==
+java-файлов: 30
+smali-файлов: 29
+строк Java: 1285
