@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Изометрия · тестовый город</title>
+    <title>Пиксельный город · строительство и зоны</title>
     <style>
       :root {
         color-scheme: dark;
-        --bg: #10151a;
+        --bg: #0b1118;
       }
       * { box-sizing: border-box; }
       html, body {
@@ -15,34 +15,21 @@
         height: 100%;
         overflow: hidden;
         background: var(--bg);
-        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       }
       #city {
         display: block;
         width: 100vw;
         height: 100vh;
         touch-action: none;
-        cursor: grab;
-      }
-      #city:active { cursor: grabbing; }
-      .credit {
-        position: fixed;
-        right: 14px;
-        bottom: 12px;
-        font-size: 11px;
-        letter-spacing: 0.02em;
-        color: rgba(255, 255, 255, 0.38);
-        pointer-events: none;
-        user-select: none;
-      }
-      @media (max-width: 640px) {
-        .credit { display: none; }
+        cursor: crosshair;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
       }
     </style>
   </head>
   <body>
     <canvas id="city"></canvas>
-    <div class="credit">изометрия · замкнутая экономика</div>
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
