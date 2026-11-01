@@ -1,0 +1,97 @@
+name: Dump sources of the sample
+
+# Достаёт исходники обоих APK из образца fakevpn.zip: jadx (Java) и apktool
+# (smali + ресурсы). Результат — АРТЕФАКТ, в репозиторий код НЕ коммитится,
+# потому что это работоспособный вредоносный код.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      SAMPLE_URL: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file
+      ZIP_PASSWORD: "111"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Скачать и распаковать образец
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/fetch_sample.py "$SAMPLE_URL" "$RUNNER_TEMP/fakevpn.zip"
+          mkdir -p "$RUNNER_TEMP/unpacked"
+          python3 .github/scripts/unlock_zip.py "$RUNNER_TEMP/fakevpn.zip" \
+            "$RUNNER_TEMP/unpacked" --password="$ZIP_PASSWORD"
+
+      - name: Скачать jadx и apktool
+        run: |
+          set -euo pipefail
+          curl -sSL -o "$RUNNER_TEMP/jadx.zip" \
+            https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip
+          unzip -q "$RUNNER_TEMP/jadx.zip" -d "$RUNNER_TEMP/jadx"
+          curl -sSL -o "$RUNNER_TEMP/apktool.jar" \
+            https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar
+          echo "jadx: $(ls "$RUNNER_TEMP/jadx/bin" | head -3 | tr '\n' ' ')"
+          java -jar "$RUNNER_TEMP/apktool.jar" --version
+
+      - name: Достать исходники
+        run: |
+          set -uo pipefail
+          OUT="$RUNNER_TEMP/sources"
+          mkdir -p "$OUT"
+          shopt -s nullglob
+          for apk in "$RUNNER_TEMP"/unpacked/*.apk; do
+            base="$(basename "$apk" .apk | tr ' ()' '___')"
+            echo "== $apk =="
+            mkdir -p "$OUT/$base"
+
+            java -jar "$RUNNER_TEMP/apktool.jar" d -f -o "$OUT/$base/apktool" "$apk" \
+              2>&1 | tail -5 || true
+            "$RUNNER_TEMP/jadx/bin/jadx" -d "$OUT/$base/java" --deobf "$apk" \
+              2>&1 | tail -5 || true
+
+            # сводка по исходникам
+            {
+              echo "APK: $(basename "$apk")"
+              echo "sha256: $(sha256sum "$apk" | cut -d' ' -f1)"
+              echo
+              echo "== пакет и разрешения =="
+              grep -o 'package="[^"]*"' "$OUT/$base/apktool/AndroidManifest.xml" 2>/dev/null | head -1
+              grep -o 'android:name="android.permission[^"]*"' \
+                "$OUT/$base/apktool/AndroidManifest.xml" 2>/dev/null | sort -u
+              echo
+              echo "== статистика декомпиляции =="
+              echo "java-файлов: $(find "$OUT/$base/java" -name '*.java' 2>/dev/null | wc -l)"
+              echo "smali-файлов: $(find "$OUT/$base/apktool" -name '*.smali' 2>/dev/null | wc -l)"
+              echo "строк Java: $(find "$OUT/$base/java" -name '*.java' -exec cat {} + 2>/dev/null | wc -l)"
+            } > "$OUT/$base/SUMMARY.txt"
+            cat "$OUT/$base/SUMMARY.txt"
+          done
+
+          # сами образцы в архив исходников не кладём
+          find "$OUT" -name "*.apk" -delete || true
+          cd "$RUNNER_TEMP"
+          zip -qr sources-of-sample.zip sources
+          ls -lh sources-of-sample.zip
+          sha256sum sources-of-sample.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: malware-sources-do-not-run
+          path: ${{ runner.temp }}/sources-of-sample.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Удалить образец
+        if: always()
+        run: rm -rf "$RUNNER_TEMP"/fakevpn.zip "$RUNNER_TEMP"/unpacked "$RUNNER_TEMP"/sources || true
