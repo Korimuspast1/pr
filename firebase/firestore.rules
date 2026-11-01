@@ -4,6 +4,8 @@ rules_version = '2';
 // Private collections are NOT listable ("get" one document by exact ID !=
 // "list" enumerate), so the database cannot be dumped. The only listable
 // collection is the username directory (username + owner ID + public ID).
+// Avatars are small (<= 120000 bytes) Firestore bytes documents in
+// avatars/{uid}; Firebase Storage / Blaze is not used.
 // Admin authority comes from the Firebase Auth EMAIL below — never from a
 // username, which anybody could claim.
 
@@ -73,6 +75,12 @@ service cloud.firestore {
         && validCommon(data);
     }
 
+    function publicAvatarVisible(uid) {
+      return exists(/databases/$(database)/documents/profiles/$(uid))
+        && get(/databases/$(database)/documents/profiles/$(uid)).data.get('hasAvatar', false) == true
+        && get(/databases/$(database)/documents/profiles/$(uid)).data.get('showAvatar', true) == true;
+    }
+
     // --- Private account profile (email + 2FA verifier live here) ----------
     match /users/{uid} {
       allow get: if isOwner(uid) || isAdmin();
@@ -104,6 +112,22 @@ service cloud.firestore {
       allow create, update: if (isOwner(uid) || isAdmin())
         && validPublicProfile(request.resource.data);
       allow delete: if false;
+    }
+
+    // --- Avatar image (small JPEG bytes, no Firebase Storage needed) -------
+    match /avatars/{uid} {
+      allow get: if isOwner(uid) || isAdmin()
+        || (signedIn() && publicAvatarVisible(uid));
+      allow list: if false;
+      allow create, update: if (isOwner(uid) || isAdmin())
+        && request.resource.data.keys().hasOnly(['image', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['image', 'updatedAt'])
+        && request.resource.data.image is bytes
+        && request.resource.data.image.size() > 0
+        && request.resource.data.image.size() <= 120000
+        && request.resource.data.updatedAt is int
+        && request.resource.data.updatedAt > 0;
+      allow delete: if isOwner(uid) || isAdmin();
     }
 
     // --- Username directory (search index) ---------------------------------

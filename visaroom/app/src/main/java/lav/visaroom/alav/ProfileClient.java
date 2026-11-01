@@ -1,16 +1,16 @@
 package lav.visaroom.alav;
 
+import android.util.Base64;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -18,7 +18,7 @@ import java.util.List;
 
 /**
  * Profiles, username search and official announcements on top of the
- * Firestore / Firebase Storage REST APIs. Every call carries the user's
+ * Firestore REST API. Every call carries the user's
  * Firebase ID token, so the security rules decide what is readable:
  * private profile data stays owner-only; the username directory only
  * ever contains a username and its owner's ID (no emails).
@@ -28,6 +28,7 @@ final class ProfileClient {
     static final int USERNAME_OK = 0;
     static final int USERNAME_TAKEN = 1;
     static final int USERNAME_ERROR = -1;
+    private static final int MAX_AVATAR_BYTES = 120000;
 
     static final class SearchResult {
         String uid = "";
@@ -435,41 +436,33 @@ final class ProfileClient {
 
     static boolean deleteAvatar(String idToken, String uid) {
         try {
-            String object = URLEncoder.encode("users/" + uid + "/avatar.jpg", "UTF-8");
-            HttpURLConnection c = (HttpURLConnection) new URL(
-                    Vault.storageBaseUrl() + "/" + object).openConnection();
-            c.setRequestMethod("DELETE");
-            c.setConnectTimeout(15000);
-            c.setReadTimeout(15000);
-            AuthClient.applyAndroidHeaders(c);
-            c.setRequestProperty("Authorization", "Bearer " + idToken);
-            int code = c.getResponseCode();
-            c.disconnect();
-            return code >= 200 && code < 300 || code == 404;
+            Response r = request("DELETE",
+                    Vault.firestoreBaseUrl() + "avatars/" + uid, idToken, null);
+            return (r.code >= 200 && r.code < 300) || r.code == 404;
         } catch (Exception ignored) {
             return false;
         }
     }
-    // ---------- avatar (Firebase Storage) ----------
+
+    // ---------- avatar (Firestore bytes document) ----------
+    // Avatars live in avatars/{uid} as one small JPEG bytes field.
+    // Firebase Storage (and the paid Blaze plan) is not required.
 
     static boolean uploadAvatar(String idToken, String uid, byte[] jpeg) {
         try {
-            String object = URLEncoder.encode("users/" + uid + "/avatar.jpg", "UTF-8");
-            String url = Vault.storageBaseUrl() + "?uploadType=media&name=" + object;
-            HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-            c.setRequestMethod("POST");
-            c.setConnectTimeout(20000);
-            c.setReadTimeout(20000);
-            c.setDoOutput(true);
-            c.setRequestProperty("Content-Type", "image/jpeg");
-            AuthClient.applyAndroidHeaders(c);
-            c.setRequestProperty("Authorization", "Bearer " + idToken);
-            OutputStream out = c.getOutputStream();
-            out.write(jpeg);
-            out.close();
-            int code = c.getResponseCode();
-            c.disconnect();
-            return code >= 200 && code < 300;
+            if (jpeg == null || jpeg.length == 0 || jpeg.length > MAX_AVATAR_BYTES) {
+                return false;
+            }
+            JSONObject fields = new JSONObject();
+            putBytes(fields, "image", jpeg);
+            putNum(fields, "updatedAt", System.currentTimeMillis());
+            JSONObject body = new JSONObject();
+            body.put("fields", fields);
+            String url = Vault.firestoreBaseUrl() + "avatars/" + uid
+                    + "?updateMask.fieldPaths=image"
+                    + "&updateMask.fieldPaths=updatedAt";
+            Response r = request("PATCH", url, idToken, body);
+            return r.code >= 200 && r.code < 300;
         } catch (Exception ignored) {
             return false;
         }
@@ -477,35 +470,20 @@ final class ProfileClient {
 
     static byte[] downloadAvatar(String idToken, String uid) {
         try {
-            String object = URLEncoder.encode("users/" + uid + "/avatar.jpg", "UTF-8");
-            String url = Vault.storageBaseUrl() + "/" + object + "?alt=media";
-            HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-            c.setRequestMethod("GET");
-            c.setConnectTimeout(15000);
-            c.setReadTimeout(15000);
-            AuthClient.applyAndroidHeaders(c);
-            c.setRequestProperty("Authorization", "Bearer " + idToken);
-            if (c.getResponseCode() != 200) {
-                c.disconnect();
+            Response r = request("GET",
+                    Vault.firestoreBaseUrl() + "avatars/" + uid, idToken, null);
+            if (r.code != 200) {
                 return null;
             }
-            InputStream in = c.getInputStream();
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            byte[] chunk = new byte[8192];
-            int n;
-            int total = 0;
-            while ((n = in.read(chunk)) != -1) {
-                total += n;
-                if (total > 5 * 1024 * 1024) {
-                    in.close();
-                    c.disconnect();
-                    return null;
-                }
-                buffer.write(chunk, 0, n);
+            JSONObject fields = new JSONObject(r.text).optJSONObject("fields");
+            if (fields == null) {
+                return null;
             }
-            in.close();
-            c.disconnect();
-            return buffer.toByteArray();
+            byte[] image = bytes(fields, "image");
+            if (image == null || image.length == 0 || image.length > MAX_AVATAR_BYTES) {
+                return null;
+            }
+            return image;
         } catch (Exception ignored) {
             return null;
         }
@@ -543,6 +521,29 @@ final class ProfileClient {
         JSONObject v = new JSONObject();
         v.put("integerValue", String.valueOf(value));
         fields.put(name, v);
+    }
+
+    private static void putBytes(JSONObject fields, String name, byte[] value)
+            throws Exception {
+        JSONObject v = new JSONObject();
+        v.put("bytesValue", Base64.encodeToString(value, Base64.NO_WRAP));
+        fields.put(name, v);
+    }
+
+    private static byte[] bytes(JSONObject fields, String name) {
+        JSONObject v = fields.optJSONObject(name);
+        if (v == null) {
+            return null;
+        }
+        String encoded = v.optString("bytesValue");
+        if (encoded.length() == 0) {
+            return null;
+        }
+        try {
+            return Base64.decode(encoded, Base64.DEFAULT);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private static String str(JSONObject fields, String name, String fallback) {

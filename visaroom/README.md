@@ -19,6 +19,9 @@ Package: `lav.visaroom.alav`, min Android 8.0 (API 26).
 Профили и поиск по юзернеймам заработают в облаке после деплоя обновлённых правил
 из `../firebase`. Без них профиль сохраняется на устройстве. Email в поиске не
 показывается: публичный каталог юзернеймов содержит только юзернейм и ID.
+Аватарки сжимаются до 256×256 и хранятся отдельным bytes-документом
+`avatars/{uid}` в Firestore (не больше 120000 байт), поэтому Firebase Storage
+и платный план Blaze для аватарок не нужны.
 
 ## Перед первым запуском — Firebase Console
 
@@ -26,15 +29,15 @@ Package: `lav.visaroom.alav`, min Android 8.0 (API 26).
 
 1. Authentication → Sign-in method → включить **Email/Password**. Без этого вход не сработает.
 2. Project settings → Android-приложение `lav.visaroom.alav` → Add fingerprint →
-   SHA-1 подписи приложения: `76:AA:50:71:53:C4:F8:E3:61:B0:A4:A7:8E:4A:00:EC:C5:AD:70:CE`.
+   SHA-1 подписи приложения: `F3:81:DC:6D:57:F6:D0:D5:D2:29:72:BC:00:02:7A:40:69:B6:DA:A6`.
    Без этого Google может отклонять запросы с ошибкой «Requests from this Android
    client application are blocked» (API key ограничен зарегистрированным приложением).
 3. Firestore Database → Create database (Production mode).
 4. Опубликовать правила из папки `../firebase` в **Firebase Console**:
    - слева **Build → Firestore Database → Rules** — заменить весь текст
      содержимым `../firebase/firestore.rules` и нажать **Publish**;
-   - слева **Build → Storage → Rules** — заменить весь текст содержимым
-     `../firebase/storage.rules` и нажать **Publish**;
+   - **Firebase Storage не нужен**: аватарки хранятся в Firestore, поэтому
+     платный Blaze для Storage включать не надо;
    - **Realtime Database приложение не использует**, создавать её только ради
      правил не нужно. Если такая база уже создана, открыть
      **Build → Realtime Database → Rules**, вставить
@@ -45,7 +48,7 @@ Package: `lav.visaroom.alav`, min Android 8.0 (API 26).
 
    ```bash
    cd ../firebase
-   npx firebase-tools deploy --only firestore:rules,storage,database
+   npx firebase-tools deploy --only firestore:rules,database
    ```
 
 Аккаунты создаются в обычном Firebase Auth. Приложение ходит в Firebase по официальному
@@ -53,7 +56,7 @@ REST API, поэтому Firebase SDK внутри APK нет — меньше �
 
 ## Сборка
 
-Готовый подписанный APK: `../release/visaroom-1.2.1.apk` (подпись проверена apksigner,
+Готовый подписанный APK: `../release/visaroom-1.3.0.apk` (подпись проверена apksigner,
 workflow `Verify signed APK`).
 
 R8-сборка идёт в GitHub Actions (`.github/workflows/build-apk.yml`). Если в репозитории
@@ -79,8 +82,10 @@ gradle :app:assembleRelease
 Честно: на 100% «зашифровать» код клиентского приложения нельзя — APK всегда можно
 распаковать (jadx/apktool), вопрос только в том, что там увидит человек. С этой сборкой
 он увидит переименованные `a/b/c` классы без исходников и строк ключей. Настоящая защита
-данных — не скрытность APK, а правила Firebase: коллекции не перечисляются (`list` закрыт),
-каждый читает только свой документ, записи в чужие документы и служебные поля запрещены.
+данных — не скрытность APK, а правила Firebase: коллекции не перечисляются
+(`list` закрыт, кроме каталога юзернеймов), приватные документы читает только
+владелец, публичные профили и аватарки отдаются по точному UID с учётом
+приватности, а записи в чужие документы и служебные поля запрещены.
 
 Не публикуйте вместе с APK:
 

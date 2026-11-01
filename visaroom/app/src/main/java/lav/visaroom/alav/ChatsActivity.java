@@ -647,9 +647,17 @@ public class ChatsActivity extends Activity {
             Bitmap square = Bitmap.createBitmap(bitmap,
                     (bitmap.getWidth() - size) / 2,
                     (bitmap.getHeight() - size) / 2, size, size);
-            Bitmap scaled = Bitmap.createScaledBitmap(square, 512, 512, true);
+            Bitmap scaled = Bitmap.createScaledBitmap(square, 256, 256, true);
+            ByteArrayOutputStream mem = new ByteArrayOutputStream();
+            int quality = 82;
+            scaled.compress(Bitmap.CompressFormat.JPEG, quality, mem);
+            while (mem.size() > 120000 && quality > 40) {
+                mem.reset();
+                quality -= 14;
+                scaled.compress(Bitmap.CompressFormat.JPEG, quality, mem);
+            }
             FileOutputStream out = new FileOutputStream(avatarFile());
-            scaled.compress(Bitmap.CompressFormat.JPEG, 82, out);
+            out.write(mem.toByteArray());
             out.close();
             return true;
         } catch (Exception ignored) {
