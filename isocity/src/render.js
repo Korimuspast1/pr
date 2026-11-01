@@ -369,8 +369,8 @@ export class Renderer {
     ctx.save();
     ctx.translate(Math.round(-this.cam.x), Math.round(-this.cam.y));
 
-    this.drawHover(ctx);
     this.drawDepth(ctx);
+    this.drawHover(ctx);
     this.drawSmoke(ctx);
     this.drawNightTint(ctx);
 
@@ -466,6 +466,37 @@ export class Renderer {
       fill(ctx, c, tool === 'zoneR' ? PAL.zoneR : tool === 'zoneC' ? PAL.zoneC : PAL.zoneI);
     } else if (tool === 'road') {
       fill(ctx, c, 'rgba(80,86,96,0.45)');
+    } else if (SERVICES[tool] || tool === 'warehouse') {
+      // show what the service would cover before it is paid for
+      const svc = SERVICES[tool];
+      const r = svc ? svc.radius : 6;
+      const tint = svc ? '#8fc8f0' : '#e8c46a';
+      const rim = svc ? '#bfe2ff' : '#f2d492';
+      const inside = [];
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (dx * dx + dy * dy > r * r) continue;
+          if (!this.sim.world.inBounds(x + dx, y + dy)) continue;
+          inside.push([x + dx, y + dy, dx * dx + dy * dy]);
+        }
+      }
+      ctx.globalAlpha = 0.22;
+      for (const [tx, ty] of inside) fill(ctx, corners(tx, ty), tint);
+      // outline the edge of the coverage so the shape is readable over buildings
+      ctx.globalAlpha = 1;
+      const edge = (r - 1) * (r - 1);
+      for (const [tx, ty, d2] of inside) {
+        if (d2 < edge) continue;
+        const k = corners(tx, ty);
+        for (let i = 0; i < 4; i++) {
+          const a = k[i];
+          const b = k[(i + 1) % 4];
+          pxLine(ctx, a.x, a.y, b.x, b.y, rim);
+        }
+      }
+      ctx.globalAlpha = 0.55;
+      fill(ctx, c, '#f2d492');
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -490,6 +521,17 @@ export class Renderer {
   canPaint(x, y) {
     const w = this.sim.world;
     const t = this.tool;
+    if (SERVICES[t]) {
+      const svc = SERVICES[t];
+      if (!this.sim.systems.isUnlocked(t)) return false;
+      if (w.get(x, y) === T.ROAD || w.get(x, y) === T.WATER || w.get(x, y) === T.PARK) return false;
+      const size = svc.size || 1;
+      return w.canBuild(t, x, y, size, size);
+    }
+    if (t === 'warehouse') {
+      if (!this.sim.systems.isUnlocked('warehouse')) return false;
+      return w.canBuild('warehouse', x, y, 2, 2, T.ZONE_I);
+    }
     if (t === 'bulldoze') return w.get(x, y) !== T.GRASS;
     if (t === 'road') return w.get(x, y) !== T.ROAD;
     if (t === 'park') return w.get(x, y) !== T.PARK && w.occ[y * w.n + x] < 0;

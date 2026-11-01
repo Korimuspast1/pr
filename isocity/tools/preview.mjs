@@ -48,6 +48,13 @@ const r = new Renderer(canvas, sim);
 r.build = 'pixel-7';
 r.summaryOpen = summary;
 r.mechanicsOpen = flags.includes('mech');
+for (const f of flags) {
+  if (f.startsWith('tool=')) r.tool = f.slice(5);
+  if (f.startsWith('hover=')) {
+    const [hx, hy] = f.slice(6).split(',').map(Number);
+    r.hover = { x: hx, y: hy };
+  }
+}
 r.zoom = zoom;
 r.resize();
 r.centerOn(gx, gy);
