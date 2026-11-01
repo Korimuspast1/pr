@@ -1,0 +1,2 @@
+5ca42b2c5b08a47524192564694200a188674c9df2c6f6c8f81b82401388cfea  build-transfer/app-release-unsigned.apk
+source: 97a6856666dedf2cf7b283db9ebf73e3ca54ec90
