@@ -1,0 +1,56 @@
+package lav.visaroom.alav;
+
+import java.nio.charset.StandardCharsets;
+
+/**
+ * Sensitive strings are stored XOR-encoded so they do not appear as plain
+ * text in the DEX after unpacking the APK. Decoded only in memory, at use.
+ */
+final class Vault {
+
+    private static final int K = 0x5A;
+
+    private Vault() {
+    }
+
+    private static String d(int[] v) {
+        byte[] b = new byte[v.length];
+        for (int i = 0; i < v.length; i++) {
+            b[i] = (byte) (v[i] ^ K);
+        }
+        return new String(b, StandardCharsets.UTF_8);
+    }
+
+    static String apiKey() {
+        return d(new int[]{27, 19, 32, 59, 9, 35, 24, 107, 23, 14, 28, 99, 63, 105, 34, 111, 99,
+                12, 53, 9, 51, 28, 44, 47, 8, 46, 49, 34, 110, 63, 105, 30, 110, 50, 42, 35, 14, 9, 27});
+    }
+
+    static String signInUrl() {
+        return d(new int[]{50, 46, 46, 42, 41, 96, 117, 117, 51, 62, 63, 52, 46, 51, 46, 35, 46, 53,
+                53, 54, 49, 51, 46, 116, 61, 53, 53, 61, 54, 63, 59, 42, 51, 41, 116, 57, 53, 55, 117,
+                44, 107, 117, 59, 57, 57, 53, 47, 52, 46, 41, 96, 41, 51, 61, 52, 19, 52, 13, 51, 46,
+                50, 10, 59, 41, 41, 45, 53, 40, 62, 101, 49, 63, 35, 103}) + apiKey();
+    }
+
+    static String signUpUrl() {
+        return d(new int[]{50, 46, 46, 42, 41, 96, 117, 117, 51, 62, 63, 52, 46, 51, 46, 35, 46, 53,
+                53, 54, 49, 51, 46, 116, 61, 53, 53, 61, 54, 63, 59, 42, 51, 41, 116, 57, 53, 55, 117,
+                44, 107, 117, 59, 57, 57, 53, 47, 52, 46, 41, 96, 41, 51, 61, 52, 15, 42, 101, 49, 63,
+                35, 103}) + apiKey();
+    }
+
+    static String refreshUrl() {
+        return d(new int[]{50, 46, 46, 42, 41, 96, 117, 117, 41, 63, 57, 47, 40, 63, 46, 53, 49, 63,
+                52, 116, 61, 53, 53, 61, 54, 63, 59, 42, 51, 41, 116, 57, 53, 55, 117, 44, 107, 117,
+                46, 53, 49, 63, 52, 101, 49, 63, 35, 103}) + apiKey();
+    }
+
+    static String usersUrl() {
+        return d(new int[]{50, 46, 46, 42, 41, 96, 117, 117, 60, 51, 40, 63, 41, 46, 53, 40, 63, 116,
+                61, 53, 53, 61, 54, 63, 59, 42, 51, 41, 116, 57, 53, 55, 117, 44, 107, 117, 42, 40, 53,
+                48, 63, 57, 46, 41, 117, 54, 53, 53, 54, 119, 110, 62, 110, 99, 57, 117, 62, 59, 46,
+                59, 56, 59, 41, 63, 41, 117, 114, 62, 63, 60, 59, 47, 54, 46, 115, 117, 62, 53, 57,
+                47, 55, 63, 52, 46, 41, 117, 47, 41, 63, 40, 41, 117});
+    }
+}

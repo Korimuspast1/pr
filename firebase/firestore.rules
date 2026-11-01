@@ -1,0 +1,88 @@
+rules_version = '2';
+
+// visaroom — deny by default.
+// Key idea against database dumps: collections are NOT listable.
+// "get" (one document by its exact ID) != "list" (enumerate a collection).
+// Users and chats can only be fetched one by one, and only by their owner,
+// so there is no request that returns "all users" or "all chats".
+// Only the Firebase console / Admin SDK bypass these rules.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isParticipant(chatId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/chats/$(chatId))
+        && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+    }
+
+    // --- User profiles ---------------------------------------------------
+    match /users/{uid} {
+      // get = read exactly your own document. list is denied (not granted).
+      allow get: if isOwner(uid);
+
+      // Only your own document, only the "email" field, and it must be the
+      // email from your Auth token — nobody can plant fields like
+      // role / isAdmin / verified or write into somebody else's document.
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['email'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 320
+        && request.resource.data.email == request.auth.token.email;
+
+      allow delete: if false;
+
+      // Per-user chat index. Each account can enumerate ONLY its own
+      // subcollection — this is how the chat list will work later,
+      // instead of querying a shared "chats" collection.
+      match /chats/{chatId} {
+        allow get, list: if isOwner(uid);
+        allow write: if false; // enable in the messaging step, server-side first
+      }
+
+      match /{sub=**} {
+        allow read, write: if false;
+      }
+    }
+
+    // --- Chats (data model for the next step, locked for writes now) -----
+    match /chats/{chatId} {
+      allow get: if isParticipant(chatId);
+      allow list: if false; // no way to enumerate all chats
+      allow create, update, delete: if false;
+
+      match /messages/{messageId} {
+        allow get, list: if isParticipant(chatId);
+        // Writes stay closed until messaging is built. The rule to add then:
+        // senderId == request.auth.uid, only known fields, text size limit,
+        // createdAt == request.time.
+        allow create, update, delete: if false;
+      }
+
+      match /{sub=**} {
+        allow read, write: if false;
+      }
+    }
+
+    // --- Official visaroom announcements ---------------------------------
+    // Readable by signed-in users. Clients can never write here:
+    // posts are added only from the Firebase console (Admin access).
+    match /announcements/{announcementId} {
+      allow get, list: if signedIn();
+      allow write: if false;
+    }
+
+    // --- Everything else ---------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

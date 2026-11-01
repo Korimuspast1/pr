@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// visaroom Storage — deny by default.
+// For now the only writable place is the user's own avatar file.
+// Chat attachments stay closed until messaging is built.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /users/{uid}/avatar.jpg {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow write: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

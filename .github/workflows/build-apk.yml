@@ -1,0 +1,112 @@
+name: Build visaroom APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "arena/**"
+      - "main"
+    paths:
+      - "visaroom/**"
+      - ".github/workflows/build-apk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: visaroom
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Install Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Prepare release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.VISAROOM_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.VISAROOM_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KS_DIR="$RUNNER_TEMP/ks"
+          mkdir -p "$KS_DIR"
+          KS_PATH="$KS_DIR/visaroom-release.jks"
+          PW="${KEYSTORE_PASSWORD:-}"
+          if [ -n "${KEYSTORE_B64:-}" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$KS_PATH"
+            echo "KEYSTORE_GENERATED=false" >> "$GITHUB_ENV"
+          else
+            if [ -z "$PW" ]; then
+              PW="$(openssl rand -hex 18)"
+            fi
+            keytool -genkeypair -v \
+              -keystore "$KS_PATH" \
+              -alias visaroom \
+              -keyalg RSA -keysize 4096 -validity 10000 \
+              -storepass "$PW" -keypass "$PW" \
+              -dname "CN=visaroom, O=visaroom"
+            {
+              echo "visaroom release keystore"
+              echo "file: visaroom-release.jks"
+              echo "alias: visaroom"
+              echo "password: $PW"
+              echo ""
+              echo "Keep this file and password private. Without them you cannot"
+              echo "release updates to an already installed app."
+            } > "$KS_DIR/keystore-info.txt"
+            echo "KEYSTORE_GENERATED=true" >> "$GITHUB_ENV"
+          fi
+          echo "::add-mask::$PW"
+          echo "VISAROOM_KEYSTORE_PATH=$KS_PATH" >> "$GITHUB_ENV"
+          echo "VISAROOM_KEYSTORE_PASSWORD=$PW" >> "$GITHUB_ENV"
+          echo "VISAROOM_KEY_ALIAS=visaroom" >> "$GITHUB_ENV"
+
+      - name: Build release APK (R8 obfuscated)
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Verify signature and name the APK
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          echo "Built: $APK"
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs "$APK"
+          mkdir -p "$RUNNER_TEMP/out"
+          cp "$APK" "$RUNNER_TEMP/out/visaroom-1.0-release.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: visaroom-apk
+          path: ${{ runner.temp }}/out/visaroom-1.0-release.apk
+          retention-days: 90
+
+      # Private: keystore + R8 mapping. mapping.txt reverses the obfuscation,
+      # so it must never be published together with the APK.
+      - name: Upload private build files
+        if: env.KEYSTORE_GENERATED == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visaroom-private-keep-secret
+          path: |
+            ${{ runner.temp }}/ks/visaroom-release.jks
+            ${{ runner.temp }}/ks/keystore-info.txt
+            visaroom/app/build/outputs/mapping/release/mapping.txt
+          retention-days: 90

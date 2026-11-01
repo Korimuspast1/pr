@@ -1,0 +1,93 @@
+apply plugin: "com.android.application"
+
+def keystorePath = System.getenv("VISAROOM_KEYSTORE_PATH")
+def keystorePassword = System.getenv("VISAROOM_KEYSTORE_PASSWORD")
+def keyAliasName = System.getenv("VISAROOM_KEY_ALIAS") ?: "visaroom"
+
+android {
+    namespace = "lav.visaroom.alav"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "lav.visaroom.alav"
+        minSdk = 26
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+
+        // Keep the APK small: no unused locales / screen densities.
+        resourceConfigurations += ["en"]
+        vectorDrawables.useSupportLibrary = false
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePath) {
+                storeFile = file(keystorePath)
+                storePassword = keystorePassword
+                keyAlias = keyAliasName
+                keyPassword = keystorePassword
+                enableV1Signing = false
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Hardening: R8 code obfuscation + optimization + resource shrinking.
+            minifyEnabled = true
+            shrinkResources = true
+            debuggable = false
+            jniDebuggable = false
+            renderscriptDebuggable = false
+            pseudoLocalesEnabled = false
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            if (keystorePath) {
+                signingConfig = signingConfigs.release
+            }
+        }
+        debug {
+            minifyEnabled = false
+            debuggable = false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig = false
+        aidl = false
+        renderScript = false
+        shaders = false
+        resValues = false
+    }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+
+    packaging {
+        resources {
+            excludes += [
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt"
+            ]
+        }
+    }
+}
+
+// No third-party dependencies on purpose: only the Android framework.
+// Firebase Auth is used through its official REST API, so the APK ships
+// no Firebase SDK code and there is nothing extra to extract from it.
+dependencies {
+}
