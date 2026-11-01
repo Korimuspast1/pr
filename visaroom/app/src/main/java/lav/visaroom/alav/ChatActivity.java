@@ -40,8 +40,8 @@ public class ChatActivity extends Activity {
         AuthClient.init(this);
         setContentView(R.layout.activity_chat);
 
-        messagesContainer = findViewById(R.id/messages_container);
         messagesScroll = findViewById(R.id.messages_scroll);
+        messagesContainer = (LinearLayout) messagesScroll.getChildAt(0);
         searchBar = findViewById(R.id.message_search_bar);
         searchDivider = findViewById(R.id.search_divider);
         searchInput = findViewById(R.id.message_search);
