@@ -217,6 +217,13 @@ export class World {
     return out;
   }
 
+  /** How many tiles are zoned at all (any colour). */
+  countZones() {
+    let n = 0;
+    for (let i = 0; i < this.tiles.length; i++) if (this.tiles[i] === T.ZONE_R || this.tiles[i] === T.ZONE_C || this.tiles[i] === T.ZONE_I) n++;
+    return n;
+  }
+
   countRoads() {
     let n = 0;
     for (let i = 0; i < this.tiles.length; i++) if (this.tiles[i] === T.ROAD) n++;

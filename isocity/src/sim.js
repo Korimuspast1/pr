@@ -197,7 +197,11 @@ export class Sim {
   /** Short line for the HUD that tells the player what is missing right now. */
   statusHint() {
     const ready = this.world.buildings.filter((b) => b.state === 'done');
-    if (ready.length && this.citizens.length === 0 && !ready.some((b) => b.kind === 'water')) {
+    const hasWater = this.world.buildings.some((b) => b.kind === 'water' && b.state === 'done');
+    if (!hasWater && this.townConnected() && this.world.countZones() > 0) {
+      return 'без воды дома не строятся — поставь водонапорную башню (240 ₽)';
+    }
+    if (ready.length && this.citizens.length === 0 && !hasWater) {
       return 'построй водонапорную башню — без воды жители не приедут';
     }
     if (this.tax > 0.25) return 'налог высокий: жители недовольны, доходы падают';
@@ -210,6 +214,9 @@ export class Sim {
     }
     if (this.countDone('house') === 0 && this.sites.length === 0) {
       return 'размечай жилую зону у дороги — город построит первый дом';
+    }
+    if (this.citizens.length === 0 && this.sites.length > 0) {
+      return 'первый дом строится: бригада работает, жители приедут по готовности';
     }
     if (this.citizens.length === 0) return 'первый дом готов: жители приедут с края карты';
     return null;
