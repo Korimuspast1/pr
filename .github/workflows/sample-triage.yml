@@ -74,3 +74,5 @@ jobs:
       - name: Удалить образец
         if: always()
         run: rm -f "$RUNNER_TEMP/fakevpn.zip" "$RUNNER_TEMP/report.json" "$RUNNER_TEMP/report.txt" || true
+
+# trigger
