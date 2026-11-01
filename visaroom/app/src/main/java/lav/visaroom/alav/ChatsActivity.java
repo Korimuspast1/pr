@@ -283,6 +283,11 @@ public class ChatsActivity extends Activity {
 
     private void signOut() {
         TokenStore.clear(this);
+        profileCache().edit().clear().apply();
+        File localAvatar = avatarFile();
+        if (localAvatar.exists()) {
+            localAvatar.delete();
+        }
         Intent intent = new Intent(this, AuthActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
