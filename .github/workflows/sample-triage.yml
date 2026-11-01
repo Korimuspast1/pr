@@ -12,7 +12,7 @@ on:
       - "tools/malware-triage/**"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   triage:
@@ -49,9 +49,28 @@ jobs:
       - name: Статический разбор (файл не запускается)
         run: |
           set -euo pipefail
-          python3 tools/malware-triage/triage.py "$RUNNER_TEMP/fakevpn.zip" \
-            --json "$RUNNER_TEMP/report.json"
+          {
+            echo "Цель: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file"
+            echo "Дата разбора (UTC): $(date -u '+%Y-%m-%d %H:%M')"
+            echo "Хеши скачанного файла:"
+            sha256sum "$RUNNER_TEMP/fakevpn.zip"
+            md5sum "$RUNNER_TEMP/fakevpn.zip"
+            echo
+            python3 tools/malware-triage/triage.py "$RUNNER_TEMP/fakevpn.zip" \
+              --json "$RUNNER_TEMP/report.json"
+          } | tee "$RUNNER_TEMP/report.txt"
+
+      - name: Опубликовать отчёт в ветку
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          cp "$RUNNER_TEMP/report.txt" reports/fakevpn-static-triage.txt
+          git config user.name "triage-bot"
+          git config user.email "triage-bot@users.noreply.github.com"
+          git add reports/fakevpn-static-triage.txt
+          git commit -m "Static triage report for fakevpn.zip [skip ci]" || exit 0
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Удалить образец
         if: always()
-        run: rm -f "$RUNNER_TEMP/fakevpn.zip" "$RUNNER_TEMP/report.json" || true
+        run: rm -f "$RUNNER_TEMP/fakevpn.zip" "$RUNNER_TEMP/report.json" "$RUNNER_TEMP/report.txt" || true
