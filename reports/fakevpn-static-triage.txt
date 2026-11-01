@@ -1,9 +1,27 @@
 Цель: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file
-Дата разбора (UTC): 2026-11-01 02:10
-Хеши скачанного файла:
+Дата разбора (UTC): 2026-11-01 02:12
+
+################ 1. ХЕШИ ################
 6ceee54407bc963308d59f3f18f117e4e1f251b819e792e4fe9e26253a43e4cc  /home/runner/work/_temp/fakevpn.zip
 e0c0d377545c40f3b7bdc98f9ef7a421  /home/runner/work/_temp/fakevpn.zip
+-rw-r--r-- 1 runner runner 853572 Nov  1 02:12 /home/runner/work/_temp/fakevpn.zip
 
+################ 2. СТРУКТУРА АРХИВА (7z) ################
+Path = /home/runner/work/_temp/fakevpn.zip
+Path = Button VPN(1).apk
+Size = 427124
+Packed Size = 390080
+Encrypted = +
+CRC = 6317F31B
+Method = ZipCrypto Deflate
+Path = Button VPN.apk
+Size = 467806
+Packed Size = 463184
+Encrypted = +
+CRC = 4224B94B
+Method = ZipCrypto Deflate
+
+################ 3. АВТОМАТИЧЕСКИЙ ТРИАЖ ZIP ################
 ==============================================================================
 СТАТИЧЕСКИЙ РАЗБОР ФАЙЛА
 ==============================================================================
@@ -41,4 +59,8 @@ SHA-256:     6ceee54407bc963308d59f3f18f117e4e1f251b819e792e4fe9e26253a43e4cc
   3. Если запускали — сменить пароли с другого устройства, проверить автозагрузку.
   4. Полный динамический анализ — только в одноразовой VM без сети/с фейковой сетью.
 
-JSON сохранён: /home/runner/work/_temp/report.json
+################ 4. РАСПАКОВКА ################
+Содержимое с флагами:
+  'Button VPN(1).apk' size=427124 method=deflate flag=0x0001 encrypted=True aes_extra=False
+  'Button VPN.apk' size=467806 method=deflate flag=0x0001 encrypted=True aes_extra=False
+ПАРОЛЬ НЕ НАЙДЕН среди типовых — файлы извлечь не удалось
