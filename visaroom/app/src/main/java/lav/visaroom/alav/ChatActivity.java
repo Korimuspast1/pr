@@ -1,6 +1,7 @@
 package lav.visaroom.alav;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
@@ -50,7 +51,8 @@ public class ChatActivity extends Activity {
         applyBackground();
         renderMessages();
 
-        findViewById(R.id.back).setOnClickListener(v -> finish());
+        findViewById(R.id.back).setOnClickListener(v -> finishWithAnimation());
+        findViewById(R.id.chat_header).setOnClickListener(v -> showOfficialProfile());
         findViewById(R.id.search_toggle).setOnClickListener(v -> setSearchOpen(true));
         findViewById(R.id.search_close).setOnClickListener(v -> {
             searchInput.setText("");
@@ -78,6 +80,62 @@ public class ChatActivity extends Activity {
     protected void onDestroy() {
         executor.shutdownNow();
         super.onDestroy();
+    }
+
+    @Override
+    public void onBackPressed() {
+        finishWithAnimation();
+    }
+
+    private void finishWithAnimation() {
+        finish();
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+    }
+
+    private void showOfficialProfile() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setPadding(dp(24), dp(8), dp(24), dp(8));
+
+        ImageView photo = new ImageView(this);
+        photo.setImageResource(R.drawable.ic_logo);
+        box.addView(photo, new LinearLayout.LayoutParams(dp(80), dp(80)));
+
+        TextView name = new TextView(this);
+        name.setText("visaroom");
+        name.setTextColor(getColor(R.color.text_main));
+        name.setTextSize(19);
+        name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        name.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        nameParams.topMargin = dp(12);
+        box.addView(name, nameParams);
+
+        TextView sub = new TextView(this);
+        sub.setText("Verified official channel");
+        sub.setTextColor(getColor(R.color.text_secondary));
+        sub.setTextSize(13);
+        sub.setGravity(Gravity.CENTER);
+        box.addView(sub);
+
+        TextView bio = new TextView(this);
+        bio.setText("Official announcements from the visaroom team.");
+        bio.setTextColor(getColor(R.color.text_secondary));
+        bio.setTextSize(14);
+        bio.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams bioParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        bioParams.topMargin = dp(12);
+        box.addView(bio, bioParams);
+
+        new AlertDialog.Builder(this)
+                .setView(box)
+                .setPositiveButton("Close", null)
+                .show();
     }
 
     private void setSearchOpen(boolean open) {
@@ -213,12 +271,28 @@ public class ChatActivity extends Activity {
         params.bottomMargin = dp(10);
         card.setLayoutParams(params);
 
+        LinearLayout senderRow = new LinearLayout(this);
+        senderRow.setOrientation(LinearLayout.HORIZONTAL);
+        senderRow.setGravity(Gravity.CENTER_VERTICAL);
+        senderRow.setClickable(true);
+        senderRow.setFocusable(true);
+        senderRow.setOnClickListener(v -> showOfficialProfile());
+
+        ImageView senderAvatar = new ImageView(this);
+        senderAvatar.setImageResource(R.drawable.ic_logo);
+        senderRow.addView(senderAvatar, new LinearLayout.LayoutParams(dp(28), dp(28)));
+
         TextView sender = new TextView(this);
         sender.setText("visaroom");
         sender.setTextColor(isDark() ? Color.WHITE : getColor(R.color.text_main));
         sender.setTextSize(13);
         sender.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        card.addView(sender);
+        LinearLayout.LayoutParams senderParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        senderParams.leftMargin = dp(8);
+        senderRow.addView(sender, senderParams);
+        card.addView(senderRow);
 
         TextView text = new TextView(this);
         text.setText(message.text);

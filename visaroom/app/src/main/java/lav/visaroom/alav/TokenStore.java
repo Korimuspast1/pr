@@ -25,6 +25,8 @@ final class TokenStore {
     private static final String KEY_EMAIL = "a";
     private static final String KEY_TOKEN = "b";
     private static final String KEY_UID = "c";
+    private static final String KEY_2FA_MARKER = "d";
+    private static final String KEY_2FA_VERIFIER = "e";
     private static final String ALIAS = "vr_session";
     private static final String TRANSFORM = "AES/GCM/NoPadding";
 
@@ -62,6 +64,32 @@ final class TokenStore {
 
     static String uid(Context context) {
         return read(context, KEY_UID);
+    }
+
+    static void saveTwoFa(Context context, String marker, String verifier) {
+        try {
+            SharedPreferences.Editor e = prefs(context).edit();
+            if (marker == null || marker.length() == 0) {
+                e.remove(KEY_2FA_MARKER);
+            } else {
+                e.putString(KEY_2FA_MARKER, encrypt(marker));
+            }
+            if (verifier == null || verifier.length() == 0) {
+                e.remove(KEY_2FA_VERIFIER);
+            } else {
+                e.putString(KEY_2FA_VERIFIER, encrypt(verifier));
+            }
+            e.apply();
+        } catch (Exception ignored) {
+        }
+    }
+
+    static String twoFaMarker(Context context) {
+        return read(context, KEY_2FA_MARKER);
+    }
+
+    static String twoFaVerifier(Context context) {
+        return read(context, KEY_2FA_VERIFIER);
     }
 
     static String email(Context context) {

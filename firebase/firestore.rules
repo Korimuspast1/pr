@@ -1,11 +1,11 @@
 rules_version = '2';
 
 // visaroom — deny by default.
-// Key idea against database dumps: collections holding private data are
-// NOT listable. "get" (one document by its exact ID) != "list" (enumerate).
-// The only listable collection is the username directory, which contains
-// nothing but a public username and its owner's ID — no emails, no bios.
-// Only the Firebase console / Admin SDK bypass these rules.
+// Private collections are NOT listable ("get" one document by exact ID !=
+// "list" enumerate), so the database cannot be dumped. The only listable
+// collection is the username directory (username + owner ID + public ID).
+// Admin authority comes from the Firebase Auth EMAIL below — never from a
+// username, which anybody could claim.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -18,21 +18,26 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email == 'debugger821@gmail.com';
+    }
+
     function isParticipant(chatId) {
       return signedIn()
         && exists(/databases/$(database)/documents/chats/$(chatId))
         && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
     }
 
-    function validProfile(data, withEmail) {
-      return data.keys().hasOnly(withEmail
-            ? ['email', 'username', 'bio', 'hasAvatar', 'avatarUpdatedAt', 'discoverable']
-            : ['username', 'bio', 'hasAvatar', 'avatarUpdatedAt'])
-        && (!withEmail || (
-            data.email is string
-            && data.email.size() <= 320
-            && data.email == request.auth.token.email))
-        && (!('username' in data) || (
+    function validPublicIdValue(data) {
+      return !('publicId' in data) || (
+        data.publicId is int
+        && data.publicId >= 100000
+        && data.publicId <= 5000000);
+    }
+
+    function validCommon(data) {
+      return (!('username' in data) || (
             data.username is string
             && data.username.size() <= 24
             && data.username.matches('^[A-Za-z0-9_]{0,24}$')))
@@ -41,18 +46,47 @@ service cloud.firestore {
             && data.bio.size() <= 160))
         && (!('hasAvatar' in data) || data.hasAvatar is bool)
         && (!('avatarUpdatedAt' in data) || data.avatarUpdatedAt is int)
-        && (!('discoverable' in data) || data.discoverable is bool);
+        && (!('showBio' in data) || data.showBio is bool)
+        && (!('showAvatar' in data) || data.showAvatar is bool)
+        && (!('showId' in data) || data.showId is bool)
+        && validPublicIdValue(data);
     }
 
-    // --- Private account profile (email lives here, owner only) -----------
+    function validPrivateProfile(data, expectedEmail) {
+      return data.keys().hasOnly(['email', 'username', 'bio', 'hasAvatar',
+            'avatarUpdatedAt', 'discoverable', 'publicId', 'twoFaEnabled',
+            'twoFaVerifier', 'showBio', 'showAvatar', 'showId'])
+        && data.email is string
+        && data.email.size() <= 320
+        && data.email == expectedEmail
+        && (!('discoverable' in data) || data.discoverable is bool)
+        && (!('twoFaEnabled' in data) || data.twoFaEnabled is bool)
+        && (!('twoFaVerifier' in data) || (
+            data.twoFaVerifier is string
+            && data.twoFaVerifier.size() <= 256))
+        && validCommon(data);
+    }
+
+    function validPublicProfile(data) {
+      return data.keys().hasOnly(['username', 'bio', 'hasAvatar',
+            'avatarUpdatedAt', 'publicId', 'showBio', 'showAvatar', 'showId'])
+        && validCommon(data);
+    }
+
+    // --- Private account profile (email + 2FA verifier live here) ----------
     match /users/{uid} {
-      allow get: if isOwner(uid);
-      allow create, update: if isOwner(uid)
-        && validProfile(request.resource.data, true);
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if false;
+      allow create: if isOwner(uid)
+        && validPrivateProfile(request.resource.data, request.auth.token.email);
+      // Owner edits own profile; admin may moderate but can never change
+      // the account's email (it must stay equal to the stored one).
+      allow update: if (isOwner(uid)
+            && validPrivateProfile(request.resource.data, request.auth.token.email))
+        || (isAdmin()
+            && validPrivateProfile(request.resource.data, resource.data.email));
       allow delete: if false;
 
-      // Per-user chat index: each account can enumerate ONLY its own
-      // subcollection — never a shared "chats" collection.
       match /chats/{chatId} {
         allow get, list: if isOwner(uid);
         allow write: if false; // enable in the messaging step, server-side first
@@ -63,47 +97,56 @@ service cloud.firestore {
       }
     }
 
-    // --- Public profile (no email, readable by exact ID) -------------------
+    // --- Public profile (privacy already applied by the writer) ------------
     match /profiles/{uid} {
       allow get: if signedIn();
       allow list: if false;
-      allow create, update: if isOwner(uid)
-        && validProfile(request.resource.data, false);
+      allow create, update: if (isOwner(uid) || isAdmin())
+        && validPublicProfile(request.resource.data);
       allow delete: if false;
     }
 
     // --- Username directory (search index) ---------------------------------
-    // One document per username: {uid, username, usernameLower}.
-    // Signed-in users may search it; that is its purpose. A username can
-    // only be claimed for yourself and can never be taken over.
     match /usernames/{usernameLower} {
       allow get, list: if signedIn();
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid', 'username', 'usernameLower'])
-        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'username', 'usernameLower', 'publicId'])
+        && (request.resource.data.uid == request.auth.uid || isAdmin())
         && request.resource.data.usernameLower == usernameLower
         && usernameLower.matches('^[a-z0-9_]{3,24}$')
         && request.resource.data.username is string
-        && request.resource.data.username.size() <= 24;
-      allow update: if signedIn()
-        && resource.data.uid == request.auth.uid
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['uid', 'username', 'usernameLower'])
-        && request.resource.data.usernameLower == usernameLower;
-      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+        && request.resource.data.username.size() <= 24
+        && validPublicIdValue(request.resource.data);
+      allow update: if (signedIn() && resource.data.uid == request.auth.uid
+            || isAdmin())
+        && request.resource.data.keys().hasOnly(['uid', 'username', 'usernameLower', 'publicId'])
+        && request.resource.data.usernameLower == usernameLower
+        && validPublicIdValue(request.resource.data);
+      allow delete: if (signedIn() && resource.data.uid == request.auth.uid)
+        || isAdmin();
     }
 
-    // --- Chats (data model for the next step, locked for writes now) -------
+    // --- Public numeric IDs (100000-5000000, one per account) ---------------
+    match /publicIds/{pid} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid'])
+        && (request.resource.data.uid == request.auth.uid || isAdmin())
+        && pid.matches('^([1-9][0-9]{5}|[1-4][0-9]{6}|5000000)$');
+      allow update: if false;
+      allow delete: if (signedIn() && resource.data.uid == request.auth.uid)
+        || isAdmin();
+    }
+
+    // --- Chats (data model for the messaging step, writes locked) ----------
     match /chats/{chatId} {
       allow get: if isParticipant(chatId);
-      allow list: if false; // no way to enumerate all chats
+      allow list: if false;
       allow create, update, delete: if false;
 
       match /messages/{messageId} {
         allow get, list: if isParticipant(chatId);
-        // Writes stay closed until messaging is built. The rule to add then:
-        // senderId == request.auth.uid, only known fields, text size limit,
-        // createdAt == request.time.
         allow create, update, delete: if false;
       }
 
@@ -112,15 +155,13 @@ service cloud.firestore {
       }
     }
 
-    // --- Official visaroom announcements -----------------------------------
-    // Readable by signed-in users. Clients can never write here:
-    // posts are added only from the Firebase console (Admin access).
+    // --- Official visaroom announcements ------------------------------------
     match /announcements/{announcementId} {
       allow get, list: if signedIn();
       allow write: if false;
     }
 
-    // --- Everything else -----------------------------------------------------
+    // --- Everything else ------------------------------------------------------
     match /{document=**} {
       allow read, write: if false;
     }

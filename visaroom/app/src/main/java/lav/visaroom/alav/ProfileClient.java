@@ -12,6 +12,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +32,7 @@ final class ProfileClient {
     static final class SearchResult {
         String uid = "";
         String username = "";
+        long publicId;
     }
 
     static final class PublicProfile {
@@ -38,6 +40,10 @@ final class ProfileClient {
         String bio = "";
         boolean hasAvatar;
         long avatarUpdatedAt;
+        long publicId;
+        boolean showBio = true;
+        boolean showAvatar = true;
+        boolean showId = true;
     }
 
     static final class Announcement {
@@ -71,6 +77,12 @@ final class ProfileClient {
             out.hasAvatar = bool(fields, "hasAvatar", out.hasAvatar);
             out.avatarUpdatedAt = num(fields, "avatarUpdatedAt", out.avatarUpdatedAt);
             out.discoverable = bool(fields, "discoverable", out.discoverable);
+            out.publicId = num(fields, "publicId", out.publicId);
+            out.twoFaEnabled = bool(fields, "twoFaEnabled", out.twoFaEnabled);
+            out.twoFaVerifier = str(fields, "twoFaVerifier", out.twoFaVerifier);
+            out.showBio = bool(fields, "showBio", out.showBio);
+            out.showAvatar = bool(fields, "showAvatar", out.showAvatar);
+            out.showId = bool(fields, "showId", out.showId);
             return true;
         } catch (Exception ignored) {
             return false;
@@ -86,6 +98,16 @@ final class ProfileClient {
             putBool(mine, "hasAvatar", data.hasAvatar);
             putNum(mine, "avatarUpdatedAt", data.avatarUpdatedAt);
             putBool(mine, "discoverable", data.discoverable);
+            if (data.publicId > 0) {
+                putNum(mine, "publicId", data.publicId);
+            }
+            putBool(mine, "twoFaEnabled", data.twoFaEnabled);
+            if (data.twoFaVerifier != null && data.twoFaVerifier.length() > 0) {
+                putStr(mine, "twoFaVerifier", data.twoFaVerifier);
+            }
+            putBool(mine, "showBio", data.showBio);
+            putBool(mine, "showAvatar", data.showAvatar);
+            putBool(mine, "showId", data.showId);
             JSONObject mineBody = new JSONObject();
             mineBody.put("fields", mine);
             Response r1 = request("PATCH", Vault.firestoreBaseUrl() + "users/" + uid,
@@ -94,11 +116,19 @@ final class ProfileClient {
                 return false;
             }
 
+            // Public copy: privacy settings are applied here, so a hidden
+            // bio/photo/ID is not present in the public document at all.
             JSONObject pub = new JSONObject();
             putStr(pub, "username", data.username);
-            putStr(pub, "bio", data.bio);
-            putBool(pub, "hasAvatar", data.hasAvatar);
+            putStr(pub, "bio", data.showBio ? data.bio : "");
+            putBool(pub, "hasAvatar", data.showAvatar && data.hasAvatar);
             putNum(pub, "avatarUpdatedAt", data.avatarUpdatedAt);
+            if (data.showId && data.publicId > 0) {
+                putNum(pub, "publicId", data.publicId);
+            }
+            putBool(pub, "showBio", data.showBio);
+            putBool(pub, "showAvatar", data.showAvatar);
+            putBool(pub, "showId", data.showId);
             JSONObject pubBody = new JSONObject();
             pubBody.put("fields", pub);
             Response r2 = request("PATCH", Vault.firestoreBaseUrl() + "profiles/" + uid,
@@ -110,7 +140,7 @@ final class ProfileClient {
     }
 
     static int claimUsername(String idToken, String uid, String username,
-                             String oldLower, boolean discoverable) {
+                             String oldLower, boolean discoverable, long publicId) {
         String lower = username == null ? ""
                 : username.trim().toLowerCase(java.util.Locale.ROOT);
         try {
@@ -135,6 +165,9 @@ final class ProfileClient {
             putStr(fields, "uid", uid);
             putStr(fields, "username", username.trim());
             putStr(fields, "usernameLower", lower);
+            if (publicId > 0) {
+                putNum(fields, "publicId", publicId);
+            }
             JSONObject body = new JSONObject();
             body.put("fields", fields);
             Response r = request("PATCH", Vault.firestoreBaseUrl() + "usernames/" + lower,
@@ -151,7 +184,7 @@ final class ProfileClient {
         }
     }
 
-    private static void deleteUsername(String idToken, String lower) {
+    static void deleteUsername(String idToken, String lower) {
         try {
             request("DELETE", Vault.firestoreBaseUrl() + "usernames/" + lower, idToken, null);
         } catch (Exception ignored) {
@@ -214,6 +247,7 @@ final class ProfileClient {
                 SearchResult s = new SearchResult();
                 s.uid = str(fields, "uid", "");
                 s.username = str(fields, "username", "");
+                s.publicId = num(fields, "publicId", 0);
                 if (s.uid.length() > 0 && s.username.length() > 0) {
                     results.add(s);
                 }
@@ -238,6 +272,10 @@ final class ProfileClient {
                 p.bio = str(fields, "bio", "");
                 p.hasAvatar = bool(fields, "hasAvatar", false);
                 p.avatarUpdatedAt = num(fields, "avatarUpdatedAt", 0);
+                p.publicId = num(fields, "publicId", 0);
+                p.showBio = bool(fields, "showBio", true);
+                p.showAvatar = bool(fields, "showAvatar", true);
+                p.showId = bool(fields, "showId", true);
             }
             return p;
         } catch (Exception ignored) {
@@ -282,6 +320,105 @@ final class ProfileClient {
         }
     }
 
+
+    // ---------- public numeric IDs (100000-5000000) ----------
+
+    static final long PUBLIC_ID_MIN = 100000L;
+    static final long PUBLIC_ID_MAX = 5000000L;
+
+    static long randomPublicId() {
+        long range = PUBLIC_ID_MAX - PUBLIC_ID_MIN + 1;
+        return PUBLIC_ID_MIN + Math.floorMod(new SecureRandom().nextLong(), range);
+    }
+
+    static boolean validPublicId(long id) {
+        return id >= PUBLIC_ID_MIN && id <= PUBLIC_ID_MAX;
+    }
+
+    /** Claims publicIds/{id} for uid. 0=ok, 1=taken by someone else, -1=error. */
+    static int tryClaimPublicId(String idToken, String uid, long candidate) {
+        try {
+            JSONObject fields = new JSONObject();
+            putStr(fields, "uid", uid);
+            JSONObject body = new JSONObject();
+            body.put("fields", fields);
+            Response r = request("POST", Vault.firestoreBaseUrl()
+                    + "publicIds?documentId=" + candidate, idToken, body);
+            if (r.code >= 200 && r.code < 300) {
+                return 0;
+            }
+            if (r.code == 409 || r.code == 400) {
+                Response existing = request("GET", Vault.firestoreBaseUrl()
+                        + "publicIds/" + candidate, idToken, null);
+                if (existing.code == 200) {
+                    JSONObject f = new JSONObject(existing.text).optJSONObject("fields");
+                    String owner = f == null ? "" : str(f, "uid", "");
+                    return owner.equals(uid) ? 0 : 1;
+                }
+                return r.code == 409 ? 1 : -1;
+            }
+            return -1;
+        } catch (Exception ignored) {
+            return -1;
+        }
+    }
+
+    static void releasePublicId(String idToken, long id) {
+        try {
+            if (id > 0) {
+                request("DELETE", Vault.firestoreBaseUrl() + "publicIds/" + id, idToken, null);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * Returns the account's public ID, claiming the preferred (locally
+     * generated) one first and random ones after. 0 = could not claim.
+     */
+    static long assignPublicId(String idToken, String uid, long preferred, long existing) {
+        if (validPublicId(existing)) {
+            return existing;
+        }
+        if (validPublicId(preferred)) {
+            int r = tryClaimPublicId(idToken, uid, preferred);
+            if (r == 0) {
+                return preferred;
+            }
+            if (r < 0) {
+                return 0;
+            }
+        }
+        for (int i = 0; i < 14; i++) {
+            long candidate = randomPublicId();
+            int r = tryClaimPublicId(idToken, uid, candidate);
+            if (r == 0) {
+                return candidate;
+            }
+            if (r < 0) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    static boolean deleteAvatar(String idToken, String uid) {
+        try {
+            String object = URLEncoder.encode("users/" + uid + "/avatar.jpg", "UTF-8");
+            HttpURLConnection c = (HttpURLConnection) new URL(
+                    Vault.storageBaseUrl() + "/" + object).openConnection();
+            c.setRequestMethod("DELETE");
+            c.setConnectTimeout(15000);
+            c.setReadTimeout(15000);
+            AuthClient.applyAndroidHeaders(c);
+            c.setRequestProperty("Authorization", "Bearer " + idToken);
+            int code = c.getResponseCode();
+            c.disconnect();
+            return code >= 200 && code < 300 || code == 404;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
     // ---------- avatar (Firebase Storage) ----------
 
     static boolean uploadAvatar(String idToken, String uid, byte[] jpeg) {

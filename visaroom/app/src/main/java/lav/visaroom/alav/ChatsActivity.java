@@ -22,6 +22,7 @@ import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.animation.DecelerateInterpolator;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -78,6 +79,18 @@ public class ChatsActivity extends Activity {
 
     private TextView textSizeValue;
     private TextView backgroundValue;
+    private TextView twoFaValue;
+    private Switch showBioSwitch;
+    private Switch showAvatarSwitch;
+    private Switch showIdSwitch;
+    private int currentPage;
+    private long publicId;
+    private boolean twoFaEnabledState;
+    private String twoFaVerifierState = "";
+    private boolean showBioState = true;
+    private boolean showAvatarState = true;
+    private boolean showIdState = true;
+    private boolean applyingSettings;
 
     private String userId = "";
     private String userEmail = "";
@@ -108,7 +121,8 @@ public class ChatsActivity extends Activity {
         userId = uid == null ? "" : uid;
 
         TextView accountEmail = findViewById(R.id.account_email);
-        accountEmail.setText(userEmail);
+        accountEmail.setText(Admin.isAdminEmail(userEmail)
+                ? userEmail + " - Admin" : userEmail);
         emailView.setText(userEmail);
         idView.setText(userId.length() == 0 ? "Loading..." : userId);
 
@@ -167,6 +181,7 @@ public class ChatsActivity extends Activity {
 
         textSizeValue = findViewById(R.id.setting_text_size_value);
         backgroundValue = findViewById(R.id.setting_background_value);
+        twoFaValue = findViewById(R.id.setting_2fa_value);
     }
 
     private void setupNavigation() {
@@ -176,12 +191,10 @@ public class ChatsActivity extends Activity {
         showPage(0);
     }
 
-    private void showPage(int index) {
+    private void updateNav(int index) {
         for (int i = 0; i < pages.length; i++) {
             boolean selected = i == index;
-            pages[i].setVisibility(selected ? View.VISIBLE : View.GONE);
-            navIndicators[i].setBackgroundColor(
-                    selected ? Color.BLACK : Color.TRANSPARENT);
+            navIndicators[i].setBackgroundColor(selected ? Color.BLACK : Color.TRANSPARENT);
             int color = getColor(selected ? R.color.near_black : R.color.text_secondary);
             navIcons[i].setColorFilter(color, PorterDuff.Mode.SRC_IN);
             navLabels[i].setTextColor(color);
@@ -190,9 +203,53 @@ public class ChatsActivity extends Activity {
         }
     }
 
+    private void showPage(int index) {
+        if (index == currentPage && pages[index].getVisibility() == View.VISIBLE) {
+            updateNav(index);
+            return;
+        }
+        int previous = currentPage;
+        currentPage = index;
+        updateNav(index);
+
+        View incoming = pages[index];
+        View outgoing = pages[previous];
+        incoming.animate().cancel();
+        outgoing.animate().cancel();
+
+        float direction = index > previous ? 1f : -1f;
+        float distance = dp(28);
+        incoming.setVisibility(View.VISIBLE);
+        incoming.bringToFront();
+        incoming.setAlpha(0f);
+        incoming.setTranslationX(direction * distance);
+        incoming.animate()
+                .alpha(1f)
+                .translationX(0f)
+                .setDuration(260)
+                .setInterpolator(new DecelerateInterpolator())
+                .start();
+
+        if (previous != index) {
+            outgoing.animate()
+                    .alpha(0f)
+                    .translationX(-direction * distance * 0.55f)
+                    .setDuration(190)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .withEndAction(() -> {
+                        outgoing.setVisibility(View.GONE);
+                        outgoing.setAlpha(1f);
+                        outgoing.setTranslationX(0f);
+                    })
+                    .start();
+        }
+    }
+
     private void setupChats() {
-        officialChat.setOnClickListener(v ->
-                startActivity(new Intent(this, ChatActivity.class)));
+        officialChat.setOnClickListener(v -> {
+            startActivity(new Intent(this, ChatActivity.class));
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+        });
         clearSearch.setOnClickListener(v -> searchInput.setText(""));
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override
@@ -219,11 +276,12 @@ public class ChatsActivity extends Activity {
         });
         saveButton.setOnClickListener(v -> saveProfile());
         findViewById(R.id.copy_id).setOnClickListener(v -> {
-            if (userId.length() == 0) {
+            String copyValue = publicId > 0 ? String.valueOf(publicId) : userId;
+            if (copyValue.length() == 0) {
                 return;
             }
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            clipboard.setPrimaryClip(ClipData.newPlainText("visaroom ID", userId));
+            clipboard.setPrimaryClip(ClipData.newPlainText("visaroom ID", copyValue));
             Toast.makeText(this, "ID copied", Toast.LENGTH_SHORT).show();
         });
         findViewById(R.id.change_email).setOnClickListener(v -> showChangeEmailDialog());
@@ -256,6 +314,27 @@ public class ChatsActivity extends Activity {
                 AppSettings.setSounds(this, checked));
         receipts.setOnCheckedChangeListener((b, checked) ->
                 AppSettings.setReadReceipts(this, checked));
+
+        showBioSwitch = findViewById(R.id.setting_show_bio);
+        showAvatarSwitch = findViewById(R.id.setting_show_avatar);
+        showIdSwitch = findViewById(R.id.setting_show_id);
+        showBioSwitch.setChecked(true);
+        showAvatarSwitch.setChecked(true);
+        showIdSwitch.setChecked(true);
+        showBioSwitch.setOnCheckedChangeListener((b, checked) -> {
+            showBioState = checked;
+            savePrivacySoon();
+        });
+        showAvatarSwitch.setOnCheckedChangeListener((b, checked) -> {
+            showAvatarState = checked;
+            savePrivacySoon();
+        });
+        showIdSwitch.setOnCheckedChangeListener((b, checked) -> {
+            showIdState = checked;
+            savePrivacySoon();
+        });
+        findViewById(R.id.setting_2fa).setOnClickListener(v -> showTwoFaDialog());
+        updateTwoFaUi();
 
         findViewById(R.id.setting_text_size).setOnClickListener(v -> {
             int next = (AppSettings.textSizeIndex(this) + 1) % 3;
@@ -292,6 +371,7 @@ public class ChatsActivity extends Activity {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
 
     // ---------- chats search ----------
@@ -405,7 +485,7 @@ public class ChatsActivity extends Activity {
         texts.addView(name);
 
         TextView sub = new TextView(this);
-        sub.setText("User");
+        sub.setText(result.publicId > 0 ? "ID " + result.publicId : "User");
         sub.setTextColor(getColor(R.color.text_secondary));
         sub.setTextSize(13);
         texts.addView(sub);
@@ -416,84 +496,11 @@ public class ChatsActivity extends Activity {
     }
 
     private void showPublicProfile(String uid, String username) {
-        executor.execute(() -> {
-            String token = ensureIdToken();
-            ProfileClient.PublicProfile profile = token == null
-                    ? new ProfileClient.PublicProfile()
-                    : ProfileClient.loadPublicProfile(token, uid);
-            byte[] avatar = token != null && profile.hasAvatar
-                    ? ProfileClient.downloadAvatar(token, uid) : null;
-            runOnUiThread(() -> {
-                LinearLayout box = new LinearLayout(this);
-                box.setOrientation(LinearLayout.VERTICAL);
-                box.setGravity(Gravity.CENTER_HORIZONTAL);
-                box.setPadding(dp(24), dp(8), dp(24), dp(8));
-
-                ImageView photo = new ImageView(this);
-                Bitmap bmp = avatar == null ? null
-                        : BitmapFactory.decodeByteArray(avatar, 0, avatar.length);
-                if (bmp != null) {
-                    photo.setImageBitmap(circularBitmap(bmp));
-                } else {
-                    photo.setImageResource(R.drawable.ic_logo);
-                }
-                box.addView(photo, new LinearLayout.LayoutParams(dp(80), dp(80)));
-
-                TextView name = new TextView(this);
-                name.setText("@" + (profile.username.length() > 0
-                        ? profile.username : username));
-                name.setTextColor(getColor(R.color.text_main));
-                name.setTextSize(18);
-                name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-                name.setGravity(Gravity.CENTER);
-                LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT);
-                nameParams.topMargin = dp(12);
-                box.addView(name, nameParams);
-
-                if (profile.bio.length() > 0) {
-                    TextView bio = new TextView(this);
-                    bio.setText(profile.bio);
-                    bio.setTextColor(getColor(R.color.text_secondary));
-                    bio.setTextSize(14);
-                    bio.setGravity(Gravity.CENTER);
-                    LinearLayout.LayoutParams bioParams = new LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT);
-                    bioParams.topMargin = dp(6);
-                    box.addView(bio, bioParams);
-                }
-
-                TextView id = new TextView(this);
-                id.setText("ID: " + uid);
-                id.setTextColor(getColor(R.color.text_hint));
-                id.setTextSize(11);
-                id.setTypeface(Typeface.MONOSPACE);
-                id.setGravity(Gravity.CENTER);
-                LinearLayout.LayoutParams idParams = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT);
-                idParams.topMargin = dp(10);
-                box.addView(id, idParams);
-
-                TextView note = new TextView(this);
-                note.setText("Direct chats are not available yet.");
-                note.setTextColor(getColor(R.color.text_secondary));
-                note.setTextSize(13);
-                note.setGravity(Gravity.CENTER);
-                LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT);
-                noteParams.topMargin = dp(14);
-                box.addView(note, noteParams);
-
-                new AlertDialog.Builder(this)
-                        .setView(box)
-                        .setPositiveButton("Close", null)
-                        .show();
-            });
-        });
+        Intent intent = new Intent(this, UserProfileActivity.class);
+        intent.putExtra(UserProfileActivity.EXTRA_UID, uid);
+        intent.putExtra(UserProfileActivity.EXTRA_USERNAME, username);
+        startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
     // ---------- profile ----------
@@ -512,6 +519,28 @@ public class ChatsActivity extends Activity {
         discoverableSwitch.setChecked(p.getBoolean("discoverable", true));
         hasAvatar = p.getBoolean("has_avatar", avatarFile().exists());
         avatarUpdatedAt = p.getLong("avatar_at", 0);
+        publicId = p.getLong("public_id", 0);
+        if (publicId == 0) {
+            publicId = ProfileClient.randomPublicId();
+            p.edit().putLong("public_id", publicId).apply();
+        }
+        twoFaEnabledState = p.getBoolean("two_fa", false);
+        String localVerifier = TokenStore.twoFaVerifier(this);
+        if (localVerifier != null) {
+            twoFaVerifierState = localVerifier;
+        }
+        showBioState = p.getBoolean("show_bio", true);
+        showAvatarState = p.getBoolean("show_avatar", true);
+        showIdState = p.getBoolean("show_id", true);
+        applyingSettings = true;
+        if (showBioSwitch != null) {
+            showBioSwitch.setChecked(showBioState);
+            showAvatarSwitch.setChecked(showAvatarState);
+            showIdSwitch.setChecked(showIdState);
+        }
+        applyingSettings = false;
+        updateTwoFaUi();
+        updateIdDisplay();
     }
 
     private void cacheProfile(String username, String bio, boolean discoverable) {
@@ -521,6 +550,11 @@ public class ChatsActivity extends Activity {
                 .putBoolean("discoverable", discoverable)
                 .putBoolean("has_avatar", hasAvatar)
                 .putLong("avatar_at", avatarUpdatedAt)
+                .putLong("public_id", publicId)
+                .putBoolean("two_fa", twoFaEnabledState)
+                .putBoolean("show_bio", showBioState)
+                .putBoolean("show_avatar", showAvatarState)
+                .putBoolean("show_id", showIdState)
                 .apply();
     }
 
@@ -654,6 +688,164 @@ public class ChatsActivity extends Activity {
         return latestIdToken;
     }
 
+    private void updateIdDisplay() {
+        idView.setText(publicId > 0 ? String.valueOf(publicId)
+                : userId.length() == 0 ? "Loading..." : "Assigning...");
+    }
+
+    private void updateTwoFaUi() {
+        if (twoFaValue != null) {
+            twoFaValue.setText(twoFaEnabledState ? "On" : "Off");
+        }
+    }
+
+    private ProfileData currentProfileData() {
+        ProfileData data = new ProfileData();
+        data.email = userEmail;
+        String raw = usernameInput.getText().toString().trim();
+        data.username = raw.startsWith("@") ? raw.substring(1) : raw;
+        data.bio = bioInput.getText().toString().trim();
+        data.discoverable = discoverableSwitch.isChecked();
+        data.hasAvatar = hasAvatar;
+        data.avatarUpdatedAt = avatarUpdatedAt;
+        data.publicId = publicId;
+        data.twoFaEnabled = twoFaEnabledState;
+        data.twoFaVerifier = twoFaVerifierState;
+        data.showBio = showBioState;
+        data.showAvatar = showAvatarState;
+        data.showId = showIdState;
+        return data;
+    }
+
+    private void savePrivacySoon() {
+        if (applyingSettings) {
+            return;
+        }
+        ProfileData snapshot = currentProfileData();
+        cacheProfile(snapshot.username, snapshot.bio, snapshot.discoverable);
+        executor.execute(() -> {
+            String token = ensureIdToken();
+            if (token != null && userId.length() > 0) {
+                ProfileClient.saveMyProfile(token, userId, snapshot);
+            }
+        });
+    }
+
+    private EditText passwordField(String hint) {
+        EditText input = new EditText(this);
+        input.setHint(hint);
+        input.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        input.setBackgroundResource(R.drawable.bg_input);
+        input.setPadding(dp(14), 0, dp(14), 0);
+        return input;
+    }
+
+    private LinearLayout dialogBox(EditText... fields) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(24), dp(8), dp(24), dp(4));
+        for (int i = 0; i < fields.length; i++) {
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(52));
+            if (i > 0) {
+                params.topMargin = dp(12);
+            }
+            box.addView(fields[i], params);
+        }
+        return box;
+    }
+
+    private void showTwoFaDialog() {
+        if (!twoFaEnabledState) {
+            EditText password = passwordField("New additional password");
+            EditText confirm = passwordField("Repeat password");
+            AlertDialog dialog = new AlertDialog.Builder(this)
+                    .setTitle("Two-step verification")
+                    .setMessage("This password will be asked in addition to your account password when you sign in.")
+                    .setView(dialogBox(password, confirm))
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Turn on", null)
+                    .create();
+            dialog.show();
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String pw = password.getText().toString();
+                if (pw.length() < 4) {
+                    Toast.makeText(this, "Use at least 4 characters.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (!pw.equals(confirm.getText().toString())) {
+                    Toast.makeText(this, "Passwords do not match.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                dialog.dismiss();
+                saveTwoFa(true, pw);
+            });
+            return;
+        }
+        EditText current = passwordField("Current additional password");
+        EditText next = passwordField("New password (optional)");
+        EditText confirm = passwordField("Repeat new password");
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Two-step verification")
+                .setView(dialogBox(current, next, confirm))
+                .setNegativeButton("Turn off", null)
+                .setNeutralButton("Cancel", null)
+                .setPositiveButton("Save", null)
+                .create();
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            if (!TwoFa.verify(current.getText().toString(), twoFaVerifierState)) {
+                Toast.makeText(this, "Current password is incorrect.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String pw = next.getText().toString();
+            if (pw.length() == 0) {
+                dialog.dismiss();
+                return;
+            }
+            if (pw.length() < 4 || !pw.equals(confirm.getText().toString())) {
+                Toast.makeText(this, "Check the new password.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            dialog.dismiss();
+            saveTwoFa(true, pw);
+        });
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v -> {
+            if (!TwoFa.verify(current.getText().toString(), twoFaVerifierState)) {
+                Toast.makeText(this, "Current password is incorrect.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            dialog.dismiss();
+            saveTwoFa(false, "");
+        });
+    }
+
+    private void saveTwoFa(boolean enabled, String plainPassword) {
+        ProfileData snapshot = currentProfileData();
+        executor.execute(() -> {
+            String verifier = enabled ? TwoFa.makeVerifier(plainPassword) : "";
+            snapshot.twoFaEnabled = enabled;
+            snapshot.twoFaVerifier = verifier;
+            String token = ensureIdToken();
+            boolean savedCloud = token != null && userId.length() > 0
+                    && ProfileClient.saveMyProfile(token, userId, snapshot);
+            TokenStore.saveTwoFa(this,
+                    enabled ? TwoFa.markerFor(verifier) : null,
+                    enabled ? verifier : null);
+            runOnUiThread(() -> {
+                twoFaEnabledState = enabled;
+                twoFaVerifierState = verifier;
+                cacheProfile(snapshot.username, snapshot.bio, snapshot.discoverable);
+                updateTwoFaUi();
+                Toast.makeText(this, savedCloud
+                        ? (enabled ? "Two-step verification is on." : "Two-step verification is off.")
+                        : "Saved on this device. Cloud sync is not available yet.",
+                        Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
+
     private void loadProfileFromCloud() {
         executor.execute(() -> {
             String token = ensureIdToken();
@@ -662,7 +854,19 @@ public class ChatsActivity extends Activity {
             }
             ProfileData data = new ProfileData();
             data.email = userEmail;
+            data.publicId = publicId;
             boolean loaded = ProfileClient.loadMyProfile(token, userId, data);
+            if (loaded && !ProfileClient.validPublicId(data.publicId)) {
+                long assigned = ProfileClient.assignPublicId(token, userId, publicId, 0);
+                if (assigned > 0) {
+                    data.publicId = assigned;
+                    if (ProfileClient.saveMyProfile(token, userId, data)
+                            && data.username.length() > 0 && data.discoverable) {
+                        ProfileClient.claimUsername(token, userId, data.username,
+                                data.usernameLower(), true, assigned);
+                    }
+                }
+            }
             if (loaded && data.hasAvatar
                     && (!avatarFile().exists() || data.avatarUpdatedAt != avatarUpdatedAt)) {
                 byte[] bytes = ProfileClient.downloadAvatar(token, userId);
@@ -676,7 +880,6 @@ public class ChatsActivity extends Activity {
                 }
             }
             runOnUiThread(() -> {
-                idView.setText(userId);
                 if (loaded) {
                     usernameInput.setText(data.username);
                     bioInput.setText(data.bio);
@@ -684,9 +887,28 @@ public class ChatsActivity extends Activity {
                     originalUsernameLower = data.discoverable ? data.usernameLower() : "";
                     hasAvatar = data.hasAvatar || avatarFile().exists();
                     avatarUpdatedAt = data.avatarUpdatedAt;
+                    if (data.publicId > 0) {
+                        publicId = data.publicId;
+                    }
+                    twoFaEnabledState = data.twoFaEnabled;
+                    twoFaVerifierState = data.twoFaVerifier;
+                    TokenStore.saveTwoFa(this, TokenStore.twoFaMarker(this),
+                            twoFaEnabledState ? twoFaVerifierState : null);
+                    showBioState = data.showBio;
+                    showAvatarState = data.showAvatar;
+                    showIdState = data.showId;
+                    applyingSettings = true;
+                    if (showBioSwitch != null) {
+                        showBioSwitch.setChecked(showBioState);
+                        showAvatarSwitch.setChecked(showAvatarState);
+                        showIdSwitch.setChecked(showIdState);
+                    }
+                    applyingSettings = false;
                     cacheProfile(data.username, data.bio, data.discoverable);
                     displayAvatar();
+                    updateTwoFaUi();
                 }
+                updateIdDisplay();
             });
         });
     }
@@ -729,13 +951,19 @@ public class ChatsActivity extends Activity {
                     }
                 }
                 claim = ProfileClient.claimUsername(token, userId, finalUsername,
-                        originalUsernameLower, discoverable);
+                        originalUsernameLower, discoverable, publicId);
                 if (claim == ProfileClient.USERNAME_OK) {
                     ProfileData data = new ProfileData();
                     data.email = userEmail;
                     data.username = finalUsername;
                     data.bio = bio;
                     data.discoverable = discoverable;
+                    data.publicId = publicId;
+                    data.twoFaEnabled = twoFaEnabledState;
+                    data.twoFaVerifier = twoFaVerifierState;
+                    data.showBio = showBioState;
+                    data.showAvatar = showAvatarState;
+                    data.showId = showIdState;
                     data.hasAvatar = cloudAvatar;
                     data.avatarUpdatedAt = cloudAvatarAt;
                     savedCloud = ProfileClient.saveMyProfile(token, userId, data);
@@ -853,6 +1081,12 @@ public class ChatsActivity extends Activity {
             data.username = usernameInput.getText().toString().trim().replaceFirst("^@", "");
             data.bio = bioInput.getText().toString().trim();
             data.discoverable = discoverableSwitch.isChecked();
+            data.publicId = publicId;
+            data.twoFaEnabled = twoFaEnabledState;
+            data.twoFaVerifier = twoFaVerifierState;
+            data.showBio = showBioState;
+            data.showAvatar = showAvatarState;
+            data.showId = showIdState;
             data.hasAvatar = hasAvatar;
             data.avatarUpdatedAt = avatarUpdatedAt;
             ProfileClient.saveMyProfile(updated.idToken, userId, data);

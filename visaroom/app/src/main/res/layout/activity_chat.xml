@@ -6,8 +6,12 @@
     android:orientation="vertical">
 
     <LinearLayout
+        android:id="@+id/chat_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@drawable/bg_chat_row"
+        android:clickable="true"
+        android:focusable="true"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingRight="8dp"
