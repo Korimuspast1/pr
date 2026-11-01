@@ -1,0 +1,57 @@
+name: Static triage of external sample
+
+# ВНИМАНИЕ: образец только скачивается и разбирается статически.
+# Он никогда не запускается, не публикуется артефактом и не попадает в репозиторий.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/sample-triage.yml"
+      - ".github/scripts/fetch_sample.py"
+      - "tools/malware-triage/**"
+
+permissions:
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Скачать образец во временный каталог
+        env:
+          SAMPLE_URL: https://www.mediafire.com/file/mrmg62ns6g296z9/fakevpn.zip/file
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/fetch_sample.py "$SAMPLE_URL" "$RUNNER_TEMP/fakevpn.zip"
+
+      - name: Хеши и размер
+        run: |
+          set -euo pipefail
+          ls -l "$RUNNER_TEMP/fakevpn.zip"
+          sha256sum "$RUNNER_TEMP/fakevpn.zip"
+          md5sum "$RUNNER_TEMP/fakevpn.zip"
+
+      - name: Проверить тип файла
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/fakevpn.zip" <<'PY'
+          import sys
+          p = sys.argv[1]
+          with open(p, "rb") as fh:
+              head = fh.read(8)
+          print("первые байты:", head.hex(), head[:4])
+          PY
+
+      - name: Статический разбор (файл не запускается)
+        run: |
+          set -euo pipefail
+          python3 tools/malware-triage/triage.py "$RUNNER_TEMP/fakevpn.zip" \
+            --json "$RUNNER_TEMP/report.json"
+
+      - name: Удалить образец
+        if: always()
+        run: rm -f "$RUNNER_TEMP/fakevpn.zip" "$RUNNER_TEMP/report.json" || true
