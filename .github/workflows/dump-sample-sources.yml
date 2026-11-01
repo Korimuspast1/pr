@@ -6,6 +6,9 @@ name: Dump sources of the sample
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/dump-trigger.txt"
 
 permissions:
   contents: read
