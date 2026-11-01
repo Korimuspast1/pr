@@ -49,6 +49,7 @@ jobs:
 
       - name: Достать исходники
         run: |
+          set +e
           set -uo pipefail
           OUT="$RUNNER_TEMP/sources"
           mkdir -p "$OUT"
@@ -90,6 +91,7 @@ jobs:
 
       - name: Сводка и карта классов для репозитория
         run: |
+          set +e
           set -uo pipefail
           OUT="$RUNNER_TEMP/sources"
           DEST="$GITHUB_WORKSPACE/reports/sample-sources"
