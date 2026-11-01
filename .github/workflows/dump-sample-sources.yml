@@ -90,71 +90,15 @@ jobs:
           sha256sum sources-of-sample.zip
 
       - name: Сводка и карта классов для репозитория
+        continue-on-error: true
         run: |
-          set +e
-          set -uo pipefail
-          OUT="$RUNNER_TEMP/sources"
-          DEST="$GITHUB_WORKSPACE/reports/sample-sources"
-          mkdir -p "$DEST"
-          : > "$DEST/README.md"
-
-          {
-            echo "# Исходники образца fakevpn.zip"
-            echo
-            echo "> **Внимание.** Это разбор вредоносного кода, полученный автоматически."
-            echo "> Полные java/smali-исходники лежат в артефакте Actions"
-            echo "> \`malware-sources-do-not-run\` (срок хранения 7 дней), в репозиторий"
-            echo "> намеренно не коммитятся: это работоспособный троян."
-            echo "> Здесь — манифест, ресурсы и карта классов, без исполняемого кода."
-            echo
-          } > "$DEST/README.md"
-
-          shopt -s nullglob
-          for apk in "$RUNNER_TEMP"/unpacked/*.apk; do
-            base="$(basename "$apk" .apk | tr ' ()' '___')"
-            src="$OUT/$base"
-            mkdir -p "$DEST/$base"
-            echo "## $base" >> "$DEST/README.md"
-            echo '```' >> "$DEST/README.md"
-            cat "$src/SUMMARY.txt" >> "$DEST/README.md" 2>/dev/null || true
-            echo '```' >> "$DEST/README.md"
-            echo >> "$DEST/README.md"
-
-            cp "$src/SUMMARY.txt" "$DEST/$base/" 2>/dev/null || true
-            [ -f "$src/apktool/AndroidManifest.xml" ] && \
-              cp "$src/apktool/AndroidManifest.xml" "$DEST/$base/" || true
-            [ -d "$src/apktool/res" ] && cp -r "$src/apktool/res" "$DEST/$base/" || true
-
-            # карта классов и файлов — без тела методов
-            {
-              echo "Пакеты и классы (jadx):"
-              find "$src/java" -name "*.java" 2>/dev/null | sed "s#$src/java/##" \
-                | sort | head -400
-              echo
-              echo "Smali-файлы (apktool):"
-              find "$src/apktool" -name "*.smali" 2>/dev/null | sed "s#$src/apktool/##" \
-                | sort | head -400
-            } > "$DEST/$base/class-map.txt" 2>/dev/null || true
-
-            # уникальные вызовы Android API и строковые константы
-            {
-              echo "Вызовы API (уникальные методы):"
-              grep -rhoE "(L[a-zA-Z0-9_/]+;->[a-zA-Z0-9_]+\()" "$src/java" 2>/dev/null \
-                | sort | uniq -c | sort -rn | head -200
-              echo
-              echo "Строковые константы, похожие на адреса и команды:"
-              grep -rhoE "\"(https?://[^\"]+|assets/[^\"]+|[a-zA-Z0-9_/]+\.(bin|dat|cache|idx|dex|apk))\"" \
-                "$src/java" 2>/dev/null | sort -u | head -100
-            } > "$DEST/$base/api-usage.txt" 2>/dev/null || true
-
-            echo "- \`$base/AndroidManifest.xml\`, \`$base/res/\`, \`$base/class-map.txt\`, \`$base/api-usage.txt\`" >> "$DEST/README.md"
-          done
-
-          echo >> "$DEST/README.md"
-          echo "Полный архив: Actions → Dump sources of the sample → Artifacts → \`malware-sources-do-not-run\`." >> "$DEST/README.md"
-          ls -R "$DEST" | head -40
+          python3 .github/scripts/make_source_map.py \
+            "$RUNNER_TEMP/sources" "$GITHUB_WORKSPACE/reports/sample-sources" || true
+          ls -R reports/sample-sources | head -40
+          cat reports/sample-sources/_dump.log | tail -40
 
       - name: Закоммитить сводку
+        if: always()
         run: |
           set -euo pipefail
           git config user.name "dump-bot"
