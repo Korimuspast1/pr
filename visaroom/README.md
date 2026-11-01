@@ -27,8 +27,13 @@ REST API, поэтому Firebase SDK внутри APK нет — меньше �
 
 ## Сборка
 
-Сборка идёт в GitHub Actions (`.github/workflows/build-apk.yml`): каждый push в ветку
-собирает подписанный release APK, артефакт `visaroom-apk`.
+Готовый подписанный APK: `../release/visaroom-1.0.apk` (подпись проверена apksigner,
+workflow `Verify signed APK`).
+
+R8-сборка идёт в GitHub Actions (`.github/workflows/build-apk.yml`). Если в репозитории
+заданы секреты `VISAROOM_KEYSTORE_B64` (keystore в base64) и `VISAROOM_KEYSTORE_PASSWORD`,
+CI сам подписывает APK и кладёт его в артефакт `visaroom-apk`. Без секретов CI собирает
+unsigned APK в `build-transfer/` — он подписывается ключом владельца вне CI.
 
 Локально (нужен JDK 17, Android SDK 34, Gradle 8.7):
 
