@@ -10,6 +10,7 @@ on:
       - "firebase/firestore.rules"
       - "firebase/firebase.json"
       - ".github/workflows/validate-firestore-rules.yml"
+      - ".github/rules-test/**"
 
 permissions:
   contents: write
@@ -33,14 +34,19 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Compile rules in Firestore emulator
+      - name: Install Firestore rules test dependencies
+        working-directory: .github/rules-test
+        run: npm install --ignore-scripts
+
+      - name: Compile and smoke-test rules in Firestore emulator
         working-directory: firebase
         run: |
           set -o pipefail
           npx --yes firebase-tools@latest emulators:exec \
             --only firestore \
             --project demo-visaroom \
-            "true" 2>&1 | tee "$GITHUB_WORKSPACE/rules-validation-output.txt"
+            "node ../.github/rules-test/firestore-rules-test.mjs" \
+            2>&1 | tee "$GITHUB_WORKSPACE/rules-validation-output.txt"
 
       - name: Commit validation log on failure
         if: failure()
