@@ -1536,7 +1536,7 @@ public class DirectChatActivity extends Activity {
             } else {
                 Button setButton = new Button(this);
                 setButton.setText("Set wallpaper");
-                setButton.setTextAllCaps(false);
+                setButton.setAllCaps(false);
                 setButton.setTextColor(getColor(R.color.text_main));
                 setButton.setBackgroundResource(R.drawable.bg_glass_pill);
                 setButton.setOnClickListener(v -> acceptWallpaper(message));
