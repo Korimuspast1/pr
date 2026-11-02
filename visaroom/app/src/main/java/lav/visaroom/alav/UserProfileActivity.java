@@ -2,6 +2,7 @@ package lav.visaroom.alav;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -28,11 +29,16 @@ public class UserProfileActivity extends Activity {
 
     private ImageView avatarView;
     private TextView nameView;
+    private ImageView verifiedIcon;
+    private TextView kindView;
     private TextView idView;
     private TextView bioView;
     private TextView statusView;
     private View adminPanel;
     private Button blockButton;
+    private Button verifyButton;
+    private Button messageButton;
+    private String displayedUsername = "";
 
     private String targetUid = "";
     private String fallbackUsername = "";
@@ -62,18 +68,26 @@ public class UserProfileActivity extends Activity {
 
         avatarView = findViewById(R.id.user_avatar);
         nameView = findViewById(R.id.user_name);
+        verifiedIcon = findViewById(R.id.user_verified);
+        kindView = findViewById(R.id.user_kind);
         idView = findViewById(R.id.user_id);
         bioView = findViewById(R.id.user_bio);
         statusView = findViewById(R.id.profile_status);
         adminPanel = findViewById(R.id.admin_panel);
         blockButton = findViewById(R.id.admin_block_account);
+        verifyButton = findViewById(R.id.admin_verified);
+        messageButton = findViewById(R.id.message_button);
 
         nameView.setText(fallbackUsername.length() > 0 ? "@" + fallbackUsername : "User");
         idView.setText("Loading...");
         bioView.setText("");
 
+        messageButton.setEnabled(false);
+        messageButton.setText("Loading...");
         findViewById(R.id.back).setOnClickListener(v -> finishWithAnimation());
+        messageButton.setOnClickListener(v -> openDirectChat());
         blockButton.setOnClickListener(v -> confirmToggleBlock());
+        verifyButton.setOnClickListener(v -> confirmToggleVerified());
         findViewById(R.id.admin_change_id).setOnClickListener(v -> showChangeIdDialog());
         findViewById(R.id.admin_remove_username).setOnClickListener(v -> confirm(
                 "Remove username?", "The user can choose a new one later.",
@@ -156,7 +170,11 @@ public class UserProfileActivity extends Activity {
         String username = pub.username.length() > 0 ? pub.username
                 : priv != null && priv.username.length() > 0 ? priv.username
                 : fallbackUsername;
+        displayedUsername = username;
         nameView.setText(username.length() > 0 ? "@" + username : "No username");
+        boolean verified = priv != null ? priv.verified : pub.verified;
+        verifiedIcon.setVisibility(verified ? View.VISIBLE : View.GONE);
+        kindView.setText(verified ? "Verified user" : "User");
 
         long shownId = iAmAdmin && priv != null && priv.publicId > 0
                 ? priv.publicId : pub.publicId;
@@ -183,13 +201,36 @@ public class UserProfileActivity extends Activity {
         adminPanel.setVisibility(showAdmin ? View.VISIBLE : View.GONE);
         boolean blocked = priv != null ? priv.blocked : pub.blocked;
         blockButton.setText(blocked ? "Unblock account" : "Block account");
+        verifyButton.setText(verified ? "Remove verified badge" : "Give verified badge");
+        if (targetUid.length() == 0 || targetUid.equals(myUid)) {
+            messageButton.setText("Your profile");
+            messageButton.setEnabled(false);
+        } else if (blocked) {
+            messageButton.setText("Account blocked");
+            messageButton.setEnabled(false);
+        } else {
+            messageButton.setText("Message");
+            messageButton.setEnabled(true);
+        }
         if (blocked) {
             statusView.setText("Account blocked");
+        } else if (iAmAdmin && priv == null) {
+            statusView.setText(
+                    "Admin data could not be loaded. Publish the Firebase rules first.");
         } else {
-            statusView.setText(iAmAdmin && priv == null
-                    ? "Admin data could not be loaded. Publish the Firebase rules first."
-                    : "");
+            statusView.setText(verified ? "Verified account" : "");
         }
+    }
+
+    private void openDirectChat() {
+        if (targetUid.length() == 0 || targetUid.equals(myUid) || targetBlocked()) {
+            return;
+        }
+        Intent intent = new Intent(this, DirectChatActivity.class);
+        intent.putExtra(DirectChatActivity.EXTRA_UID, targetUid);
+        intent.putExtra(DirectChatActivity.EXTRA_USERNAME, displayedUsername);
+        startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
     private Bitmap circular(Bitmap source) {
@@ -232,9 +273,9 @@ public class UserProfileActivity extends Activity {
     }
 
     private void setAdminBusy(boolean busy, String status) {
-        int[] ids = {R.id.admin_block_account, R.id.admin_change_id,
-                R.id.admin_remove_username, R.id.admin_clear_bio,
-                R.id.admin_remove_photo};
+        int[] ids = {R.id.admin_block_account, R.id.admin_verified,
+                R.id.admin_change_id, R.id.admin_remove_username,
+                R.id.admin_clear_bio, R.id.admin_remove_photo};
         for (int id : ids) {
             findViewById(id).setEnabled(!busy);
         }
@@ -287,7 +328,7 @@ public class UserProfileActivity extends Activity {
                         && targetData.discoverable) {
                     ProfileClient.claimUsername(token, targetUid,
                             targetData.username, usernameLower,
-                            true, targetData.publicId);
+                            true, targetData.publicId, targetData.verified);
                 }
                 if (!ok) {
                     targetData.blocked = oldBlocked;
@@ -299,6 +340,59 @@ public class UserProfileActivity extends Activity {
                 setAdminBusy(false, finalOk
                         ? (blocked ? "Account blocked." : "Account unblocked.")
                         : "Could not change the block state.");
+                if (finalOk) {
+                    loadProfile();
+                }
+            });
+        });
+    }
+
+    private boolean targetVerified() {
+        if (targetData != null) {
+            return targetData.verified;
+        }
+        return publicProfile != null && publicProfile.verified;
+    }
+
+    private void confirmToggleVerified() {
+        if (!adminReady()) {
+            return;
+        }
+        boolean nextVerified = !targetVerified();
+        confirm(nextVerified ? "Give verified badge?" : "Remove verified badge?",
+                nextVerified
+                        ? "A checkmark will appear next to this user's name in profiles, search and chats."
+                        : "The checkmark will be removed from this user's profile, search and chats.",
+                () -> adminSetVerified(nextVerified));
+    }
+
+    private void adminSetVerified(boolean verified) {
+        if (!adminReady()) {
+            return;
+        }
+        setAdminBusy(true, verified ? "Giving verified badge..." : "Removing verified badge...");
+        boolean oldVerified = targetData.verified;
+        executor.execute(() -> {
+            String token = ensureToken();
+            boolean ok = false;
+            if (token != null) {
+                targetData.verified = verified;
+                ok = ProfileClient.saveMyProfile(token, targetUid, targetData);
+                if (ok && !targetData.blocked && targetData.username.length() > 0
+                        && targetData.discoverable) {
+                    ProfileClient.claimUsername(token, targetUid,
+                            targetData.username, targetData.usernameLower(),
+                            true, targetData.publicId, verified);
+                }
+                if (!ok) {
+                    targetData.verified = oldVerified;
+                }
+            }
+            boolean finalOk = ok;
+            runOnUiThread(() -> {
+                setAdminBusy(false, finalOk
+                        ? (verified ? "Verified badge given." : "Verified badge removed.")
+                        : "Could not change the verified badge.");
                 if (finalOk) {
                     loadProfile();
                 }
@@ -367,7 +461,8 @@ public class UserProfileActivity extends Activity {
                             if (targetData.username.length() > 0) {
                                 ProfileClient.claimUsername(token, targetUid,
                                         targetData.username, targetData.usernameLower(),
-                                        targetData.discoverable, newId);
+                                        targetData.discoverable, newId,
+                                        targetData.verified);
                             }
                             if (oldId > 0) {
                                 ProfileClient.releasePublicId(token, oldId);

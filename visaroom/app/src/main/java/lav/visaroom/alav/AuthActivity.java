@@ -125,6 +125,7 @@ public class AuthActivity extends Activity {
         data.showBio = prefs.getBoolean("show_bio", true);
         data.showAvatar = prefs.getBoolean("show_avatar", true);
         data.showId = prefs.getBoolean("show_id", true);
+        data.verified = prefs.getBoolean("verified", false);
         return data;
     }
 

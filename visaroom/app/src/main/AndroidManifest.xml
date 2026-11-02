@@ -36,6 +36,11 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".DirectChatActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".UserProfileActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

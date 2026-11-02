@@ -9,7 +9,10 @@ rules_version = '2';
 // Admin authority comes from the Firebase Auth EMAIL below — never from a
 // username, which anybody could claim.
 // Registration auto-generates public IDs in 100000-5000000. Only the admin
-// may assign any other positive ID (1-999999999999) or block an account.
+// may assign any other positive ID (1-999999999999), block an account or
+// grant/remove its verified badge. Ordinary accounts start unverified.
+// VRProto direct chats are cloud-only: chats/{chatId}/messages/{messageId}
+// plus each participant's cloud index at users/{uid}/chats/{chatId}.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -40,6 +43,121 @@ service cloud.firestore {
       return activeSignedIn()
         && exists(/databases/$(database)/documents/chats/$(chatId))
         && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+    }
+
+    function profileVerified(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.get('verified', false) == true;
+    }
+
+    function ownVerifiedMatches(data) {
+      return signedIn()
+        && data.get('verified', false) == profileVerified(request.auth.uid);
+    }
+
+    function directoryVerifiedMatches(data) {
+      return !('verified' in data)
+        || data.verified == profileVerified(data.uid);
+    }
+
+    function sameVerified(data) {
+      return data.get('verified', false) == resource.data.get('verified', false);
+    }
+
+    function validUidValue(value) {
+      return value is string && value.size() > 0 && value.size() <= 128;
+    }
+
+    function chatData(chatId) {
+      return get(/databases/$(database)/documents/chats/$(chatId)).data;
+    }
+
+    function chatPairData(uid, peerUid, chat) {
+      return chat.participants is list
+        && uid in chat.participants
+        && peerUid in chat.participants
+        && uid != peerUid;
+    }
+
+    function chatPair(uid, peerUid, chatId) {
+      return exists(/databases/$(database)/documents/chats/$(chatId))
+        && chatPairData(uid, peerUid, chatData(chatId));
+    }
+
+    function messageMatches(data, message) {
+      return message.get('senderUid', '') == data.lastSenderUid
+        && message.get('text', '') == data.lastMessageText
+        && message.get('createdAt', 0) == data.lastMessageAt;
+    }
+
+    function lastMessageMatches(chatId, data) {
+      return data.lastMessageId is string
+        && data.lastMessageId.matches('^[A-Za-z0-9_-]{0,80}$')
+        && ((data.lastMessageId == ''
+              && data.lastMessageAt == 0
+              && data.lastMessageText == ''
+              && data.lastSenderUid == '')
+          || (exists(/databases/$(database)/documents/chats/$(chatId)/messages/$(data.lastMessageId))
+              && messageMatches(data,
+                  get(/databases/$(database)/documents/chats/$(chatId)/messages/$(data.lastMessageId)).data)));
+    }
+
+    function validDirectChat(data) {
+      return data.keys().hasOnly(['participants', 'type', 'protocol',
+            'createdAt', 'updatedAt', 'lastMessageText', 'lastMessageAt',
+            'lastSenderUid', 'lastMessageId'])
+        && data.keys().hasAll(['participants', 'type', 'protocol',
+            'createdAt', 'updatedAt', 'lastMessageText', 'lastMessageAt',
+            'lastSenderUid', 'lastMessageId'])
+        && data.participants is list
+        && data.participants.size() == 2
+        && validUidValue(data.participants[0])
+        && validUidValue(data.participants[1])
+        && data.participants[0] != data.participants[1]
+        && data.type == 'direct'
+        && data.protocol == 'VRProto/1'
+        && data.createdAt is int && data.createdAt > 0
+        && data.updatedAt is int && data.updatedAt >= data.createdAt
+        && data.lastMessageText is string
+        && data.lastMessageText.size() <= 4000
+        && data.lastMessageAt is int && data.lastMessageAt >= 0
+        && data.lastSenderUid is string && data.lastSenderUid.size() <= 128
+        && data.lastMessageId is string && data.lastMessageId.size() <= 80;
+    }
+
+    function validChatIndex(data, uid, chatId) {
+      return data.keys().hasOnly(['chatId', 'peerUid', 'updatedAt',
+            'lastMessageText', 'lastMessageAt', 'lastSenderUid',
+            'lastMessageId', 'lastReadAt'])
+        && data.keys().hasAll(['chatId', 'peerUid', 'updatedAt',
+            'lastMessageText', 'lastMessageAt', 'lastSenderUid',
+            'lastMessageId', 'lastReadAt'])
+        && data.chatId == chatId
+        && validUidValue(data.peerUid)
+        && chatPair(uid, data.peerUid, chatId)
+        && data.updatedAt is int && data.updatedAt >= 0
+        && data.lastMessageText is string
+        && data.lastMessageText.size() <= 4000
+        && data.lastMessageAt is int && data.lastMessageAt >= 0
+        && data.lastSenderUid is string && data.lastSenderUid.size() <= 128
+        && data.lastMessageId is string && data.lastMessageId.size() <= 80
+        && data.lastReadAt is int && data.lastReadAt >= 0;
+    }
+
+    function validDirectMessage(data, messageId) {
+      return data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
+            'text', 'createdAt', 'clientId'])
+        && data.keys().hasAll(['protocolVersion', 'type', 'senderUid',
+            'text', 'createdAt', 'clientId'])
+        && data.protocolVersion == 1
+        && data.type == 'text'
+        && data.senderUid == request.auth.uid
+        && data.text is string
+        && data.text.size() > 0
+        && data.text.size() <= 4000
+        && data.createdAt is int && data.createdAt > 0
+        && data.clientId == messageId
+        && messageId.matches('^[A-Za-z0-9_-]{8,80}$');
     }
 
     function validPublicIdValue(data, allowAny) {
@@ -80,6 +198,7 @@ service cloud.firestore {
         && (!('showAvatar' in data) || data.showAvatar is bool)
         && (!('showId' in data) || data.showId is bool)
         && (!('blocked' in data) || data.blocked is bool)
+        && (!('verified' in data) || data.verified is bool)
         && validPublicIdValue(data, allowAnyPublicId);
     }
 
@@ -87,7 +206,7 @@ service cloud.firestore {
       return data.keys().hasOnly(['email', 'username', 'bio', 'hasAvatar',
             'avatarUpdatedAt', 'discoverable', 'publicId', 'twoFaEnabled',
             'twoFaVerifier', 'showBio', 'showAvatar', 'showId',
-            'blocked', 'blockedAt'])
+            'blocked', 'blockedAt', 'verified'])
         && data.email is string
         && data.email.size() <= 320
         && data.email == expectedEmail
@@ -104,7 +223,7 @@ service cloud.firestore {
     function validPublicProfile(data, allowAnyPublicId) {
       return data.keys().hasOnly(['username', 'bio', 'hasAvatar',
             'avatarUpdatedAt', 'publicId', 'showBio', 'showAvatar', 'showId',
-            'blocked'])
+            'blocked', 'verified'])
         && validCommon(data, allowAnyPublicId);
     }
 
@@ -122,15 +241,18 @@ service cloud.firestore {
       allow create: if isOwner(uid)
         && request.resource.data.get('blocked', false) == false
         && request.resource.data.get('blockedAt', 0) == 0
+        && request.resource.data.get('verified', false) == false
         && validPrivateProfile(request.resource.data,
             request.auth.token.email, false);
       // The owner can edit only while not blocked and can never change
-      // blocked/blockedAt. An existing admin-assigned arbitrary ID may be
-      // kept unchanged. The admin can moderate, set any positive ID and
-      // block/unblock, but can never change the account email.
+      // blocked/blockedAt or verified. An existing admin-assigned
+      // arbitrary ID may be kept unchanged. The admin can moderate, set
+      // any positive ID, block/unblock and grant/remove the verified
+      // badge, but can never change the account email.
       allow update: if (isOwner(uid)
             && resource.data.get('blocked', false) == false
             && sameBlocked(request.resource.data)
+            && sameVerified(request.resource.data)
             && (validPrivateProfile(request.resource.data,
                   request.auth.token.email, false)
               || (validPrivateProfile(request.resource.data,
@@ -141,9 +263,46 @@ service cloud.firestore {
                 resource.data.email, true));
       allow delete: if false;
 
+      // Cloud chat-list/read-state index for this account. A participant
+      // may create/update the other side's preview after sending, but a
+      // non-owner can never change that side's lastReadAt. Message text
+      // itself is never stored only here; this is just an index.
       match /chats/{chatId} {
-        allow get, list: if isOwner(uid) && !accountBlocked(uid);
-        allow write: if false; // enable in the messaging step, server-side first
+        allow get: if (isOwner(uid) && !accountBlocked(uid))
+          || (isParticipant(chatId)
+            && resource.data.peerUid == request.auth.uid);
+        allow list: if isOwner(uid) && !accountBlocked(uid);
+        allow create: if isParticipant(chatId)
+          && chatId.matches('^vrp1_[0-9a-f]{64}$')
+          && validChatIndex(request.resource.data, uid, chatId)
+          && lastMessageMatches(chatId, request.resource.data)
+          && request.resource.data.lastMessageAt == 0
+          && request.resource.data.lastReadAt == 0
+          && (uid == request.auth.uid
+            || request.resource.data.peerUid == request.auth.uid);
+        allow update: if validChatIndex(request.resource.data, uid, chatId)
+          && lastMessageMatches(chatId, request.resource.data)
+          && ((isOwner(uid)
+                && !accountBlocked(uid)
+                && request.resource.data.chatId == resource.data.chatId
+                && request.resource.data.peerUid == resource.data.peerUid
+                && request.resource.data.updatedAt == resource.data.updatedAt
+                && request.resource.data.lastMessageText == resource.data.lastMessageText
+                && request.resource.data.lastMessageAt == resource.data.lastMessageAt
+                && request.resource.data.lastSenderUid == resource.data.lastSenderUid
+                && request.resource.data.lastMessageId == resource.data.lastMessageId
+                && request.resource.data.lastReadAt >= resource.data.lastReadAt)
+            || (isParticipant(chatId)
+                && request.resource.data.lastSenderUid == request.auth.uid
+                && request.resource.data.updatedAt == request.resource.data.lastMessageAt
+                && request.resource.data.updatedAt >= resource.data.updatedAt
+                && request.resource.data.lastMessageAt >= resource.data.lastMessageAt
+                && ((uid == request.auth.uid
+                      && request.resource.data.lastReadAt >= resource.data.lastReadAt)
+                  || (uid != request.auth.uid
+                      && resource.data.peerUid == request.auth.uid
+                      && request.resource.data.lastReadAt == resource.data.lastReadAt))));
+        allow delete: if false;
       }
 
       match /{sub=**} {
@@ -158,6 +317,7 @@ service cloud.firestore {
       allow create: if (isOwner(uid)
             && !accountBlocked(uid)
             && request.resource.data.get('blocked', false) == false
+            && ownVerifiedMatches(request.resource.data)
             && (validPublicProfile(request.resource.data, false)
               || (validPublicProfile(request.resource.data, true)
                 && ownPublicIdMatches(request.resource.data))))
@@ -166,6 +326,8 @@ service cloud.firestore {
             && !accountBlocked(uid)
             && resource.data.get('blocked', false) == false
             && request.resource.data.get('blocked', false) == false
+            && (sameVerified(request.resource.data)
+              || ownVerifiedMatches(request.resource.data))
             && (validPublicProfile(request.resource.data, false)
               || (validPublicProfile(request.resource.data, true)
                 && samePublicId(request.resource.data))))
@@ -193,7 +355,8 @@ service cloud.firestore {
     match /usernames/{usernameLower} {
       allow get, list: if activeSignedIn() || isAdmin();
       allow create: if request.resource.data.keys().hasOnly(
-            ['uid', 'username', 'usernameLower', 'publicId'])
+            ['uid', 'username', 'usernameLower', 'publicId', 'verified'])
+        && directoryVerifiedMatches(request.resource.data)
         && request.resource.data.usernameLower == usernameLower
         && usernameLower.matches('^[a-z0-9_]{3,24}$')
         && request.resource.data.username is string
@@ -206,7 +369,8 @@ service cloud.firestore {
           || (isAdmin()
               && validPublicIdValue(request.resource.data, true)));
       allow update: if request.resource.data.keys().hasOnly(
-            ['uid', 'username', 'usernameLower', 'publicId'])
+            ['uid', 'username', 'usernameLower', 'publicId', 'verified'])
+        && directoryVerifiedMatches(request.resource.data)
         && request.resource.data.usernameLower == usernameLower
         && ((activeSignedIn()
               && resource.data.uid == request.auth.uid
@@ -239,15 +403,37 @@ service cloud.firestore {
         || isAdmin();
     }
 
-    // --- Chats (data model for the messaging step, writes locked) ----------
+    // --- VRProto direct chats (global Firestore history) -------------------
     match /chats/{chatId} {
       allow get: if isParticipant(chatId);
       allow list: if false;
-      allow create, update, delete: if false;
+      allow create: if activeSignedIn()
+        && chatId.matches('^vrp1_[0-9a-f]{64}$')
+        && validDirectChat(request.resource.data)
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.updatedAt == request.resource.data.createdAt
+        && request.resource.data.lastMessageText == ''
+        && request.resource.data.lastMessageAt == 0
+        && request.resource.data.lastSenderUid == ''
+        && request.resource.data.lastMessageId == '';
+      allow update: if isParticipant(chatId)
+        && validDirectChat(request.resource.data)
+        && lastMessageMatches(chatId, request.resource.data)
+        && request.resource.data.participants == resource.data.participants
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.protocol == resource.data.protocol
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.lastSenderUid == request.auth.uid
+        && request.resource.data.updatedAt == request.resource.data.lastMessageAt
+        && request.resource.data.updatedAt >= resource.data.updatedAt
+        && request.resource.data.lastMessageAt >= resource.data.lastMessageAt;
+      allow delete: if false;
 
       match /messages/{messageId} {
         allow get, list: if isParticipant(chatId);
-        allow create, update, delete: if false;
+        allow create: if isParticipant(chatId)
+          && validDirectMessage(request.resource.data, messageId);
+        allow update, delete: if false;
       }
 
       match /{sub=**} {

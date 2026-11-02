@@ -34,6 +34,7 @@ final class ProfileClient {
         String uid = "";
         String username = "";
         long publicId;
+        boolean verified;
     }
 
     static final class PublicProfile {
@@ -46,6 +47,7 @@ final class ProfileClient {
         boolean showAvatar = true;
         boolean showId = true;
         boolean blocked;
+        boolean verified;
     }
 
     static final class Announcement {
@@ -87,6 +89,7 @@ final class ProfileClient {
             out.showId = bool(fields, "showId", out.showId);
             out.blocked = bool(fields, "blocked", out.blocked);
             out.blockedAt = num(fields, "blockedAt", out.blockedAt);
+            out.verified = bool(fields, "verified", out.verified);
             return true;
         } catch (Exception ignored) {
             return false;
@@ -114,6 +117,7 @@ final class ProfileClient {
             putBool(mine, "showId", data.showId);
             putBool(mine, "blocked", data.blocked);
             putNum(mine, "blockedAt", data.blockedAt);
+            putBool(mine, "verified", data.verified);
             JSONObject mineBody = new JSONObject();
             mineBody.put("fields", mine);
             Response r1 = request("PATCH", Vault.firestoreBaseUrl() + "users/" + uid,
@@ -136,6 +140,7 @@ final class ProfileClient {
             putBool(pub, "showAvatar", data.showAvatar);
             putBool(pub, "showId", data.showId);
             putBool(pub, "blocked", data.blocked);
+            putBool(pub, "verified", data.verified);
             JSONObject pubBody = new JSONObject();
             pubBody.put("fields", pub);
             Response r2 = request("PATCH", Vault.firestoreBaseUrl() + "profiles/" + uid,
@@ -175,13 +180,14 @@ final class ProfileClient {
         if (saved && !data.blocked && data.username != null
                 && data.username.trim().length() > 0 && data.discoverable) {
             claimUsername(idToken, uid, data.username,
-                    data.usernameLower(), true, data.publicId);
+                    data.usernameLower(), true, data.publicId, data.verified);
         }
         return saved;
     }
 
     static int claimUsername(String idToken, String uid, String username,
-                             String oldLower, boolean discoverable, long publicId) {
+                             String oldLower, boolean discoverable, long publicId,
+                             boolean verified) {
         String lower = username == null ? ""
                 : username.trim().toLowerCase(java.util.Locale.ROOT);
         try {
@@ -209,6 +215,7 @@ final class ProfileClient {
             if (publicId > 0) {
                 putNum(fields, "publicId", publicId);
             }
+            putBool(fields, "verified", verified);
             JSONObject body = new JSONObject();
             body.put("fields", fields);
             Response r = request("PATCH", Vault.firestoreBaseUrl() + "usernames/" + lower,
@@ -289,6 +296,7 @@ final class ProfileClient {
                 s.uid = str(fields, "uid", "");
                 s.username = str(fields, "username", "");
                 s.publicId = num(fields, "publicId", 0);
+                s.verified = bool(fields, "verified", false);
                 if (s.uid.length() > 0 && s.username.length() > 0) {
                     results.add(s);
                 }
@@ -349,6 +357,7 @@ final class ProfileClient {
                 p.showAvatar = bool(fields, "showAvatar", true);
                 p.showId = bool(fields, "showId", true);
                 p.blocked = bool(fields, "blocked", false);
+                p.verified = bool(fields, "verified", false);
             }
             return p;
         } catch (Exception ignored) {

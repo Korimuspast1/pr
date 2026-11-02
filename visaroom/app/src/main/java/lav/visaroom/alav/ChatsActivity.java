@@ -22,6 +22,7 @@ import android.text.Editable;
 import android.text.InputType;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
@@ -43,6 +44,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -71,6 +76,13 @@ public class ChatsActivity extends Activity {
     private TextView searchHint;
     private TextView peopleLabel;
     private LinearLayout globalResults;
+    private TextView directLabel;
+    private LinearLayout directChats;
+    private TextView directEmpty;
+    private final List<VrProto.ChatSummary> directChatList = new ArrayList<>();
+    private boolean directChatsLoading;
+    private boolean directChatsLoaded;
+    private Runnable directChatsPoll;
 
     private ImageView profileAvatar;
     private EditText usernameInput;
@@ -101,6 +113,7 @@ public class ChatsActivity extends Activity {
     private boolean showBioState = true;
     private boolean showAvatarState = true;
     private boolean showIdState = true;
+    private boolean verifiedState;
     private boolean applyingSettings;
 
     private String userId = "";
@@ -139,6 +152,7 @@ public class ChatsActivity extends Activity {
         displayAvatar();
         applyChatTextSize();
         loadProfileFromCloud();
+        loadDirectChats();
     }
 
     @Override
@@ -146,6 +160,14 @@ public class ChatsActivity extends Activity {
         super.onResume();
         updateAdminUi();
         updateAccountsUi();
+        loadDirectChats();
+        startDirectChatsPolling();
+    }
+
+    @Override
+    protected void onPause() {
+        stopDirectChatsPolling();
+        super.onPause();
     }
 
     @Override
@@ -184,6 +206,9 @@ public class ChatsActivity extends Activity {
         searchHint = findViewById(R.id.search_hint);
         peopleLabel = findViewById(R.id.people_label);
         globalResults = findViewById(R.id.global_results);
+        directLabel = findViewById(R.id.direct_label);
+        directChats = findViewById(R.id.direct_chats);
+        directEmpty = findViewById(R.id.direct_empty);
 
         profileAvatar = findViewById(R.id.profile_avatar);
         usernameInput = findViewById(R.id.profile_username);
@@ -718,6 +743,7 @@ public class ChatsActivity extends Activity {
         officialChat.setVisibility(officialMatch ? View.VISIBLE : View.GONE);
         findViewById(R.id.chats_label).setVisibility(
                 officialMatch ? View.VISIBLE : View.GONE);
+        int directShown = renderDirectChats();
 
         if (globalSearchRunnable != null) {
             handler.removeCallbacks(globalSearchRunnable);
@@ -734,13 +760,224 @@ public class ChatsActivity extends Activity {
             globalResults.removeAllViews();
             peopleLabel.setVisibility(View.GONE);
             searchHint.setVisibility(View.VISIBLE);
-            noChats.setVisibility(officialMatch ? View.GONE : View.VISIBLE);
+            noChats.setVisibility(officialMatch || directShown > 0
+                    ? View.GONE : View.VISIBLE);
             return;
         }
         searchHint.setVisibility(View.GONE);
         pendingGlobalQuery = q;
         globalSearchRunnable = () -> runGlobalSearch(q, officialMatch);
         handler.postDelayed(globalSearchRunnable, 350);
+    }
+
+    private void startDirectChatsPolling() {
+        stopDirectChatsPolling();
+        directChatsPoll = new Runnable() {
+            @Override
+            public void run() {
+                loadDirectChats();
+                handler.postDelayed(this, 3000);
+            }
+        };
+        handler.postDelayed(directChatsPoll, 3000);
+    }
+
+    private void stopDirectChatsPolling() {
+        if (directChatsPoll != null) {
+            handler.removeCallbacks(directChatsPoll);
+            directChatsPoll = null;
+        }
+    }
+
+    private void loadDirectChats() {
+        if (directChatsLoading || userId.length() == 0) {
+            return;
+        }
+        directChatsLoading = true;
+        executor.execute(() -> {
+            String token = ensureIdToken();
+            List<VrProto.ChatSummary> loaded = token == null ? null
+                    : VrProto.listChats(token, userId);
+            runOnUiThread(() -> {
+                directChatsLoading = false;
+                if (loaded != null) {
+                    directChatList.clear();
+                    directChatList.addAll(loaded);
+                    directChatsLoaded = true;
+                    renderDirectChats();
+                }
+            });
+        });
+    }
+
+    private boolean directMatches(VrProto.ChatSummary summary, String q) {
+        if (q.length() == 0) {
+            return true;
+        }
+        return summary.username.toLowerCase(Locale.ROOT).contains(q)
+                || summary.lastText.toLowerCase(Locale.ROOT).contains(q)
+                || String.valueOf(summary.publicId).equals(q);
+    }
+
+    private int directMatchCount() {
+        String q = cleanQuery(searchInput == null ? "" : searchInput.getText().toString());
+        int count = 0;
+        for (VrProto.ChatSummary summary : directChatList) {
+            if (directMatches(summary, q)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int renderDirectChats() {
+        if (directChats == null) {
+            return 0;
+        }
+        String q = cleanQuery(searchInput == null ? "" : searchInput.getText().toString());
+        directChats.removeAllViews();
+        int shown = 0;
+        for (VrProto.ChatSummary summary : directChatList) {
+            if (!directMatches(summary, q)) {
+                continue;
+            }
+            directChats.addView(makeDirectChatRow(summary));
+            View divider = new View(this);
+            divider.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(1)));
+            divider.setBackgroundColor(getColor(R.color.border));
+            directChats.addView(divider);
+            shown++;
+        }
+        directLabel.setVisibility(shown > 0 ? View.VISIBLE : View.GONE);
+        directEmpty.setVisibility(q.length() == 0 && directChatsLoaded
+                && directChatList.isEmpty() ? View.VISIBLE : View.GONE);
+        if (q.length() > 0 && shown > 0) {
+            noChats.setVisibility(View.GONE);
+        }
+        return shown;
+    }
+
+    private ImageView verifiedIcon() {
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.ic_verified);
+        icon.setContentDescription("Verified");
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(16), dp(16));
+        params.leftMargin = dp(5);
+        icon.setLayoutParams(params);
+        return icon;
+    }
+
+    private View makeDirectChatRow(VrProto.ChatSummary summary) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(16), dp(10), dp(16), dp(10));
+        row.setBackgroundResource(R.drawable.bg_chat_row);
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.ic_nav_profile);
+        icon.setColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN);
+        icon.setClickable(true);
+        icon.setFocusable(true);
+        row.addView(icon, new LinearLayout.LayoutParams(dp(42), dp(42)));
+
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setClickable(true);
+        texts.setFocusable(true);
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        textParams.leftMargin = dp(12);
+
+        LinearLayout nameRow = new LinearLayout(this);
+        nameRow.setOrientation(LinearLayout.HORIZONTAL);
+        nameRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView name = new TextView(this);
+        name.setText(summary.username.length() > 0
+                ? "@" + summary.username
+                : summary.publicId > 0 ? "ID " + summary.publicId : "User");
+        name.setTextColor(getColor(R.color.text_main));
+        name.setTextSize(AppSettings.textSizeSp(this));
+        name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        nameRow.addView(name);
+        if (summary.verified) {
+            nameRow.addView(verifiedIcon());
+        }
+        texts.addView(nameRow);
+
+        TextView preview = new TextView(this);
+        String last = summary.lastText.replace('
+', ' ').trim();
+        if (summary.blocked) {
+            preview.setText("Account blocked");
+        } else {
+            preview.setText(summary.lastSenderUid.equals(userId) && last.length() > 0
+                    ? "You: " + last : last);
+        }
+        preview.setTextColor(getColor(R.color.text_secondary));
+        preview.setTextSize(Math.max(12, AppSettings.textSizeSp(this) - 3));
+        preview.setSingleLine(true);
+        preview.setEllipsize(TextUtils.TruncateAt.END);
+        texts.addView(preview);
+        row.addView(texts, textParams);
+
+        LinearLayout side = new LinearLayout(this);
+        side.setOrientation(LinearLayout.VERTICAL);
+        side.setGravity(Gravity.END);
+        LinearLayout.LayoutParams sideParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        sideParams.leftMargin = dp(10);
+        if (AppSettings.showTimestamps(this) && summary.lastMessageAt > 0) {
+            TextView time = new TextView(this);
+            time.setText(formatChatTime(summary.lastMessageAt));
+            time.setTextColor(getColor(R.color.text_secondary));
+            time.setTextSize(12);
+            time.setGravity(Gravity.END);
+            side.addView(time);
+        }
+        boolean unread = !summary.lastSenderUid.equals(userId)
+                && summary.lastMessageAt > summary.lastReadAt;
+        if (unread) {
+            View dot = new View(this);
+            dot.setBackgroundResource(R.drawable.bg_unread_dot);
+            LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(9), dp(9));
+            dotParams.topMargin = dp(7);
+            dotParams.gravity = Gravity.END;
+            side.addView(dot, dotParams);
+        }
+        row.addView(side, sideParams);
+
+        icon.setOnClickListener(v -> showPublicProfile(summary.peerUid, summary.username));
+        texts.setOnClickListener(v -> showPublicProfile(summary.peerUid, summary.username));
+        row.setOnClickListener(v -> openDirectChat(summary.peerUid, summary.username));
+        return row;
+    }
+
+    private String formatChatTime(long millis) {
+        Calendar then = Calendar.getInstance();
+        then.setTimeInMillis(millis);
+        Calendar now = Calendar.getInstance();
+        boolean sameDay = then.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+                && then.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR);
+        return new SimpleDateFormat(sameDay ? "HH:mm" : "dd.MM", Locale.ROOT)
+                .format(new Date(millis));
+    }
+
+    private void openDirectChat(String uid, String username) {
+        Intent intent = new Intent(this, DirectChatActivity.class);
+        intent.putExtra(DirectChatActivity.EXTRA_UID, uid);
+        intent.putExtra(DirectChatActivity.EXTRA_USERNAME, username);
+        startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
     private void runGlobalSearch(String query, boolean officialMatch) {
@@ -775,7 +1012,8 @@ public class ChatsActivity extends Activity {
             shown++;
         }
         peopleLabel.setVisibility(shown > 0 ? View.VISIBLE : View.GONE);
-        noChats.setVisibility(shown == 0 && !officialMatch ? View.VISIBLE : View.GONE);
+        noChats.setVisibility(shown == 0 && !officialMatch && directMatchCount() == 0
+                ? View.VISIBLE : View.GONE);
     }
 
     private View makeUserRow(ProfileClient.SearchResult result) {
@@ -803,12 +1041,19 @@ public class ChatsActivity extends Activity {
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         textParams.leftMargin = dp(12);
 
+        LinearLayout nameRow = new LinearLayout(this);
+        nameRow.setOrientation(LinearLayout.HORIZONTAL);
+        nameRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView name = new TextView(this);
         name.setText("@" + result.username);
         name.setTextColor(getColor(R.color.text_main));
         name.setTextSize(15);
         name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        texts.addView(name);
+        nameRow.addView(name);
+        if (result.verified) {
+            nameRow.addView(verifiedIcon());
+        }
+        texts.addView(nameRow);
 
         TextView sub = new TextView(this);
         sub.setText(result.publicId > 0 ? "ID " + result.publicId : "User");
@@ -861,6 +1106,7 @@ public class ChatsActivity extends Activity {
         showBioState = p.getBoolean("show_bio", true);
         showAvatarState = p.getBoolean("show_avatar", true);
         showIdState = p.getBoolean("show_id", true);
+        verifiedState = p.getBoolean("verified", false);
         applyingSettings = true;
         if (showBioSwitch != null) {
             showBioSwitch.setChecked(showBioState);
@@ -884,6 +1130,7 @@ public class ChatsActivity extends Activity {
                 .putBoolean("show_bio", showBioState)
                 .putBoolean("show_avatar", showAvatarState)
                 .putBoolean("show_id", showIdState)
+                .putBoolean("verified", verifiedState)
                 .apply();
     }
 
@@ -1070,6 +1317,7 @@ public class ChatsActivity extends Activity {
         data.showBio = showBioState;
         data.showAvatar = showAvatarState;
         data.showId = showIdState;
+        data.verified = verifiedState;
         return data;
     }
 
@@ -1360,6 +1608,7 @@ public class ChatsActivity extends Activity {
                     showBioState = data.showBio;
                     showAvatarState = data.showAvatar;
                     showIdState = data.showId;
+                    verifiedState = data.verified;
                     applyingSettings = true;
                     if (showBioSwitch != null) {
                         showBioSwitch.setChecked(showBioState);
@@ -1415,7 +1664,7 @@ public class ChatsActivity extends Activity {
                     }
                 }
                 claim = ProfileClient.claimUsername(token, userId, finalUsername,
-                        originalUsernameLower, discoverable, publicId);
+                        originalUsernameLower, discoverable, publicId, verifiedState);
                 if (claim == ProfileClient.USERNAME_OK) {
                     ProfileData data = new ProfileData();
                     data.email = userEmail;
@@ -1428,6 +1677,7 @@ public class ChatsActivity extends Activity {
                     data.showBio = showBioState;
                     data.showAvatar = showAvatarState;
                     data.showId = showIdState;
+                    data.verified = verifiedState;
                     data.hasAvatar = cloudAvatar;
                     data.avatarUpdatedAt = cloudAvatarAt;
                     savedCloud = ProfileClient.saveMyProfile(token, userId, data);
@@ -1551,6 +1801,7 @@ public class ChatsActivity extends Activity {
             data.showBio = showBioState;
             data.showAvatar = showAvatarState;
             data.showId = showIdState;
+            data.verified = verifiedState;
             data.hasAvatar = hasAvatar;
             data.avatarUpdatedAt = avatarUpdatedAt;
             ProfileClient.saveMyProfile(updated.idToken, userId, data);

@@ -18,6 +18,9 @@ final class ProfileData {
     boolean blocked;
     long blockedAt;
 
+    /** Verified badge. Only an admin may grant or remove it. */
+    boolean verified;
+
     boolean twoFaEnabled;
     String twoFaVerifier = "";
 
