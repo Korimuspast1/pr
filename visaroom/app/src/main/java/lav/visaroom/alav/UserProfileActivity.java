@@ -91,12 +91,12 @@ public class UserProfileActivity extends Activity {
         verifyButton = findViewById(R.id.admin_verified);
         messageButton = findViewById(R.id.message_button);
 
-        nameView.setText(fallbackUsername.length() > 0 ? "@" + fallbackUsername : "User");
-        idView.setText("Loading...");
+        nameView.setText(fallbackUsername.length() > 0 ? "@" + fallbackUsername : getString(R.string.user));
+        idView.setText(getString(R.string.loading));
         bioView.setText("");
 
         messageButton.setEnabled(false);
-        messageButton.setText("Loading...");
+        messageButton.setText(getString(R.string.loading));
         findViewById(R.id.back).setOnClickListener(v -> finishWithAnimation());
         messageButton.setOnClickListener(v -> openDirectChat());
         blockButton.setOnClickListener(v -> confirmToggleBlock());
@@ -157,7 +157,7 @@ public class UserProfileActivity extends Activity {
     }
 
     private void loadProfile() {
-        statusView.setText("Loading...");
+        statusView.setText(getString(R.string.loading));
         executor.execute(() -> {
             String token = ensureToken();
             ProfileClient.PublicProfile pub = token == null
@@ -191,7 +191,7 @@ public class UserProfileActivity extends Activity {
         nameView.setText(username.length() > 0 ? "@" + username : "No username");
         boolean verified = priv != null ? priv.verified : pub.verified;
         verifiedIcon.setVisibility(verified ? View.VISIBLE : View.GONE);
-        kindView.setText(verified ? "Verified user" : "User");
+        kindView.setText(verified ? "Verified user" : getString(R.string.user));
 
         long shownId = iAmAdmin && priv != null && priv.publicId > 0
                 ? priv.publicId : pub.publicId;
@@ -217,20 +217,20 @@ public class UserProfileActivity extends Activity {
         boolean showAdmin = iAmAdmin && targetUid.length() > 0;
         adminPanel.setVisibility(showAdmin ? View.VISIBLE : View.GONE);
         boolean blocked = priv != null ? priv.blocked : pub.blocked;
-        blockButton.setText(blocked ? "Unblock account" : "Block account");
-        verifyButton.setText(verified ? "Remove verified badge" : "Give verified badge");
+        blockButton.setText(blocked ? "Unblock account" : getString(R.string.block_account));
+        verifyButton.setText(verified ? "Remove verified badge" : getString(R.string.give_verified_badge));
         if (targetUid.length() == 0 || targetUid.equals(myUid)) {
             messageButton.setText("Your profile");
             messageButton.setEnabled(false);
         } else if (blocked) {
-            messageButton.setText("Account blocked");
+            messageButton.setText(getString(R.string.account_blocked));
             messageButton.setEnabled(false);
         } else {
-            messageButton.setText("Message");
+            messageButton.setText(getString(R.string.message));
             messageButton.setEnabled(true);
         }
         if (blocked) {
-            statusView.setText("Account blocked");
+            statusView.setText(getString(R.string.account_blocked));
         } else if (iAmAdmin && priv == null) {
             statusView.setText(
                     "Admin data could not be loaded. Publish the Firebase rules first.");
@@ -273,7 +273,7 @@ public class UserProfileActivity extends Activity {
     private void confirm(String title, String message, Action action) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
                 .setTitle(title)
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .setPositiveButton("Confirm", (d, w) -> action.run());
         if (message != null) {
             builder.setMessage(message);
@@ -432,11 +432,11 @@ public class UserProfileActivity extends Activity {
         input.setBackgroundResource(R.drawable.bg_input);
         input.setPadding(dp(14), 0, dp(14), 0);
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Change user ID")
+                .setTitle(getString(R.string.change_user_id))
                 .setView(input)
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .setNeutralButton("Random", null)
-                .setPositiveButton("Change", null)
+                .setPositiveButton(getString(R.string.change), null)
                 .create();
         dialog.show();
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v ->

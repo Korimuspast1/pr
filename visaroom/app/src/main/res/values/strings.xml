@@ -100,7 +100,7 @@
     <string name="account">Account</string>
     <string name="settings_folder_chats_desc">Language, appearance, text size, background, timestamps, Enter to send</string>
     <string name="settings_folder_notifications_desc">Message notifications and sounds</string>
-    <string name="settings_folder_security_desc">Two-step verification</string>
+    <string name="settings_folder_security_desc">Two-step verification and end-to-end encryption</string>
     <string name="settings_folder_privacy_desc">Read receipts, bio, photo and ID visibility</string>
     <string name="settings_folder_moderation_desc">Admin tools: find users, block accounts, set any ID</string>
     <string name="settings_folder_account_desc">Saved accounts and sign out</string>

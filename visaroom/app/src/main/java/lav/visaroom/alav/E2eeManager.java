@@ -22,6 +22,7 @@ final class E2eeManager {
     static final int PEER_UNAVAILABLE = 4;
 
     private static final long PREPARATION_CACHE_MS = 5L * 60L * 1000L;
+    private static final long PEER_BUNDLE_CACHE_MS = 5L * 60L * 1000L;
     private static final Object LOCK = new Object();
 
     private static E2eeCrypto.Session cachedSession;
@@ -280,7 +281,12 @@ final class E2eeManager {
             return out;
         }
         E2eeCrypto.PublicBundle cached = session.bundleFor(peerUid);
-        if (cached != null && cached.verifyForEncryption(System.currentTimeMillis())) {
+        long now = System.currentTimeMillis();
+        Long checkedAt = session.peerBundleCheckedAt.get(peerUid);
+        if (cached != null && checkedAt != null
+                && now - checkedAt >= 0
+                && now - checkedAt < PEER_BUNDLE_CACHE_MS
+                && cached.verifyForEncryption(now)) {
             out.state = PEER_READY;
             out.bundle = cached;
             return out;
@@ -301,6 +307,8 @@ final class E2eeManager {
         }
         int pin = E2eeKeyStore.pinStatus(context, session.myUid, loaded.bundle);
         if (pin == E2eeKeyStore.PIN_CHANGED) {
+            session.peerBundles.remove(peerUid);
+            session.peerBundleCheckedAt.remove(peerUid);
             out.state = PEER_KEY_CHANGED;
             return out;
         }
@@ -314,6 +322,7 @@ final class E2eeManager {
             return out;
         }
         session.peerBundles.put(peerUid, loaded.bundle);
+        session.peerBundleCheckedAt.put(peerUid, System.currentTimeMillis());
         out.state = PEER_READY;
         return out;
     }
@@ -327,6 +336,7 @@ final class E2eeManager {
             return false;
         }
         session.peerBundles.put(bundle.uid, bundle);
+        session.peerBundleCheckedAt.put(bundle.uid, System.currentTimeMillis());
         return true;
     }
 
@@ -369,6 +379,8 @@ final class E2eeManager {
             // session object is recreated for the same account.
             if (cachedSession != null && uid.equals(cachedUid)) {
                 session.peerBundles.putAll(cachedSession.peerBundles);
+                session.peerBundleCheckedAt.putAll(
+                        cachedSession.peerBundleCheckedAt);
             }
             cachedSession = session;
             cachedUid = uid;

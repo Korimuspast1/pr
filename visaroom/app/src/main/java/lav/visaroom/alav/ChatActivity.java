@@ -189,7 +189,7 @@ public class ChatActivity extends Activity {
 
         new AlertDialog.Builder(this)
                 .setView(box)
-                .setPositiveButton("Close", null)
+                .setPositiveButton(getString(R.string.close), null)
                 .show();
     }
 
@@ -396,8 +396,8 @@ public class ChatActivity extends Activity {
         empty.addView(icon, new LinearLayout.LayoutParams(dp(44), dp(44)));
 
         TextView title = new TextView(this);
-        title.setText(query.length() > 0 ? "No messages found"
-                : loading ? "Loading..." : "No messages yet");
+        title.setText(query.length() > 0 ? getString(R.string.no_messages_found)
+                : loading ? getString(R.string.loading) : getString(R.string.no_messages_yet));
         title.setTextColor(isDark() ? Color.WHITE : getColor(R.color.text_main));
         title.setTextSize(16);
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -410,7 +410,7 @@ public class ChatActivity extends Activity {
 
         TextView text = new TextView(this);
         text.setText(query.length() > 0
-                ? "Try a different search."
+                ? getString(R.string.try_different_search)
                 : "Official announcements will appear here.");
         text.setTextColor(getColor(R.color.text_secondary));
         text.setTextSize(14);

@@ -152,6 +152,7 @@ public class DirectChatActivity extends Activity {
     private volatile int e2eeOwnState = E2eeManager.STATE_UNAVAILABLE;
     private volatile int e2eePeerState = E2eeManager.PEER_UNAVAILABLE;
     private boolean e2eeKeyChangePromptShown;
+    private String e2eeKeyChangeDismissedFingerprint = "";
     private volatile boolean legacyMigrationAttempted;
     private final Map<String, byte[]> wallpaperKeys = new HashMap<>();
     private String lastRenderSignature = "";
@@ -317,7 +318,7 @@ public class DirectChatActivity extends Activity {
                 beginVoiceRecording();
             } else {
                 Toast.makeText(this,
-                        "Microphone access is needed to record voice messages.",
+                        getString(R.string.microphone_needed),
                         Toast.LENGTH_LONG).show();
             }
         }
@@ -406,7 +407,7 @@ public class DirectChatActivity extends Activity {
         if (peerProfile != null && peerProfile.publicId > 0) {
             return "ID " + peerProfile.publicId;
         }
-        return "User";
+        return getString(R.string.user);
     }
 
     private String usernameForIntent() {
@@ -494,6 +495,12 @@ public class DirectChatActivity extends Activity {
             return true;
         }
         Toast.makeText(this, e2eeBlockedMessage(), Toast.LENGTH_LONG).show();
+        if (e2eePeerState == E2eeManager.PEER_KEY_CHANGED) {
+            // An explicit send/download attempt re-offers the safety-code
+            // check, while ordinary background polling must not repeatedly
+            // reopen a sheet the user just dismissed.
+            e2eeKeyChangeDismissedFingerprint = "";
+        }
         syncNow(false);
         return false;
     }
@@ -502,7 +509,8 @@ public class DirectChatActivity extends Activity {
         E2eeCrypto.PublicBundle bundle = pendingPeerBundle;
         E2eeCrypto.Session session = e2eeSession;
         if (isFinishing() || e2eeKeyChangePromptShown || bundle == null
-                || session == null) {
+                || session == null
+                || bundle.fingerprint().equals(e2eeKeyChangeDismissedFingerprint)) {
             return;
         }
         e2eeKeyChangePromptShown = true;
@@ -536,7 +544,7 @@ public class DirectChatActivity extends Activity {
         Button cancel = glassButton(getString(R.string.cancel), false);
         Button trust = glassButton(getString(R.string.e2ee_trust_new_key), true);
         cancel.setOnClickListener(v -> {
-            e2eeKeyChangePromptShown = false;
+            e2eeKeyChangeDismissedFingerprint = bundle.fingerprint();
             dialog.dismiss();
         });
         trust.setOnClickListener(v -> {
@@ -546,6 +554,7 @@ public class DirectChatActivity extends Activity {
                 runOnUiThread(() -> {
                     e2eeKeyChangePromptShown = false;
                     if (ok) {
+                        e2eeKeyChangeDismissedFingerprint = "";
                         pendingPeerBundle = null;
                         e2eePeerState = E2eeManager.PEER_READY;
                         lastRenderSignature = "";
@@ -567,6 +576,8 @@ public class DirectChatActivity extends Activity {
         sheet.addView(buttons, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
+        dialog.setOnCancelListener(d ->
+                e2eeKeyChangeDismissedFingerprint = bundle.fingerprint());
         dialog.setOnDismissListener(d -> e2eeKeyChangePromptShown = false);
         showGlassDialog(dialog, sheet);
     }
@@ -792,7 +803,7 @@ public class DirectChatActivity extends Activity {
         }
         boolean hasText = messageInput.getText().toString().trim().length() > 0;
         sendButton.setImageResource(hasText ? R.drawable.ic_send : R.drawable.ic_mic);
-        sendButton.setContentDescription(hasText ? "Send" : "Record voice message");
+        sendButton.setContentDescription(hasText ? getString(R.string.send) : getString(R.string.record_voice_message));
     }
 
     /** New glyphs fade/grow in over ~190 ms without changing the text. */
@@ -861,7 +872,7 @@ public class DirectChatActivity extends Activity {
             return;
         }
         if (text.length() > VrProto.MAX_TEXT) {
-            Toast.makeText(this, "Message is too long.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.message_too_long), Toast.LENGTH_SHORT).show();
             return;
         }
         if (!requireE2eeReady()) {
@@ -936,17 +947,17 @@ public class DirectChatActivity extends Activity {
     }
 
     private String senderLabelForUid(String uid) {
-        return myUid.equals(uid) ? "You" : displayName();
+        return myUid.equals(uid) ? getString(R.string.you) : displayName();
     }
 
     private String replySummaryText(String type, String text) {
         String clean = text == null ? "" : text.replace('\n', ' ').trim();
         if (VrProto.TYPE_VOICE.equals(type)) {
-            clean = "Voice message";
+            clean = getString(R.string.voice_message);
         } else if (VrProto.TYPE_WALLPAPER.equals(type)) {
-            clean = "Wallpaper suggestion";
+            clean = getString(R.string.wallpaper_suggestion);
         } else if (VrProto.TYPE_FILE.equals(type) && clean.length() == 0) {
-            clean = "File";
+            clean = getString(R.string.file);
         }
         return clean.length() <= 140 ? clean : clean.substring(0, 137) + "...";
     }
@@ -962,7 +973,7 @@ public class DirectChatActivity extends Activity {
         }
         if (message.pending || message.failed) {
             Toast.makeText(this,
-                    "You can reply after this message has been sent.",
+                    getString(R.string.reply_after_sent),
                     Toast.LENGTH_SHORT).show();
             return;
         }
@@ -1013,7 +1024,7 @@ public class DirectChatActivity extends Activity {
                 || target.decryptionFailed) {
             clearReplyTarget();
             Toast.makeText(this, failIfMissing
-                    ? "The original message is no longer available."
+                    ? getString(R.string.original_message_unavailable)
                     : "The original message is unavailable, so this will be sent without a reply.",
                     Toast.LENGTH_LONG).show();
             return !failIfMissing;
@@ -1027,7 +1038,7 @@ public class DirectChatActivity extends Activity {
     private void scrollToMessage(String messageId) {
         View target = findViewWithTagRecursive(messagesContainer, messageId);
         if (target == null) {
-            Toast.makeText(this, "The original message is not loaded.",
+            Toast.makeText(this, getString(R.string.original_message_not_loaded),
                     Toast.LENGTH_SHORT).show();
             return;
         }
@@ -1075,7 +1086,7 @@ public class DirectChatActivity extends Activity {
             if (target == null || target.pending || target.failed
                     || target.decryptionFailed) {
                 Toast.makeText(this,
-                        "The original message is no longer available.",
+                        getString(R.string.original_message_unavailable),
                         Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -1097,10 +1108,10 @@ public class DirectChatActivity extends Activity {
             String copied = VrProto.TYPE_FILE.equals(message.type)
                     ? message.fileName : message.text;
             if (VrProto.TYPE_VOICE.equals(message.type)) {
-                copied = "Voice message";
+                copied = getString(R.string.voice_message);
             }
-            clipboard.setPrimaryClip(ClipData.newPlainText("Message", copied));
-            Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
+            clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.message), copied));
+            Toast.makeText(this, getString(R.string.copied), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1206,10 +1217,10 @@ public class DirectChatActivity extends Activity {
         }
         LinearLayout sheet = createGlassSheet();
         Dialog dialog = createGlassDialog(sheet);
-        sheet.addView(sheetTitle("Message"));
+        sheet.addView(sheetTitle(getString(R.string.message)));
         boolean locked = message.decryptionFailed;
         if (!locked) {
-            sheet.addView(glassActionRow(R.drawable.ic_reply, "Reply", () -> {
+            sheet.addView(glassActionRow(R.drawable.ic_reply, getString(R.string.reply), () -> {
                 dialog.dismiss();
                 setReplyTarget(message);
             }));
@@ -1218,19 +1229,19 @@ public class DirectChatActivity extends Activity {
             boolean playing = message.id.equals(activeVoiceId)
                     && voicePlayer != null && voicePlayer.isPlaying();
             sheet.addView(glassActionRow(playing ? R.drawable.ic_pause
-                    : R.drawable.ic_play, playing ? "Pause" : "Play", () -> {
+                    : R.drawable.ic_play, playing ? getString(R.string.pause) : getString(R.string.play), () -> {
                 dialog.dismiss();
                 toggleVoicePlayback(message);
             }));
         } else if (!locked) {
-            sheet.addView(glassActionRow(R.drawable.ic_copy, "Copy", () -> {
+            sheet.addView(glassActionRow(R.drawable.ic_copy, getString(R.string.copy), () -> {
                 dialog.dismiss();
                 copyMessageText(message);
             }));
         }
         if (VrProto.TYPE_FILE.equals(message.type) && !message.pending
                 && !message.failed && !message.downloading) {
-            sheet.addView(glassActionRow(R.drawable.ic_download, "Download", () -> {
+            sheet.addView(glassActionRow(R.drawable.ic_download, getString(R.string.download), () -> {
                 dialog.dismiss();
                 requestDownload(message);
             }));
@@ -1241,13 +1252,13 @@ public class DirectChatActivity extends Activity {
         boolean canDelete = mine && !message.pending && !message.downloading
                 && !message.operationPending && !message.deleting;
         if (canEdit) {
-            sheet.addView(glassActionRow(R.drawable.ic_edit, "Edit", () -> {
+            sheet.addView(glassActionRow(R.drawable.ic_edit, getString(R.string.edit), () -> {
                 dialog.dismiss();
                 showEditMessageDialog(message);
             }));
         }
         if (canDelete) {
-            sheet.addView(glassActionRow(R.drawable.ic_delete, "Delete", () -> {
+            sheet.addView(glassActionRow(R.drawable.ic_delete, getString(R.string.delete), () -> {
                 dialog.dismiss();
                 confirmDeleteMessage(message);
             }));
@@ -1255,7 +1266,7 @@ public class DirectChatActivity extends Activity {
         View spacer = new View(this);
         sheet.addView(spacer, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(8)));
-        sheet.addView(glassActionRow(R.drawable.ic_close, "Cancel", dialog::dismiss));
+        sheet.addView(glassActionRow(R.drawable.ic_close, getString(R.string.cancel), dialog::dismiss));
         showGlassDialog(dialog, sheet);
     }
 
@@ -1266,7 +1277,7 @@ public class DirectChatActivity extends Activity {
         }
         LinearLayout sheet = createGlassSheet();
         Dialog dialog = createGlassDialog(sheet);
-        sheet.addView(sheetTitle("Edit message"));
+        sheet.addView(sheetTitle(getString(R.string.edit_message)));
         EditText input = new EditText(this);
         input.setText(current.text);
         input.setSelection(input.getText().length());
@@ -1287,18 +1298,18 @@ public class DirectChatActivity extends Activity {
         LinearLayout.LayoutParams buttonsParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(48));
         buttonsParams.topMargin = dp(12);
-        Button cancel = glassButton("Cancel", false);
-        Button save = glassButton("Save", true);
+        Button cancel = glassButton(getString(R.string.cancel), false);
+        Button save = glassButton(getString(R.string.save), true);
         cancel.setOnClickListener(v -> dialog.dismiss());
         save.setOnClickListener(v -> {
             String newText = input.getText().toString().trim();
             if (newText.length() == 0) {
-                Toast.makeText(this, "Message cannot be empty.",
+                Toast.makeText(this, getString(R.string.message_cannot_be_empty),
                         Toast.LENGTH_SHORT).show();
                 return;
             }
             if (newText.length() > VrProto.MAX_TEXT) {
-                Toast.makeText(this, "Message is too long.",
+                Toast.makeText(this, getString(R.string.message_too_long),
                         Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -1388,7 +1399,7 @@ public class DirectChatActivity extends Activity {
                         : "Delete this message for both participants?";
         LinearLayout sheet = createGlassSheet();
         Dialog dialog = createGlassDialog(sheet);
-        sheet.addView(sheetTitle("Delete message?"));
+        sheet.addView(sheetTitle(getString(R.string.delete_message_question)));
         TextView body = new TextView(this);
         body.setText(text);
         body.setTextColor(getColor(R.color.text_secondary));
@@ -1398,8 +1409,8 @@ public class DirectChatActivity extends Activity {
         sheet.addView(body);
         LinearLayout buttons = new LinearLayout(this);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
-        Button cancel = glassButton("Cancel", false);
-        Button delete = glassButton("Delete", true);
+        Button cancel = glassButton(getString(R.string.cancel), false);
+        Button delete = glassButton(getString(R.string.delete), true);
         cancel.setOnClickListener(v -> dialog.dismiss());
         delete.setOnClickListener(v -> {
             dialog.dismiss();
@@ -1862,7 +1873,7 @@ public class DirectChatActivity extends Activity {
             recorder.reset();
             recorder.release();
             deleteRecordingFile();
-            Toast.makeText(this, "Could not start recording.",
+            Toast.makeText(this, getString(R.string.could_not_start_recording),
                     Toast.LENGTH_SHORT).show();
             return;
         }
@@ -1915,7 +1926,7 @@ public class DirectChatActivity extends Activity {
         }
         if (elapsed < 700L) {
             deleteRecordingFile();
-            Toast.makeText(this, "Recording is too short.",
+            Toast.makeText(this, getString(R.string.recording_too_short),
                     Toast.LENGTH_SHORT).show();
             return;
         }
@@ -1928,8 +1939,8 @@ public class DirectChatActivity extends Activity {
                         || bytes.length > VrProto.MAX_VOICE_BYTES) {
                     Toast.makeText(this, bytes != null
                             && bytes.length > VrProto.MAX_VOICE_BYTES
-                            ? "Voice message is too large."
-                            : "Could not read this recording.",
+                            ? getString(R.string.voice_too_large)
+                            : getString(R.string.could_not_read_recording),
                             Toast.LENGTH_LONG).show();
                     return;
                 }
@@ -2089,7 +2100,7 @@ public class DirectChatActivity extends Activity {
                     lastRenderSignature = "";
                     renderMessages(true);
                     Toast.makeText(this,
-                            "Could not load this voice message.",
+                            getString(R.string.could_not_load_voice),
                             Toast.LENGTH_SHORT).show();
                     return;
                 }
@@ -2136,7 +2147,7 @@ public class DirectChatActivity extends Activity {
                 releaseVoicePlayerOnly();
             });
             voicePlayer.setOnErrorListener((player, what, extra) -> {
-                Toast.makeText(this, "Could not play this voice message.",
+                Toast.makeText(this, getString(R.string.could_not_play_voice),
                         Toast.LENGTH_SHORT).show();
                 stopVoicePlayback();
                 return true;
@@ -2145,7 +2156,7 @@ public class DirectChatActivity extends Activity {
             updateVoiceViews(message);
         } catch (Exception ignored) {
             stopVoicePlayback();
-            Toast.makeText(this, "Could not play this voice message.",
+            Toast.makeText(this, getString(R.string.could_not_play_voice),
                     Toast.LENGTH_SHORT).show();
         }
     }
@@ -2246,7 +2257,7 @@ public class DirectChatActivity extends Activity {
                     && voicePlayer != null && voicePlayer.isPlaying();
             playButton.setImageResource(playing ? R.drawable.ic_pause
                     : R.drawable.ic_play);
-            playButton.setContentDescription(playing ? "Pause" : "Play");
+            playButton.setContentDescription(playing ? getString(R.string.pause) : getString(R.string.play));
         }
         if (timeView != null) {
             int shown = message.id.equals(activeVoiceId)
@@ -2539,7 +2550,7 @@ public class DirectChatActivity extends Activity {
                 ? new String[]{"Choose wallpaper"}
                 : new String[]{"Choose wallpaper", "Remove my wallpaper"};
         new AlertDialog.Builder(this)
-                .setTitle("Chat wallpaper")
+                .setTitle(getString(R.string.chat_wallpaper))
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
                         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -2940,8 +2951,8 @@ public class DirectChatActivity extends Activity {
         empty.addView(icon, new LinearLayout.LayoutParams(dp(44), dp(44)));
 
         TextView title = new TextView(this);
-        title.setText(query.length() > 0 ? "No messages found"
-                : loading ? "Loading..." : "No messages yet");
+        title.setText(query.length() > 0 ? getString(R.string.no_messages_found)
+                : loading ? getString(R.string.loading) : getString(R.string.no_messages_yet));
         title.setTextColor(isDark() ? Color.WHITE : getColor(R.color.text_main));
         title.setTextSize(16);
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -2953,10 +2964,10 @@ public class DirectChatActivity extends Activity {
         empty.addView(title, titleParams);
 
         TextView text = new TextView(this);
-        text.setText(query.length() > 0 ? "Try a different search."
-                : peerBlocked ? "This account is blocked."
-                : syncFailed ? "Messages are stored in the cloud. Check the connection and Firebase rules."
-                : "Write the first message. It will be stored in the cloud, not on this device.");
+        text.setText(query.length() > 0 ? getString(R.string.try_different_search)
+                : peerBlocked ? getString(R.string.account_blocked_sentence)
+                : syncFailed ? getString(R.string.messages_cloud_check)
+                : getString(R.string.write_first_message));
         text.setTextColor(getColor(R.color.text_secondary));
         text.setTextSize(14);
         text.setGravity(Gravity.CENTER);
@@ -3157,7 +3168,7 @@ public class DirectChatActivity extends Activity {
                 : R.drawable.ic_play);
         playButton.setColorFilter(mainColor, PorterDuff.Mode.SRC_IN);
         playButton.setBackgroundResource(R.drawable.bg_glass_pill);
-        playButton.setContentDescription(playing ? "Pause" : "Play");
+        playButton.setContentDescription(playing ? getString(R.string.pause) : getString(R.string.play));
         playButton.setOnClickListener(v -> toggleVoicePlayback(message));
         PressFx.attach(playButton);
         content.addView(playButton, new LinearLayout.LayoutParams(dp(44), dp(44)));
@@ -3169,7 +3180,7 @@ public class DirectChatActivity extends Activity {
         detailsParams.leftMargin = dp(11);
 
         TextView title = new TextView(this);
-        title.setText("Voice message");
+        title.setText(getString(R.string.voice_message));
         title.setTextColor(mainColor);
         title.setTextSize(Math.max(14, AppSettings.textSizeSp(this) - 1));
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -3192,7 +3203,7 @@ public class DirectChatActivity extends Activity {
         time.setTag("voice_time:" + message.id);
         time.setTextColor(secondaryColor);
         time.setTextSize(12);
-        String status = message.failed ? "Failed. Tap to retry"
+        String status = message.failed ? getString(R.string.failed_tap_retry)
                 : message.voiceLoading ? "Loading " + message.progress + "%"
                 : message.pending ? "Sending " + message.progress + "%"
                 : formatVoiceDuration(message.id.equals(activeVoiceId)
@@ -3293,7 +3304,7 @@ public class DirectChatActivity extends Activity {
         textParams.leftMargin = dp(10);
 
         TextView name = new TextView(this);
-        name.setText(message.fileName.length() == 0 ? "File" : message.fileName);
+        name.setText(message.fileName.length() == 0 ? getString(R.string.file) : message.fileName);
         name.setTextColor(mainColor);
         name.setTextSize(AppSettings.textSizeSp(this));
         name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -3303,15 +3314,15 @@ public class DirectChatActivity extends Activity {
         TextView detail = new TextView(this);
         String counter = "Downloads: " + message.downloadCount
                 + "/" + message.downloadLimit;
-        String status = message.failed ? "Failed. Tap to retry"
-                : message.receiptPending ? "Saved. Tap to update counter"
-                : message.cloudDeleted ? "Cloud copy deleted"
+        String status = message.failed ? getString(R.string.failed_tap_retry)
+                : message.receiptPending ? getString(R.string.saved_tap_counter)
+                : message.cloudDeleted ? getString(R.string.cloud_copy_deleted)
                 : message.downloading ? "Downloading " + message.progress + "%"
                 : message.pending ? "Uploading " + message.progress + "%"
-                : downloadedByMe(message) ? "You downloaded this file"
+                : downloadedByMe(message) ? getString(R.string.you_downloaded_file)
                 : message.downloadCount >= message.downloadLimit
-                        ? "Deleting cloud copy..."
-                : "Tap to download";
+                        ? getString(R.string.deleting_cloud_copy)
+                : getString(R.string.tap_to_download);
         detail.setText(formatBytes(message.fileSize) + "  -  " + counter
                 + "  -  " + status);
         detail.setMaxLines(2);
@@ -3326,7 +3337,7 @@ public class DirectChatActivity extends Activity {
                                      boolean mine, int maxBubbleWidth,
                                      int mainColor, int secondaryColor) {
         TextView title = new TextView(this);
-        title.setText(mine ? "Wallpaper suggested" : "Wallpaper suggestion");
+        title.setText(mine ? getString(R.string.wallpaper_suggested) : getString(R.string.wallpaper_suggestion));
         title.setTextColor(mainColor);
         title.setTextSize(AppSettings.textSizeSp(this));
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -3345,7 +3356,7 @@ public class DirectChatActivity extends Activity {
             bubble.addView(image, imageParams);
         } else {
             TextView loadingView = new TextView(this);
-            loadingView.setText("Loading preview...");
+            loadingView.setText(getString(R.string.loading_preview));
             loadingView.setTextColor(secondaryColor);
             loadingView.setTextSize(13);
             LinearLayout.LayoutParams loadingParams = new LinearLayout.LayoutParams(
@@ -3360,7 +3371,7 @@ public class DirectChatActivity extends Activity {
                     && message.wallpaperOwnerUid.equals(activeWallpaperOwnerUid);
             if (current) {
                 TextView currentView = new TextView(this);
-                currentView.setText("Current wallpaper");
+                currentView.setText(getString(R.string.current_wallpaper));
                 currentView.setTextColor(secondaryColor);
                 currentView.setTextSize(13);
                 LinearLayout.LayoutParams currentParams = new LinearLayout.LayoutParams(
@@ -3370,7 +3381,7 @@ public class DirectChatActivity extends Activity {
                 bubble.addView(currentView, currentParams);
             } else {
                 Button setButton = new Button(this);
-                setButton.setText("Set wallpaper");
+                setButton.setText(getString(R.string.set_wallpaper));
                 setButton.setAllCaps(false);
                 setButton.setTextColor(getColor(R.color.text_main));
                 setButton.setBackgroundResource(R.drawable.bg_glass_pill);
@@ -3400,15 +3411,15 @@ public class DirectChatActivity extends Activity {
             if (out.length() > 0) {
                 out.append("  ");
             }
-            out.append("Edited");
+            out.append(getString(R.string.edited));
         }
         if (mine) {
-            String status = message.operationPending ? "Updating..."
-                    : message.failed ? "Failed. Tap to retry"
+            String status = message.operationPending ? getString(R.string.updating)
+                    : message.failed ? getString(R.string.failed_tap_retry)
                     : message.pending && VrProto.TYPE_FILE.equals(message.type)
                             ? "Uploading " + message.progress + "%"
-                    : message.pending ? "Sending..."
-                    : message.createdAt <= peerReadAt && peerReadAt > 0 ? "Read" : "Sent";
+                    : message.pending ? getString(R.string.sending)
+                    : message.createdAt <= peerReadAt && peerReadAt > 0 ? getString(R.string.read) : getString(R.string.sent);
             if (out.length() > 0) {
                 out.append("  ");
             }

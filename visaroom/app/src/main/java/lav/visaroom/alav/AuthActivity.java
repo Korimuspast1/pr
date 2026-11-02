@@ -186,11 +186,11 @@ public class AuthActivity extends Activity {
     private void showTwoFaPrompt(String uid, String verifier) {
         EditText password = gatePasswordField("Additional password");
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Two-step verification")
+                .setTitle(getString(R.string.two_step_verification))
                 .setMessage("Enter your additional password.")
                 .setView(gateBox(password))
                 .setCancelable(false)
-                .setNegativeButton("Cancel", (d, w) -> {
+                .setNegativeButton(getString(R.string.cancel), (d, w) -> {
                     TokenStore.clear(AuthActivity.this);
                     setLoading(false);
                 })
@@ -211,19 +211,19 @@ public class AuthActivity extends Activity {
 
     private void showRegistrationTwoFaPrompt(AuthClient.Result result, long publicId) {
         new AlertDialog.Builder(this)
-                .setTitle("Two-step verification")
+                .setTitle(getString(R.string.two_step_verification))
                 .setMessage("Add a second password? It will be asked at sign-in, in addition to your account password. You can turn it on later in Settings.")
                 .setCancelable(false)
                 .setNegativeButton("Not now", (d, w) -> openChats())
                 .setPositiveButton("Set password", (d, w) -> {
                     EditText password = gatePasswordField("Additional password");
-                    EditText confirm = gatePasswordField("Repeat password");
+                    EditText confirm = gatePasswordField(getString(R.string.repeat_password));
                     AlertDialog setup = new AlertDialog.Builder(this)
                             .setTitle("Set additional password")
                             .setView(gateBox(password, confirm))
                             .setCancelable(false)
                             .setNegativeButton("Skip", (dd, ww) -> openChats())
-                            .setPositiveButton("Save", null)
+                            .setPositiveButton(getString(R.string.save), null)
                             .create();
                     setup.show();
                     setup.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -383,19 +383,19 @@ public class AuthActivity extends Activity {
         confirmBlock.setVisibility(register ? View.VISIBLE : View.GONE);
         confirmInput.setText("");
         if (register) {
-            titleView.setText("Create account");
+            titleView.setText(getString(R.string.create_account));
             subtitleView.setText("Enter an email and set a password.");
-            submitButton.setText("Create account");
+            submitButton.setText(getString(R.string.create_account));
             switchText.setText("Already have an account?");
-            switchAction.setText("Sign in");
+            switchAction.setText(getString(R.string.sign_in));
             passwordInput.setHint("At least 6 characters");
         } else {
-            titleView.setText("Sign in");
-            subtitleView.setText("Enter your email and password.");
-            submitButton.setText("Sign in");
-            switchText.setText("No account?");
-            switchAction.setText("Create account");
-            passwordInput.setHint("Password");
+            titleView.setText(getString(R.string.sign_in));
+            subtitleView.setText(getString(R.string.enter_email_password));
+            submitButton.setText(getString(R.string.sign_in));
+            switchText.setText(getString(R.string.no_account));
+            switchAction.setText(getString(R.string.create_account));
+            passwordInput.setHint(getString(R.string.password));
         }
     }
 
@@ -412,7 +412,7 @@ public class AuthActivity extends Activity {
             return;
         }
         if (registering && !password.equals(confirmInput.getText().toString())) {
-            showError("Passwords do not match.");
+            showError(getString(R.string.e2ee_password_mismatch));
             return;
         }
 

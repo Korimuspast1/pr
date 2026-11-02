@@ -305,6 +305,7 @@ final class E2eeCrypto {
         final LocalIdentity identity;
         final PublicBundle ownBundle;
         final HashMap<String, PublicBundle> peerBundles = new HashMap<>();
+        final HashMap<String, Long> peerBundleCheckedAt = new HashMap<>();
 
         Session(String myUid, LocalIdentity identity) {
             this.myUid = myUid;

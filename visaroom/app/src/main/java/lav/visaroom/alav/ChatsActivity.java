@@ -170,7 +170,7 @@ public class ChatsActivity extends Activity {
 
         emailView.setText(userEmail);
         updateAdminUi();
-        idView.setText("Loading...");
+        idView.setText(getString(R.string.loading));
 
         loadLocalProfile();
         displayAvatar();
@@ -582,14 +582,14 @@ public class ChatsActivity extends Activity {
                 findViewById(R.id.folder_moderation_content),
                 findViewById(R.id.folder_account_content)};
         settingsFolderTitles = new String[]{
-                "Chats", "Notifications", "Security", "Privacy", "Moderation", "Account"};
+                getString(R.string.chats), getString(R.string.notifications), getString(R.string.security), getString(R.string.privacy), getString(R.string.moderation), getString(R.string.account)};
         settingsFolderDescriptions = new String[]{
-                "Appearance, text size, background, timestamps, Enter to send",
-                "Message notifications and sounds",
-                "Two-step verification and end-to-end encryption",
-                "Read receipts, bio, photo and ID visibility",
-                "Admin tools: find users, block accounts, set any ID",
-                "Saved accounts and sign out"};
+                getString(R.string.settings_folder_chats_desc),
+                getString(R.string.settings_folder_notifications_desc),
+                getString(R.string.settings_folder_security_desc),
+                getString(R.string.settings_folder_privacy_desc),
+                getString(R.string.settings_folder_moderation_desc),
+                getString(R.string.settings_folder_account_desc)};
 
         for (int i = 0; i < settingsFolderHeaders.length; i++) {
             final int index = i;
@@ -726,10 +726,10 @@ public class ChatsActivity extends Activity {
                                              AlertDialog parent, String verifier) {
         EditText password = passwordField("Additional password");
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Two-step verification")
+                .setTitle(getString(R.string.two_step_verification))
                 .setMessage("Enter the additional password for this account.")
                 .setView(dialogBox(password))
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .setPositiveButton("Continue", null)
                 .create();
         dialog.show();
@@ -773,9 +773,9 @@ public class ChatsActivity extends Activity {
         box.setPadding(dp(24), dp(8), dp(24), dp(8));
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Accounts")
+                .setTitle(getString(R.string.accounts))
                 .setView(box)
-                .setNegativeButton("Close", null)
+                .setNegativeButton(getString(R.string.close), null)
                 .create();
 
         TextView hint = new TextView(this);
@@ -895,7 +895,7 @@ public class ChatsActivity extends Activity {
                 .setTitle("Remove account?")
                 .setMessage("This removes the saved session from this device. "
                         + "The visaroom account itself is not deleted.")
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .setPositiveButton("Remove", (d, w) -> {
                     TokenStore.profilePrefs(this, account.uid).edit().clear().apply();
                     File file = avatarFileFor(account.uid);
@@ -1084,7 +1084,7 @@ public class ChatsActivity extends Activity {
     private ImageView verifiedIcon() {
         ImageView icon = new ImageView(this);
         icon.setImageResource(R.drawable.ic_verified);
-        icon.setContentDescription("Verified");
+        icon.setContentDescription(getString(R.string.verified));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(16), dp(16));
         params.leftMargin = dp(5);
         icon.setLayoutParams(params);
@@ -1129,7 +1129,7 @@ public class ChatsActivity extends Activity {
         TextView name = new TextView(this);
         name.setText(summary.username.length() > 0
                 ? "@" + summary.username
-                : summary.publicId > 0 ? "ID " + summary.publicId : "User");
+                : summary.publicId > 0 ? "ID " + summary.publicId : getString(R.string.user));
         name.setTextColor(getColor(R.color.text_main));
         name.setTextSize(AppSettings.textSizeSp(this));
         name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -1294,7 +1294,7 @@ public class ChatsActivity extends Activity {
         texts.addView(nameRow);
 
         TextView sub = new TextView(this);
-        sub.setText(result.publicId > 0 ? "ID " + result.publicId : "User");
+        sub.setText(result.publicId > 0 ? "ID " + result.publicId : getString(R.string.user));
         sub.setTextColor(getColor(R.color.text_secondary));
         sub.setTextSize(13);
         texts.addView(sub);
@@ -1538,12 +1538,12 @@ public class ChatsActivity extends Activity {
 
     private void updateIdDisplay() {
         idView.setText(publicId > 0 ? String.valueOf(publicId)
-                : userId.length() == 0 ? "Loading..." : "Assigning...");
+                : userId.length() == 0 ? getString(R.string.loading) : "Assigning...");
     }
 
     private void updateTwoFaUi() {
         if (twoFaValue != null) {
-            twoFaValue.setText(twoFaEnabledState ? "On" : "Off");
+            twoFaValue.setText(twoFaEnabledState ? getString(R.string.on) : getString(R.string.off));
         }
     }
 
@@ -1652,7 +1652,7 @@ public class ChatsActivity extends Activity {
                 .setTitle("Find user")
                 .setMessage("Enter a username or any numeric ID.")
                 .setView(dialogBox(input))
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .setPositiveButton("Find", null)
                 .create();
         dialog.show();
@@ -1970,12 +1970,12 @@ public class ChatsActivity extends Activity {
     private void showTwoFaDialog() {
         if (!twoFaEnabledState) {
             EditText password = passwordField("New additional password");
-            EditText confirm = passwordField("Repeat password");
+            EditText confirm = passwordField(getString(R.string.repeat_password));
             AlertDialog dialog = new AlertDialog.Builder(this)
-                    .setTitle("Two-step verification")
+                    .setTitle(getString(R.string.two_step_verification))
                     .setMessage("This password will be asked in addition to your account password when you sign in.")
                     .setView(dialogBox(password, confirm))
-                    .setNegativeButton("Cancel", null)
+                    .setNegativeButton(getString(R.string.cancel), null)
                     .setPositiveButton("Turn on", null)
                     .create();
             dialog.show();
@@ -1986,7 +1986,7 @@ public class ChatsActivity extends Activity {
                     return;
                 }
                 if (!pw.equals(confirm.getText().toString())) {
-                    Toast.makeText(this, "Passwords do not match.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.e2ee_password_mismatch), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 dialog.dismiss();
@@ -1998,11 +1998,11 @@ public class ChatsActivity extends Activity {
         EditText next = passwordField("New password (optional)");
         EditText confirm = passwordField("Repeat new password");
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Two-step verification")
+                .setTitle(getString(R.string.two_step_verification))
                 .setView(dialogBox(current, next, confirm))
                 .setNegativeButton("Turn off", null)
-                .setNeutralButton("Cancel", null)
-                .setPositiveButton("Save", null)
+                .setNeutralButton(getString(R.string.cancel), null)
+                .setPositiveButton(getString(R.string.save), null)
                 .create();
         dialog.show();
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -2133,10 +2133,10 @@ public class ChatsActivity extends Activity {
                 }
                 if (data.blocked) {
                     new AlertDialog.Builder(this)
-                            .setTitle("Account blocked")
+                            .setTitle(getString(R.string.account_blocked))
                             .setMessage("This account has been blocked by an administrator.")
                             .setCancelable(false)
-                            .setPositiveButton("Sign out", (d, w) -> signOut())
+                            .setPositiveButton(getString(R.string.sign_out), (d, w) -> signOut())
                             .show();
                     return;
                 }
@@ -2312,8 +2312,8 @@ public class ChatsActivity extends Activity {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Change email")
                 .setView(box)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Change", null)
+                .setNegativeButton(getString(R.string.cancel), null)
+                .setPositiveButton(getString(R.string.change), null)
                 .create();
         dialog.show();
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {

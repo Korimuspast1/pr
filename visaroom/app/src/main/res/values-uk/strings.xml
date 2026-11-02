@@ -99,7 +99,7 @@
     <string name="account">Акаунт</string>
     <string name="settings_folder_chats_desc">Мова, оформлення, розмір тексту, фон, час, надсилання клавішею Enter</string>
     <string name="settings_folder_notifications_desc">Сповіщення про повідомлення та звуки</string>
-    <string name="settings_folder_security_desc">Двоетапна перевірка</string>
+    <string name="settings_folder_security_desc">Двоетапна перевірка та наскрізне шифрування</string>
     <string name="settings_folder_privacy_desc">Прочитання, опис, фото й видимість ID</string>
     <string name="settings_folder_moderation_desc">Інструменти адміністратора: пошук користувачів, блокування, будь-який ID</string>
     <string name="settings_folder_account_desc">Збережені акаунти та вихід</string>
