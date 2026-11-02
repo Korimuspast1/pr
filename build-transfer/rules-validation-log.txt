@@ -2,6 +2,55 @@ npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMExcep
 npm warn deprecated json-ptr@3.1.1: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 npm warn deprecated uuid@9.0.1: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
 npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
-[36m[1mi  emulators:[22m[39m Shutting down emulators.
+[36m[1mi  emulators:[22m[39m Starting emulators: firestore
+[36m[1mi  emulators:[22m[39m Detected demo project ID "demo-visaroom", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+[33m[1m⚠ [22m[39m It appears you are running in a CI environment. You can avoid downloading the Firestore Emulator repeatedly by caching the /home/runner/.cache/firebase/emulators directory.
+[36m[1mi  firestore:[22m[39m downloading cloud-firestore-emulator-v1.22.0.jar...
 
-[1m[31mError:[39m[22m firebase-tools no longer supports Java version before 21. Please install a JDK at version 21 or above to get a compatible runtime.
+[36m[1mi  firestore:[22m[39m Firestore Emulator logging to [1mfirestore-debug.log[22m
+[32m[1m✔  firestore:[22m[39m Firestore Emulator was started in standard edition.
+[32m[1m✔  firestore:[22m[39m Firestore Emulator UI websocket is running on 9150.
+[36m[1mi [22m[39m Running script: [1mnode ../.github/rules-test/firestore-rules-test.mjs[22m
+[2026-11-02T11:33:52.865Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a10 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1088, false for 'create' @ L1346, false for 'update' @ L1088, false for 'update' @ L1346
+[2026-11-02T11:33:52.884Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a11 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1088, false for 'create' @ L1346, false for 'update' @ L1088, false for 'update' @ L1346
+[2026-11-02T11:33:52.904Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a0e error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1088, false for 'create' @ L1346, false for 'update' @ L1088, false for 'update' @ L1346
+[2026-11-02T11:33:53.031Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a12 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1098:24 for 'create' @ L1098, false for 'create' @ L1346, evaluation error at L1110:24 for 'update' @ L1110, false for 'update' @ L1346, false for 'update' @ L1110, false for 'update' @ L1346
+[2026-11-02T11:33:53.176Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a15 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+evaluation error at L1164:24 for 'update' @ L1164, false for 'update' @ L1346, false for 'update' @ L1164, false for 'update' @ L1346
+[2026-11-02T11:33:53.219Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a14 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1217, false for 'create' @ L1327, false for 'create' @ L1346, false for 'update' @ L1227, false for 'update' @ L1327, false for 'update' @ L1346
+[2026-11-02T11:33:53.279Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a16 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1257, false for 'create' @ L1327, false for 'create' @ L1346, false for 'update' @ L1259, false for 'update' @ L1327, false for 'update' @ L1346
+[2026-11-02T11:33:53.410Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a19 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1257, false for 'create' @ L1327, false for 'create' @ L1346, false for 'update' @ L1259, false for 'update' @ L1327, false for 'update' @ L1346
+[2026-11-02T11:33:53.438Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a1a error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1257, false for 'create' @ L1327, false for 'create' @ L1346, false for 'update' @ L1259, false for 'update' @ L1327, false for 'update' @ L1346
+[2026-11-02T11:33:53.455Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a18 error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1257, false for 'create' @ L1327, false for 'create' @ L1346, false for 'update' @ L1259, false for 'update' @ L1327, false for 'update' @ L1346
+[2026-11-02T11:33:53.581Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a1c error. Code: 7 Message: 7 PERMISSION_DENIED: 
+Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1022, Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1076, Unable to evaluate the expression as the maximum of 1000 expressions to evaluate has been reached. for 'update' @ L1346, false for 'update' @ L1022, false for 'update' @ L1076, false for 'update' @ L1346
+[2026-11-02T11:33:53.826Z]  @firebase/firestore: Firestore (12.19.0): GrpcConnection RPC 'Write' stream 0x52a17a1d error. Code: 7 Message: 7 PERMISSION_DENIED: 
+false for 'create' @ L1257, false for 'create' @ L1327, false for 'create' @ L1346, false for 'update' @ L1259, false for 'update' @ L1327, false for 'update' @ L1346
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+[FirebaseError: 7 PERMISSION_DENIED: 
+false for 'create' @ L1257, false for 'create' @ L1327, false for 'create' @ L1346, false for 'update' @ L1259, false for 'update' @ L1327, false for 'update' @ L1346] {
+  code: 'permission-denied',
+  customData: undefined,
+  toString: [Function (anonymous)]
+}
+
+Node.js v22.23.4
+[33m[1m⚠ [22m[39m Script exited unsuccessfully (code 1)
+[36m[1mi  emulators:[22m[39m Shutting down emulators.
+[36m[1mi  firestore:[22m[39m Stopping Firestore Emulator
+[36m[1mi  hub:[22m[39m Stopping emulator hub
+[36m[1mi  logging:[22m[39m Stopping Logging Emulator
+
+[1m[31mError:[39m[22m Script "[1mnode ../.github/rules-test/firestore-rules-test.mjs[22m" exited with code 1
