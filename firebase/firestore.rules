@@ -13,6 +13,14 @@ rules_version = '2';
 // grant/remove its verified badge. Ordinary accounts start unverified.
 // VRProto direct chats are cloud-only: chats/{chatId}/messages/{messageId}
 // plus each participant's cloud index at users/{uid}/chats/{chatId}.
+// Any-type attachments (max 26214400 bytes) are split into 614400-byte
+// Firestore chunks under chats/{chatId}/files/{fileId}/chunks/{index}.
+// Each participant has one full-download slot (Downloads: 0/2). Only a
+// completed download may flip that participant's flag; at 2/2 either
+// participant may delete all chunks and then the file metadata.
+// Per-chat wallpaper images live privately under the owner's
+// users/{uid}/wallpapers/{wallpaperId}; shared=true is required before
+// the other participant may read a suggested wallpaper.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -128,7 +136,8 @@ service cloud.firestore {
     function validChatIndex(data, uid, chatId) {
       return data.keys().hasOnly(['chatId', 'peerUid', 'updatedAt',
             'lastMessageText', 'lastMessageAt', 'lastSenderUid',
-            'lastMessageId', 'lastReadAt'])
+            'lastMessageId', 'lastReadAt', 'wallpaperId',
+            'wallpaperOwnerUid', 'wallpaperUpdatedAt'])
         && data.keys().hasAll(['chatId', 'peerUid', 'updatedAt',
             'lastMessageText', 'lastMessageAt', 'lastSenderUid',
             'lastMessageId', 'lastReadAt'])
@@ -141,23 +150,211 @@ service cloud.firestore {
         && data.lastMessageAt is int && data.lastMessageAt >= 0
         && data.lastSenderUid is string && data.lastSenderUid.size() <= 128
         && data.lastMessageId is string && data.lastMessageId.size() <= 80
-        && data.lastReadAt is int && data.lastReadAt >= 0;
+        && data.lastReadAt is int && data.lastReadAt >= 0
+        && validWallpaperIndexFields(data);
     }
 
-    function validDirectMessage(data, messageId) {
+    function sameWallpaper(data) {
+      return data.get('wallpaperId', '') == resource.data.get('wallpaperId', '')
+        && data.get('wallpaperOwnerUid', '')
+          == resource.data.get('wallpaperOwnerUid', '')
+        && data.get('wallpaperUpdatedAt', 0)
+          == resource.data.get('wallpaperUpdatedAt', 0);
+    }
+
+    function validWallpaperIndexFields(data) {
+      return (!('wallpaperId' in data) || (
+            data.wallpaperId is string && data.wallpaperId.size() <= 80))
+        && (!('wallpaperOwnerUid' in data) || (
+            data.wallpaperOwnerUid is string
+            && data.wallpaperOwnerUid.size() <= 128))
+        && (!('wallpaperUpdatedAt' in data) || (
+            data.wallpaperUpdatedAt is int && data.wallpaperUpdatedAt >= 0));
+    }
+
+    function fileData(chatId, fileId) {
+      return get(/databases/$(database)/documents/chats/$(chatId)/files/$(fileId)).data;
+    }
+
+    function fileReferenceMatchesData(data, file) {
+      return file.get('senderUid', '') == request.auth.uid
+        && file.get('fileName', '') == data.fileName
+        && file.get('mimeType', '') == data.mimeType
+        && file.get('fileSize', -1) == data.fileSize
+        && file.get('chunkSize', 0) == data.chunkSize
+        && file.get('chunkCount', -1) == data.chunkCount
+        && file.get('createdAt', 0) == data.createdAt
+        && file.get('clientId', '') == data.fileId;
+    }
+
+    function fileReferenceMatches(chatId, data) {
+      return data.fileId is string
+        && data.fileId.matches('^[A-Za-z0-9_-]{8,80}$')
+        && exists(/databases/$(database)/documents/chats/$(chatId)/files/$(data.fileId))
+        && fileReferenceMatchesData(data, fileData(chatId, data.fileId));
+    }
+
+    function wallpaperReferenceMatchesData(data, wallpaper, chatId) {
+      return wallpaper.get('chatId', '') == chatId
+        && wallpaper.get('senderUid', '') == data.wallpaperOwnerUid
+        && wallpaper.get('senderUid', '') == request.auth.uid
+        && wallpaper.get('shared', false) == true;
+    }
+
+    function wallpaperReferenceMatches(chatId, data) {
+      return data.wallpaperId is string
+        && data.wallpaperId.matches('^[A-Za-z0-9_-]{8,80}$')
+        && validUidValue(data.wallpaperOwnerUid)
+        && exists(/databases/$(database)/documents/users/$(data.wallpaperOwnerUid)/wallpapers/$(data.wallpaperId))
+        && wallpaperReferenceMatchesData(data,
+            get(/databases/$(database)/documents/users/$(data.wallpaperOwnerUid)/wallpapers/$(data.wallpaperId)).data,
+            chatId);
+    }
+
+    function validFileCounts(data) {
+      return data.fileSize is int
+        && data.fileSize >= 0
+        && data.fileSize <= 26214400
+        && data.chunkSize == 614400
+        && data.chunkCount is int
+        && data.chunkCount >= 0
+        && data.chunkCount <= 43
+        && ((data.fileSize == 0 && data.chunkCount == 0)
+          || (data.fileSize > 0
+            && (data.chunkCount - 1) * data.chunkSize < data.fileSize
+            && data.fileSize <= data.chunkCount * data.chunkSize));
+    }
+
+    function validDirectMessage(data, chatId, messageId) {
       return data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
-            'text', 'createdAt', 'clientId'])
+            'text', 'createdAt', 'clientId', 'fileId', 'fileName',
+            'mimeType', 'fileSize', 'chunkCount', 'chunkSize',
+            'wallpaperId', 'wallpaperOwnerUid'])
         && data.keys().hasAll(['protocolVersion', 'type', 'senderUid',
             'text', 'createdAt', 'clientId'])
         && data.protocolVersion == 1
-        && data.type == 'text'
         && data.senderUid == request.auth.uid
         && data.text is string
         && data.text.size() > 0
         && data.text.size() <= 4000
         && data.createdAt is int && data.createdAt > 0
         && data.clientId == messageId
-        && messageId.matches('^[A-Za-z0-9_-]{8,80}$');
+        && messageId.matches('^[A-Za-z0-9_-]{8,80}$')
+        && ((data.type == 'text'
+              && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
+                    'text', 'createdAt', 'clientId']))
+          || (data.type == 'file'
+              && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
+                    'text', 'createdAt', 'clientId', 'fileId', 'fileName',
+                    'mimeType', 'fileSize', 'chunkCount', 'chunkSize'])
+              && data.keys().hasAll(['fileId', 'fileName', 'mimeType',
+                    'fileSize', 'chunkCount', 'chunkSize'])
+              && data.fileId == messageId
+              && data.fileName is string
+              && data.fileName.size() > 0
+              && data.fileName.size() <= 255
+              && data.text == data.fileName
+              && data.mimeType is string
+              && data.mimeType.size() > 0
+              && data.mimeType.size() <= 128
+              && validFileCounts(data)
+              && fileReferenceMatches(chatId, data))
+          || (data.type == 'wallpaper'
+              && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
+                    'text', 'createdAt', 'clientId', 'wallpaperId',
+                    'wallpaperOwnerUid'])
+              && data.keys().hasAll(['wallpaperId', 'wallpaperOwnerUid'])
+              && data.text == 'Wallpaper suggestion'
+              && wallpaperReferenceMatches(chatId, data)));
+    }
+
+    function fileDownloadSlotOpen(file) {
+      return (request.auth.uid == file.get('senderUid', '')
+            && file.get('senderDownloaded', false) == false)
+        || (request.auth.uid == file.get('recipientUid', '')
+            && file.get('recipientDownloaded', false) == false);
+    }
+
+    function fileDownloadsComplete(file) {
+      return file.get('downloadCount', 0) >= file.get('downloadLimit', 2)
+        && file.get('senderDownloaded', false) == true
+        && file.get('recipientDownloaded', false) == true;
+    }
+
+    function validFileMetadata(data, chatId, fileId) {
+      return data.keys().hasOnly(['protocolVersion', 'senderUid',
+            'recipientUid', 'fileName', 'mimeType', 'fileSize', 'chunkSize',
+            'chunkCount', 'createdAt', 'clientId', 'downloadLimit',
+            'downloadCount', 'senderDownloaded', 'recipientDownloaded'])
+        && data.keys().hasAll(['protocolVersion', 'senderUid',
+            'recipientUid', 'fileName', 'mimeType', 'fileSize', 'chunkSize',
+            'chunkCount', 'createdAt', 'clientId', 'downloadLimit',
+            'downloadCount', 'senderDownloaded', 'recipientDownloaded'])
+        && fileId.matches('^[A-Za-z0-9_-]{8,80}$')
+        && data.protocolVersion == 1
+        && validUidValue(data.senderUid)
+        && validUidValue(data.recipientUid)
+        && chatPair(data.senderUid, data.recipientUid, chatId)
+        && data.fileName is string
+        && data.fileName.size() > 0
+        && data.fileName.size() <= 255
+        && data.mimeType is string
+        && data.mimeType.size() > 0
+        && data.mimeType.size() <= 128
+        && validFileCounts(data)
+        && data.createdAt is int && data.createdAt > 0
+        && data.clientId == fileId
+        && data.downloadLimit == 2
+        && data.downloadCount is int
+        && data.downloadCount >= 0
+        && data.downloadCount <= 2
+        && data.senderDownloaded is bool
+        && data.recipientDownloaded is bool;
+    }
+
+    function sameFileMetadataExceptDownloads(data) {
+      return data.protocolVersion == resource.data.protocolVersion
+        && data.senderUid == resource.data.senderUid
+        && data.recipientUid == resource.data.recipientUid
+        && data.fileName == resource.data.fileName
+        && data.mimeType == resource.data.mimeType
+        && data.fileSize == resource.data.fileSize
+        && data.chunkSize == resource.data.chunkSize
+        && data.chunkCount == resource.data.chunkCount
+        && data.createdAt == resource.data.createdAt
+        && data.clientId == resource.data.clientId
+        && data.downloadLimit == resource.data.downloadLimit;
+    }
+
+    function validFileChunk(data, chunkId, file) {
+      return data.keys().hasOnly(['index', 'data'])
+        && data.keys().hasAll(['index', 'data'])
+        && chunkId.matches('^(0|[1-9][0-9]*)$')
+        && file.get('senderUid', '') == request.auth.uid
+        && file.get('downloadCount', 0) == 0
+        && data.index is int
+        && data.index >= 0
+        && data.index < file.get('chunkCount', 0)
+        && data.data is bytes
+        && data.data.size() > 0
+        && data.data.size() <= file.get('chunkSize', 0);
+    }
+
+    function validWallpaperDoc(data, uid, wallpaperId) {
+      return data.keys().hasOnly(['chatId', 'senderUid', 'shared', 'image',
+            'createdAt'])
+        && data.keys().hasAll(['chatId', 'senderUid', 'shared', 'image',
+            'createdAt'])
+        && wallpaperId.matches('^[A-Za-z0-9_-]{8,80}$')
+        && data.chatId is string
+        && data.chatId.matches('^vrp1_[0-9a-f]{64}$')
+        && data.senderUid == uid
+        && data.senderUid == request.auth.uid
+        && data.shared is bool
+        && data.image is bytes
+        && data.image.size() > 0
+        && data.image.size() <= 716800
+        && data.createdAt is int && data.createdAt > 0;
     }
 
     function validPublicIdValue(data, allowAny) {
@@ -278,6 +475,7 @@ service cloud.firestore {
           && lastMessageMatches(chatId, request.resource.data)
           && request.resource.data.lastMessageAt == 0
           && request.resource.data.lastReadAt == 0
+          && request.resource.data.get('wallpaperId', '') == ''
           && (uid == request.auth.uid
             || request.resource.data.peerUid == request.auth.uid);
         allow update: if validChatIndex(request.resource.data, uid, chatId)
@@ -293,6 +491,7 @@ service cloud.firestore {
                 && request.resource.data.lastMessageId == resource.data.lastMessageId
                 && request.resource.data.lastReadAt >= resource.data.lastReadAt)
             || (isParticipant(chatId)
+                && sameWallpaper(request.resource.data)
                 && request.resource.data.lastSenderUid == request.auth.uid
                 && request.resource.data.updatedAt == request.resource.data.lastMessageAt
                 && request.resource.data.updatedAt >= resource.data.updatedAt
@@ -303,6 +502,20 @@ service cloud.firestore {
                       && resource.data.peerUid == request.auth.uid
                       && request.resource.data.lastReadAt == resource.data.lastReadAt))));
         allow delete: if false;
+      }
+
+      // Private per-chat wallpaper image. The peer may read it only
+      // when the owner marked this exact image shared for a suggestion.
+      match /wallpapers/{wallpaperId} {
+        allow get: if (isOwner(uid) && !accountBlocked(uid))
+          || (resource.data.get('shared', false) == true
+            && isParticipant(resource.data.chatId));
+        allow list: if false;
+        allow create: if isOwner(uid)
+          && !accountBlocked(uid)
+          && validWallpaperDoc(request.resource.data, uid, wallpaperId)
+          && isParticipant(request.resource.data.chatId);
+        allow update, delete: if false;
       }
 
       match /{sub=**} {
@@ -432,8 +645,61 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow get, list: if isParticipant(chatId);
         allow create: if isParticipant(chatId)
-          && validDirectMessage(request.resource.data, messageId);
+          && validDirectMessage(request.resource.data, chatId, messageId);
         allow update, delete: if false;
+      }
+
+      // Attachment metadata and immutable byte chunks. Only the two
+      // participants may read them; only the metadata sender may add
+      // chunks, and a file message must match this metadata exactly.
+      match /files/{fileId} {
+        allow get: if isParticipant(chatId);
+        allow list: if false;
+        allow create: if isParticipant(chatId)
+          && validFileMetadata(request.resource.data, chatId, fileId)
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.downloadCount == 0
+          && request.resource.data.senderDownloaded == false
+          && request.resource.data.recipientDownloaded == false;
+        // A participant may flip only their own false->true download
+        // flag after a complete download and increment the counter by
+        // exactly one. All file identity/size fields are immutable.
+        allow update: if isParticipant(chatId)
+          && validFileMetadata(request.resource.data, chatId, fileId)
+          && sameFileMetadataExceptDownloads(request.resource.data)
+          && request.resource.data.downloadCount
+            == resource.data.downloadCount + 1
+          && ((request.auth.uid == resource.data.senderUid
+                && resource.data.senderDownloaded == false
+                && request.resource.data.senderDownloaded == true
+                && request.resource.data.recipientDownloaded
+                  == resource.data.recipientDownloaded)
+            || (request.auth.uid == resource.data.recipientUid
+                && resource.data.recipientDownloaded == false
+                && request.resource.data.recipientDownloaded == true
+                && request.resource.data.senderDownloaded
+                  == resource.data.senderDownloaded));
+        allow delete: if isParticipant(chatId)
+          && fileDownloadsComplete(resource.data);
+
+        match /chunks/{chunkId} {
+          allow get: if isParticipant(chatId)
+            && exists(/databases/$(database)/documents/chats/$(chatId)/files/$(fileId))
+            && fileDownloadSlotOpen(fileData(chatId, fileId));
+          allow list: if false;
+          allow create: if isParticipant(chatId)
+            && exists(/databases/$(database)/documents/chats/$(chatId)/files/$(fileId))
+            && validFileChunk(request.resource.data, chunkId,
+                fileData(chatId, fileId));
+          allow update: if false;
+          allow delete: if isParticipant(chatId)
+            && exists(/databases/$(database)/documents/chats/$(chatId)/files/$(fileId))
+            && fileDownloadsComplete(fileData(chatId, fileId));
+        }
+
+        match /{sub=**} {
+          allow read, write: if false;
+        }
       }
 
       match /{sub=**} {

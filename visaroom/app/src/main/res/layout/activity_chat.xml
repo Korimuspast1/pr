@@ -2,15 +2,16 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/surface_soft"
     android:orientation="vertical">
 
     <LinearLayout
         android:id="@+id/chat_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_chat_row"
+        android:background="@drawable/bg_glass_top"
         android:clickable="true"
+        android:elevation="6dp"
         android:focusable="true"
         android:gravity="center_vertical"
         android:orientation="horizontal"
@@ -80,16 +81,21 @@
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/border" />
+        android:layout_height="6dp"
+        android:background="@android:color/transparent" />
 
     <LinearLayout
         android:id="@+id/message_search_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_glass_card"
+        android:elevation="5dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingLeft="16dp"
+        android:paddingLeft="10dp"
         android:paddingRight="6dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
@@ -145,7 +151,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp" />
+            android:paddingLeft="14dp"
+            android:paddingTop="16dp"
+            android:paddingRight="14dp"
+            android:paddingBottom="12dp" />
     </ScrollView>
 
     <View
@@ -156,9 +165,15 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginBottom="12dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_glass_pill"
+        android:elevation="8dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingLeft="12dp"
+        android:paddingLeft="8dp"
         android:paddingRight="6dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp">
@@ -167,7 +182,7 @@
             android:layout_width="0dp"
             android:layout_height="46dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_input_normal"
+            android:background="@android:color/transparent"
             android:enabled="false"
             android:hint="You can't send messages to this chat"
             android:maxLines="1"
@@ -179,7 +194,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginLeft="4dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_button_primary"
             android:contentDescription="Send"
             android:enabled="false"
             android:src="@drawable/ic_send" />

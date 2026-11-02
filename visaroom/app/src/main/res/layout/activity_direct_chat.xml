@@ -2,15 +2,16 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/surface_soft"
     android:orientation="vertical">
 
     <LinearLayout
         android:id="@+id/chat_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_chat_row"
+        android:background="@drawable/bg_glass_top"
         android:clickable="true"
+        android:elevation="6dp"
         android:focusable="true"
         android:gravity="center_vertical"
         android:orientation="horizontal"
@@ -75,6 +76,14 @@
         </LinearLayout>
 
         <ImageButton
+            android:id="@+id/wallpaper_button"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Chat wallpaper"
+            android:src="@drawable/ic_wallpaper" />
+
+        <ImageButton
             android:id="@+id/search_toggle"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -85,16 +94,21 @@
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/border" />
+        android:layout_height="6dp"
+        android:background="@android:color/transparent" />
 
     <LinearLayout
         android:id="@+id/message_search_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_glass_card"
+        android:elevation="5dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingLeft="16dp"
+        android:paddingLeft="10dp"
         android:paddingRight="6dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
@@ -136,8 +150,8 @@
     <View
         android:id="@+id/search_divider"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/border"
+        android:layout_height="6dp"
+        android:background="@android:color/transparent"
         android:visibility="gone" />
 
     <ScrollView
@@ -151,30 +165,48 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp" />
+            android:paddingLeft="14dp"
+            android:paddingTop="16dp"
+            android:paddingRight="14dp"
+            android:paddingBottom="12dp" />
     </ScrollView>
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/border" />
+        android:layout_height="4dp"
+        android:background="@android:color/transparent" />
 
     <LinearLayout
+        android:id="@+id/composer_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginBottom="12dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_glass_pill"
+        android:elevation="8dp"
         android:gravity="bottom"
         android:orientation="horizontal"
-        android:paddingLeft="12dp"
+        android:paddingLeft="6dp"
         android:paddingRight="6dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp">
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
+
+        <ImageButton
+            android:id="@+id/attach_button"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Attach file"
+            android:src="@drawable/ic_attach" />
 
         <EditText
             android:id="@+id/message_input"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@drawable/bg_input_normal"
+            android:background="@android:color/transparent"
             android:hint="Message"
             android:imeOptions="actionSend"
             android:inputType="textCapSentences|textMultiLine"
@@ -192,10 +224,10 @@
 
         <ImageButton
             android:id="@+id/send_button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
             android:layout_marginLeft="4dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_button_primary"
             android:contentDescription="Send"
             android:src="@drawable/ic_send" />
     </LinearLayout>

@@ -1,9 +1,11 @@
 package lav.visaroom.alav;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -11,15 +13,19 @@ import android.graphics.Color;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.Typeface;
+import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -28,13 +34,18 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -50,6 +61,9 @@ public class DirectChatActivity extends Activity {
     public static final String EXTRA_USERNAME = "username";
 
     private static final long POLL_MS = 1200L;
+    private static final int REQ_PICK_FILE = 701;
+    private static final int REQ_PICK_WALLPAPER = 702;
+    private static final int REQ_SAVE_FILE = 703;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -78,6 +92,8 @@ public class DirectChatActivity extends Activity {
     private TextView peerSubtitle;
     private EditText messageInput;
     private ImageButton sendButton;
+    private ImageButton attachButton;
+    private ImageButton wallpaperButton;
 
     private String peerUid = "";
     private String fallbackUsername = "";
@@ -93,6 +109,15 @@ public class DirectChatActivity extends Activity {
     private boolean firstRender = true;
     private String lastRenderSignature = "";
     private long peerReadAt;
+    private VrProto.Message pendingDownload;
+    private String activeWallpaperId = "";
+    private String activeWallpaperOwnerUid = "";
+    private Bitmap activeWallpaperBitmap;
+    private final Map<String, Bitmap> wallpaperPreviews = new HashMap<>();
+    private final Set<String> loadingWallpapers = new HashSet<>();
+    private final Set<String> failedWallpapers = new HashSet<>();
+    private final Set<String> loadingFileStatuses = new HashSet<>();
+    private final Set<String> failedFileStatuses = new HashSet<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,6 +148,8 @@ public class DirectChatActivity extends Activity {
         peerSubtitle = findViewById(R.id.peer_subtitle);
         messageInput = findViewById(R.id.message_input);
         sendButton = findViewById(R.id.send_button);
+        attachButton = findViewById(R.id.attach_button);
+        wallpaperButton = findViewById(R.id.wallpaper_button);
 
         peerAvatar.setColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN);
         peerName.setText(displayName());
@@ -133,6 +160,8 @@ public class DirectChatActivity extends Activity {
         findViewById(R.id.back).setOnClickListener(v -> finishWithAnimation());
         findViewById(R.id.chat_header).setOnClickListener(v -> openPeerProfile());
         findViewById(R.id.search_toggle).setOnClickListener(v -> setSearchOpen(true));
+        wallpaperButton.setOnClickListener(v -> showWallpaperMenu());
+        attachButton.setOnClickListener(v -> pickFile());
         findViewById(R.id.search_close).setOnClickListener(v -> {
             searchInput.setText("");
             setSearchOpen(false);
@@ -186,6 +215,27 @@ public class DirectChatActivity extends Activity {
         handler.removeCallbacksAndMessages(null);
         executor.shutdownNow();
         super.onDestroy();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            if (requestCode == REQ_SAVE_FILE) {
+                pendingDownload = null;
+            }
+            return;
+        }
+        Uri uri = data.getData();
+        if (requestCode == REQ_PICK_FILE) {
+            handlePickedFile(uri);
+        } else if (requestCode == REQ_PICK_WALLPAPER) {
+            prepareWallpaper(uri);
+        } else if (requestCode == REQ_SAVE_FILE && pendingDownload != null) {
+            VrProto.Message message = pendingDownload;
+            pendingDownload = null;
+            downloadToUri(message, uri);
+        }
     }
 
     @Override
@@ -305,7 +355,28 @@ public class DirectChatActivity extends Activity {
                 if (result.ok) {
                     syncFailed = false;
                     peerReadAt = result.peerReadAt;
+                    boolean wallpaperChanged =
+                            !result.ownWallpaperId.equals(activeWallpaperId)
+                                    || !result.ownWallpaperOwnerUid.equals(
+                                            activeWallpaperOwnerUid);
+                    activeWallpaperId = result.ownWallpaperId;
+                    activeWallpaperOwnerUid = result.ownWallpaperOwnerUid;
+                    if (wallpaperChanged) {
+                        if (activeWallpaperId.length() == 0) {
+                            activeWallpaperBitmap = null;
+                            applyBackground();
+                        } else {
+                            activeWallpaperBitmap = wallpaperBitmapFor(
+                                    activeWallpaperOwnerUid, activeWallpaperId);
+                            applyBackground();
+                        }
+                    }
                     mergeMessages(result.messages);
+                    for (VrProto.Message fileMessage : messages) {
+                        if (VrProto.TYPE_FILE.equals(fileMessage.type)) {
+                            ensureFileStatus(fileMessage);
+                        }
+                    }
                 } else {
                     syncFailed = true;
                 }
@@ -318,8 +389,26 @@ public class DirectChatActivity extends Activity {
     private void mergeMessages(List<VrProto.Message> serverMessages) {
         Set<String> serverIds = new HashSet<>();
         List<VrProto.Message> merged = new ArrayList<>();
+        Map<String, VrProto.Message> oldById = new HashMap<>();
+        for (VrProto.Message old : messages) {
+            oldById.put(old.id, old);
+        }
         for (VrProto.Message m : serverMessages) {
             serverIds.add(m.id);
+            VrProto.Message old = oldById.get(m.id);
+            if (old != null) {
+                m.localUri = old.localUri;
+                m.progress = old.progress;
+                m.downloading = old.downloading;
+                m.downloadCount = old.downloadCount;
+                m.downloadLimit = old.downloadLimit;
+                m.senderDownloaded = old.senderDownloaded;
+                m.recipientDownloaded = old.recipientDownloaded;
+                m.cloudDeleted = old.cloudDeleted;
+                m.downloadStatusLoaded = old.downloadStatusLoaded;
+                m.downloadStatusCheckedAt = old.downloadStatusCheckedAt;
+                m.receiptPending = old.receiptPending;
+            }
             merged.add(m);
         }
         for (VrProto.Message old : messages) {
@@ -356,6 +445,8 @@ public class DirectChatActivity extends Activity {
                 && !peerUid.equals(myUid);
         messageInput.setEnabled(canWrite);
         sendButton.setEnabled(canWrite);
+        attachButton.setEnabled(canWrite);
+        wallpaperButton.setEnabled(peerUid.length() > 0 && !peerUid.equals(myUid));
         messageInput.setHint(peerBlocked ? "Account blocked" : "Message");
         peerSubtitle.setText(peerBlocked ? "Account blocked"
                 : syncFailed ? "Waiting for cloud sync" : "VRProto cloud chat");
@@ -373,6 +464,7 @@ public class DirectChatActivity extends Activity {
         long now = System.currentTimeMillis();
         VrProto.Message message = new VrProto.Message();
         message.id = VrProto.newClientId(now);
+        message.type = VrProto.TYPE_TEXT;
         message.senderUid = myUid;
         message.text = text;
         message.createdAt = now;
@@ -385,6 +477,10 @@ public class DirectChatActivity extends Activity {
     }
 
     private void submitMessage(VrProto.Message message) {
+        if (VrProto.TYPE_FILE.equals(message.type)) {
+            submitFileMessage(message);
+            return;
+        }
         executor.execute(() -> {
             String token = ensureToken();
             boolean ok = token != null
@@ -421,6 +517,686 @@ public class DirectChatActivity extends Activity {
         submitMessage(message);
     }
 
+    private void pickFile() {
+        if (peerBlocked) {
+            return;
+        }
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        startActivityForResult(intent, REQ_PICK_FILE);
+    }
+
+    private void handlePickedFile(Uri uri) {
+        String name = sanitizeFileName(queryFileValue(uri, true));
+        String mime = getContentResolver().getType(uri);
+        if (mime == null || mime.length() == 0) {
+            mime = "application/octet-stream";
+        }
+        long queriedSize = queryFileSize(uri);
+        String finalMime = mime;
+        executor.execute(() -> {
+            long size = queriedSize >= 0 ? queriedSize : countStream(uri);
+            runOnUiThread(() -> {
+                if (size < 0) {
+                    Toast.makeText(this, "Could not read this file.",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (size > VrProto.MAX_FILE_BYTES) {
+                    Toast.makeText(this, "File is too large. Maximum is 25 MB.",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                long now = System.currentTimeMillis();
+                VrProto.Message message = new VrProto.Message();
+                message.id = VrProto.newClientId(now);
+                message.type = VrProto.TYPE_FILE;
+                message.senderUid = myUid;
+                message.fileId = message.id;
+                message.fileName = name;
+                message.text = name;
+                message.mimeType = finalMime;
+                message.fileSize = size;
+                message.chunkSize = VrProto.FILE_CHUNK_BYTES;
+                message.chunkCount = VrProto.chunkCount(size, message.chunkSize);
+                message.localUri = uri.toString();
+                message.downloadCount = 0;
+                message.downloadLimit = VrProto.FILE_DOWNLOAD_LIMIT;
+                message.downloadStatusLoaded = true;
+                message.downloadStatusCheckedAt = now;
+                message.createdAt = now;
+                message.pending = true;
+                messages.add(message);
+                lastRenderSignature = "";
+                renderMessages(true);
+                submitFileMessage(message);
+            });
+        });
+    }
+
+    private String queryFileValue(Uri uri, boolean displayName) {
+        Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(uri,
+                    new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (index >= 0 && displayName) {
+                    return cursor.getString(index);
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        String last = uri.getLastPathSegment();
+        return last == null ? "file" : last;
+    }
+
+    private long queryFileSize(Uri uri) {
+        Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(uri,
+                    new String[]{OpenableColumns.SIZE}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.SIZE);
+                if (index >= 0 && !cursor.isNull(index)) {
+                    return cursor.getLong(index);
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        return -1;
+    }
+
+    private long countStream(Uri uri) {
+        InputStream input = null;
+        try {
+            input = getContentResolver().openInputStream(uri);
+            if (input == null) {
+                return -1;
+            }
+            byte[] buffer = new byte[16384];
+            long total = 0;
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                total += read;
+                if (total > VrProto.MAX_FILE_BYTES) {
+                    return total;
+                }
+            }
+            return total;
+        } catch (Exception ignored) {
+            return -1;
+        } finally {
+            if (input != null) {
+                try {
+                    input.close();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+    }
+
+    private String sanitizeFileName(String raw) {
+        String name = raw == null ? "file" : raw.trim();
+        name = name.replace('/', '_').replace((char) 92, '_');
+        StringBuilder clean = new StringBuilder();
+        for (int i = 0; i < name.length() && clean.length() < 255; i++) {
+            char c = name.charAt(i);
+            if (c >= 32 && c != 127) {
+                clean.append(c);
+            }
+        }
+        return clean.length() == 0 ? "file" : clean.toString();
+    }
+
+    private void updateProgressById(String id, int percent, boolean downloading) {
+        for (VrProto.Message m : messages) {
+            if (m.id.equals(id)) {
+                m.progress = percent;
+                m.downloading = downloading;
+                break;
+            }
+        }
+        lastRenderSignature = "";
+        renderMessages(true);
+    }
+
+    private void submitFileMessage(VrProto.Message message) {
+        if (message.localUri.length() == 0) {
+            message.pending = false;
+            message.failed = true;
+            renderMessages(true);
+            return;
+        }
+        Uri uri = Uri.parse(message.localUri);
+        executor.execute(() -> {
+            String token = ensureToken();
+            boolean ok = token != null && VrProto.sendFile(token, myUid, peerUid,
+                    message,
+                    () -> getContentResolver().openInputStream(uri),
+                    percent -> runOnUiThread(
+                            () -> updateProgressById(message.id, percent, false)));
+            runOnUiThread(() -> {
+                for (VrProto.Message m : messages) {
+                    if (m.id.equals(message.id)) {
+                        m.pending = false;
+                        m.failed = !ok;
+                        m.progress = ok ? 100 : m.progress;
+                        break;
+                    }
+                }
+                lastRenderSignature = "";
+                renderMessages(true);
+                if (ok) {
+                    syncNow(false);
+                } else {
+                    Toast.makeText(this,
+                            "File was not sent. Check the connection and Firebase rules.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+    }
+
+    private boolean downloadedByMe(VrProto.Message message) {
+        return myUid.equals(message.senderUid)
+                ? message.senderDownloaded : message.recipientDownloaded;
+    }
+
+    private VrProto.Message messageById(String id) {
+        for (VrProto.Message m : messages) {
+            if (m.id.equals(id)) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    private void applyFileStatus(String id, VrProto.FileStatus status,
+                                 boolean cloudDeleted) {
+        VrProto.Message current = messageById(id);
+        if (current == null || status == null) {
+            return;
+        }
+        current.downloadCount = status.downloadCount;
+        current.downloadLimit = status.downloadLimit;
+        current.senderDownloaded = status.senderDownloaded;
+        current.recipientDownloaded = status.recipientDownloaded;
+        current.cloudDeleted = cloudDeleted || !status.exists;
+        if (current.cloudDeleted) {
+            current.downloadCount = current.downloadLimit;
+            current.senderDownloaded = true;
+            current.recipientDownloaded = true;
+        }
+        current.downloadStatusLoaded = true;
+        current.downloadStatusCheckedAt = System.currentTimeMillis();
+        if (downloadedByMe(current)) {
+            current.receiptPending = false;
+        }
+    }
+
+    private void ensureFileStatus(VrProto.Message message) {
+        boolean stale = message.downloadStatusLoaded && !message.cloudDeleted
+                && !message.downloading
+                && System.currentTimeMillis() - message.downloadStatusCheckedAt > 15000L;
+        if (message.pending || message.failed
+                || (message.downloadStatusLoaded && !stale)
+                || loadingFileStatuses.contains(message.id)
+                || failedFileStatuses.contains(message.id)) {
+            return;
+        }
+        loadingFileStatuses.add(message.id);
+        String id = message.id;
+        executor.execute(() -> {
+            String token = ensureToken();
+            VrProto.FileStatus status = token == null ? new VrProto.FileStatus()
+                    : VrProto.loadFileStatus(token, myUid, peerUid, message);
+            boolean cleaned = false;
+            if (status.ok && status.complete()) {
+                cleaned = VrProto.cleanupDownloadedFile(
+                        token, myUid, peerUid, message);
+            }
+            boolean finalCleaned = cleaned;
+            runOnUiThread(() -> {
+                loadingFileStatuses.remove(id);
+                if (status.ok) {
+                    applyFileStatus(id, status, finalCleaned);
+                } else {
+                    failedFileStatuses.add(id);
+                }
+                lastRenderSignature = "";
+                renderMessages(true);
+            });
+        });
+    }
+
+    private void retryDownloadReceipt(VrProto.Message message) {
+        failedFileStatuses.remove(message.id);
+        executor.execute(() -> {
+            String token = ensureToken();
+            VrProto.FileStatus status = token == null ? new VrProto.FileStatus()
+                    : VrProto.markFileDownloaded(token, myUid, peerUid, message);
+            boolean cleaned = false;
+            if (status.ok && status.complete()) {
+                cleaned = VrProto.cleanupDownloadedFile(
+                        token, myUid, peerUid, message);
+            }
+            boolean finalCleaned = cleaned;
+            runOnUiThread(() -> {
+                if (status.ok) {
+                    applyFileStatus(message.id, status, finalCleaned);
+                    Toast.makeText(this, finalCleaned
+                            ? "Download counted. Cloud copy deleted."
+                            : "Download counted.", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this,
+                            "Could not update the download counter yet.",
+                            Toast.LENGTH_SHORT).show();
+                }
+                lastRenderSignature = "";
+                renderMessages(true);
+            });
+        });
+    }
+
+    private void requestDownload(VrProto.Message message) {
+        if (message.pending || message.failed || message.downloading) {
+            return;
+        }
+        if (message.receiptPending) {
+            retryDownloadReceipt(message);
+            return;
+        }
+        if (message.cloudDeleted) {
+            Toast.makeText(this,
+                    "The cloud copy was deleted after 2 downloads.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (message.downloadStatusLoaded
+                && message.downloadCount >= message.downloadLimit) {
+            retryDownloadReceipt(message);
+            Toast.makeText(this, "Download limit reached: "
+                    + message.downloadLimit + "/" + message.downloadLimit
+                    + ". Deleting the cloud copy...", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (message.downloadStatusLoaded && downloadedByMe(message)) {
+            Toast.makeText(this, "You already downloaded this file.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        pendingDownload = message;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType(message.mimeType.length() == 0
+                ? "*/*" : message.mimeType);
+        intent.putExtra(Intent.EXTRA_TITLE, message.fileName);
+        startActivityForResult(intent, REQ_SAVE_FILE);
+    }
+
+    private void downloadToUri(VrProto.Message message, Uri uri) {
+        failedFileStatuses.remove(message.id);
+        updateProgressById(message.id, 0, true);
+        executor.execute(() -> {
+            String token = ensureToken();
+            VrProto.FileStatus before = token == null ? new VrProto.FileStatus()
+                    : VrProto.loadFileStatus(token, myUid, peerUid, message);
+            boolean eligible = before.ok && before.exists
+                    && !before.downloadedBy(myUid)
+                    && before.downloadCount < before.downloadLimit;
+            OutputStream output = null;
+            boolean downloaded = false;
+            boolean closeOk = false;
+            if (eligible) {
+                try {
+                    output = getContentResolver().openOutputStream(uri, "w");
+                    downloaded = output != null
+                            && VrProto.downloadFile(token, myUid, peerUid, message,
+                                    output,
+                                    percent -> runOnUiThread(() -> updateProgressById(
+                                            message.id, percent, true)));
+                } catch (Exception ignored) {
+                    downloaded = false;
+                } finally {
+                    if (output != null) {
+                        try {
+                            output.close();
+                            closeOk = true;
+                        } catch (Exception ignored) {
+                            closeOk = false;
+                        }
+                    }
+                }
+            }
+            boolean saved = downloaded && closeOk;
+            VrProto.FileStatus afterMark = null;
+            boolean receiptOk = false;
+            boolean cleaned = false;
+            if (saved) {
+                afterMark = VrProto.markFileDownloaded(
+                        token, myUid, peerUid, message);
+                receiptOk = afterMark.ok && afterMark.exists
+                        && afterMark.downloadedBy(myUid);
+                if (receiptOk && afterMark.complete()) {
+                    cleaned = VrProto.cleanupDownloadedFile(
+                            token, myUid, peerUid, message);
+                }
+            }
+            VrProto.FileStatus finalStatus = afterMark != null && afterMark.ok
+                    ? afterMark : before;
+            boolean finalSaved = saved;
+            boolean finalReceiptOk = receiptOk;
+            boolean finalCleaned = cleaned;
+            runOnUiThread(() -> {
+                VrProto.Message current = messageById(message.id);
+                if (current != null) {
+                    current.downloading = false;
+                    current.progress = finalSaved ? 100 : 0;
+                    if (finalStatus != null && finalStatus.ok) {
+                        applyFileStatus(message.id, finalStatus, finalCleaned);
+                    }
+                    if (finalSaved && !finalReceiptOk) {
+                        current.receiptPending = true;
+                    }
+                    if (finalCleaned) {
+                        current.cloudDeleted = true;
+                    }
+                }
+                lastRenderSignature = "";
+                renderMessages(true);
+                if (!eligible) {
+                    Toast.makeText(this, before.ok && !before.exists
+                            ? "The cloud copy was already deleted."
+                            : "This file is no longer available for your download slot.",
+                            Toast.LENGTH_LONG).show();
+                } else if (finalSaved && finalReceiptOk) {
+                    Toast.makeText(this, finalCleaned
+                            ? "File saved. Downloads: 2/2. Cloud copy deleted."
+                            : "File saved. Download counted.",
+                            Toast.LENGTH_LONG).show();
+                } else if (finalSaved) {
+                    Toast.makeText(this,
+                            "File saved, but the download counter was not updated. Tap the file to retry the counter.",
+                            Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this,
+                            "Download failed. The counter was not used.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+    }
+
+    private void showWallpaperMenu() {
+        String[] options = activeWallpaperId.length() == 0
+                ? new String[]{"Choose wallpaper"}
+                : new String[]{"Choose wallpaper", "Remove my wallpaper"};
+        new AlertDialog.Builder(this)
+                .setTitle("Chat wallpaper")
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                        intent.addCategory(Intent.CATEGORY_OPENABLE);
+                        intent.setType("image/*");
+                        startActivityForResult(intent, REQ_PICK_WALLPAPER);
+                    } else {
+                        removeOwnWallpaper();
+                    }
+                })
+                .show();
+    }
+
+    private void prepareWallpaper(Uri uri) {
+        executor.execute(() -> {
+            byte[] image = prepareWallpaperImage(uri);
+            String wallpaperId = VrProto.newWallpaperId(System.currentTimeMillis());
+            runOnUiThread(() -> {
+                if (image == null) {
+                    Toast.makeText(this, "Could not load this image.",
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    showWallpaperScopeDialog(image, wallpaperId);
+                }
+            });
+        });
+    }
+
+    private byte[] prepareWallpaperImage(Uri uri) {
+        try {
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            InputStream first = getContentResolver().openInputStream(uri);
+            BitmapFactory.decodeStream(first, null, bounds);
+            if (first != null) {
+                first.close();
+            }
+            int sample = 1;
+            while (bounds.outWidth / sample > 1800
+                    || bounds.outHeight / sample > 1800) {
+                sample *= 2;
+            }
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = sample;
+            InputStream second = getContentResolver().openInputStream(uri);
+            Bitmap bitmap = BitmapFactory.decodeStream(second, null, options);
+            if (second != null) {
+                second.close();
+            }
+            if (bitmap == null) {
+                return null;
+            }
+            Bitmap current = scaleBitmapToMax(bitmap, 1440);
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            int quality = 86;
+            for (int attempt = 0; attempt < 9; attempt++) {
+                out.reset();
+                current.compress(Bitmap.CompressFormat.JPEG, quality, out);
+                if (out.size() <= VrProto.MAX_WALLPAPER_BYTES) {
+                    return out.toByteArray();
+                }
+                if (quality > 48) {
+                    quality -= 10;
+                } else {
+                    int nextMax = Math.max(640,
+                            Math.round(Math.max(current.getWidth(),
+                                    current.getHeight()) * 0.78f));
+                    current = scaleBitmapToMax(current, nextMax);
+                }
+            }
+            return null;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Bitmap scaleBitmapToMax(Bitmap source, int maxDimension) {
+        int largest = Math.max(source.getWidth(), source.getHeight());
+        if (largest <= maxDimension) {
+            return source;
+        }
+        float scale = maxDimension / (float) largest;
+        return Bitmap.createScaledBitmap(source,
+                Math.max(1, Math.round(source.getWidth() * scale)),
+                Math.max(1, Math.round(source.getHeight() * scale)), true);
+    }
+
+    private void showWallpaperScopeDialog(byte[] image, String wallpaperId) {
+        String peer = displayName();
+        String[] options = {"Set for me", "Suggest to " + peer,
+                "Set for me and suggest"};
+        new AlertDialog.Builder(this)
+                .setTitle("Use this wallpaper?")
+                .setItems(options, (dialog, which) -> applyWallpaperChoice(
+                        image, wallpaperId, which != 1, which != 0))
+                .show();
+    }
+
+    private void applyWallpaperChoice(byte[] image, String wallpaperId,
+                                      boolean setMine, boolean suggest) {
+        long now = System.currentTimeMillis();
+        executor.execute(() -> {
+            String token = ensureToken();
+            boolean uploaded = token != null && VrProto.uploadWallpaper(
+                    token, myUid, peerUid, wallpaperId, image, suggest, now);
+            boolean ownSet = uploaded && setMine && VrProto.setOwnWallpaper(
+                    token, myUid, peerUid, wallpaperId, myUid, now);
+            boolean sent = false;
+            if (uploaded && suggest) {
+                VrProto.Message message = new VrProto.Message();
+                message.id = VrProto.newClientId(now);
+                message.type = VrProto.TYPE_WALLPAPER;
+                message.senderUid = myUid;
+                message.text = "Wallpaper suggestion";
+                message.wallpaperId = wallpaperId;
+                message.wallpaperOwnerUid = myUid;
+                message.createdAt = now;
+                sent = VrProto.sendWallpaper(token, myUid, peerUid, message);
+            }
+            boolean ok = uploaded && (!setMine || ownSet) && (!suggest || sent);
+            Bitmap decoded = ownSet ? decodeWallpaper(image) : null;
+            runOnUiThread(() -> {
+                if (ownSet) {
+                    activeWallpaperId = wallpaperId;
+                    activeWallpaperOwnerUid = myUid;
+                    activeWallpaperBitmap = decoded;
+                    wallpaperPreviews.put(wallpaperKey(myUid, wallpaperId), decoded);
+                    applyBackground();
+                }
+                Toast.makeText(this, ok
+                        ? (setMine && suggest ? "Wallpaper set and suggested."
+                                : setMine ? "Wallpaper set." : "Wallpaper suggested.")
+                        : "Could not update the wallpaper. Check Firebase rules.",
+                        Toast.LENGTH_LONG).show();
+                if (ok) {
+                    syncNow(false);
+                }
+            });
+        });
+    }
+
+    private void removeOwnWallpaper() {
+        long now = System.currentTimeMillis();
+        executor.execute(() -> {
+            String token = ensureToken();
+            boolean ok = token != null && VrProto.setOwnWallpaper(
+                    token, myUid, peerUid, "", "", now);
+            runOnUiThread(() -> {
+                if (ok) {
+                    activeWallpaperId = "";
+                    activeWallpaperOwnerUid = "";
+                    activeWallpaperBitmap = null;
+                    applyBackground();
+                    renderMessages(true);
+                }
+                Toast.makeText(this, ok ? "Wallpaper removed."
+                        : "Could not remove the wallpaper.", Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
+
+    private void acceptWallpaper(VrProto.Message message) {
+        long now = System.currentTimeMillis();
+        executor.execute(() -> {
+            String token = ensureToken();
+            boolean ok = token != null && VrProto.setOwnWallpaper(token, myUid,
+                    peerUid, message.wallpaperId, message.wallpaperOwnerUid, now);
+            byte[] image = ok ? VrProto.loadWallpaper(token,
+                    message.wallpaperOwnerUid, message.wallpaperId) : null;
+            Bitmap decoded = decodeWallpaper(image);
+            runOnUiThread(() -> {
+                if (ok) {
+                    activeWallpaperId = message.wallpaperId;
+                    activeWallpaperOwnerUid = message.wallpaperOwnerUid;
+                    activeWallpaperBitmap = decoded;
+                    if (decoded != null) {
+                        wallpaperPreviews.put(wallpaperKey(
+                                message.wallpaperOwnerUid, message.wallpaperId), decoded);
+                    }
+                    applyBackground();
+                    renderMessages(true);
+                }
+                Toast.makeText(this, ok ? "Wallpaper set."
+                        : "Could not set this wallpaper.", Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
+
+    private String wallpaperKey(String ownerUid, String wallpaperId) {
+        return ownerUid + "/" + wallpaperId;
+    }
+
+    private Bitmap wallpaperBitmapFor(String ownerUid, String wallpaperId) {
+        if (ownerUid.length() == 0 || wallpaperId.length() == 0) {
+            return null;
+        }
+        String key = wallpaperKey(ownerUid, wallpaperId);
+        Bitmap cached = wallpaperPreviews.get(key);
+        if (cached != null || loadingWallpapers.contains(key)
+                || failedWallpapers.contains(key)) {
+            return cached;
+        }
+        loadingWallpapers.add(key);
+        executor.execute(() -> {
+            String token = ensureToken();
+            byte[] image = token == null ? null
+                    : VrProto.loadWallpaper(token, ownerUid, wallpaperId);
+            Bitmap decoded = decodeWallpaper(image);
+            runOnUiThread(() -> {
+                loadingWallpapers.remove(key);
+                if (decoded == null) {
+                    failedWallpapers.add(key);
+                } else {
+                    wallpaperPreviews.put(key, decoded);
+                    if (key.equals(wallpaperKey(activeWallpaperOwnerUid,
+                            activeWallpaperId))) {
+                        activeWallpaperBitmap = decoded;
+                        applyBackground();
+                    }
+                }
+                lastRenderSignature = "";
+                renderMessages(true);
+            });
+        });
+        return null;
+    }
+
+    private Bitmap decodeWallpaper(byte[] image) {
+        if (image == null || image.length == 0) {
+            return null;
+        }
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(image, 0, image.length, bounds);
+        int sample = 1;
+        while (bounds.outWidth / sample > 1200
+                || bounds.outHeight / sample > 1200) {
+            sample *= 2;
+        }
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = sample;
+        return BitmapFactory.decodeByteArray(image, 0, image.length, options);
+    }
+
+    private String formatBytes(long bytes) {
+        if (bytes < 1024) {
+            return bytes + " B";
+        }
+        if (bytes < 1024 * 1024) {
+            return String.format(Locale.ROOT, "%.1f KB", bytes / 1024.0);
+        }
+        return String.format(Locale.ROOT, "%.1f MB", bytes / (1024.0 * 1024.0));
+    }
+
     private void setSearchOpen(boolean open) {
         searchBar.setVisibility(open ? View.VISIBLE : View.GONE);
         searchDivider.setVisibility(open ? View.VISIBLE : View.GONE);
@@ -443,6 +1219,19 @@ public class DirectChatActivity extends Activity {
     }
 
     private void applyBackground() {
+        if (messagesScroll == null || messagesContainer == null) {
+            return;
+        }
+        if (activeWallpaperBitmap != null) {
+            BitmapDrawable wallpaper = new BitmapDrawable(
+                    getResources(), activeWallpaperBitmap);
+            wallpaper.setGravity(Gravity.FILL);
+            messagesScroll.setBackground(wallpaper);
+            messagesContainer.setBackgroundColor(isDark()
+                    ? Color.argb(54, 0, 0, 0)
+                    : Color.argb(24, 255, 255, 255));
+            return;
+        }
         int bg = AppSettings.chatBackground(this);
         int color = bg == AppSettings.BG_LIGHT ? Color.rgb(245, 245, 245)
                 : bg == AppSettings.BG_DARK ? Color.rgb(17, 17, 17)
@@ -460,10 +1249,23 @@ public class DirectChatActivity extends Activity {
         StringBuilder b = new StringBuilder();
         b.append(loading).append('|').append(syncFailed).append('|')
                 .append(peerBlocked).append('|').append(peerReadAt).append('|')
-                .append(query).append('|').append(isDark()).append('|').append(messages.size());
+                .append(query).append('|').append(isDark()).append('|')
+                .append(activeWallpaperOwnerUid).append('/').append(activeWallpaperId)
+                .append('|').append(wallpaperPreviews.size())
+                .append('|').append(messages.size());
         for (VrProto.Message m : messages) {
-            b.append('|').append(m.id).append(':').append(m.pending ? 'p' : 's')
-                    .append(m.failed ? 'f' : 'o');
+            b.append('|').append(m.id).append(':').append(m.type)
+                    .append(':').append(m.pending ? 'p' : 's')
+                    .append(m.failed ? 'f' : 'o')
+                    .append(':').append(m.progress)
+                    .append(m.downloading ? 'd' : 'n')
+                    .append(':').append(m.downloadCount)
+                    .append('/').append(m.downloadLimit)
+                    .append(m.senderDownloaded ? 's' : 'x')
+                    .append(m.recipientDownloaded ? 'r' : 'y')
+                    .append(m.cloudDeleted ? 'c' : 'k')
+                    .append(m.downloadStatusLoaded ? 'l' : 'u')
+                    .append(m.receiptPending ? 'q' : 'z');
         }
         return b.toString();
     }
@@ -566,34 +1368,50 @@ public class DirectChatActivity extends Activity {
         bubble.setOrientation(LinearLayout.VERTICAL);
         bubble.setPadding(dp(12), dp(9), dp(12), dp(7));
         bubble.setBackgroundResource(mine
-                ? (isDark() ? R.drawable.bg_input_normal : R.drawable.bg_button_primary)
-                : R.drawable.bg_message);
-        bubble.setClickable(message.failed && mine);
-        bubble.setFocusable(message.failed && mine);
+                ? (isDark() ? R.drawable.bg_glass_card : R.drawable.bg_message_mine)
+                : R.drawable.bg_message_peer);
+        boolean downloadTap = VrProto.TYPE_FILE.equals(message.type)
+                && !message.pending && !message.failed;
+        bubble.setClickable((message.failed && mine) || downloadTap);
+        bubble.setFocusable((message.failed && mine) || downloadTap);
         if (message.failed && mine) {
             bubble.setOnClickListener(v -> retryMessage(message));
+        } else if (downloadTap) {
+            bubble.setOnClickListener(v -> requestDownload(message));
         }
         bubble.setOnLongClickListener(v -> {
             ClipboardManager clipboard =
                     (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             if (clipboard != null) {
-                clipboard.setPrimaryClip(ClipData.newPlainText("Message", message.text));
-                Toast.makeText(this, "Message copied", Toast.LENGTH_SHORT).show();
+                String copied = VrProto.TYPE_FILE.equals(message.type)
+                        ? message.fileName : message.text;
+                clipboard.setPrimaryClip(ClipData.newPlainText("Message", copied));
+                Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
             }
             return true;
         });
 
         int maxBubbleWidth = Math.min(
-                Math.round(getResources().getDisplayMetrics().widthPixels * 0.78f),
-                dp(520));
-        TextView text = new TextView(this);
-        text.setText(message.text);
-        text.setMaxWidth(Math.max(dp(80), maxBubbleWidth - dp(24)));
-        text.setTextColor(mine && !isDark() ? Color.WHITE : getColor(R.color.text_main));
-        text.setTextSize(AppSettings.textSizeSp(this));
-        bubble.addView(text, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
+                Math.round(getResources().getDisplayMetrics().widthPixels * 0.80f),
+                dp(540));
+        int mainColor = mine && !isDark() ? Color.WHITE : getColor(R.color.text_main);
+        int secondaryColor = mine && !isDark()
+                ? Color.rgb(215, 215, 215) : getColor(R.color.text_secondary);
+        if (VrProto.TYPE_FILE.equals(message.type)) {
+            addFileContent(bubble, message, maxBubbleWidth, mainColor, secondaryColor);
+        } else if (VrProto.TYPE_WALLPAPER.equals(message.type)) {
+            addWallpaperContent(bubble, message, mine, maxBubbleWidth,
+                    mainColor, secondaryColor);
+        } else {
+            TextView text = new TextView(this);
+            text.setText(message.text);
+            text.setMaxWidth(Math.max(dp(80), maxBubbleWidth - dp(28)));
+            text.setTextColor(mainColor);
+            text.setTextSize(AppSettings.textSizeSp(this));
+            bubble.addView(text, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
 
         String meta = metaText(message, mine);
         if (meta.length() > 0) {
@@ -617,6 +1435,119 @@ public class DirectChatActivity extends Activity {
         return row;
     }
 
+    private void addFileContent(LinearLayout bubble, VrProto.Message message,
+                                int maxBubbleWidth, int mainColor,
+                                int secondaryColor) {
+        ensureFileStatus(message);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.HORIZONTAL);
+        content.setGravity(Gravity.CENTER_VERTICAL);
+        int contentWidth = Math.max(dp(190), maxBubbleWidth - dp(28));
+        content.setLayoutParams(new LinearLayout.LayoutParams(
+                contentWidth, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.ic_file);
+        icon.setColorFilter(mainColor, PorterDuff.Mode.SRC_IN);
+        content.addView(icon, new LinearLayout.LayoutParams(dp(34), dp(34)));
+
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        textParams.leftMargin = dp(10);
+
+        TextView name = new TextView(this);
+        name.setText(message.fileName.length() == 0 ? "File" : message.fileName);
+        name.setTextColor(mainColor);
+        name.setTextSize(AppSettings.textSizeSp(this));
+        name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        name.setMaxLines(2);
+        texts.addView(name);
+
+        TextView detail = new TextView(this);
+        String counter = "Downloads: " + message.downloadCount
+                + "/" + message.downloadLimit;
+        String status = message.failed ? "Failed. Tap to retry"
+                : message.receiptPending ? "Saved. Tap to update counter"
+                : message.cloudDeleted ? "Cloud copy deleted"
+                : message.downloading ? "Downloading " + message.progress + "%"
+                : message.pending ? "Uploading " + message.progress + "%"
+                : downloadedByMe(message) ? "You downloaded this file"
+                : message.downloadCount >= message.downloadLimit
+                        ? "Deleting cloud copy..."
+                : "Tap to download";
+        detail.setText(formatBytes(message.fileSize) + "  -  " + counter
+                + "  -  " + status);
+        detail.setMaxLines(2);
+        detail.setTextColor(secondaryColor);
+        detail.setTextSize(12);
+        texts.addView(detail);
+        content.addView(texts, textParams);
+        bubble.addView(content);
+    }
+
+    private void addWallpaperContent(LinearLayout bubble, VrProto.Message message,
+                                     boolean mine, int maxBubbleWidth,
+                                     int mainColor, int secondaryColor) {
+        TextView title = new TextView(this);
+        title.setText(mine ? "Wallpaper suggested" : "Wallpaper suggestion");
+        title.setTextColor(mainColor);
+        title.setTextSize(AppSettings.textSizeSp(this));
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        bubble.addView(title);
+
+        Bitmap preview = wallpaperBitmapFor(
+                message.wallpaperOwnerUid, message.wallpaperId);
+        if (preview != null) {
+            ImageView image = new ImageView(this);
+            image.setImageBitmap(preview);
+            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            image.setAdjustViewBounds(false);
+            LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(
+                    Math.max(dp(190), maxBubbleWidth - dp(28)), dp(150));
+            imageParams.topMargin = dp(8);
+            bubble.addView(image, imageParams);
+        } else {
+            TextView loadingView = new TextView(this);
+            loadingView.setText("Loading preview...");
+            loadingView.setTextColor(secondaryColor);
+            loadingView.setTextSize(13);
+            LinearLayout.LayoutParams loadingParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            loadingParams.topMargin = dp(6);
+            bubble.addView(loadingView, loadingParams);
+        }
+
+        if (!mine) {
+            boolean current = message.wallpaperId.equals(activeWallpaperId)
+                    && message.wallpaperOwnerUid.equals(activeWallpaperOwnerUid);
+            if (current) {
+                TextView currentView = new TextView(this);
+                currentView.setText("Current wallpaper");
+                currentView.setTextColor(secondaryColor);
+                currentView.setTextSize(13);
+                LinearLayout.LayoutParams currentParams = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT);
+                currentParams.topMargin = dp(8);
+                bubble.addView(currentView, currentParams);
+            } else {
+                Button setButton = new Button(this);
+                setButton.setText("Set wallpaper");
+                setButton.setTextAllCaps(false);
+                setButton.setTextColor(getColor(R.color.text_main));
+                setButton.setBackgroundResource(R.drawable.bg_glass_pill);
+                setButton.setOnClickListener(v -> acceptWallpaper(message));
+                LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, dp(44));
+                buttonParams.topMargin = dp(10);
+                bubble.addView(setButton, buttonParams);
+            }
+        }
+    }
+
     private String metaText(VrProto.Message message, boolean mine) {
         StringBuilder out = new StringBuilder();
         if (AppSettings.showTimestamps(this) && message.createdAt > 0) {
@@ -624,6 +1555,8 @@ public class DirectChatActivity extends Activity {
         }
         if (mine) {
             String status = message.failed ? "Failed. Tap to retry"
+                    : message.pending && VrProto.TYPE_FILE.equals(message.type)
+                            ? "Uploading " + message.progress + "%"
                     : message.pending ? "Sending..."
                     : message.createdAt <= peerReadAt && peerReadAt > 0 ? "Read" : "Sent";
             if (out.length() > 0) {

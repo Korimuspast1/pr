@@ -12,4 +12,7 @@
     <color name="pressed_dark">#FF2B2B2B</color>
     <color name="disabled">#FFBDBDBD</color>
     <color name="error_bg">#FFF5F5F5</color>
+    <color name="surface_soft">#FFF4F5F5</color>
+    <color name="glass_white">#EDFFFFFF</color>
+    <color name="glass_stroke">#26000000</color>
 </resources>

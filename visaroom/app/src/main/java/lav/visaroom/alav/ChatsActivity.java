@@ -241,7 +241,11 @@ public class ChatsActivity extends Activity {
     private void updateNav(int index) {
         for (int i = 0; i < pages.length; i++) {
             boolean selected = i == index;
-            navIndicators[i].setBackgroundColor(selected ? Color.BLACK : Color.TRANSPARENT);
+            if (selected) {
+                navIndicators[i].setBackgroundResource(R.drawable.bg_nav_indicator);
+            } else {
+                navIndicators[i].setBackgroundColor(Color.TRANSPARENT);
+            }
             int color = getColor(selected ? R.color.near_black : R.color.text_secondary);
             navIcons[i].setColorFilter(color, PorterDuff.Mode.SRC_IN);
             navLabels[i].setTextColor(color);
@@ -844,8 +848,8 @@ public class ChatsActivity extends Activity {
             directChats.addView(makeDirectChatRow(summary));
             View divider = new View(this);
             divider.setLayoutParams(new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, dp(1)));
-            divider.setBackgroundColor(getColor(R.color.border));
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(8)));
+            divider.setBackgroundColor(Color.TRANSPARENT);
             directChats.addView(divider);
             shown++;
         }
@@ -872,13 +876,18 @@ public class ChatsActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(16), dp(10), dp(16), dp(10));
-        row.setBackgroundResource(R.drawable.bg_chat_row);
+        row.setPadding(dp(16), dp(12), dp(16), dp(12));
+        row.setBackgroundResource(R.drawable.bg_glass_card);
+        row.setElevation(dp(3));
         row.setClickable(true);
         row.setFocusable(true);
-        row.setLayoutParams(new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        rowParams.leftMargin = dp(12);
+        rowParams.rightMargin = dp(12);
+        rowParams.topMargin = dp(4);
+        row.setLayoutParams(rowParams);
 
         ImageView icon = new ImageView(this);
         icon.setImageResource(R.drawable.ic_nav_profile);
@@ -1005,8 +1014,8 @@ public class ChatsActivity extends Activity {
             globalResults.addView(makeUserRow(r));
             View divider = new View(this);
             divider.setLayoutParams(new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, dp(1)));
-            divider.setBackgroundColor(getColor(R.color.border));
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(8)));
+            divider.setBackgroundColor(Color.TRANSPARENT);
             globalResults.addView(divider);
             shown++;
         }
@@ -1019,13 +1028,18 @@ public class ChatsActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(16), dp(10), dp(16), dp(10));
-        row.setBackgroundResource(R.drawable.bg_chat_row);
+        row.setPadding(dp(16), dp(12), dp(16), dp(12));
+        row.setBackgroundResource(R.drawable.bg_glass_card);
+        row.setElevation(dp(3));
         row.setClickable(true);
         row.setFocusable(true);
-        row.setLayoutParams(new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        rowParams.leftMargin = dp(12);
+        rowParams.rightMargin = dp(12);
+        rowParams.topMargin = dp(4);
+        row.setLayoutParams(rowParams);
 
         ImageView icon = new ImageView(this);
         icon.setImageResource(R.drawable.ic_nav_profile);
