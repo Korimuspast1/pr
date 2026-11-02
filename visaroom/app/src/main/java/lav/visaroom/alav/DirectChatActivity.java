@@ -2,6 +2,7 @@ package lav.visaroom.alav;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
@@ -121,6 +122,11 @@ public class DirectChatActivity extends Activity {
     private final Set<String> failedFileStatuses = new HashSet<>();
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(ThemeFx.wrap(newBase));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         AuthClient.init(this);
@@ -153,7 +159,7 @@ public class DirectChatActivity extends Activity {
         attachButton = findViewById(R.id.attach_button);
         wallpaperButton = findViewById(R.id.wallpaper_button);
 
-        peerAvatar.setColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN);
+        peerAvatar.setColorFilter(getColor(R.color.text_main), PorterDuff.Mode.SRC_IN);
         peerName.setText(displayName());
         applyBackground();
         updateComposer();
@@ -445,7 +451,7 @@ public class DirectChatActivity extends Activity {
             peerAvatar.setImageBitmap(circular(bmp));
         } else if (avatarBytes != null || peerProfile == null || !peerProfile.hasAvatar) {
             peerAvatar.setImageResource(R.drawable.ic_nav_profile);
-            peerAvatar.setColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN);
+            peerAvatar.setColorFilter(getColor(R.color.text_main), PorterDuff.Mode.SRC_IN);
         }
         updateComposer();
     }
@@ -1432,6 +1438,11 @@ public class DirectChatActivity extends Activity {
     }
 
     private boolean isDark() {
+        return ThemeFx.isDark(this)
+                || AppSettings.chatBackground(this) == AppSettings.BG_DARK;
+    }
+
+    private boolean customDarkBackground() {
         return AppSettings.chatBackground(this) == AppSettings.BG_DARK;
     }
 
@@ -1450,8 +1461,9 @@ public class DirectChatActivity extends Activity {
             return;
         }
         int bg = AppSettings.chatBackground(this);
-        int color = bg == AppSettings.BG_LIGHT ? Color.rgb(245, 245, 245)
-                : bg == AppSettings.BG_DARK ? Color.rgb(17, 17, 17)
+        int color = ThemeFx.isDark(this) || bg == AppSettings.BG_DARK
+                ? Color.rgb(17, 17, 17)
+                : bg == AppSettings.BG_LIGHT ? Color.rgb(245, 245, 245)
                 : Color.WHITE;
         messagesScroll.setBackgroundColor(color);
         messagesContainer.setBackgroundColor(color);
@@ -1589,8 +1601,12 @@ public class DirectChatActivity extends Activity {
         LinearLayout bubble = new LinearLayout(this);
         bubble.setOrientation(LinearLayout.VERTICAL);
         bubble.setPadding(dp(12), dp(9), dp(12), dp(7));
+        boolean themeDark = ThemeFx.isDark(this);
+        boolean customDark = customDarkBackground();
+        boolean mineLightBubble = mine && (themeDark || customDark);
         bubble.setBackgroundResource(mine
-                ? (isDark() ? R.drawable.bg_glass_card : R.drawable.bg_message_mine)
+                ? (!themeDark && customDark
+                        ? R.drawable.bg_glass_card : R.drawable.bg_message_mine)
                 : R.drawable.bg_message_peer);
         boolean downloadTap = VrProto.TYPE_FILE.equals(message.type)
                 && !message.pending && !message.failed;
@@ -1610,9 +1626,13 @@ public class DirectChatActivity extends Activity {
         int maxBubbleWidth = Math.min(
                 Math.round(getResources().getDisplayMetrics().widthPixels * 0.80f),
                 dp(540));
-        int mainColor = mine && !isDark() ? Color.WHITE : getColor(R.color.text_main);
-        int secondaryColor = mine && !isDark()
-                ? Color.rgb(215, 215, 215) : getColor(R.color.text_secondary);
+        int mainColor = mine
+                ? (mineLightBubble ? Color.rgb(17, 17, 17) : Color.WHITE)
+                : getColor(R.color.text_main);
+        int secondaryColor = mine
+                ? (mineLightBubble ? Color.rgb(90, 90, 90)
+                        : Color.rgb(215, 215, 215))
+                : getColor(R.color.text_secondary);
         if (VrProto.TYPE_FILE.equals(message.type)) {
             addFileContent(bubble, message, maxBubbleWidth, mainColor, secondaryColor);
         } else if (VrProto.TYPE_WALLPAPER.equals(message.type)) {
@@ -1633,8 +1653,10 @@ public class DirectChatActivity extends Activity {
         if (meta.length() > 0) {
             TextView metaView = new TextView(this);
             metaView.setText(meta);
-            metaView.setTextColor(mine && !isDark()
-                    ? Color.rgb(210, 210, 210) : getColor(R.color.text_secondary));
+            metaView.setTextColor(mine
+                    ? (mineLightBubble ? Color.rgb(95, 95, 95)
+                            : Color.rgb(210, 210, 210))
+                    : getColor(R.color.text_secondary));
             metaView.setTextSize(11);
             metaView.setGravity(Gravity.END);
             LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(

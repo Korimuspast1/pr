@@ -15,4 +15,6 @@
     <color name="surface_soft">#FFF4F5F5</color>
     <color name="glass_white">#EDFFFFFF</color>
     <color name="glass_stroke">#26000000</color>
+    <color name="accent_strong">#FF111111</color>
+    <color name="on_primary">#FFFFFFFF</color>
 </resources>

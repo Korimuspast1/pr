@@ -1,6 +1,7 @@
 package lav.visaroom.alav;
 
 import android.app.Activity;
+import android.content.Context;
 import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -9,12 +10,15 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +37,20 @@ public class ChatActivity extends Activity {
     private View searchDivider;
     private EditText searchInput;
     private TextView searchCount;
+    private EditText announcementInput;
+    private ImageButton announcementSend;
     private boolean loading = true;
+    private boolean adminComposer;
+    private boolean publishingAnnouncement;
+    private boolean scrollToLatestAfterLoad;
+    private String pendingAnnouncementId = "";
+    private String pendingAnnouncementText = "";
+    private long pendingAnnouncementAt;
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(ThemeFx.wrap(newBase));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +65,13 @@ public class ChatActivity extends Activity {
         searchDivider = findViewById(R.id.search_divider);
         searchInput = findViewById(R.id.message_search);
         searchCount = findViewById(R.id.search_count);
+        announcementInput = findViewById(R.id.official_message);
+        announcementSend = findViewById(R.id.official_send);
+        // This only controls the local UI; publishing later re-derives
+        // the administrator from the refreshed Firebase ID token and
+        // Firestore rules independently enforce the same email.
+        adminComposer = Admin.isAdminEmail(TokenStore.email(this));
+        updateAnnouncementComposer();
 
         applyBackground();
         renderMessages();
@@ -72,6 +96,36 @@ public class ChatActivity extends Activity {
             @Override
             public void afterTextChanged(Editable s) {
             }
+        });
+
+        announcementInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (!publishingAnnouncement
+                        && pendingAnnouncementText.length() > 0
+                        && !s.toString().trim().equals(pendingAnnouncementText)) {
+                    pendingAnnouncementId = "";
+                    pendingAnnouncementText = "";
+                    pendingAnnouncementAt = 0;
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+        announcementSend.setOnClickListener(v -> publishAnnouncement());
+        announcementInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (AppSettings.enterToSend(this)
+                    && actionId == EditorInfo.IME_ACTION_SEND) {
+                publishAnnouncement();
+                return true;
+            }
+            return false;
         });
 
         loadAnnouncements();
@@ -155,36 +209,145 @@ public class ChatActivity extends Activity {
     }
 
     private boolean isDark() {
-        return AppSettings.chatBackground(this) == AppSettings.BG_DARK;
+        return ThemeFx.isDark(this)
+                || AppSettings.chatBackground(this) == AppSettings.BG_DARK;
     }
 
     private void applyBackground() {
         int bg = AppSettings.chatBackground(this);
-        int color = bg == AppSettings.BG_LIGHT ? Color.rgb(245, 245, 245)
-                : bg == AppSettings.BG_DARK ? Color.rgb(17, 17, 17)
+        int color = ThemeFx.isDark(this) || bg == AppSettings.BG_DARK
+                ? Color.rgb(17, 17, 17)
+                : bg == AppSettings.BG_LIGHT ? Color.rgb(245, 245, 245)
                 : Color.WHITE;
         messagesScroll.setBackgroundColor(color);
         messagesContainer.setBackgroundColor(color);
+    }
+
+    private void updateAnnouncementComposer() {
+        if (announcementInput == null || announcementSend == null) {
+            return;
+        }
+        boolean enabled = adminComposer && !publishingAnnouncement;
+        announcementInput.setEnabled(enabled);
+        announcementInput.setFocusable(enabled);
+        announcementInput.setFocusableInTouchMode(enabled);
+        announcementInput.setHint(adminComposer
+                ? (publishingAnnouncement
+                        ? "Publishing..." : "Write an announcement")
+                : "You can't send messages to this chat");
+        announcementSend.setEnabled(enabled);
+        announcementSend.setAlpha(enabled ? 1f : 0.55f);
+    }
+
+    private void publishAnnouncement() {
+        if (!adminComposer || publishingAnnouncement
+                || announcementInput == null) {
+            return;
+        }
+        String text = announcementInput.getText().toString().trim();
+        if (text.length() == 0) {
+            return;
+        }
+        if (text.length() > ProfileClient.MAX_ANNOUNCEMENT_CHARS) {
+            Toast.makeText(this,
+                    "Announcement is too long. Maximum is 4000 characters.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (pendingAnnouncementId.length() == 0
+                || pendingAnnouncementAt <= 0
+                || !text.equals(pendingAnnouncementText)) {
+            pendingAnnouncementAt = System.currentTimeMillis();
+            pendingAnnouncementId = ProfileClient.newAnnouncementId(
+                    pendingAnnouncementAt);
+            pendingAnnouncementText = text;
+        }
+        String announcementId = pendingAnnouncementId;
+        long createdAt = pendingAnnouncementAt;
+        publishingAnnouncement = true;
+        updateAnnouncementComposer();
+
+        executor.execute(() -> {
+            boolean published = false;
+            boolean confirmedAdmin = false;
+            String refreshToken = TokenStore.refreshToken(this);
+            if (refreshToken != null && refreshToken.length() > 0) {
+                AuthClient.Result session = AuthClient.refresh(refreshToken);
+                if (session.ok) {
+                    TokenStore.save(this, null, session.refreshToken);
+                    TokenStore.saveUid(this, session.uid);
+                    String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
+                    if (tokenEmail.length() > 0) {
+                        TokenStore.save(this, tokenEmail, session.refreshToken);
+                    }
+                    confirmedAdmin = Admin.isAdminEmail(tokenEmail);
+                    if (confirmedAdmin) {
+                        published = ProfileClient.publishAnnouncement(
+                                session.idToken, session.uid, announcementId,
+                                text, createdAt);
+                    }
+                }
+            }
+            boolean resultPublished = published;
+            boolean resultAdmin = confirmedAdmin;
+            runOnUiThread(() -> {
+                publishingAnnouncement = false;
+                adminComposer = resultAdmin;
+                if (resultPublished) {
+                    pendingAnnouncementId = "";
+                    pendingAnnouncementText = "";
+                    pendingAnnouncementAt = 0;
+                    if (announcementInput.getText().toString().trim().equals(text)) {
+                        announcementInput.setText("");
+                    }
+                    updateAnnouncementComposer();
+                    Toast.makeText(this, "Announcement published",
+                            Toast.LENGTH_SHORT).show();
+                    scrollToLatestAfterLoad = true;
+                    loadAnnouncements();
+                } else {
+                    updateAnnouncementComposer();
+                    Toast.makeText(this, resultAdmin
+                                    ? "Could not publish. Check the connection and Firestore rules."
+                                    : "Only the visaroom administrator can post here.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        });
     }
 
     private void loadAnnouncements() {
         executor.execute(() -> {
             String refreshToken = TokenStore.refreshToken(this);
             List<ProfileClient.Announcement> loaded = new ArrayList<>();
+            boolean confirmedAdmin = false;
             if (refreshToken != null && refreshToken.length() > 0) {
                 AuthClient.Result session = AuthClient.refresh(refreshToken);
                 if (session.ok) {
                     TokenStore.save(this, null, session.refreshToken);
                     TokenStore.saveUid(this, session.uid);
+                    String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
+                    if (tokenEmail.length() > 0) {
+                        TokenStore.save(this, tokenEmail, session.refreshToken);
+                    }
+                    confirmedAdmin = Admin.isAdminEmail(tokenEmail);
                     loaded = ProfileClient.listAnnouncements(session.idToken);
                 }
             }
             List<ProfileClient.Announcement> result = loaded;
+            boolean resultAdmin = confirmedAdmin;
             runOnUiThread(() -> {
+                adminComposer = resultAdmin;
+                updateAnnouncementComposer();
                 messages.clear();
                 messages.addAll(result);
                 loading = false;
                 renderMessages();
+                if (scrollToLatestAfterLoad) {
+                    scrollToLatestAfterLoad = false;
+                    messagesScroll.post(() ->
+                            messagesScroll.fullScroll(View.FOCUS_DOWN));
+                }
             });
         });
     }
@@ -262,9 +425,11 @@ public class ChatActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        if (isDark()) {
+        if (!ThemeFx.isDark(this) && isDark()) {
+            // A manually dark message area inside the light app theme.
             card.setBackgroundColor(Color.rgb(34, 34, 34));
         } else {
+            // In the dark app theme this resolves to drawable-night.
             card.setBackgroundResource(R.drawable.bg_message);
         }
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(

@@ -94,6 +94,7 @@ public class ChatsActivity extends Activity {
     private ProgressBar profileProgress;
     private Button saveButton;
 
+    private TextView appearanceValue;
     private TextView textSizeValue;
     private TextView backgroundValue;
     private TextView twoFaValue;
@@ -128,6 +129,11 @@ public class ChatsActivity extends Activity {
     private Runnable globalSearchRunnable;
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(ThemeFx.wrap(newBase));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         AuthClient.init(this);
@@ -139,6 +145,12 @@ public class ChatsActivity extends Activity {
         setupChats();
         setupProfile();
         setupSettings();
+        if (savedInstanceState != null) {
+            int restoredPage = savedInstanceState.getInt("current_page", 0);
+            if (restoredPage >= 0 && restoredPage < pages.length) {
+                showPage(restoredPage);
+            }
+        }
 
         String email = TokenStore.email(this);
         userEmail = email == null ? "" : email;
@@ -154,6 +166,12 @@ public class ChatsActivity extends Activity {
         applyChatTextSize();
         loadProfileFromCloud();
         loadDirectChats();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putInt("current_page", currentPage);
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -221,6 +239,7 @@ public class ChatsActivity extends Activity {
         profileProgress = findViewById(R.id.profile_progress);
         saveButton = findViewById(R.id.save_profile);
 
+        appearanceValue = findViewById(R.id.setting_appearance_value);
         textSizeValue = findViewById(R.id.setting_text_size_value);
         backgroundValue = findViewById(R.id.setting_background_value);
         twoFaValue = findViewById(R.id.setting_2fa_value);
@@ -342,6 +361,7 @@ public class ChatsActivity extends Activity {
 
     private void setupSettings() {
         setupSettingsFolders();
+        appearanceValue.setText(AppSettings.themeLabel(this));
         textSizeValue.setText(AppSettings.textSizeLabel(this));
         backgroundValue.setText(AppSettings.chatBackgroundLabel(this));
 
@@ -391,6 +411,14 @@ public class ChatsActivity extends Activity {
         findViewById(R.id.setting_admin_find).setOnClickListener(v -> showAdminFindDialog());
         updateAdminUi();
 
+        findViewById(R.id.setting_appearance).setOnClickListener(v -> {
+            int nextTheme = (AppSettings.themeMode(this) + 1) % 3;
+            AppSettings.setThemeMode(this, nextTheme);
+            appearanceValue.setText(AppSettings.themeLabel(this));
+            // Recreating applies the matching night/day resources to the
+            // whole activity while onSaveInstanceState restores Settings.
+            getWindow().getDecorView().postDelayed(this::recreate, 120);
+        });
         findViewById(R.id.setting_text_size).setOnClickListener(v -> {
             int next = (AppSettings.textSizeIndex(this) + 1) % 3;
             AppSettings.setTextSizeIndex(this, next);
@@ -429,7 +457,7 @@ public class ChatsActivity extends Activity {
         settingsFolderTitles = new String[]{
                 "Chats", "Notifications", "Security", "Privacy", "Moderation", "Account"};
         settingsFolderDescriptions = new String[]{
-                "Text size, background, timestamps, Enter to send, clear search",
+                "Appearance, text size, background, timestamps, Enter to send",
                 "Message notifications and sounds",
                 "Two-step verification",
                 "Read receipts, bio, photo and ID visibility",
@@ -895,7 +923,7 @@ public class ChatsActivity extends Activity {
 
         ImageView icon = new ImageView(this);
         icon.setImageResource(R.drawable.ic_nav_profile);
-        icon.setColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN);
+        icon.setColorFilter(getColor(R.color.text_main), PorterDuff.Mode.SRC_IN);
         icon.setClickable(true);
         icon.setFocusable(true);
         row.addView(icon, new LinearLayout.LayoutParams(dp(42), dp(42)));
@@ -1048,7 +1076,7 @@ public class ChatsActivity extends Activity {
 
         ImageView icon = new ImageView(this);
         icon.setImageResource(R.drawable.ic_nav_profile);
-        icon.setColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN);
+        icon.setColorFilter(getColor(R.color.text_main), PorterDuff.Mode.SRC_IN);
         LinearLayout.LayoutParams iconParams =
                 new LinearLayout.LayoutParams(dp(42), dp(42));
         row.addView(icon, iconParams);

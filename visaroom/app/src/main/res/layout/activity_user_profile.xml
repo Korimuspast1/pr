@@ -139,7 +139,7 @@
                 android:enabled="false"
                 android:text="Message"
                 android:textAllCaps="false"
-                android:textColor="@color/white"
+                android:textColor="@color/on_primary"
                 android:textSize="14sp" />
 
             <TextView

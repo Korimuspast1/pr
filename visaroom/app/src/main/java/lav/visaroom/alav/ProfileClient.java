@@ -13,8 +13,12 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * Profiles, username search and official announcements on top of the
@@ -29,6 +33,7 @@ final class ProfileClient {
     static final int USERNAME_TAKEN = 1;
     static final int USERNAME_ERROR = -1;
     private static final int MAX_AVATAR_BYTES = 120000;
+    static final int MAX_ANNOUNCEMENT_CHARS = 4000;
 
     static final class SearchResult {
         String uid = "";
@@ -403,6 +408,62 @@ final class ProfileClient {
     }
 
 
+
+    static String newAnnouncementId(long createdAtMillis) {
+        long random = new SecureRandom().nextLong();
+        return "a" + Math.max(1L, createdAtMillis) + "_"
+                + String.format(Locale.ROOT, "%016x", random);
+    }
+
+    /**
+     * Creates one official-channel announcement.  The Firestore rules
+     * independently require the administrator's Firebase token email;
+     * this method being reachable in the UI is not the security boundary.
+     * A caller-supplied stable ID makes a retry after a lost response
+     * idempotent instead of posting the same announcement twice.
+     */
+    static boolean publishAnnouncement(String idToken, String uid,
+                                       String announcementId, String text,
+                                       long createdAtMillis) {
+        try {
+            String cleanText = text == null ? "" : text.trim();
+            if (idToken == null || idToken.length() == 0
+                    || uid == null || uid.length() == 0
+                    || announcementId == null
+                    || !announcementId.matches("a[0-9]+_[0-9a-f]{16}")
+                    || cleanText.length() == 0
+                    || cleanText.length() > MAX_ANNOUNCEMENT_CHARS
+                    || createdAtMillis <= 0) {
+                return false;
+            }
+            JSONObject fields = new JSONObject();
+            putStr(fields, "text", cleanText);
+            putStr(fields, "authorUid", uid);
+            putTimestamp(fields, "createdAt", createdAtMillis);
+            JSONObject body = new JSONObject();
+            body.put("fields", fields);
+            Response r = request("POST", Vault.firestoreBaseUrl()
+                    + "announcements?documentId=" + announcementId, idToken, body);
+            if (r.code >= 200 && r.code < 300) {
+                return true;
+            }
+            if (r.code == 409 || r.code == 400) {
+                Response existing = request("GET", Vault.firestoreBaseUrl()
+                        + "announcements/" + announcementId, idToken, null);
+                if (existing.code == 200) {
+                    JSONObject existingFields = new JSONObject(existing.text)
+                            .optJSONObject("fields");
+                    return existingFields != null
+                            && uid.equals(str(existingFields, "authorUid", ""))
+                            && cleanText.equals(str(existingFields, "text", ""));
+                }
+            }
+            return false;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     // ---------- public numeric IDs (100000-5000000) ----------
 
     static final long PUBLIC_ID_MIN = 100000L;
@@ -580,6 +641,17 @@ final class ProfileClient {
     private static void putNum(JSONObject fields, String name, long value) throws Exception {
         JSONObject v = new JSONObject();
         v.put("integerValue", String.valueOf(value));
+        fields.put(name, v);
+    }
+
+
+    private static void putTimestamp(JSONObject fields, String name, long millis)
+            throws Exception {
+        SimpleDateFormat format = new SimpleDateFormat(
+                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT);
+        format.setTimeZone(TimeZone.getTimeZone("UTC"));
+        JSONObject v = new JSONObject();
+        v.put("timestampValue", format.format(new Date(millis)));
         fields.put(name, v);
     }
 

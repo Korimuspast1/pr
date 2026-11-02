@@ -46,6 +46,11 @@ public class AuthActivity extends Activity {
     private int restoreAttempts;
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(ThemeFx.wrap(newBase));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         AuthClient.init(this);

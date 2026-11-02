@@ -2,6 +2,7 @@ package lav.visaroom.alav;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -46,6 +47,11 @@ public class UserProfileActivity extends Activity {
     private boolean iAmAdmin;
     private ProfileData targetData;
     private ProfileClient.PublicProfile publicProfile;
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(ThemeFx.wrap(newBase));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

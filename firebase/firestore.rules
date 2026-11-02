@@ -20,6 +20,8 @@ rules_version = '2';
 // participant may delete all chunks and then the file metadata.
 // A sender may edit their own text message or delete their own message.
 // Deleting a file message also lets that sender remove its cloud chunks.
+// Only the administrator's Firebase Auth email may create an official
+// announcement; signed-in active users may only read announcements.
 // Per-chat wallpaper images live privately under the owner's
 // users/{uid}/wallpapers/{wallpaperId}; shared=true is required before
 // the other participant may read a suggested wallpaper.
@@ -457,6 +459,20 @@ service cloud.firestore {
         && validCommon(data, allowAnyPublicId);
     }
 
+
+    function validAnnouncement(data, announcementId) {
+      return announcementId.matches('^a[0-9]+_[0-9a-f]{16}$')
+        && announcementId.size() <= 40
+        && data.keys().hasOnly(['text', 'authorUid', 'createdAt'])
+        && data.keys().hasAll(['text', 'authorUid', 'createdAt'])
+        && data.text is string
+        && data.text.size() > 0
+        && data.text.size() <= 4000
+        && validUidValue(data.authorUid)
+        && data.authorUid == request.auth.uid
+        && data.createdAt is timestamp;
+    }
+
     function publicAvatarVisible(uid) {
       return exists(/databases/$(database)/documents/profiles/$(uid))
         && get(/databases/$(database)/documents/profiles/$(uid)).data.get('hasAvatar', false) == true
@@ -773,7 +789,12 @@ service cloud.firestore {
     // --- Official visaroom announcements ------------------------------------
     match /announcements/{announcementId} {
       allow get, list: if activeSignedIn() || isAdmin();
-      allow write: if false;
+      // The app shows the composer only to the administrator, but this
+      // rule is the actual authorization boundary: only the Firebase
+      // Auth email checked by isAdmin() may create an announcement.
+      allow create: if isAdmin()
+        && validAnnouncement(request.resource.data, announcementId);
+      allow update, delete: if false;
     }
 
     // --- Everything else ------------------------------------------------------

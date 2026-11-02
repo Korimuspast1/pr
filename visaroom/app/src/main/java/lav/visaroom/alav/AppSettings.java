@@ -12,11 +12,36 @@ final class AppSettings {
     static final int BG_LIGHT = 1;
     static final int BG_DARK = 2;
 
+    static final int THEME_SYSTEM = 0;
+    static final int THEME_LIGHT = 1;
+    static final int THEME_DARK = 2;
+
     private AppSettings() {
     }
 
     private static SharedPreferences prefs(Context c) {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    static int themeMode(Context c) {
+        int mode = prefs(c).getInt("appearance_theme", THEME_SYSTEM);
+        return mode >= THEME_SYSTEM && mode <= THEME_DARK ? mode : THEME_SYSTEM;
+    }
+
+    static void setThemeMode(Context c, int mode) {
+        int safe = mode >= THEME_SYSTEM && mode <= THEME_DARK ? mode : THEME_SYSTEM;
+        prefs(c).edit().putInt("appearance_theme", safe).apply();
+    }
+
+    static String themeLabel(Context c) {
+        switch (themeMode(c)) {
+            case THEME_LIGHT:
+                return "Light";
+            case THEME_DARK:
+                return "Dark";
+            default:
+                return "System";
+        }
     }
 
     static int textSizeIndex(Context c) {

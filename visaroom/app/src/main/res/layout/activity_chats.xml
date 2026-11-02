@@ -502,7 +502,7 @@
                     android:background="@drawable/bg_button_primary"
                     android:text="Save changes"
                     android:textAllCaps="false"
-                    android:textColor="@color/white"
+                    android:textColor="@color/on_primary"
                     android:textSize="15sp" />
 
                 <ProgressBar
@@ -584,6 +584,36 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/setting_appearance"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chat_row"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="56dp"
+                    android:orientation="horizontal"
+                    android:paddingLeft="24dp"
+                    android:paddingRight="24dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Appearance"
+                        android:textColor="@color/text_main"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/setting_appearance_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="System"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+                </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/setting_text_size"
@@ -1127,7 +1157,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:gravity="center"
-                    android:text="visaroom 1.8.0"
+                    android:text="visaroom 1.9.0"
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -1166,7 +1196,7 @@
                 android:id="@+id/nav_chats_indicator"
                 android:layout_width="32dp"
                 android:layout_height="3dp"
-                android:background="@color/black" />
+                android:background="@color/accent_strong" />
 
             <ImageView
                 android:id="@+id/nav_chats_icon"
