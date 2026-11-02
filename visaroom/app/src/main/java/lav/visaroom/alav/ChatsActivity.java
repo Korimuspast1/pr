@@ -914,8 +914,7 @@ public class ChatsActivity extends Activity {
         texts.addView(nameRow);
 
         TextView preview = new TextView(this);
-        String last = summary.lastText.replace('
-', ' ').trim();
+        String last = summary.lastText.replace('\n', ' ').trim();
         if (summary.blocked) {
             preview.setText("Account blocked");
         } else {
