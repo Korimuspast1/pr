@@ -39,6 +39,10 @@ fi
 adb shell pm clear lav.visaroom.alav >/dev/null 2>&1 || true
 adb shell pm revoke lav.visaroom.alav android.permission.POST_NOTIFICATIONS >/dev/null 2>&1 || true
 
+APP_UID="$(adb shell cmd package list packages -U lav.visaroom.alav 2>/dev/null \
+  | sed -n 's/.*uid://p' | tr -cd '0-9')"
+echo "app_uid=$APP_UID" | tee -a "$LOG"
+
 echo "--- package permissions before launch ---" >> "$LOG"
 adb shell dumpsys package lav.visaroom.alav 2>/dev/null \
   | grep -A4 -B4 -E 'POST_NOTIFICATIONS|RECEIVE_BOOT_COMPLETED|grantedPermissions|runtime permissions' \
@@ -47,7 +51,16 @@ adb shell dumpsys package lav.visaroom.alav 2>/dev/null \
 if [ "$MODE" = "seeded" ]; then
   echo "--- launch debug SmokeSeedActivity (saves a test session, then opens ChatsActivity) ---" | tee -a "$LOG"
   adb shell am start -W -n lav.visaroom.alav/.SmokeSeedActivity 2>&1 | tee -a "$LOG"
-  sleep 20
+  sleep 3
+  EARLY_PID="$(adb shell pidof lav.visaroom.alav 2>/dev/null | tr -d '\r')"
+  echo "pid_after_3s=$EARLY_PID" | tee -a "$LOG"
+  echo "--- early app-UID log ---" >> "$LOG"
+  if [ -n "$APP_UID" ]; then
+    adb logcat -d --uid="$APP_UID" -v threadtime 2>&1 | tail -n 350 >> "$LOG"
+  fi
+  echo "--- early crash buffer ---" >> "$LOG"
+  adb logcat -b crash -d -v threadtime 2>&1 | tail -n 350 >> "$LOG"
+  sleep 17
 
   echo "--- force MessageCheckJobService job 1101 ---" >> "$LOG"
   adb shell cmd jobscheduler run -f lav.visaroom.alav 1101 2>&1 >> "$LOG"
@@ -92,20 +105,30 @@ echo "--- JobScheduler state for visaroom ---" >> "$LOG"
 adb shell dumpsys jobscheduler 2>/dev/null \
   | grep -A28 -B5 'lav\.visaroom\.alav' | head -n 260 >> "$LOG"
 
-echo "--- crash buffer ---" >> "$LOG"
-adb logcat -b crash -d -v threadtime >> "$LOG" 2>&1
+# Keep the raw log in a side file for extraction, but do not append the
+# whole emulator log to the committed smoke log: Google/system services
+# generate tens of thousands of lines during boot and previously pushed
+# the app's own stack trace out of the tail that CI commits.
+adb logcat -d -v threadtime > smoke-raw-logcat.txt 2>&1
 
-echo "--- full logcat ---" >> "$LOG"
-adb logcat -d -v threadtime >> "$LOG" 2>&1
+echo "--- final app-UID log ---" >> "$LOG"
+if [ -n "$APP_UID" ]; then
+  adb logcat -d --uid="$APP_UID" -v threadtime 2>&1 | tail -n 600 >> "$LOG"
+else
+  echo "app UID unavailable" >> "$LOG"
+fi
 
-# Put the actual Java stack near the end as well; CI keeps only a tail of
-# this file, and a timing-dependent crash could otherwise be pushed out
-# by later emulator/system log traffic.
-cp "$LOG" smoke-before-crash-extract.txt
+echo "--- final crash buffer ---" >> "$LOG"
+adb logcat -b crash -d -v threadtime 2>&1 | tail -n 600 >> "$LOG"
+
+# ActivityManager/JobScheduler lines are emitted under the system UID, so
+# add a narrowly targeted extract from the raw log. Avoid generic words
+# such as JobScheduler here: they match thousands of unrelated Google
+# service lines during emulator boot.
 {
-  echo "--- filtered fatal-exception extract ---"
-  grep -n -A140 -B12 -E 'FATAL EXCEPTION|AndroidRuntime: Process: lav\.visaroom|Process: lav\.visaroom\.alav|VisaroomSmoke|JobScheduler|IllegalArgumentException|SecurityException' \
-    smoke-before-crash-extract.txt | tail -n 500 || true
+  echo "--- filtered app-context extract ---"
+  grep -n -A120 -B10 -E 'FATAL EXCEPTION|VisaroomSmoke|SmokeSeedActivity|ChatsActivity|MessageCheckJobService|lav\.visaroom\.alav|Process: lav\.visaroom' \
+    smoke-raw-logcat.txt | tail -n 700 || true
 } >> "$LOG"
 
 if [ -z "$PID" ]; then
