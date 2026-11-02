@@ -10,6 +10,8 @@ on:
       - ".github/workflows/android-smoke.yml"
       - ".github/scripts/android-smoke.sh"
       - "visaroom/app/src/debug/**"
+      - "visaroom/app/src/main/**"
+      - "visaroom/app/build.gradle"
       - "release/*.apk"
 
 permissions:
@@ -19,11 +21,11 @@ jobs:
   smoke:
     name: API ${{ matrix.api-level }} seeded-session smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 55
     strategy:
       fail-fast: false
       matrix:
-        api-level: [35]
+        api-level: [35, 36]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,7 +75,11 @@ jobs:
           arch: x86_64
           target: google_apis
           profile: Nexus 6
-          emulator-boot-timeout: 900
+          cores: 4
+          ram-size: 4096M
+          heap-size: 512M
+          disk-size: 8192M
+          emulator-boot-timeout: 1200
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           disable-spellchecker: true

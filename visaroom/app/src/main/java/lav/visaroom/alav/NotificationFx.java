@@ -76,16 +76,23 @@ final class NotificationFx {
 
     static void requestPermission(Activity activity) {
         if (activity == null
-                || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
-                || !AppSettings.notifications(activity)
-                || activity.checkSelfPermission(
-                        Manifest.permission.POST_NOTIFICATIONS)
-                == PackageManager.PERMISSION_GRANTED) {
+                || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             return;
         }
-        activity.requestPermissions(
-                new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                REQUEST_POST_NOTIFICATIONS);
+        try {
+            if (!AppSettings.notifications(activity)
+                    || activity.checkSelfPermission(
+                            Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+            activity.requestPermissions(
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    REQUEST_POST_NOTIFICATIONS);
+        } catch (RuntimeException ignored) {
+            // A notification-permission prompt must never prevent the
+            // chat list (or any other screen) from opening.
+        }
     }
 
     static synchronized void startForegroundChecks(Context context) {
@@ -93,53 +100,90 @@ final class NotificationFx {
             return;
         }
         appContext = context.getApplicationContext();
-        ensureChannels(appContext);
+        // Notifications are auxiliary to opening ChatsActivity. A vendor
+        // or platform rejection anywhere in their setup must not abort
+        // Activity.onCreate/onResume.
+        try {
+            ensureChannels(appContext);
+        } catch (RuntimeException ignored) {
+            // Foreground polling can still run without a channel UI.
+        }
         scheduleBackgroundChecks(appContext);
         if (foregroundExecutor != null && !foregroundExecutor.isShutdown()) {
             return;
         }
-        foregroundExecutor = Executors.newSingleThreadScheduledExecutor();
-        foregroundExecutor.scheduleWithFixedDelay(
-                () -> checkNow(appContext), 1L, 4L, TimeUnit.SECONDS);
+        try {
+            foregroundExecutor = Executors.newSingleThreadScheduledExecutor();
+            foregroundExecutor.scheduleWithFixedDelay(
+                    () -> checkNow(appContext), 1L, 4L, TimeUnit.SECONDS);
+        } catch (RuntimeException ignored) {
+            if (foregroundExecutor != null) {
+                foregroundExecutor.shutdownNow();
+                foregroundExecutor = null;
+            }
+        }
     }
 
     static void scheduleBackgroundChecks(Context context) {
         if (context == null) {
             return;
         }
-        Context app = context.getApplicationContext();
-        JobScheduler scheduler = (JobScheduler)
-                app.getSystemService(Context.JOB_SCHEDULER_SERVICE);
-        if (scheduler == null) {
-            return;
+        try {
+            Context app = context.getApplicationContext();
+            JobScheduler scheduler = (JobScheduler)
+                    app.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            if (scheduler == null) {
+                return;
+            }
+            String refreshToken = TokenStore.refreshToken(app);
+            if (!AppSettings.notifications(app)
+                    || refreshToken == null || refreshToken.length() == 0) {
+                scheduler.cancel(JOB_ID);
+                return;
+            }
+            if (scheduler.getPendingJob(JOB_ID) != null) {
+                return;
+            }
+            JobInfo.Builder builder = new JobInfo.Builder(JOB_ID,
+                    new ComponentName(app, MessageCheckJobService.class))
+                    .setPeriodic(TimeUnit.MINUTES.toMillis(15));
+            // Android requires ACCESS_NETWORK_STATE for a connectivity
+            // constraint. It is declared in the manifest; keep this
+            // runtime guard so a platform/manifest mismatch degrades to
+            // an unconstrained periodic check instead of crashing.
+            if (app.checkSelfPermission(
+                    Manifest.permission.ACCESS_NETWORK_STATE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                builder.setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY);
+            }
+            // Persisting a job across reboot requires the boot permission.
+            if (app.checkSelfPermission(
+                    Manifest.permission.RECEIVE_BOOT_COMPLETED)
+                    == PackageManager.PERMISSION_GRANTED) {
+                builder.setPersisted(true);
+            }
+            scheduler.schedule(builder.build());
+        } catch (RuntimeException ignored) {
+            // Background notification scheduling is optional. In
+            // particular, JobScheduler rejects malformed/unsupported
+            // requests with SecurityException or IllegalArgumentException;
+            // neither may take down the signed-in UI.
         }
-        String refreshToken = TokenStore.refreshToken(app);
-        if (!AppSettings.notifications(app)
-                || refreshToken == null || refreshToken.length() == 0) {
-            scheduler.cancel(JOB_ID);
-            return;
-        }
-        if (scheduler.getPendingJob(JOB_ID) != null) {
-            return;
-        }
-        JobInfo job = new JobInfo.Builder(JOB_ID,
-                new ComponentName(app, MessageCheckJobService.class))
-                .setPeriodic(TimeUnit.MINUTES.toMillis(15))
-                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-                .setPersisted(true)
-                .build();
-        scheduler.schedule(job);
     }
 
     static void cancelBackgroundChecks(Context context) {
         if (context == null) {
             return;
         }
-        JobScheduler scheduler = (JobScheduler) context
-                .getApplicationContext()
-                .getSystemService(Context.JOB_SCHEDULER_SERVICE);
-        if (scheduler != null) {
-            scheduler.cancel(JOB_ID);
+        try {
+            JobScheduler scheduler = (JobScheduler) context
+                    .getApplicationContext()
+                    .getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            if (scheduler != null) {
+                scheduler.cancel(JOB_ID);
+            }
+        } catch (RuntimeException ignored) {
+            // See scheduleBackgroundChecks: this work is auxiliary.
         }
     }
 
