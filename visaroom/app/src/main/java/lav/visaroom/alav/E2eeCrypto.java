@@ -124,7 +124,7 @@ final class E2eeCrypto {
         }
 
         String fingerprint() {
-            return fingerprint(signingPublic);
+            return E2eeCrypto.fingerprint(signingPublic);
         }
 
         boolean verifySignedPreKey() {

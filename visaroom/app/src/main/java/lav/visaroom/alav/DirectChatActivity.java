@@ -1277,7 +1277,7 @@ public class DirectChatActivity extends Activity {
                 | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         input.setBackgroundResource(R.drawable.bg_input);
         input.setTextColor(getColor(R.color.text_main));
-        input.setTextColorHint(getColor(R.color.text_hint));
+        input.setHintTextColor(getColor(R.color.text_hint));
         input.setPadding(dp(14), dp(10), dp(14), dp(10));
         sheet.addView(input, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
