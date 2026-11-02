@@ -23,6 +23,8 @@ import java.util.concurrent.Executors;
 
 public class AuthActivity extends Activity {
 
+    public static final String EXTRA_ADD_ACCOUNT = "add_account";
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     private EditText emailInput;
@@ -40,6 +42,8 @@ public class AuthActivity extends Activity {
     private boolean registering;
     private boolean passwordVisible;
     private boolean confirmVisible;
+    private boolean addingAccount;
+    private int restoreAttempts;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,7 +77,13 @@ public class AuthActivity extends Activity {
         switchAction.setOnClickListener(v -> setMode(!registering));
         submitButton.setOnClickListener(v -> submit());
 
-        restoreSession();
+        addingAccount = getIntent() != null
+                && getIntent().getBooleanExtra(EXTRA_ADD_ACCOUNT, false);
+        if (addingAccount) {
+            subtitleView.setText("Sign in or create another account. Up to 3 accounts can stay on this device.");
+        } else {
+            restoreSession();
+        }
     }
 
     @Override
@@ -83,10 +93,39 @@ public class AuthActivity extends Activity {
     }
 
     private String localTwoFaVerifier() {
-        boolean enabled = getSharedPreferences("profile_cache", Context.MODE_PRIVATE)
+        return localTwoFaVerifier(TokenStore.uid(this));
+    }
+
+    private String localTwoFaVerifier(String uid) {
+        boolean enabled = TokenStore.profilePrefs(this, uid)
                 .getBoolean("two_fa", false);
-        String verifier = TokenStore.twoFaVerifier(this);
+        String verifier = TokenStore.twoFaVerifierForUid(this, uid);
+        if (verifier == null && uid != null && uid.equals(TokenStore.uid(this))) {
+            verifier = TokenStore.twoFaVerifier(this);
+        }
         return enabled && verifier != null ? verifier : "";
+    }
+
+    private ProfileData localProfileData(String uid, String email) {
+        ProfileData data = new ProfileData();
+        data.email = email == null ? "" : email;
+        android.content.SharedPreferences prefs = TokenStore.profilePrefs(this, uid);
+        data.username = prefs.getString("username", "");
+        data.bio = prefs.getString("bio", "");
+        data.discoverable = prefs.getBoolean("discoverable", true);
+        data.hasAvatar = prefs.getBoolean("has_avatar", false);
+        data.avatarUpdatedAt = prefs.getLong("avatar_at", 0);
+        data.publicId = prefs.getLong("public_id", 0);
+        data.twoFaEnabled = prefs.getBoolean("two_fa", false);
+        String verifier = TokenStore.twoFaVerifierForUid(this, uid);
+        data.twoFaVerifier = verifier == null ? "" : verifier;
+        if (!data.twoFaEnabled) {
+            data.twoFaVerifier = "";
+        }
+        data.showBio = prefs.getBoolean("show_bio", true);
+        data.showAvatar = prefs.getBoolean("show_avatar", true);
+        data.showId = prefs.getBoolean("show_id", true);
+        return data;
     }
 
     private boolean markerMatches(String verifier) {
@@ -191,7 +230,7 @@ public class AuthActivity extends Activity {
                             data.twoFaVerifier = verifier;
                             ProfileClient.saveMyProfile(result.idToken, result.uid, data);
                             TokenStore.saveTwoFa(this, TwoFa.markerFor(verifier), verifier);
-                            getSharedPreferences("profile_cache", Context.MODE_PRIVATE)
+                            TokenStore.profilePrefs(this, result.uid)
                                     .edit().putBoolean("two_fa", true).apply();
                             runOnUiThread(this::openChats);
                         });
@@ -210,13 +249,24 @@ public class AuthActivity extends Activity {
             AuthClient.Result result = AuthClient.refresh(token);
             String verifier = "";
             if (result.ok) {
-                ProfileData data = new ProfileData();
-                if (ProfileClient.loadMyProfile(result.idToken, result.uid, data)
+                String accountEmail = result.email == null || result.email.length() == 0
+                        ? AuthClient.emailFromIdToken(result.idToken) : result.email;
+                if (accountEmail == null || accountEmail.length() == 0) {
+                    accountEmail = TokenStore.email(this);
+                }
+                TokenStore.activateAccount(this, accountEmail,
+                        result.refreshToken, result.uid);
+                ProfileData data = localProfileData(result.uid, accountEmail);
+                if (ProfileClient.ensureUserDocuments(result.idToken, result.uid, data)
                         && data.twoFaEnabled) {
                     verifier = data.twoFaVerifier;
                     TokenStore.saveTwoFa(this, TokenStore.twoFaMarker(this), verifier);
+                    TokenStore.profilePrefs(this, result.uid).edit()
+                            .putLong("public_id", data.publicId)
+                            .putBoolean("two_fa", true)
+                            .apply();
                 } else {
-                    verifier = localTwoFaVerifier();
+                    verifier = localTwoFaVerifier(result.uid);
                 }
             }
             final String gateVerifier = verifier;
@@ -227,7 +277,13 @@ public class AuthActivity extends Activity {
                     proceedWithGate(gateVerifier, false);
                 } else if (result.sessionExpired) {
                     TokenStore.clear(AuthActivity.this);
-                    setLoading(false);
+                    if (TokenStore.refreshToken(AuthActivity.this) != null
+                            && restoreAttempts < TokenStore.MAX_ACCOUNTS) {
+                        restoreAttempts++;
+                        restoreSession();
+                    } else {
+                        setLoading(false);
+                    }
                 } else {
                     // Offline: keep the session, still honor a locally known 2FA.
                     proceedWithGate(localTwoFaVerifier(), false);
@@ -284,47 +340,41 @@ public class AuthActivity extends Activity {
                     : AuthClient.signIn(email, password);
             long assignedId = 0;
             String gateVerifier = "";
-            if (result.ok && register) {
-                assignedId = ProfileClient.assignPublicId(result.idToken, result.uid, 0, 0);
+            boolean accountStored = !result.ok || TokenStore.activateAccount(
+                    AuthActivity.this, result.email, result.refreshToken, result.uid);
+            if (result.ok && accountStored && register) {
                 ProfileData data = new ProfileData();
                 data.email = result.email;
-                data.publicId = assignedId;
-                if (!ProfileClient.saveMyProfile(result.idToken, result.uid, data)) {
-                    AuthClient.createUserDocument(result.idToken, result.uid, result.email);
-                }
+                ProfileClient.ensureUserDocuments(result.idToken, result.uid, data);
+                assignedId = data.publicId;
                 if (assignedId == 0) {
                     assignedId = ProfileClient.randomPublicId();
                 }
-                getSharedPreferences("profile_cache", Context.MODE_PRIVATE).edit()
+                TokenStore.profilePrefs(this, result.uid).edit()
                         .putLong("public_id", assignedId).apply();
-            } else if (result.ok) {
-                ProfileData data = new ProfileData();
-                data.email = result.email;
-                if (ProfileClient.loadMyProfile(result.idToken, result.uid, data)) {
-                    if (!ProfileClient.validPublicId(data.publicId)) {
-                        long preferred = getSharedPreferences("profile_cache",
-                                Context.MODE_PRIVATE).getLong("public_id", 0);
-                        long assigned = ProfileClient.assignPublicId(
-                                result.idToken, result.uid, preferred, 0);
-                        if (assigned > 0) {
-                            data.publicId = assigned;
-                            ProfileClient.saveMyProfile(result.idToken, result.uid, data);
-                            getSharedPreferences("profile_cache", Context.MODE_PRIVATE).edit()
-                                    .putLong("public_id", assigned).apply();
-                        }
+            } else if (result.ok && accountStored) {
+                ProfileData data = localProfileData(result.uid, result.email);
+                if (ProfileClient.ensureUserDocuments(result.idToken, result.uid, data)) {
+                    if (data.publicId > 0) {
+                        TokenStore.profilePrefs(this, result.uid).edit()
+                                .putLong("public_id", data.publicId).apply();
                     }
                     if (data.twoFaEnabled) {
                         gateVerifier = data.twoFaVerifier;
                         TokenStore.saveTwoFa(this, TokenStore.twoFaMarker(this), gateVerifier);
                     }
                 } else {
-                    gateVerifier = localTwoFaVerifier();
+                    gateVerifier = localTwoFaVerifier(result.uid);
                 }
             }
             final long finalAssignedId = assignedId;
             final String finalGateVerifier = gateVerifier;
+            final boolean finalAccountStored = accountStored;
             runOnUiThread(() -> {
-                if (result.ok) {
+                if (result.ok && !finalAccountStored) {
+                    setLoading(false);
+                    showError("Three accounts are already saved on this device. Remove one first.");
+                } else if (result.ok) {
                     TokenStore.save(AuthActivity.this, result.email, result.refreshToken);
                     TokenStore.saveUid(AuthActivity.this, result.uid);
                     if (register) {

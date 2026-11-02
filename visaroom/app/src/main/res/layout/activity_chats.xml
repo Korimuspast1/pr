@@ -522,11 +522,18 @@
                     android:layout_marginTop="6dp"
                     android:paddingLeft="24dp"
                     android:paddingRight="24dp"
-                    android:text="Chats, notifications and privacy."
+                    android:text="Folders for chats, privacy, security and account. Long-press Settings for accounts."
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
 
                 <TextView
+                    android:id="@+id/folder_chats_header"
+                    android:background="@drawable/bg_chat_row"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="52dp"
+                    android:paddingRight="24dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="28dp"
@@ -535,6 +542,13 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/folder_chats_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
                 <LinearLayout
                     android:id="@+id/setting_text_size"
@@ -643,6 +657,30 @@
                 </LinearLayout>
 
                 <TextView
+                    android:id="@+id/setting_clear_search"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chat_row"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:minHeight="56dp"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="24dp"
+                    android:paddingRight="24dp"
+                    android:text="Clear current search"
+                    android:textColor="@color/text_main"
+                    android:textSize="15sp" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/folder_notifications_header"
+                    android:background="@drawable/bg_chat_row"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="52dp"
+                    android:paddingRight="24dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="22dp"
@@ -651,6 +689,13 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/folder_notifications_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -699,7 +744,16 @@
                 </LinearLayout>
 
 
+                </LinearLayout>
+
                 <TextView
+                    android:id="@+id/folder_security_header"
+                    android:background="@drawable/bg_chat_row"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="52dp"
+                    android:paddingRight="24dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="22dp"
@@ -708,6 +762,13 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/folder_security_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
                 <LinearLayout
                     android:id="@+id/setting_2fa"
@@ -753,7 +814,16 @@
                         android:textSize="14sp" />
                 </LinearLayout>
 
+                </LinearLayout>
+
                 <TextView
+                    android:id="@+id/folder_privacy_header"
+                    android:background="@drawable/bg_chat_row"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="52dp"
+                    android:paddingRight="24dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="22dp"
@@ -762,6 +832,13 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/folder_privacy_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -865,6 +942,8 @@
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
 
+                </LinearLayout>
+
                 <LinearLayout
                     android:id="@+id/moderation_section"
                     android:layout_width="match_parent"
@@ -873,6 +952,13 @@
                     android:visibility="gone">
 
                     <TextView
+                        android:id="@+id/folder_moderation_header"
+                        android:background="@drawable/bg_chat_row"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="52dp"
+                        android:paddingRight="24dp"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="22dp"
@@ -881,6 +967,13 @@
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:id="@+id/folder_moderation_content"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
 
                     <TextView
                         android:id="@+id/setting_admin_find"
@@ -905,9 +998,18 @@
                         android:text="Open a profile to change the ID, remove the username, clear the bio or remove the photo."
                         android:textColor="@color/text_hint"
                         android:textSize="12sp" />
+                    </LinearLayout>
+
                 </LinearLayout>
 
                 <TextView
+                    android:id="@+id/folder_account_header"
+                    android:background="@drawable/bg_chat_row"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="52dp"
+                    android:paddingRight="24dp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="22dp"
@@ -917,20 +1019,56 @@
                     android:textSize="12sp"
                     android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/setting_clear_search"
+                <LinearLayout
+                    android:id="@+id/folder_account_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/setting_accounts"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_chat_row"
                     android:clickable="true"
                     android:focusable="true"
-                    android:minHeight="56dp"
                     android:gravity="center_vertical"
+                    android:minHeight="56dp"
+                    android:orientation="horizontal"
                     android:paddingLeft="24dp"
-                    android:paddingRight="24dp"
-                    android:text="Clear current search"
-                    android:textColor="@color/text_main"
-                    android:textSize="15sp" />
+                    android:paddingRight="24dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Accounts"
+                            android:textColor="@color/text_main"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Switch or add up to 3 accounts"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/setting_accounts_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="1/3"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/setting_sign_out"
@@ -947,12 +1085,14 @@
                     android:textColor="@color/text_main"
                     android:textSize="15sp" />
 
+                </LinearLayout>
+
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:gravity="center"
-                    android:text="visaroom 1.3.0"
+                    android:text="visaroom 1.4.0"
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
             </LinearLayout>

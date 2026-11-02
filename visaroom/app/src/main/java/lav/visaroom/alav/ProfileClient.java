@@ -140,6 +140,35 @@ final class ProfileClient {
         }
     }
 
+    /**
+     * Makes sure Firestore contains this account's documents:
+     * users/{uid}, profiles/{uid}, publicIds/{publicId} and, when a
+     * discoverable username exists, usernames/{usernameLower}.  This is
+     * what makes new and previously-registered users appear in the
+     * Firestore console after they sign in or simply open the app.
+     * The supplied data is used as a local fallback and is replaced by
+     * the cloud values when a profile already exists.
+     */
+    static boolean ensureUserDocuments(String idToken, String uid, ProfileData data) {
+        if (idToken == null || uid == null || uid.length() == 0 || data == null) {
+            return false;
+        }
+        loadMyProfile(idToken, uid, data);
+        if (!validPublicId(data.publicId)) {
+            long assigned = assignPublicId(idToken, uid, data.publicId, 0);
+            if (assigned > 0) {
+                data.publicId = assigned;
+            }
+        }
+        boolean saved = saveMyProfile(idToken, uid, data);
+        if (saved && data.username != null && data.username.trim().length() > 0
+                && data.discoverable) {
+            claimUsername(idToken, uid, data.username,
+                    data.usernameLower(), true, data.publicId);
+        }
+        return saved;
+    }
+
     static int claimUsername(String idToken, String uid, String username,
                              String oldLower, boolean discoverable, long publicId) {
         String lower = username == null ? ""

@@ -80,6 +80,7 @@ public class ChatsActivity extends Activity {
     private TextView textSizeValue;
     private TextView backgroundValue;
     private TextView twoFaValue;
+    private TextView accountsValue;
     private Switch showBioSwitch;
     private Switch showAvatarSwitch;
     private Switch showIdSwitch;
@@ -135,6 +136,7 @@ public class ChatsActivity extends Activity {
     protected void onResume() {
         super.onResume();
         updateAdminUi();
+        updateAccountsUi();
     }
 
     @Override
@@ -187,6 +189,7 @@ public class ChatsActivity extends Activity {
         textSizeValue = findViewById(R.id.setting_text_size_value);
         backgroundValue = findViewById(R.id.setting_background_value);
         twoFaValue = findViewById(R.id.setting_2fa_value);
+        accountsValue = findViewById(R.id.setting_accounts_value);
         moderationSection = findViewById(R.id.moderation_section);
     }
 
@@ -194,6 +197,10 @@ public class ChatsActivity extends Activity {
         findViewById(R.id.nav_chats).setOnClickListener(v -> showPage(0));
         findViewById(R.id.nav_profile).setOnClickListener(v -> showPage(1));
         findViewById(R.id.nav_settings).setOnClickListener(v -> showPage(2));
+        findViewById(R.id.nav_settings).setOnLongClickListener(v -> {
+            showAccountsDialog();
+            return true;
+        });
         showPage(0);
     }
 
@@ -295,6 +302,7 @@ public class ChatsActivity extends Activity {
     }
 
     private void setupSettings() {
+        setupSettingsFolders();
         textSizeValue.setText(AppSettings.textSizeLabel(this));
         backgroundValue.setText(AppSettings.chatBackgroundLabel(this));
 
@@ -359,7 +367,243 @@ public class ChatsActivity extends Activity {
             searchInput.setText("");
             showPage(0);
         });
+        findViewById(R.id.setting_accounts).setOnClickListener(v -> showAccountsDialog());
+        updateAccountsUi();
         findViewById(R.id.setting_sign_out).setOnClickListener(v -> signOut());
+    }
+
+    private void setupSettingsFolders() {
+        setupFolder(R.id.folder_chats_header, R.id.folder_chats_content, "CHATS");
+        setupFolder(R.id.folder_notifications_header,
+                R.id.folder_notifications_content, "NOTIFICATIONS");
+        setupFolder(R.id.folder_security_header, R.id.folder_security_content, "SECURITY");
+        setupFolder(R.id.folder_privacy_header, R.id.folder_privacy_content, "PRIVACY");
+        setupFolder(R.id.folder_moderation_header,
+                R.id.folder_moderation_content, "MODERATION");
+        setupFolder(R.id.folder_account_header, R.id.folder_account_content, "ACCOUNT");
+    }
+
+    private void setupFolder(int headerId, int contentId, String title) {
+        TextView header = findViewById(headerId);
+        View content = findViewById(contentId);
+        if (header == null || content == null) {
+            return;
+        }
+        setFolderOpen(header, content, title, false, false);
+        header.setOnClickListener(v -> setFolderOpen(
+                header, content, title, content.getVisibility() != View.VISIBLE, true));
+    }
+
+    private void setFolderOpen(TextView header, View content, String title,
+                               boolean open, boolean animate) {
+        header.setText(title + (open ? "  -" : "  +"));
+        content.animate().cancel();
+        if (open) {
+            content.setVisibility(View.VISIBLE);
+            if (animate) {
+                content.setAlpha(0f);
+                content.setTranslationY(-dp(6));
+                content.animate().alpha(1f).translationY(0f)
+                        .setDuration(170)
+                        .setInterpolator(new DecelerateInterpolator())
+                        .start();
+            } else {
+                content.setAlpha(1f);
+                content.setTranslationY(0f);
+            }
+        } else if (animate && content.getVisibility() == View.VISIBLE) {
+            content.animate().alpha(0f).translationY(-dp(6))
+                    .setDuration(140)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .withEndAction(() -> {
+                        content.setVisibility(View.GONE);
+                        content.setAlpha(1f);
+                        content.setTranslationY(0f);
+                    })
+                    .start();
+        } else {
+            content.setVisibility(View.GONE);
+            content.setAlpha(1f);
+            content.setTranslationY(0f);
+        }
+    }
+
+    private void updateAccountsUi() {
+        if (accountsValue != null) {
+            accountsValue.setText(TokenStore.accountCount(this)
+                    + "/" + TokenStore.MAX_ACCOUNTS);
+        }
+    }
+
+    private String accountLabel(TokenStore.Account account, int index) {
+        SharedPreferences prefs = TokenStore.profilePrefs(this, account.uid);
+        String username = prefs.getString("username", "");
+        if (username != null && username.trim().length() > 0) {
+            return "@" + username.trim();
+        }
+        long storedPublicId = prefs.getLong("public_id", 0);
+        if (storedPublicId > 0) {
+            return "ID " + storedPublicId;
+        }
+        return "Account " + (index + 1);
+    }
+
+    private void restartChatsForAccount() {
+        Intent intent = new Intent(this, ChatsActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+    }
+
+    private void showAccountsDialog() {
+        java.util.List<TokenStore.Account> accountsList = TokenStore.accounts(this);
+        int activeSlot = TokenStore.activeSlot(this);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(24), dp(8), dp(24), dp(8));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Accounts")
+                .setView(box)
+                .setNegativeButton("Close", null)
+                .create();
+
+        TextView hint = new TextView(this);
+        hint.setText("Up to 3 accounts can stay signed in on this device.");
+        hint.setTextColor(getColor(R.color.text_secondary));
+        hint.setTextSize(13);
+        box.addView(hint, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        for (int i = 0; i < accountsList.size(); i++) {
+            final TokenStore.Account account = accountsList.get(i);
+            final boolean current = account.slot == activeSlot;
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setBackgroundResource(R.drawable.bg_chat_row);
+            row.setMinimumHeight(dp(64));
+            row.setPadding(dp(14), dp(8), dp(14), dp(8));
+            row.setClickable(true);
+            row.setFocusable(true);
+
+            LinearLayout labels = new LinearLayout(this);
+            labels.setOrientation(LinearLayout.VERTICAL);
+            TextView title = new TextView(this);
+            title.setText(accountLabel(account, i));
+            title.setTextColor(getColor(R.color.text_main));
+            title.setTextSize(15);
+            title.setTypeface(Typeface.DEFAULT, current ? Typeface.BOLD : Typeface.NORMAL);
+            labels.addView(title);
+
+            TextView detail = new TextView(this);
+            detail.setText(current ? "Current account"
+                    : "Tap to switch. Long-press to remove from this device.");
+            detail.setTextColor(getColor(R.color.text_secondary));
+            detail.setTextSize(12);
+            labels.addView(detail);
+            row.addView(labels, new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+            TextView state = new TextView(this);
+            state.setText(current ? "Current" : "Switch");
+            state.setTextColor(getColor(R.color.text_secondary));
+            state.setTextSize(13);
+            row.addView(state);
+
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            rowParams.topMargin = dp(12);
+            box.addView(row, rowParams);
+
+            row.setOnClickListener(v -> {
+                if (current) {
+                    dialog.dismiss();
+                } else if (TokenStore.switchAccount(this, account.slot)) {
+                    dialog.dismiss();
+                    restartChatsForAccount();
+                } else {
+                    Toast.makeText(this, "This saved session is no longer available.",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+            if (!current) {
+                row.setOnLongClickListener(v -> {
+                    confirmRemoveAccount(account, dialog);
+                    return true;
+                });
+            }
+        }
+
+        if (accountsList.size() < TokenStore.MAX_ACCOUNTS) {
+            TextView add = new TextView(this);
+            add.setText("Add account");
+            add.setTextColor(getColor(R.color.text_main));
+            add.setTextSize(15);
+            add.setGravity(Gravity.CENTER_VERTICAL);
+            add.setBackgroundResource(R.drawable.bg_chat_row);
+            add.setMinimumHeight(dp(56));
+            add.setPadding(dp(14), 0, dp(14), 0);
+            add.setClickable(true);
+            add.setFocusable(true);
+            LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            addParams.topMargin = dp(12);
+            box.addView(add, addParams);
+            add.setOnClickListener(v -> {
+                dialog.dismiss();
+                Intent intent = new Intent(this, AuthActivity.class);
+                intent.putExtra(AuthActivity.EXTRA_ADD_ACCOUNT, true);
+                startActivity(intent);
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+            });
+        } else {
+            TextView limit = new TextView(this);
+            limit.setText("Maximum of 3 accounts on this device.");
+            limit.setTextColor(getColor(R.color.text_secondary));
+            limit.setTextSize(13);
+            LinearLayout.LayoutParams limitParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            limitParams.topMargin = dp(14);
+            box.addView(limit, limitParams);
+        }
+
+        dialog.show();
+        box.setAlpha(0f);
+        box.setTranslationY(dp(14));
+        box.animate().alpha(1f).translationY(0f)
+                .setDuration(190)
+                .setInterpolator(new DecelerateInterpolator())
+                .start();
+    }
+
+    private void confirmRemoveAccount(TokenStore.Account account, AlertDialog parent) {
+        new AlertDialog.Builder(this)
+                .setTitle("Remove account?")
+                .setMessage("This removes the saved session from this device. "
+                        + "The visaroom account itself is not deleted.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Remove", (d, w) -> {
+                    TokenStore.profilePrefs(this, account.uid).edit().clear().apply();
+                    File file = avatarFileFor(account.uid);
+                    if (file.exists()) {
+                        file.delete();
+                    }
+                    TokenStore.removeAccount(this, account.slot);
+                    updateAccountsUi();
+                    parent.dismiss();
+                    Toast.makeText(this, "Account removed from this device.",
+                            Toast.LENGTH_SHORT).show();
+                    showAccountsDialog();
+                })
+                .show();
     }
 
     private void applyChatTextSize() {
@@ -369,13 +613,25 @@ public class ChatsActivity extends Activity {
     }
 
     private void signOut() {
-        TokenStore.clear(this);
-        profileCache().edit().clear().apply();
+        SharedPreferences cache = profileCache();
         File localAvatar = avatarFile();
+        int slot = TokenStore.activeSlot(this);
+        if (slot >= 0) {
+            TokenStore.removeAccount(this, slot);
+        } else {
+            TokenStore.clear(this);
+        }
+        cache.edit().clear().apply();
         if (localAvatar.exists()) {
             localAvatar.delete();
         }
-        Intent intent = new Intent(this, AuthActivity.class);
+        boolean hasOtherAccount = TokenStore.accountCount(this) > 0;
+        if (hasOtherAccount) {
+            Toast.makeText(this, "Signed out. Switched to another saved account.",
+                    Toast.LENGTH_SHORT).show();
+        }
+        Intent intent = new Intent(this,
+                hasOtherAccount ? ChatsActivity.class : AuthActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
@@ -514,7 +770,7 @@ public class ChatsActivity extends Activity {
     // ---------- profile ----------
 
     private SharedPreferences profileCache() {
-        return getSharedPreferences("profile_cache", Context.MODE_PRIVATE);
+        return TokenStore.profilePrefs(this, userId);
     }
 
     private void loadLocalProfile() {
@@ -533,7 +789,10 @@ public class ChatsActivity extends Activity {
             p.edit().putLong("public_id", publicId).apply();
         }
         twoFaEnabledState = p.getBoolean("two_fa", false);
-        String localVerifier = TokenStore.twoFaVerifier(this);
+        String localVerifier = TokenStore.twoFaVerifierForUid(this, userId);
+        if (localVerifier == null) {
+            localVerifier = TokenStore.twoFaVerifier(this);
+        }
         if (localVerifier != null) {
             twoFaVerifierState = localVerifier;
         }
@@ -567,7 +826,20 @@ public class ChatsActivity extends Activity {
     }
 
     private File avatarFile() {
-        return new File(getFilesDir(), "avatar.jpg");
+        return avatarFileFor(userId);
+    }
+
+    private File avatarFileFor(String uid) {
+        File legacy = new File(getFilesDir(), "avatar.jpg");
+        if (uid == null || uid.length() == 0) {
+            return legacy;
+        }
+        File perAccount = new File(getFilesDir(),
+                "avatar_" + uid.replaceAll("[^A-Za-z0-9]", "_") + ".jpg");
+        if (!perAccount.exists() && legacy.exists() && uid.equals(TokenStore.uid(this))) {
+            legacy.renameTo(perAccount);
+        }
+        return perAccount;
     }
 
     private void displayAvatar() {
@@ -947,35 +1219,55 @@ public class ChatsActivity extends Activity {
     }
 
     private void loadProfileFromCloud() {
+        final ProfileData fallback = currentProfileData();
+        final boolean hadLocalAvatar = avatarFile().exists();
         executor.execute(() -> {
             String token = ensureIdToken();
             if (token == null || userId.length() == 0) {
                 return;
             }
-            ProfileData data = new ProfileData();
-            data.email = userEmail;
-            data.publicId = publicId;
-            boolean loaded = ProfileClient.loadMyProfile(token, userId, data);
-            if (loaded && !ProfileClient.validPublicId(data.publicId)) {
-                long assigned = ProfileClient.assignPublicId(token, userId, publicId, 0);
-                if (assigned > 0) {
-                    data.publicId = assigned;
-                    if (ProfileClient.saveMyProfile(token, userId, data)
-                            && data.username.length() > 0 && data.discoverable) {
-                        ProfileClient.claimUsername(token, userId, data.username,
-                                data.usernameLower(), true, assigned);
+            ProfileData data = fallback;
+            boolean existed = ProfileClient.loadMyProfile(token, userId, data);
+            boolean synced;
+            if (!existed) {
+                // First open after Firestore/rules were created, or an
+                // Auth account that predates the database: upload a local
+                // photo first, then create users/profiles/publicIds docs.
+                if (hadLocalAvatar) {
+                    byte[] jpeg = readAvatarFile();
+                    boolean uploaded = jpeg != null
+                            && ProfileClient.uploadAvatar(token, userId, jpeg);
+                    data.hasAvatar = uploaded;
+                    if (uploaded && data.avatarUpdatedAt == 0) {
+                        data.avatarUpdatedAt = System.currentTimeMillis();
                     }
+                } else {
+                    data.hasAvatar = false;
                 }
+                synced = ProfileClient.ensureUserDocuments(token, userId, data);
+            } else {
+                // Heal a missing public profile, public ID claim or
+                // username directory entry for an existing account.
+                synced = ProfileClient.ensureUserDocuments(token, userId, data);
             }
-            if (loaded && data.hasAvatar
-                    && (!avatarFile().exists() || data.avatarUpdatedAt != avatarUpdatedAt)) {
-                byte[] bytes = ProfileClient.downloadAvatar(token, userId);
-                if (bytes != null) {
-                    try {
-                        FileOutputStream out = new FileOutputStream(avatarFile());
-                        out.write(bytes);
-                        out.close();
-                    } catch (Exception ignored) {
+            boolean loaded = existed || synced;
+            if (loaded && data.hasAvatar) {
+                if (!avatarFile().exists() || data.avatarUpdatedAt != avatarUpdatedAt) {
+                    byte[] bytes = ProfileClient.downloadAvatar(token, userId);
+                    if (bytes != null) {
+                        try {
+                            FileOutputStream out = new FileOutputStream(avatarFile());
+                            out.write(bytes);
+                            out.close();
+                        } catch (Exception ignored) {
+                        }
+                    }
+                } else if (ProfileClient.downloadAvatar(token, userId) == null) {
+                    // Profile says there is a photo, but its Firestore
+                    // avatar document is missing (older install): reupload it.
+                    byte[] jpeg = readAvatarFile();
+                    if (jpeg != null) {
+                        ProfileClient.uploadAvatar(token, userId, jpeg);
                     }
                 }
             }
