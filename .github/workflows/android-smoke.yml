@@ -75,10 +75,6 @@ jobs:
           arch: x86_64
           target: google_apis
           profile: Nexus 6
-          cores: 4
-          ram-size: 4096M
-          heap-size: 512M
-          disk-size: 8192M
           emulator-boot-timeout: 1200
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
