@@ -401,7 +401,7 @@ try {
     getDoc(doc(bobDb, "chats", chatId, "files", fileId, "chunks", "0")),
   );
 
-  const replyId = "mreply0123456789abcdef012";
+  const replyId = "mreply0123456789abcdef0123";
   const replyMessage = encryptedMessage(BOB, replyId, now + 4);
   await assertSucceeds(
     setDoc(doc(bobDb, "chats", chatId, "messages", replyId), replyMessage),
