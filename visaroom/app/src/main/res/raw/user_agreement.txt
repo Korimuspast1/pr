@@ -1,0 +1,316 @@
+VISAROOM USER AGREEMENT
+
+Version 1.0
+Last updated: 2 November 2026
+
+Please read this User Agreement carefully. It describes the conditions under which you may use the visaroom mobile application and the related cloud messaging service. The Agreement is intentionally detailed because visaroom handles accounts, private communications, files, voice messages, public profile information, moderation and security tools. A short summary appears in Appendix A, but the full sections below are the operative text.
+
+This document is a product agreement written for the visaroom service. It is not legal advice. Mandatory consumer, privacy and other rights that apply to you under applicable law are not removed by this Agreement.
+
+1. ACCEPTANCE, SCOPE AND DEFINITIONS
+
+1.1. By downloading, installing, opening, registering for, signing in to or otherwise using visaroom, you accept this User Agreement. If you do not agree with any part of it, you must not use visaroom and should uninstall the application.
+
+1.2. “visaroom”, the “app”, the “service” and the “operator” refer to the visaroom application and the person or persons who operate its Firebase project, official channel and administrative controls. “You” and “user” refer to the individual using an account. “Content” means text, usernames, bios, profile images, wallpapers, files, voice recordings, replies, announcements and any other information submitted through the service.
+
+1.3. This Agreement applies to the Android application and to the cloud records needed for it to function, including authentication records, profiles, public identifiers, direct-chat records, official announcements, attachment metadata and attachment chunks.
+
+1.4. The service is provided through third-party infrastructure operated by Google Firebase. Your use of network, device, operating-system and app-store services may also be governed by the terms of those providers. visaroom does not control those third parties.
+
+1.5. Headings are for readability only. Words such as “including” mean “including without limitation.” A reference to a feature includes reasonable technical equivalents and later versions of that feature.
+
+2. ELIGIBILITY AND ACCOUNTS
+
+2.1. You may use visaroom only if you are legally able to enter into this Agreement in your jurisdiction or you have permission from a parent or legal guardian where such permission is legally sufficient. You are responsible for complying with local age and online-service requirements.
+
+2.2. Registration currently requires an email address and password through Firebase Authentication. You must provide an email address that you are entitled to use. You must not register with another person’s email address or impersonate another person, organisation, public official, administrator or visaroom itself.
+
+2.3. You are responsible for keeping your password, optional additional two-step password, device, email account and saved sessions secure. Do not share your password or refresh/session credentials with another person. The operator will not ask you to disclose your account password through a chat message.
+
+2.4. The app may save up to three account sessions on one device. Saving a session does not transfer ownership of an account. You must not add another person’s account to your device without that person’s informed permission. You are responsible for activity performed through a session available on your unlocked device.
+
+2.5. Optional two-step verification in visaroom uses one additional password. The app stores a password-derived verifier rather than the additional password itself. Two-step verification is an additional client-side safeguard and is not a guarantee that a compromised device, email account, Firebase session or password can never be misused.
+
+2.6. You must promptly sign out of sessions you no longer control and change the relevant email/account credentials if you believe an account has been compromised. Because visaroom is a client-only Firebase application, some session-revocation functions that require a privileged backend may be unavailable.
+
+2.7. You must not sell, rent, lease, broker or permanently transfer an account, username, numeric ID or verified status. Accounts are personal and may not be used as a commodity or as a way to evade a block or moderation decision.
+
+3. USERNAMES, NUMERIC IDS AND VERIFIED BADGES
+
+3.1. A numeric public ID is automatically generated for an account in the registration range used by the current app. The ID helps other users find or reference an account when its visibility settings allow that use.
+
+3.2. A username must comply with the character, length and availability rules enforced by the app and Firestore Security Rules. A username may not infringe another person’s rights, impersonate another person, contain deceptive claims of official status or be used primarily to harass, threaten, defraud or confuse others.
+
+3.3. Usernames and numeric IDs are identifiers, not property. The administrator may reclaim, remove or change an identifier where necessary for security, impersonation prevention, legal compliance, technical integrity, correction of a system error or enforcement of this Agreement.
+
+3.4. Ordinary accounts do not receive a verified badge automatically and cannot grant one to themselves. Only the administrator may grant or remove a verified badge. A badge means only that the administrator has marked the account as verified inside visaroom; it is not a government identity check, professional licence, endorsement, credit assessment or guarantee that the account holder is trustworthy.
+
+3.5. The official visaroom channel is identified inside the app as the official channel. Only the administrator may publish in that channel. A username, profile image or display text resembling “visaroom” does not by itself make an account official or an administrator.
+
+3.6. Administrator authority is determined by the configured Firebase Authentication email address and by Firestore Security Rules, not by a username such as @visa. You must not claim administrator authority unless you are the authorised administrator.
+
+4. DESCRIPTION OF THE SERVICE
+
+4.1. visaroom currently provides email/password accounts, user profiles, searchable usernames, public numeric IDs, an official announcement channel, one-to-one cloud chats, replies, message editing and deletion for a sender’s own messages, files, voice messages, per-chat wallpapers, notifications, appearance and language settings, and administrative moderation functions.
+
+4.2. Direct chats are cloud chats. Protocol 2 message history is stored in Firebase Firestore as end-to-end encrypted ciphertext so that it can synchronise after sign-in on a device that holds or restores the correct private keys. The app is designed not to persist direct-chat history or drafts as a local chat database. Temporary memory, temporary recording files, explicit downloads, locally stored settings, session material, encrypted local E2EE private keys, profile cache and notification-deduplication markers are not a local history database.
+
+4.3. The one-to-one protocol used by the app is called VRProto in the technical implementation. It is a custom client/Firestore protocol. It is not Telegram’s MTProto, and visaroom is not affiliated with Telegram.
+
+4.4. Features may be added, removed, limited, renamed or changed. Limits shown in the app or enforced by Firestore Security Rules may change to protect reliability, security, storage, costs or legal compliance.
+
+4.5. The service depends on an internet connection and on Firebase availability. Messages may be delayed, appear out of order because of device clocks, fail to send, fail to download or require a retry. A local “sent” or progress indication is an application state, not a legal proof of delivery or reading.
+
+5. IMPORTANT PRIVACY AND ENCRYPTION LIMITS
+
+5.1. Protocol 2 direct-message text and reply snapshots, private file and voice-message metadata and chunks, and encrypted per-chat wallpaper images are end-to-end encrypted on a participant device before upload. Firestore stores ciphertext, public keys, signatures/wrapped message keys, participant and message identifiers, timestamps, ciphertext sizes, download counters and a generic “Encrypted message” preview. Private decryption keys are designed to remain only on participant devices; an optional cloud key backup is stored only as ciphertext under a separate recovery password chosen by the account holder. The operator and a person with privileged Firebase project access are therefore not intended to possess the keys needed to read protocol 2 direct-message content from Firestore. Chat metadata can still reveal who communicated, when, message sizes and whether an attachment exists. Public/profile information and official announcements are not private direct messages and are not protected as E2EE direct-message content. Messages created before protocol 2 may remain legacy plaintext in Firestore until their sender migrates or deletes them; the updated app labels legacy messages and best-effort migrates a sender’s own legacy text messages when the chat is opened with both participants’ keys available.
+
+5.2. End-to-end encryption protects content from the cloud database, not from a compromised endpoint, a person using your unlocked device, malware, a weak or reused key-backup password, or the other participant. Keep devices and accounts secure, use a strong unique recovery password if you create a key backup, compare safety codes when identity assurance matters, and do not use visaroom for information that would cause serious harm if an endpoint or recipient disclosed it.
+
+5.3. The app uses authenticated E2EE envelopes, identity-key fingerprints/safety codes and key-change warnings, transport security, Android Keystore protection for saved refresh tokens and local E2EE private keys, application hardening, password-derived two-step verifiers and Firestore Security Rules. These measures reduce risk but do not make the service perfectly secure. If all devices and the key-backup password are lost, previous E2EE history may be permanently unreadable; resetting keys creates a new identity and other participants will see a key change. No internet service can guarantee absolute security.
+
+5.4. A recipient can copy, photograph, record, download, quote or otherwise preserve content that you send to them. Deleting a message from visaroom does not delete copies outside visaroom and does not erase a recipient’s memory or independent records.
+
+5.5. Profile fields marked or configured as visible may be viewed by other signed-in users according to the current privacy settings and security rules. Your email address is not intended to be public in ordinary profiles or username search, but you should not use a public username, biography or image that reveals information you do not want associated with the account.
+
+5.6. For protocol 2 messages, cloud indexes and notifications are designed to use a generic encrypted-message preview rather than decrypted text. Legacy messages and device-level features may still expose a sender name or preview depending on system and channel settings. visaroom marks its notifications as private and supplies a generic public version, but device manufacturers, launchers, connected watches, cars and accessibility tools may handle notifications differently. You are responsible for your device notification settings.
+
+6. YOUR CONTENT AND LICENCE
+
+6.1. As between you and the operator, you retain the rights you already have in content you submit. visaroom does not claim ownership of your messages merely because they pass through or are stored by the service.
+
+6.2. You grant the operator a non-exclusive, worldwide, royalty-free licence to host, store, reproduce and transmit your content—and, for protocol 2 direct chats, its ciphertext and necessary technical metadata—only as necessary to operate, secure, repair and improve visaroom and to deliver it to the recipients and interfaces you choose. E2EE means the operator is not intended to be able to inspect protocol 2 direct-message content from Firestore for ordinary moderation; moderation may rely on account-level measures, metadata, public/profile content, official-channel content and evidence voluntarily supplied by a participant or complainant.
+
+6.3. The licence in Section 6.2 ends for a particular item when that item is deleted from active service storage, except that copies may remain temporarily in backups, logs, abuse records, legal holds, recipient downloads or systems outside the operator’s reasonable control.
+
+6.4. You promise that you have the rights and permissions needed to submit, send, record, upload and share your content. You must not upload private communications, images, voice recordings or files of another person where doing so violates that person’s rights or applicable law.
+
+6.5. You are solely responsible for your content and for the consequences of sending it. The operator does not pre-approve direct messages and does not endorse user content.
+
+6.6. You are responsible for keeping your own copies of important files and information. visaroom is not an archival service. Cloud storage quotas, the two-download file-deletion mechanism, account closure, moderation, Firebase failures and user deletion can make content unavailable.
+
+7. MESSAGES, REPLIES, EDITS AND READ STATES
+
+7.1. A direct message may include text, an optional reply snapshot, a file envelope, a voice envelope or a wallpaper suggestion. Message and attachment limits displayed or enforced by the app form part of the service conditions.
+
+7.2. A reply may store the original message ID, sender, type, text and timestamp as an immutable snapshot so the quote remains understandable. Firestore Security Rules require that snapshot to match an original message in the same chat at the time the reply is created. Editing or deleting the original later does not necessarily change a previously stored quote.
+
+7.3. You may edit your own text message where the app offers that function. An edited message may display an “Edited” indication. You must not use editing to falsify evidence, create a misleading record of a transaction or evade moderation. Recipients may already have read, copied or preserved the earlier version.
+
+7.4. You may delete your own message for both participants where the app offers that function. Deletion is best-effort across message documents, indexes, attachment metadata and chunks. Network errors, older app versions, backups, cached views and recipient copies can affect the result.
+
+7.5. Read receipts, timestamps, unread markers, delivery labels and progress percentages are estimates based on app and server records and device clocks. They are not conclusive proof that a person saw, understood or agreed to a message.
+
+7.6. Message search searches records available to the signed-in account through the app. Search results may be incomplete because of pagination, synchronisation, deletion, message type, security rules or network failures.
+
+8. FILES, VOICE MESSAGES AND WALLPAPERS
+
+8.1. You may send permitted file types within current size and format limits. Files are split into Firestore chunks rather than Firebase Storage. The app may calculate a SHA-256 digest to check transfer integrity. A digest detects many accidental or unauthorised changes but does not prove that a file is safe.
+
+8.2. Treat every received file as untrusted. Files can contain malware, exploits, tracking content, offensive material or misleading data. visaroom does not guarantee virus scanning. Opening a file in another app is at your risk and may be governed by that app’s terms.
+
+8.3. To conserve cloud storage, each of the two participants in a direct chat has one completed-download slot for an ordinary file attachment. A counter such as 0/2, 1/2 or 2/2 may be shown. Only a fully completed download is intended to consume that participant’s slot. When both participants have completed a download and the counter is exhausted, the app may automatically delete the cloud chunks and file metadata while leaving the historical message envelope visible.
+
+8.4. If you need to keep a file, save and back it up outside visaroom before the cloud copy is deleted. Once both download slots are used or the sender deletes the file message, visaroom may be unable to restore the cloud bytes.
+
+8.5. Voice messages are audio recordings subject to duration and byte limits. You must not record a conversation or person where recording or sharing is unlawful or violates a reasonable expectation of privacy. You are responsible for obtaining consent where required.
+
+8.6. Recording uses the microphone permission only when you start recording. A temporary internal recording file may be created while the recorder is active and is intended to be deleted after the recording is read for upload or cancelled. Playback is designed to use memory rather than a permanent local chat download, but operating-system caches and crash remnants cannot be absolutely ruled out.
+
+8.7. A voice message remains replayable while its cloud chunks remain available and the message has not been deleted, unless a later version changes this behaviour with notice in an updated Agreement or release information.
+
+8.8. Per-chat wallpapers are images stored through Firestore. Setting a wallpaper for yourself does not automatically change the other participant’s screen. A wallpaper suggestion is only a proposal; the other participant chooses whether to apply it. You must have rights to use and share a suggested image.
+
+8.9. The app may compress, resize or reject avatars and wallpapers to satisfy storage and decoding limits. Image quality and colours may change.
+
+9. ACCEPTABLE USE
+
+9.1. You must use visaroom lawfully, honestly and with reasonable regard for other people, the operator, Firebase resources and the integrity of the service.
+
+9.2. You must not use visaroom to plan, facilitate, conceal or commit a crime or other unlawful act.
+
+9.3. You must not send or store child sexual abuse material, sexual content involving a minor, non-consensual intimate imagery, or content that sexually exploits or endangers a person. Such activity may result in immediate blocking and referral to competent authorities where appropriate.
+
+9.4. You must not threaten, stalk, dox, impersonate, extort, defraud, harass or incite imminent violence. Repeated unwanted contact, targeted abuse and attempts to discover or publish private personal data are prohibited.
+
+9.5. You must not distribute malware, phishing pages, credential-harvesting material, exploit code intended for unauthorised access, ransomware, botnet instructions or files designed to damage devices or accounts.
+
+9.6. You must not spam, flood chats, automate unsolicited messages, create accounts primarily for evasion, artificially inflate engagement or use identifiers in a misleading commercial manner. You must not use bots or scripts against the app or Firebase endpoints except for your own authorised account through interfaces intended for that use and at a reasonable rate.
+
+9.7. You must not attempt to enumerate, scrape, dump or bulk-download the database or profiles; bypass Firestore Security Rules; access another user’s private account document, two-step verifier, chats or files; forge message, reply, profile, download-counter, verified or administrator fields; or probe infrastructure without authorisation.
+
+9.8. Responsible security research must not access another user’s data, disrupt the service, create excessive load or publicly disclose an exploitable issue before the operator has had a reasonable opportunity to investigate. Contact the operator privately with enough detail to reproduce the issue.
+
+9.9. You must not infringe copyright, trademark, privacy, publicity, contract, confidentiality or other rights. Do not upload content merely because it is technically possible to do so.
+
+9.10. You must not use visaroom to provide regulated financial, medical, legal, emergency or safety-critical advice in a way that implies visaroom has verified your qualifications. visaroom is not an emergency service and must never be relied on as the only way to request emergency help.
+
+9.11. You must not interfere with rate limits, quotas, message limits, file limits, download counters, notification checks or security controls, and must not use modified clients to write documents that the genuine app would not write.
+
+9.12. You must not use the service in a manner that imposes an unreasonable storage, bandwidth, read/write or financial burden. The operator may impose technical limits even where a specific action is not expressly listed above.
+
+10. MODERATION AND ADMINISTRATIVE ACTIONS
+
+10.1. The administrator may review reports and information reasonably available through the service and may take action to protect users, the service, legal rights and infrastructure.
+
+10.2. Administrative actions may include granting or removing a verified badge; setting a numeric ID within the administrator range; removing a username; clearing a biography; removing a profile photo; blocking or unblocking an account; restricting an identifier; removing or limiting access to content where tooling permits; publishing official announcements; and changing service rules or limits.
+
+10.3. A global account block is an application and security-rules enforcement state. Because visaroom does not use a privileged custom backend for ordinary operation, a block in visaroom is not necessarily the same technical operation as disabling the underlying Firebase Authentication user in every Google system. Security Rules and the app are designed to deny ordinary blocked-account use.
+
+10.4. Moderation may be immediate and without prior notice where there is a security incident, serious abuse, child-safety concern, fraud, malware, impersonation, legal obligation or risk to infrastructure. In less urgent cases the operator may, but is not required to, warn a user first.
+
+10.5. The operator is not obligated to monitor all private messages. Failure to detect or act on one violation does not waive the right to act on the same or another violation later.
+
+10.6. If you believe an administrative action was taken in error, contact the operator through a channel currently made available by the operator. An appeal does not automatically suspend the action. The operator may request information reasonably needed to verify account ownership but will not ask for your password.
+
+10.7. Creating or using another account to evade a block, identifier removal, rate limit or other enforcement action is prohibited.
+
+11. DATA HANDLING AND NOTIFICATIONS
+
+11.1. The service processes account identifiers, email addresses in Firebase Authentication, usernames, bios, profile visibility choices, avatar images, numeric IDs, verified and blocked states, two-step verifier records, E2EE public-key bundles, owner-only encrypted key-backup ciphertext, chat participant records, encrypted message envelopes and payloads, encrypted reply/file/voice metadata inside those payloads, generic outer attachment metadata, encrypted attachment chunks, encrypted wallpaper images, legacy pre-protocol-2 records that have not yet been migrated or deleted, and timestamps.
+
+11.2. Firestore Security Rules are intended to prevent general database listing and to restrict private documents to the account owner or direct-chat participants as appropriate. E2EE public-key bundles can be read by exact user ID by signed-in users so participants can encrypt to one another, but they cannot be listed as a directory through the rules. The encrypted key backup is owner-only through the rules. Public profile and username-directory records are intentionally more visible to signed-in users so people can be found, subject to their settings.
+
+11.3. The app stores encrypted refresh-token material for saved accounts and device-local E2EE private keys using Android Keystore-backed encryption where available. It also stores local app preferences, peer identity-key pins, a limited local profile cache and notification state. Notification state may include account/chat identifiers and the last notified message ID/time so alerts are not repeated; it is not intended to store message text.
+
+11.4. When notifications are enabled and a saved active session exists, the app may check bounded cloud chat indexes while the app process is available and through a periodic Android JobScheduler job. Android, battery optimisation, network conditions and manufacturer software decide when background work runs. Notification delivery is therefore not guaranteed to be instant while the app process has been killed.
+
+11.5. visaroom does not use Firebase Cloud Messaging in the current client-only architecture. A future version may change the notification mechanism, in which case material changes may be described in an updated Agreement or release notes.
+
+11.6. Explicit downloads are files you choose to save through Android’s document interface. After a file is saved, it is controlled by the destination app or provider and is no longer deleted automatically when the visaroom cloud copy is deleted.
+
+11.7. The operator may access service data where reasonably necessary to operate the app, fix defects, investigate abuse or security incidents, comply with law, protect rights or respond to a user’s support request. Access should be limited to what is reasonably necessary for the purpose.
+
+11.8. Data may be processed in countries where Google Firebase or its subprocessors operate. The operator does not control Google’s internal infrastructure. Retention in Firebase backups, logs and abuse records may continue for a period after deletion from the active app interface.
+
+11.9. You may stop using the app and sign out on a device. Signing out removes the active saved session from that device according to app behaviour, but it does not necessarily delete the cloud account or messages already delivered. Account or data deletion tools may be limited in the current version; where a specific deletion request is required by law, contact the operator.
+
+12. SECURITY RESPONSIBILITIES
+
+12.1. Keep your operating system and app updated. Use a unique, strong password and protect the email account used for sign-in. Enable a device screen lock.
+
+12.2. Review saved accounts on a shared or repaired device. Remove sessions before selling, giving away or discarding a device. Uninstalling the app may remove local app data, but it does not delete cloud records or another person’s copy of a conversation.
+
+12.3. The release app may use code shrinking, obfuscation, resource shrinking, restricted network destinations, response-size limits, bounded image decoding and integrity checks. These measures are security layers, not promises that reverse engineering or unauthorised access is impossible.
+
+12.4. You must not represent a modified or unofficial build as the genuine visaroom release. Only install builds whose signing certificate and source you trust. An unofficial build could steal credentials or write malformed data.
+
+12.5. If Firestore Security Rules are not correctly published by the project operator, some features may fail or protections may differ. Users cannot verify every production rule from the app interface and should not treat the presence of a rules file in a repository as proof that it is currently published.
+
+13. THIRD-PARTY SERVICES, FILES AND LINKS
+
+13.1. Content sent by users may contain links, addresses, files or instructions leading to third-party services. The operator does not endorse or control third-party destinations and is not responsible for their content, security or privacy practices.
+
+13.2. Opening a downloaded file, following a link, importing a contact or using another application may transfer information to that third party. Review the destination before proceeding.
+
+13.3. Google Firebase, Android, your internet provider and your device manufacturer may collect technical information under their own policies. visaroom’s use of official Firebase REST interfaces does not make the operator responsible for those providers’ independent processing.
+
+14. INTELLECTUAL PROPERTY AND FEEDBACK
+
+14.1. The visaroom name, app design, custom icons, code and documentation are protected by applicable intellectual-property laws, except for components or content owned by users or third parties.
+
+14.2. The operator grants you a personal, limited, revocable, non-exclusive, non-transferable licence to install and use the genuine app for its intended purpose under this Agreement.
+
+14.3. Except where applicable law permits it despite this restriction, you must not copy, sell, sublicense, publicly distribute a modified app as visaroom, remove proprietary notices or misrepresent the origin of the app. Security research and interoperability rights provided by law are not intended to be waived.
+
+14.4. If you send suggestions, bug reports or feature ideas, the operator may use them without obligation or payment. Do not send confidential information in feedback unless you intend the operator to use it for support or development.
+
+14.5. If you believe content in visaroom infringes your copyright or another right, contact the operator with identification of the work or right, the account or location involved, your contact details and a good-faith statement. The operator may remove or restrict disputed content while reviewing a complaint.
+
+15. AVAILABILITY, CHANGES AND LIMITS
+
+15.1. The service may be unavailable because of maintenance, defects, Firebase outages, quota exhaustion, security work, network conditions, expired credentials, incorrect rules, device restrictions or events outside reasonable control.
+
+15.2. The operator may impose or change limits for message length, search results, history page size, file size, chunk size, voice duration, avatar and wallpaper size, profile fields, account count on a device, polling frequency, notification frequency and administrative ranges.
+
+15.3. Older app versions may become incompatible when Firestore Security Rules or data schemas change. The operator may require an update for continued use. Publishing stricter rules before users update can cause writes from old versions to fail; this is a security tradeoff and not a guarantee of backward compatibility.
+
+15.4. The operator may discontinue the service or a feature. Where reasonably practicable, advance notice may be given through the official channel, app or project page. You remain responsible for saving important content outside visaroom.
+
+16. FEES
+
+16.1. visaroom is currently offered without a subscription fee by the operator. Your mobile carrier, internet provider, device provider or app marketplace may charge you separately.
+
+16.2. If a paid feature is introduced in the future, its price and material conditions should be presented before purchase. This section does not authorise a charge to a payment method that you have not provided for that purpose.
+
+17. SUSPENSION, TERMINATION AND EFFECTS
+
+17.1. You may stop using visaroom at any time. You may sign out of a saved account on a device and uninstall the app.
+
+17.2. The operator may suspend, block or terminate access where this Agreement is breached, where an account is compromised or impersonating another person, where required by law, where the account creates risk for others or infrastructure, or where the service is discontinued.
+
+17.3. Suspension or blocking may affect profiles, search visibility, sending, receiving, file access, wallpapers, official-channel access and saved sessions. Other participants may retain copies of conversations and downloaded files.
+
+17.4. Sections concerning content responsibility, licences for already processed content, privacy limits, acceptable use, intellectual property, disclaimers, liability, indemnity and dispute resolution survive termination to the extent of their nature and applicable law.
+
+18. DISCLAIMERS, LIABILITY AND INDEMNITY
+
+18.1. To the maximum extent permitted by applicable law, visaroom is provided “as is” and “as available.” The operator does not promise uninterrupted availability, instant delivery, permanent storage, complete search results, error-free operation, malware-free user files, exact identity verification or fitness for a particular purpose.
+
+18.2. Nothing in this Agreement excludes or limits liability that cannot lawfully be excluded or limited, including liability for intentional misconduct, fraud or death/personal injury caused by negligence where such limitation is prohibited.
+
+18.3. Subject to Section 18.2, the operator is not liable for indirect or consequential loss, lost profits, lost data, lost goodwill, device damage caused by a user-supplied file, loss caused by a compromised email/device/session, or acts and content of other users, except to the extent caused by the operator’s breach of a non-excludable obligation.
+
+18.4. Subject to Sections 18.2 and 18.3, the operator’s aggregate liability arising from the service is limited to the greater of the amount you paid specifically for visaroom during the twelve months before the event giving rise to the claim and the minimum amount required by applicable law.
+
+18.5. You agree to indemnify and hold the operator harmless from third-party claims, damages, liabilities and reasonable costs arising from your content, your unlawful use of visaroom, your infringement of another person’s rights or your breach of this Agreement, except to the extent caused by the operator’s own misconduct. This section does not require a consumer to indemnify the operator where such a requirement is unenforceable.
+
+18.6. You acknowledge that other users are independent persons. The operator is not a party to your private agreements or transactions merely because they are discussed in a chat.
+
+19. DISPUTES AND GOVERNING LAW
+
+19.1. Before starting formal proceedings, you and the operator should attempt in good faith to resolve a dispute informally. A notice should identify the account, the issue, the requested remedy and relevant dates. Do not include passwords or session tokens.
+
+19.2. This Agreement is governed by the law applicable to the operator’s establishment, subject to mandatory consumer-protection and privacy laws that give you rights in your country of residence.
+
+19.3. Courts with jurisdiction under applicable law may hear disputes. Nothing in this section prevents either party from seeking urgent interim relief or reporting unlawful conduct to a competent authority.
+
+19.4. If a class, collective or representative procedure is restricted by applicable law, that law controls. No waiver of a mandatory collective right is intended where such a waiver would be unenforceable.
+
+20. CHANGES TO THIS AGREEMENT
+
+20.1. The operator may update this Agreement when features, law, infrastructure, security or business arrangements change. The version and update date at the top of the in-app document identify the current text supplied with that app build.
+
+20.2. Material changes may be announced through the app, official visaroom channel or project/repository page. Continued use after an updated Agreement takes effect constitutes acceptance to the extent permitted by law. If you do not accept a material change, stop using the service.
+
+20.3. Older copies of this document may remain inside older installed app builds. The operator may treat the latest published version as governing current service use, while preserving rights that accrued under an earlier version where required by law.
+
+21. LANGUAGE, ASSIGNMENT AND GENERAL TERMS
+
+21.1. visaroom may provide this Agreement and parts of the interface in multiple languages. Translations are provided for accessibility. If a translation materially conflicts with the English version, the English version controls to the maximum extent permitted by applicable law, except where a consumer-protection rule requires the interpretation most favourable to the consumer.
+
+21.2. You may not assign this Agreement or an account without the operator’s permission. The operator may assign operation of the service to a successor who assumes the relevant obligations, where permitted by law.
+
+21.3. If a provision is found unenforceable, it should be modified to the minimum extent necessary or severed, and the remaining provisions continue in effect.
+
+21.4. Failure to enforce a provision once is not a waiver of that provision or of any other provision. A waiver must be clear and applies only to the specific circumstance stated.
+
+21.5. This Agreement is the entire agreement between you and the operator for visaroom and replaces prior informal statements about the same subject. Product descriptions, commit messages, release notes and support messages do not create warranties inconsistent with this Agreement.
+
+21.6. Notices to users may be given in the app, through the official channel, at the email address associated with an account where appropriate, or through the project/repository page. Notices to the operator should be sent through a contact method currently published by the operator. The administrative contact associated with the current project is debugger821@gmail.com; do not send passwords, authentication codes or session tokens to that address.
+
+22. CONTACT AND REPORTS
+
+22.1. For account, safety, copyright or security reports, include the visaroom username or numeric ID, relevant chat or message time, a concise description and evidence that you are authorised to provide. Do not forward an entire private conversation unless it is reasonably necessary for the report and you are a participant or otherwise authorised.
+
+22.2. For a suspected compromised account, first secure the email account, change passwords, remove unknown saved sessions where possible and unlock/sign out devices you control. Then contact the operator. Response times are not guaranteed.
+
+22.3. For imminent danger or a crime in progress, contact local emergency services or law enforcement instead of relying on visaroom moderation.
+
+APPENDIX A — PLAIN-LANGUAGE SUMMARY
+
+This summary is provided only to help you navigate the full Agreement. It does not replace the sections above.
+
+• Protocol 2 visaroom direct messages are end-to-end encrypted in the cloud; old legacy messages may remain plaintext until their sender migrates or deletes them.
+• Ordinary users do not receive a verified badge automatically. Only the administrator can grant or remove it.
+• A numeric ID and username are identifiers, not property, and may be removed for abuse or impersonation.
+• You are responsible for what you send, record, upload and download.
+• Ordinary file attachments have one completed-download slot per participant; after both slots are used, the cloud file copy may be deleted automatically.
+• Save important files outside visaroom. Deletion, blocking, quotas and outages can make cloud content unavailable.
+• Voice recording uses a temporary internal file during recording and is designed to delete it after the recording is read or cancelled.
+• Notifications use foreground checks and periodic Android background jobs in the current architecture, so delivery can be delayed by Android battery rules when the app process is killed.
+• Spam, fraud, malware, database scraping, impersonation, harassment, threats, exploitation and bypassing security rules are prohibited.
+• The administrator can block accounts, remove identifiers/profile elements, set IDs within the administrator function and publish in the official channel.
+• Update the app when instructed: stricter security rules may make older versions unable to write some data.
+
+END OF USER AGREEMENT

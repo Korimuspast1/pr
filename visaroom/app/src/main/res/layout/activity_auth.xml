@@ -35,7 +35,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="40dp"
-            android:text="Sign in"
+            android:text="@string/sign_in"
             android:textColor="@color/text_main"
             android:textSize="24sp"
             android:textStyle="bold" />
@@ -45,14 +45,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Enter your email and password."
+            android:text="@string/enter_email_password"
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 
         <TextView
             style="@style/Label"
             android:layout_marginTop="28dp"
-            android:text="Email" />
+            android:text="@string/email" />
 
         <EditText
             android:id="@+id/email"
@@ -73,7 +73,7 @@
         <TextView
             style="@style/Label"
             android:layout_marginTop="18dp"
-            android:text="Password" />
+            android:text="@string/password" />
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -85,7 +85,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:background="@drawable/bg_input"
-                android:hint="Password"
+                android:hint="@string/password"
                 android:inputType="textPassword"
                 android:maxLines="1"
                 android:paddingLeft="14dp"
@@ -100,7 +100,7 @@
                 android:layout_height="48dp"
                 android:layout_gravity="end|center_vertical"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Show password"
+                android:contentDescription="@string/show_password"
                 android:src="@drawable/ic_eye" />
         </FrameLayout>
 
@@ -114,7 +114,7 @@
             <TextView
                 style="@style/Label"
                 android:layout_marginTop="18dp"
-                android:text="Confirm password" />
+                android:text="@string/confirm_password" />
 
             <FrameLayout
                 android:layout_width="match_parent"
@@ -126,7 +126,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
                     android:background="@drawable/bg_input"
-                    android:hint="Repeat password"
+                    android:hint="@string/repeat_password"
                     android:inputType="textPassword"
                     android:maxLines="1"
                     android:paddingLeft="14dp"
@@ -141,7 +141,7 @@
                     android:layout_height="48dp"
                     android:layout_gravity="end|center_vertical"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Show password"
+                    android:contentDescription="@string/show_password"
                     android:src="@drawable/ic_eye" />
             </FrameLayout>
         </LinearLayout>
@@ -166,7 +166,7 @@
             android:layout_height="52dp"
             android:layout_marginTop="24dp"
             android:background="@drawable/bg_button_primary"
-            android:text="Sign in"
+            android:text="@string/sign_in"
             android:textAllCaps="false"
             android:textColor="@color/on_primary"
             android:textSize="15sp" />
@@ -190,7 +190,7 @@
                 android:id="@+id/switch_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="No account?"
+                android:text="@string/no_account"
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
@@ -201,7 +201,7 @@
                 android:layout_marginLeft="6dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:padding="4dp"
-                android:text="Create account"
+                android:text="@string/create_account"
                 android:textColor="@color/text_main"
                 android:textSize="14sp"
                 android:textStyle="bold" />

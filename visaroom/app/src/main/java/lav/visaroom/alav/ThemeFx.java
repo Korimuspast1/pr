@@ -2,6 +2,9 @@ package lav.visaroom.alav;
 
 import android.content.Context;
 import android.content.res.Configuration;
+import android.os.LocaleList;
+
+import java.util.Locale;
 
 /**
  * Applies the app-wide Appearance preference before an Activity inflates
@@ -15,14 +18,22 @@ final class ThemeFx {
 
     static Context wrap(Context base) {
         int mode = AppSettings.themeMode(base);
-        if (mode == AppSettings.THEME_SYSTEM) {
+        String languageTag = AppSettings.languageTag(base);
+        if (mode == AppSettings.THEME_SYSTEM && languageTag.length() == 0) {
             return base;
         }
         Configuration config = new Configuration(base.getResources().getConfiguration());
-        int night = mode == AppSettings.THEME_DARK
-                ? Configuration.UI_MODE_NIGHT_YES
-                : Configuration.UI_MODE_NIGHT_NO;
-        config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK) | night;
+        if (languageTag.length() > 0) {
+            Locale locale = Locale.forLanguageTag(languageTag);
+            config.setLocale(locale);
+            config.setLocales(new LocaleList(locale));
+        }
+        if (mode != AppSettings.THEME_SYSTEM) {
+            int night = mode == AppSettings.THEME_DARK
+                    ? Configuration.UI_MODE_NIGHT_YES
+                    : Configuration.UI_MODE_NIGHT_NO;
+            config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK) | night;
+        }
         return base.createConfigurationContext(config);
     }
 

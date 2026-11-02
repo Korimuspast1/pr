@@ -24,14 +24,14 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
+            android:contentDescription="@string/back"
             android:src="@drawable/ic_back" />
 
         <ImageView
             android:id="@+id/peer_avatar"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:contentDescription="User photo"
+            android:contentDescription="@string/user_photo"
             android:src="@drawable/ic_nav_profile" />
 
         <LinearLayout
@@ -51,7 +51,7 @@
                     android:id="@+id/peer_name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="User"
+                    android:text="@string/user"
                     android:textColor="@color/text_main"
                     android:textSize="15sp"
                     android:textStyle="bold" />
@@ -61,18 +61,11 @@
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:layout_marginLeft="5dp"
-                    android:contentDescription="Verified"
+                    android:contentDescription="@string/verified"
                     android:src="@drawable/ic_verified"
                     android:visibility="gone" />
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/peer_subtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="VRProto cloud chat"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
         </LinearLayout>
 
         <ImageButton
@@ -80,7 +73,7 @@
             android:layout_width="46dp"
             android:layout_height="46dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Chat wallpaper"
+            android:contentDescription="@string/chat_wallpaper"
             android:src="@drawable/ic_wallpaper" />
 
         <ImageButton
@@ -88,7 +81,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Search messages"
+            android:contentDescription="@string/search_messages"
             android:src="@drawable/ic_search_black" />
     </LinearLayout>
 
@@ -120,7 +113,7 @@
             android:layout_height="44dp"
             android:layout_weight="1"
             android:background="@drawable/bg_input"
-            android:hint="Search messages"
+            android:hint="@string/search_messages"
             android:inputType="text"
             android:maxLines="1"
             android:saveEnabled="false"
@@ -143,7 +136,7 @@
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Close search"
+            android:contentDescription="@string/close_search"
             android:src="@drawable/ic_close" />
     </LinearLayout>
 
@@ -177,6 +170,130 @@
         android:background="@android:color/transparent" />
 
     <LinearLayout
+        android:id="@+id/reply_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_glass_card"
+        android:elevation="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="14dp"
+        android:paddingRight="6dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@string/reply"
+            android:src="@drawable/ic_reply" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/reply_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/reply"
+                android:textColor="@color/text_main"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/reply_preview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/reply_close"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cancel_reply"
+            android:src="@drawable/ic_close" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/recording_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_glass_pill"
+        android:elevation="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingLeft="18dp"
+        android:paddingRight="6dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone">
+
+        <View
+            android:id="@+id/record_dot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/bg_unread_dot" />
+
+        <TextView
+            android:id="@+id/Recording_TIME"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="12dp"
+            android:text="0:00"
+            android:textColor="@color/text_main"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="12dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/recording_voice_message"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <ImageButton
+            android:id="@+id/record_cancel"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cancel_recording"
+            android:src="@drawable/ic_close" />
+
+        <ImageButton
+            android:id="@+id/record_send"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginLeft="4dp"
+            android:background="@drawable/bg_button_primary"
+            android:contentDescription="@string/send_voice_message"
+            android:src="@drawable/ic_send" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/composer_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -198,7 +315,7 @@
             android:layout_width="46dp"
             android:layout_height="46dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Attach file"
+            android:contentDescription="@string/attach_file"
             android:src="@drawable/ic_attach" />
 
         <EditText
@@ -207,7 +324,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@android:color/transparent"
-            android:hint="Message"
+            android:hint="@string/message"
             android:imeOptions="actionSend"
             android:inputType="textCapSentences|textMultiLine"
             android:maxLength="4000"
@@ -228,7 +345,7 @@
             android:layout_height="46dp"
             android:layout_marginLeft="4dp"
             android:background="@drawable/bg_button_primary"
-            android:contentDescription="Send"
+            android:contentDescription="@string/send"
             android:src="@drawable/ic_send" />
     </LinearLayout>
 </LinearLayout>

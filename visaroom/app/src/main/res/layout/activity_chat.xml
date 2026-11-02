@@ -24,7 +24,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
+            android:contentDescription="@string/back"
             android:src="@drawable/ic_back" />
 
         <ImageView
@@ -58,14 +58,14 @@
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:layout_marginLeft="5dp"
-                    android:contentDescription="Verified"
+                    android:contentDescription="@string/verified"
                     android:src="@drawable/ic_verified" />
             </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="official"
+                android:text="@string/official"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
         </LinearLayout>
@@ -75,7 +75,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Search messages"
+            android:contentDescription="@string/search_messages"
             android:src="@drawable/ic_search_black" />
     </LinearLayout>
 
@@ -107,7 +107,7 @@
             android:layout_height="44dp"
             android:layout_weight="1"
             android:background="@drawable/bg_input"
-            android:hint="Search messages"
+            android:hint="@string/search_messages"
             android:inputType="text"
             android:maxLines="1"
             android:paddingLeft="14dp"
@@ -129,7 +129,7 @@
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Close search"
+            android:contentDescription="@string/close_search"
             android:src="@drawable/ic_close" />
     </LinearLayout>
 
@@ -186,7 +186,7 @@
             android:layout_weight="1"
             android:background="@android:color/transparent"
             android:enabled="false"
-            android:hint="You can't send messages to this chat"
+            android:hint="@string/cannot_send_to_chat"
             android:imeOptions="actionSend"
             android:inputType="textCapSentences|textMultiLine"
             android:maxLines="4"
@@ -205,7 +205,7 @@
             android:layout_height="48dp"
             android:layout_marginLeft="4dp"
             android:background="@drawable/bg_button_primary"
-            android:contentDescription="Send"
+            android:contentDescription="@string/send"
             android:enabled="false"
             android:src="@drawable/ic_send" />
     </LinearLayout>

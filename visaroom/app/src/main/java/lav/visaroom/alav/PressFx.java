@@ -26,6 +26,8 @@ final class PressFx {
 
     private static final WeakHashMap<View, Boolean> ATTACHED = new WeakHashMap<>();
     private static final WeakHashMap<View, Runnable> RELEASES = new WeakHashMap<>();
+    private static final WeakHashMap<View, View.OnTouchListener> EXTRA_TOUCH =
+            new WeakHashMap<>();
 
     private PressFx() {
     }
@@ -63,6 +65,22 @@ final class PressFx {
         }
     }
 
+    /**
+     * Attaches the spring press effect while preserving a feature's
+     * own gesture listener. Chat bubbles use this for swipe-to-reply:
+     * Android permits only one OnTouchListener per View, so the two
+     * behaviours have to be chained deliberately here.
+     */
+    static void attachWithTouch(View view, View.OnTouchListener extraTouch) {
+        if (view == null) {
+            return;
+        }
+        if (extraTouch != null) {
+            EXTRA_TOUCH.put(view, extraTouch);
+        }
+        attach(view);
+    }
+
     static void attach(View view) {
         if (view == null || ATTACHED.containsKey(view)) {
             return;
@@ -95,6 +113,10 @@ final class PressFx {
             } else if (action == MotionEvent.ACTION_UP
                     || action == MotionEvent.ACTION_CANCEL) {
                 release(v);
+            }
+            View.OnTouchListener extra = EXTRA_TOUCH.get(v);
+            if (extra != null && extra.onTouch(v, event)) {
+                return true;
             }
             // Let Android continue with click, long-press and scrolling.
             return false;

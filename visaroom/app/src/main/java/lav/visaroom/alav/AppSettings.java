@@ -16,6 +16,16 @@ final class AppSettings {
     static final int THEME_LIGHT = 1;
     static final int THEME_DARK = 2;
 
+    static final int LANG_SYSTEM = 0;
+    static final int LANG_ENGLISH = 1;
+    static final int LANG_RUSSIAN = 2;
+    static final int LANG_UKRAINIAN = 3;
+    static final int LANG_SPANISH = 4;
+    static final int LANG_GERMAN = 5;
+    static final int LANG_FRENCH = 6;
+    static final int LANG_TURKISH = 7;
+    static final int LANG_PORTUGUESE = 8;
+
     private AppSettings() {
     }
 
@@ -33,14 +43,66 @@ final class AppSettings {
         prefs(c).edit().putInt("appearance_theme", safe).apply();
     }
 
+    static int language(Context c) {
+        int value = prefs(c).getInt("app_language", LANG_SYSTEM);
+        return value >= LANG_SYSTEM && value <= LANG_PORTUGUESE
+                ? value : LANG_SYSTEM;
+    }
+
+    static void setLanguage(Context c, int value) {
+        int safe = value >= LANG_SYSTEM && value <= LANG_PORTUGUESE
+                ? value : LANG_SYSTEM;
+        prefs(c).edit().putInt("app_language", safe).commit();
+    }
+
+    static String languageTag(Context c) {
+        switch (language(c)) {
+            case LANG_ENGLISH:
+                return "en";
+            case LANG_RUSSIAN:
+                return "ru";
+            case LANG_UKRAINIAN:
+                return "uk";
+            case LANG_SPANISH:
+                return "es";
+            case LANG_GERMAN:
+                return "de";
+            case LANG_FRENCH:
+                return "fr";
+            case LANG_TURKISH:
+                return "tr";
+            case LANG_PORTUGUESE:
+                return "pt";
+            default:
+                return "";
+        }
+    }
+
+    static String[] languageOptions(Context c) {
+        return new String[]{
+                c.getString(R.string.language_system),
+                "English",
+                "Русский",
+                "Українська",
+                "Español",
+                "Deutsch",
+                "Français",
+                "Türkçe",
+                "Português"};
+    }
+
+    static String languageLabel(Context c) {
+        return languageOptions(c)[language(c)];
+    }
+
     static String themeLabel(Context c) {
         switch (themeMode(c)) {
             case THEME_LIGHT:
-                return "Light";
+                return c.getString(R.string.theme_light);
             case THEME_DARK:
-                return "Dark";
+                return c.getString(R.string.theme_dark);
             default:
-                return "System";
+                return c.getString(R.string.language_system);
         }
     }
 
@@ -66,11 +128,11 @@ final class AppSettings {
     static String textSizeLabel(Context c) {
         switch (textSizeIndex(c)) {
             case 0:
-                return "Small";
+                return c.getString(R.string.text_size_small);
             case 2:
-                return "Large";
+                return c.getString(R.string.text_size_large);
             default:
-                return "Medium";
+                return c.getString(R.string.text_size_medium);
         }
     }
 
@@ -85,11 +147,11 @@ final class AppSettings {
     static String chatBackgroundLabel(Context c) {
         switch (chatBackground(c)) {
             case BG_LIGHT:
-                return "Light gray";
+                return c.getString(R.string.chat_background_light_gray);
             case BG_DARK:
-                return "Dark";
+                return c.getString(R.string.theme_dark);
             default:
-                return "White";
+                return c.getString(R.string.chat_background_white);
         }
     }
 

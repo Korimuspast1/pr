@@ -14,18 +14,28 @@ rules_version = '2';
 // grant/remove its verified badge. Ordinary accounts start unverified.
 // VRProto direct chats are cloud-only: chats/{chatId}/messages/{messageId}
 // plus each participant's cloud index at users/{uid}/chats/{chatId}.
-// Any-type attachments (max 26214400 bytes) are split into 614400-byte
-// Firestore chunks under chats/{chatId}/files/{fileId}/chunks/{index}.
-// Each participant has one full-download slot (Downloads: 0/2). Only a
-// completed download may flip that participant's flag; at 2/2 either
-// participant may delete all chunks and then the file metadata.
-// A sender may edit their own text message or delete their own message.
-// Deleting a file message also lets that sender remove its cloud chunks.
+// Protocol 2 direct messages are end-to-end encrypted.  Firestore may
+// contain public keys, authenticated ciphertext, encrypted attachment
+// chunks and chat metadata, but new plaintext direct messages/replies
+// are denied.  Legacy protocol 1 documents remain readable; a sender
+// may migrate or edit their own legacy text only by replacing it with
+// a protocol 2 encrypted envelope, and may delete their own messages.
+// Any-type attachments (max 26214400 plaintext bytes, or 26215088
+// stored ciphertext bytes) are split into 614400-byte Firestore chunks
+// under chats/{chatId}/files/{fileId}/chunks/{index}. Each participant
+// has one full-download slot (Downloads: 0/2). Only a completed
+// download may flip that participant's flag; at 2/2 either participant
+// may delete all chunks and then the file metadata. Voice-note chunks
+// reuse the attachment store but playback does not consume a slot.
 // Only the administrator's Firebase Auth email may create an official
 // announcement; signed-in active users may only read announcements.
 // Per-chat wallpaper images live privately under the owner's
 // users/{uid}/wallpapers/{wallpaperId}; shared=true is required before
 // the other participant may read a suggested wallpaper.
+// E2EE identity public keys live in e2eeKeys/{uid}.  Private keys are
+// never stored in plaintext: an optional recovery copy at
+// users/{uid}/security/e2eeBackup is ciphertext under a user-chosen
+// recovery password and is readable through rules only by its owner.
 // The 2FA verifier lives only in the owner-only document
 // users/{uid}/security/twoFa. Legacy verifier fields in users/{uid}
 // may be preserved by an administrator update, but an owner update
@@ -272,7 +282,11 @@ service cloud.firestore {
     }
 
     function fileReferenceMatchesData(data, file) {
-      return file.get('senderUid', '') == request.auth.uid
+      return ((data.get('type', '') == 'encrypted'
+            && file.get('protocolVersion', 0) == 2)
+          || (data.get('type', '') != 'encrypted'
+            && file.get('protocolVersion', 0) == 1))
+        && file.get('senderUid', '') == request.auth.uid
         && file.get('fileName', '') == data.fileName
         && file.get('mimeType', '') == data.mimeType
         && file.get('fileSize', -1) == data.fileSize
@@ -337,68 +351,265 @@ service cloud.firestore {
             && data.fileSize <= data.chunkCount * data.chunkSize));
     }
 
-    function validDirectMessage(data, chatId, messageId) {
-      return data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
-            'text', 'createdAt', 'clientId', 'fileId', 'fileName',
-            'mimeType', 'fileSize', 'chunkCount', 'chunkSize', 'fileSha256',
-            'wallpaperId', 'wallpaperOwnerUid'])
-        && data.keys().hasAll(['protocolVersion', 'type', 'senderUid',
-            'text', 'createdAt', 'clientId'])
-        && data.protocolVersion == 1
+    function validStoredFileCounts(data) {
+      return data.fileSize is int
+        && data.fileSize >= 0
+        && data.fileSize <= 26215088
+        && data.chunkSize == 614400
+        && data.chunkCount is int
+        && data.chunkCount >= 0
+        && data.chunkCount <= 43
+        && ((data.fileSize == 0 && data.chunkCount == 0)
+          || (data.fileSize > 16 * data.chunkCount
+            && (data.chunkCount - 1) * data.chunkSize < data.fileSize
+            && data.fileSize <= data.chunkCount * data.chunkSize));
+    }
+
+    function replyMessageData(chatId, messageId) {
+      return get(/databases/$(database)/documents/chats/$(chatId)/messages/$(messageId)).data;
+    }
+
+    function noReplyFields(data) {
+      return !('replyToId' in data)
+        && !('replyToSenderUid' in data)
+        && !('replyToType' in data)
+        && !('replyToText' in data)
+        && !('replyToCreatedAt' in data);
+    }
+
+    function replyMatchesData(data, original) {
+      return original.get('protocolVersion', 0) == 1
+        && original.get('clientId', '') == data.replyToId
+        && original.get('senderUid', '') == data.replyToSenderUid
+        && original.get('type', '') == data.replyToType
+        && original.get('text', '') == data.replyToText
+        && original.get('createdAt', 0) == data.replyToCreatedAt;
+    }
+
+    function validReplyFields(data, chatId, messageId) {
+      return noReplyFields(data)
+        || (data.keys().hasAll(['replyToId', 'replyToSenderUid',
+              'replyToType', 'replyToText', 'replyToCreatedAt'])
+          && data.replyToId is string
+          && data.replyToId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$')
+          && data.replyToId != messageId
+          && validUidValue(data.replyToSenderUid)
+          && (data.replyToSenderUid == request.auth.uid
+            || canonicalPair(chatId, request.auth.uid,
+                data.replyToSenderUid))
+          && (data.replyToType == 'text'
+            || data.replyToType == 'file'
+            || data.replyToType == 'wallpaper'
+            || data.replyToType == 'voice')
+          && data.replyToText is string
+          && data.replyToText.size() > 0
+          && data.replyToText.size() <= 4000
+          && historicalMillis(data.replyToCreatedAt)
+          && data.replyToCreatedAt <= data.createdAt
+          && exists(/databases/$(database)/documents/chats/$(chatId)/messages/$(data.replyToId))
+          && replyMatchesData(data,
+              replyMessageData(chatId, data.replyToId)));
+    }
+
+    function validVoiceCounts(data) {
+      return data.fileSize is int
+        && data.fileSize > 0
+        && data.fileSize <= 2097152
+        && data.chunkSize == 614400
+        && data.chunkCount is int
+        && data.chunkCount >= 1
+        && data.chunkCount <= 4
+        && (data.chunkCount - 1) * data.chunkSize < data.fileSize
+        && data.fileSize <= data.chunkCount * data.chunkSize
+        && data.durationMs is int
+        && data.durationMs >= 300
+        && data.durationMs <= 120000;
+    }
+
+    function validE2eePublicKeyString(value) {
+      return value is string
+        && value.size() == 122
+        && value.matches('^[A-Za-z0-9_-]+$');
+    }
+
+    function validE2eeSignatureString(value) {
+      return value is string
+        && value.size() >= 80
+        && value.size() <= 140
+        && value.matches('^[A-Za-z0-9_-]+$');
+    }
+
+    function validE2eeBundle(data, uid) {
+      return data.keys().hasOnly(['version', 'uid', 'signingPublicKey',
+            'signedPreKeyId', 'signedPreKeyPublicKey',
+            'signedPreKeySignature', 'signedPreKeyCreatedAt',
+            'signedPreKeyExpiresAt', 'updatedAt'])
+        && data.keys().hasAll(['version', 'uid', 'signingPublicKey',
+            'signedPreKeyId', 'signedPreKeyPublicKey',
+            'signedPreKeySignature', 'signedPreKeyCreatedAt',
+            'signedPreKeyExpiresAt', 'updatedAt'])
+        && data.version == 1
+        && data.uid == uid
+        && validE2eePublicKeyString(data.signingPublicKey)
+        && data.signedPreKeyId is string
+        && data.signedPreKeyId.matches('^p[0-9a-z]{7,47}$')
+        && validE2eePublicKeyString(data.signedPreKeyPublicKey)
+        && validE2eeSignatureString(data.signedPreKeySignature)
+        && historicalMillis(data.signedPreKeyCreatedAt)
+        && data.signedPreKeyExpiresAt is int
+        && data.signedPreKeyExpiresAt > data.signedPreKeyCreatedAt
+        && data.signedPreKeyExpiresAt
+          <= data.signedPreKeyCreatedAt + 34560000000
+        && recentMillis(data.updatedAt);
+    }
+
+    function validE2eeBackup(data) {
+      return data.keys().hasOnly(['version', 'iterations', 'salt',
+            'ciphertext', 'updatedAt'])
+        && data.keys().hasAll(['version', 'iterations', 'salt',
+            'ciphertext', 'updatedAt'])
+        && data.version == 1
+        && data.iterations is int
+        && data.iterations >= 200000
+        && data.iterations <= 1000000
+        && data.salt is bytes
+        && data.salt.size() >= 16
+        && data.salt.size() <= 32
+        && data.ciphertext is bytes
+        && data.ciphertext.size() >= 29
+        && data.ciphertext.size() <= 131072
+        && recentMillis(data.updatedAt);
+    }
+
+    function validEncryptedEnvelope(data, messageId) {
+      return data.keys().hasAll(['protocolVersion', 'type', 'senderUid',
+            'text', 'createdAt', 'clientId', 'e2eeVersion',
+            'senderIdentityFingerprint', 'recipientPreKeyId',
+            'selfPreKeyId', 'ephemeralKey', 'recipientWrappedKey',
+            'selfWrappedKey', 'ciphertext', 'signature'])
+        && data.protocolVersion == 2
+        && data.type == 'encrypted'
         && data.senderUid == request.auth.uid
-        && data.text is string
-        && data.text.size() > 0
-        && data.text.size() <= 4000
-        && recentMillis(data.createdAt)
+        && data.text == 'Encrypted message'
+        && historicalMillis(data.createdAt)
         && data.clientId == messageId
         && messageId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$')
-        && ((data.type == 'text'
-              && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
-                    'text', 'createdAt', 'clientId']))
-          || (data.type == 'file'
-              && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
-                    'text', 'createdAt', 'clientId', 'fileId', 'fileName',
-                    'mimeType', 'fileSize', 'chunkCount', 'chunkSize',
-                    'fileSha256'])
+        && data.e2eeVersion == 1
+        && data.senderIdentityFingerprint is string
+        && data.senderIdentityFingerprint.matches('^[0-9a-f]{64}$')
+        && data.recipientPreKeyId is string
+        && data.recipientPreKeyId.matches('^p[0-9a-z]{7,47}$')
+        && data.selfPreKeyId is string
+        && data.selfPreKeyId.matches('^p[0-9a-z]{7,47}$')
+        && data.ephemeralKey is bytes
+        && data.ephemeralKey.size() == 91
+        && data.recipientWrappedKey is bytes
+        && data.recipientWrappedKey.size() == 60
+        && data.selfWrappedKey is bytes
+        && data.selfWrappedKey.size() == 60
+        && data.ciphertext is bytes
+        && data.ciphertext.size() >= 29
+        && data.ciphertext.size() <= 70000
+        && data.signature is bytes
+        && data.signature.size() >= 64
+        && data.signature.size() <= 96;
+    }
+
+    function validEncryptedDirectMessage(data, chatId, messageId) {
+      return validEncryptedEnvelope(data, messageId)
+        && recentMillis(data.createdAt)
+        && !('editedAt' in data)
+        && !('replyToId' in data)
+        && !('replyToSenderUid' in data)
+        && !('replyToType' in data)
+        && !('replyToText' in data)
+        && !('replyToCreatedAt' in data)
+        && ((data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
+                'text', 'createdAt', 'clientId', 'e2eeVersion',
+                'senderIdentityFingerprint', 'recipientPreKeyId',
+                'selfPreKeyId', 'ephemeralKey', 'recipientWrappedKey',
+                'selfWrappedKey', 'ciphertext', 'signature']))
+          || (data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
+                'text', 'createdAt', 'clientId', 'e2eeVersion',
+                'senderIdentityFingerprint', 'recipientPreKeyId',
+                'selfPreKeyId', 'ephemeralKey', 'recipientWrappedKey',
+                'selfWrappedKey', 'ciphertext', 'signature', 'fileId',
+                'fileName', 'mimeType', 'fileSize', 'chunkCount',
+                'chunkSize', 'fileSha256'])
               && data.keys().hasAll(['fileId', 'fileName', 'mimeType',
                     'fileSize', 'chunkCount', 'chunkSize', 'fileSha256'])
               && data.fileId == messageId
-              && validFileName(data.fileName)
-              && data.text == data.fileName
-              && validMimeType(data.mimeType)
+              && data.fileName == 'encrypted-file.bin'
+              && data.mimeType == 'application/octet-stream'
               && data.fileSha256.matches('^[0-9a-f]{64}$')
-              && validFileCounts(data)
+              && validStoredFileCounts(data)
               && fileReferenceMatches(chatId, data))
-          || (data.type == 'wallpaper'
-              && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
-                    'text', 'createdAt', 'clientId', 'wallpaperId',
-                    'wallpaperOwnerUid'])
+          || (data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
+                'text', 'createdAt', 'clientId', 'e2eeVersion',
+                'senderIdentityFingerprint', 'recipientPreKeyId',
+                'selfPreKeyId', 'ephemeralKey', 'recipientWrappedKey',
+                'selfWrappedKey', 'ciphertext', 'signature',
+                'wallpaperId', 'wallpaperOwnerUid'])
               && data.keys().hasAll(['wallpaperId', 'wallpaperOwnerUid'])
               && data.wallpaperOwnerUid == request.auth.uid
-              && data.text == 'Wallpaper suggestion'
               && wallpaperReferenceMatches(chatId, data)));
     }
 
-    function validEditedTextMessage(data, messageId) {
-      return resource.data.type == 'text'
+    function validDirectMessage(data, chatId, messageId) {
+      // New direct messages must be protocol 2 ciphertext.  Legacy
+      // protocol 1 documents can still be read/deleted, but cannot be
+      // created after this cutover.
+      return validEncryptedDirectMessage(data, chatId, messageId);
+    }
+
+    function validEditedEncryptedMessage(data, messageId) {
+      return resource.data.get('protocolVersion', 0) == 2
+        && resource.data.get('type', '') == 'encrypted'
+        && !('fileId' in resource.data)
+        && !('wallpaperId' in resource.data)
+        && validEncryptedEnvelope(data, messageId)
         && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
-              'text', 'createdAt', 'clientId', 'editedAt'])
-        && data.keys().hasAll(['protocolVersion', 'type', 'senderUid',
-              'text', 'createdAt', 'clientId', 'editedAt'])
-        && data.protocolVersion == resource.data.protocolVersion
-        && data.type == resource.data.type
+              'text', 'createdAt', 'clientId', 'e2eeVersion',
+              'senderIdentityFingerprint', 'recipientPreKeyId',
+              'selfPreKeyId', 'ephemeralKey', 'recipientWrappedKey',
+              'selfWrappedKey', 'ciphertext', 'signature', 'editedAt'])
+        && data.keys().hasAll(['editedAt'])
+        && data.diff(resource.data).affectedKeys().hasOnly([
+              'senderIdentityFingerprint', 'recipientPreKeyId',
+              'selfPreKeyId', 'ephemeralKey', 'recipientWrappedKey',
+              'selfWrappedKey', 'ciphertext', 'signature', 'editedAt'])
         && data.senderUid == resource.data.senderUid
-        && data.senderUid == request.auth.uid
-        && data.text is string
-        && data.text.size() > 0
-        && data.text.size() <= 4000
         && data.createdAt == resource.data.createdAt
         && data.clientId == resource.data.clientId
-        && data.clientId == messageId
-        && messageId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$')
         && recentMillis(data.editedAt)
         && data.editedAt >= resource.data.createdAt
         && data.editedAt >= resource.data.get('editedAt', 0);
+    }
+
+    function validMigratedLegacyTextMessage(data, messageId) {
+      return resource.data.get('protocolVersion', 0) == 1
+        && resource.data.get('type', '') == 'text'
+        && validEncryptedEnvelope(data, messageId)
+        && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
+              'text', 'createdAt', 'clientId', 'e2eeVersion',
+              'senderIdentityFingerprint', 'recipientPreKeyId',
+              'selfPreKeyId', 'ephemeralKey', 'recipientWrappedKey',
+              'selfWrappedKey', 'ciphertext', 'signature', 'editedAt'])
+        && data.senderUid == resource.data.senderUid
+        && data.createdAt == resource.data.createdAt
+        && data.clientId == resource.data.clientId
+        && (((('editedAt' in data) == ('editedAt' in resource.data))
+              && data.get('editedAt', 0)
+                == resource.data.get('editedAt', 0))
+          || ('editedAt' in data
+              && recentMillis(data.editedAt)
+              && data.editedAt >= resource.data.createdAt
+              && data.editedAt >= resource.data.get('editedAt', 0)));
+    }
+
+    function validEditedTextMessage(data, messageId) {
+      return validEditedEncryptedMessage(data, messageId)
+        || validMigratedLegacyTextMessage(data, messageId);
     }
 
     function fileDownloadSlotOpen(file) {
@@ -430,7 +641,7 @@ service cloud.firestore {
             'chunkCount', 'createdAt', 'clientId', 'downloadLimit',
             'downloadCount', 'senderDownloaded', 'recipientDownloaded'])
         && fileId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$')
-        && data.protocolVersion == 1
+        && (data.protocolVersion == 1 || data.protocolVersion == 2)
         && validUidValue(data.senderUid)
         && validUidValue(data.recipientUid)
         && canonicalPair(chatId, data.senderUid, data.recipientUid)
@@ -440,7 +651,12 @@ service cloud.firestore {
         && (!requireSha256 || 'fileSha256' in data)
         && (!('fileSha256' in data)
           || data.fileSha256.matches('^[0-9a-f]{64}$'))
-        && validFileCounts(data)
+        && ((data.protocolVersion == 1 && validFileCounts(data))
+          || (data.protocolVersion == 2
+            && data.fileName == 'encrypted-file.bin'
+            && data.mimeType == 'application/octet-stream'
+            && 'fileSha256' in data
+            && validStoredFileCounts(data)))
         && historicalMillis(data.createdAt)
         && data.clientId == fileId
         && data.downloadLimit == 2
@@ -771,6 +987,19 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Owner-only password-encrypted E2EE private-key backup.  The
+      // document contains only a PBKDF2 salt/iteration count and AES-GCM
+      // ciphertext; even the administrator cannot read or replace it
+      // through these rules.
+      match /security/e2eeBackup {
+        allow get: if isOwner(uid);
+        allow list: if false;
+        allow create, update: if isOwner(uid)
+          && !accountBlocked(uid)
+          && validE2eeBackup(request.resource.data);
+        allow delete: if isOwner(uid) && !accountBlocked(uid);
+      }
+
       // Cloud chat-list/read-state index for this account. A participant
       // may create/update the other side's preview after sending, but a
       // non-owner can never change that side's lastReadAt. Message text
@@ -846,6 +1075,20 @@ service cloud.firestore {
       match /{sub=**} {
         allow read, write: if false;
       }
+    }
+
+    // --- E2EE public identity keys ------------------------------------------
+    // Exact-document reads let a signed-in participant discover a peer's
+    // public keys without enumerating accounts.  Only the owner may
+    // publish or replace their bundle through rules; clients pin the
+    // identity key and warn on changes.
+    match /e2eeKeys/{uid} {
+      allow get: if activeSignedIn() || isAdmin();
+      allow list: if false;
+      allow create, update: if isOwner(uid)
+        && !accountBlocked(uid)
+        && validE2eeBundle(request.resource.data, uid);
+      allow delete: if isOwner(uid) && !accountBlocked(uid);
     }
 
     // --- Public profile (privacy already applied by the writer) ------------

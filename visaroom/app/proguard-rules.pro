@@ -33,6 +33,10 @@
     public <init>();
 }
 
+-keep public class * extends android.app.Service {
+    public <init>();
+}
+
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);

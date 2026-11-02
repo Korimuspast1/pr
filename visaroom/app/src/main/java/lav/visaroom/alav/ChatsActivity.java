@@ -2,6 +2,7 @@ package lav.visaroom.alav;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -11,6 +12,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.Typeface;
@@ -28,6 +30,8 @@ import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.view.Gravity;
+import android.view.Window;
+import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 import android.view.View;
 import android.widget.Button;
@@ -55,6 +59,9 @@ import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
 public class ChatsActivity extends Activity {
+
+    public static final String EXTRA_OPEN_PEER_UID = "open_peer_uid";
+    public static final String EXTRA_OPEN_PEER_USERNAME = "open_peer_username";
 
     private static final int PICK_IMAGE = 701;
     private static final Pattern USERNAME = Pattern.compile("[A-Za-z0-9_]{3,24}");
@@ -95,9 +102,11 @@ public class ChatsActivity extends Activity {
     private Button saveButton;
 
     private TextView appearanceValue;
+    private TextView languageValue;
     private TextView textSizeValue;
     private TextView backgroundValue;
     private TextView twoFaValue;
+    private TextView e2eeValue;
     private TextView accountsValue;
     private TextView[] settingsFolderHeaders;
     private View[] settingsFolderContents;
@@ -116,6 +125,8 @@ public class ChatsActivity extends Activity {
     private boolean showIdState = true;
     private boolean verifiedState;
     private boolean applyingSettings;
+    private volatile E2eeManager.Preparation e2eePreparation;
+    private boolean e2eePromptShown;
 
     private String userId = "";
     private String userEmail = "";
@@ -164,8 +175,34 @@ public class ChatsActivity extends Activity {
         loadLocalProfile();
         displayAvatar();
         applyChatTextSize();
+        NotificationFx.startForegroundChecks(this);
+        NotificationFx.requestPermission(this);
         loadProfileFromCloud();
+        prepareE2eeAsync(false);
         loadDirectChats();
+        handleNotificationIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleNotificationIntent(intent);
+    }
+
+    private void handleNotificationIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+        String peerUid = intent.getStringExtra(EXTRA_OPEN_PEER_UID);
+        String peerUsername = intent.getStringExtra(EXTRA_OPEN_PEER_USERNAME);
+        if (!AuthClient.validUid(peerUid) || peerUid.equals(userId)) {
+            return;
+        }
+        intent.removeExtra(EXTRA_OPEN_PEER_UID);
+        intent.removeExtra(EXTRA_OPEN_PEER_USERNAME);
+        handler.post(() -> openDirectChat(peerUid,
+                peerUsername == null ? "" : peerUsername));
     }
 
     @Override
@@ -177,6 +214,8 @@ public class ChatsActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        NotificationFx.setChatsVisible(true);
+        NotificationFx.startForegroundChecks(this);
         updateAdminUi();
         updateAccountsUi();
         loadDirectChats();
@@ -185,12 +224,14 @@ public class ChatsActivity extends Activity {
 
     @Override
     protected void onPause() {
+        NotificationFx.setChatsVisible(false);
         stopDirectChatsPolling();
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
+        NotificationFx.setChatsVisible(false);
         handler.removeCallbacksAndMessages(null);
         executor.shutdownNow();
         super.onDestroy();
@@ -240,9 +281,11 @@ public class ChatsActivity extends Activity {
         saveButton = findViewById(R.id.save_profile);
 
         appearanceValue = findViewById(R.id.setting_appearance_value);
+        languageValue = findViewById(R.id.setting_language_value);
         textSizeValue = findViewById(R.id.setting_text_size_value);
         backgroundValue = findViewById(R.id.setting_background_value);
         twoFaValue = findViewById(R.id.setting_2fa_value);
+        e2eeValue = findViewById(R.id.setting_e2ee_value);
         accountsValue = findViewById(R.id.setting_accounts_value);
         moderationSection = findViewById(R.id.moderation_section);
     }
@@ -319,7 +362,7 @@ public class ChatsActivity extends Activity {
     private void setupChats() {
         officialChat.setOnClickListener(v -> {
             startActivity(new Intent(this, ChatActivity.class));
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+            overridePendingTransition(0, 0);
         });
         clearSearch.setOnClickListener(v -> searchInput.setText(""));
         searchInput.addTextChangedListener(new TextWatcher() {
@@ -362,6 +405,7 @@ public class ChatsActivity extends Activity {
     private void setupSettings() {
         setupSettingsFolders();
         appearanceValue.setText(AppSettings.themeLabel(this));
+        languageValue.setText(AppSettings.languageLabel(this));
         textSizeValue.setText(AppSettings.textSizeLabel(this));
         backgroundValue.setText(AppSettings.chatBackgroundLabel(this));
 
@@ -381,8 +425,16 @@ public class ChatsActivity extends Activity {
                 AppSettings.setShowTimestamps(this, checked));
         enterSend.setOnCheckedChangeListener((b, checked) ->
                 AppSettings.setEnterToSend(this, checked));
-        notifications.setOnCheckedChangeListener((b, checked) ->
-                AppSettings.setNotifications(this, checked));
+        notifications.setOnCheckedChangeListener((b, checked) -> {
+            AppSettings.setNotifications(this, checked);
+            if (checked) {
+                NotificationFx.requestPermission(this);
+                NotificationFx.startForegroundChecks(this);
+            } else {
+                NotificationFx.cancelBackgroundChecks(this);
+                NotificationFx.cancelAll(this);
+            }
+        });
         sounds.setOnCheckedChangeListener((b, checked) ->
                 AppSettings.setSounds(this, checked));
         receipts.setOnCheckedChangeListener((b, checked) ->
@@ -408,6 +460,8 @@ public class ChatsActivity extends Activity {
         });
         findViewById(R.id.setting_2fa).setOnClickListener(v -> showTwoFaDialog());
         updateTwoFaUi();
+        findViewById(R.id.setting_e2ee).setOnClickListener(v -> showE2eeDialog());
+        updateE2eeUi();
         findViewById(R.id.setting_admin_find).setOnClickListener(v -> showAdminFindDialog());
         updateAdminUi();
 
@@ -419,6 +473,8 @@ public class ChatsActivity extends Activity {
             // whole activity while onSaveInstanceState restores Settings.
             getWindow().getDecorView().postDelayed(this::recreate, 120);
         });
+        findViewById(R.id.setting_language).setOnClickListener(v ->
+                showLanguageDialog());
         findViewById(R.id.setting_text_size).setOnClickListener(v -> {
             int next = (AppSettings.textSizeIndex(this) + 1) % 3;
             AppSettings.setTextSizeIndex(this, next);
@@ -437,6 +493,77 @@ public class ChatsActivity extends Activity {
         findViewById(R.id.setting_accounts).setOnClickListener(v -> showAccountsDialog());
         updateAccountsUi();
         findViewById(R.id.setting_sign_out).setOnClickListener(v -> signOut());
+        findViewById(R.id.setting_user_agreement).setOnClickListener(v -> {
+            startActivity(new Intent(this, AgreementActivity.class));
+            overridePendingTransition(R.anim.slide_in_right,
+                    R.anim.slide_out_left);
+        });
+    }
+
+    private void showLanguageDialog() {
+        LinearLayout sheet = new LinearLayout(this);
+        sheet.setOrientation(LinearLayout.VERTICAL);
+        sheet.setBackgroundResource(R.drawable.bg_glass_card);
+        sheet.setElevation(dp(14));
+        sheet.setPadding(dp(14), dp(14), dp(14), dp(14));
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(sheet);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            WindowManager.LayoutParams params = window.getAttributes();
+            params.dimAmount = 0.28f;
+            params.gravity = Gravity.BOTTOM;
+            params.y = dp(12);
+            window.setAttributes(params);
+            int width = Math.max(dp(280),
+                    getResources().getDisplayMetrics().widthPixels - dp(24));
+            window.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
+        }
+        TextView title = new TextView(this);
+        title.setText(R.string.language);
+        title.setTextColor(getColor(R.color.text_main));
+        title.setTextSize(17);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setPadding(dp(6), dp(2), dp(6), dp(10));
+        sheet.addView(title);
+        String[] options = AppSettings.languageOptions(this);
+        int selected = AppSettings.language(this);
+        for (int i = 0; i < options.length; i++) {
+            final int value = i;
+            TextView row = new TextView(this);
+            row.setText(options[i] + (i == selected ? "  \u2022" : ""));
+            row.setTextColor(getColor(R.color.text_main));
+            row.setTextSize(15);
+            row.setTypeface(Typeface.DEFAULT,
+                    i == selected ? Typeface.BOLD : Typeface.NORMAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setMinHeight(dp(50));
+            row.setPadding(dp(14), dp(8), dp(14), dp(8));
+            row.setBackgroundResource(R.drawable.bg_chat_row);
+            row.setClickable(true);
+            row.setFocusable(true);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            params.topMargin = dp(4);
+            row.setLayoutParams(params);
+            row.setOnClickListener(v -> {
+                AppSettings.setLanguage(this, value);
+                languageValue.setText(AppSettings.languageLabel(this));
+                dialog.dismiss();
+                getWindow().getDecorView().postDelayed(this::recreate, 120L);
+            });
+            sheet.addView(row);
+            PressFx.attach(row);
+        }
+        sheet.setAlpha(0f);
+        sheet.setTranslationY(dp(24));
+        dialog.show();
+        sheet.animate().alpha(1f).translationY(0f).setDuration(240L)
+                .setInterpolator(new DecelerateInterpolator()).start();
     }
 
     private void setupSettingsFolders() {
@@ -459,7 +586,7 @@ public class ChatsActivity extends Activity {
         settingsFolderDescriptions = new String[]{
                 "Appearance, text size, background, timestamps, Enter to send",
                 "Message notifications and sounds",
-                "Two-step verification",
+                "Two-step verification and end-to-end encryption",
                 "Read receipts, bio, photo and ID visibility",
                 "Admin tools: find users, block accounts, set any ID",
                 "Saved accounts and sign out"};
@@ -618,6 +745,7 @@ public class ChatsActivity extends Activity {
 
     private void performSavedAccountSwitch(TokenStore.Account account,
                                            AlertDialog parent, String trustedVerifier) {
+        E2eeManager.clearCache(null);
         if (!TokenStore.switchAccount(this, account.slot)) {
             Toast.makeText(this, "This saved session is no longer available.",
                     Toast.LENGTH_SHORT).show();
@@ -791,6 +919,7 @@ public class ChatsActivity extends Activity {
     }
 
     private void signOut() {
+        E2eeManager.clearCache(userId);
         SharedPreferences cache = profileCache();
         File localAvatar = avatarFile();
         int slot = TokenStore.activeSlot(this);
@@ -803,6 +932,7 @@ public class ChatsActivity extends Activity {
         if (localAvatar.exists()) {
             localAvatar.delete();
         }
+        NotificationFx.onSignedOut(this);
         boolean hasOtherAccount = TokenStore.accountCount(this) > 0;
         if (hasOtherAccount) {
             Toast.makeText(this, "Signed out. Switched to another saved account.",
@@ -892,6 +1022,7 @@ public class ChatsActivity extends Activity {
             runOnUiThread(() -> {
                 directChatsLoading = false;
                 if (loaded != null) {
+                    NotificationFx.onSummaries(this, userId, loaded);
                     directChatList.clear();
                     directChatList.addAll(loaded);
                     directChatsLoaded = true;
@@ -1012,11 +1143,14 @@ public class ChatsActivity extends Activity {
 
         TextView preview = new TextView(this);
         String last = summary.lastText.replace('\n', ' ').trim();
+        if (VrProto.ENCRYPTED_TEXT.equals(last)) {
+            last = getString(R.string.e2ee_message);
+        }
         if (summary.blocked) {
-            preview.setText("Account blocked");
+            preview.setText(R.string.account_blocked);
         } else {
             preview.setText(summary.lastSenderUid.equals(userId) && last.length() > 0
-                    ? "You: " + last : last);
+                    ? getString(R.string.you) + ": " + last : last);
         }
         preview.setTextColor(getColor(R.color.text_secondary));
         preview.setTextSize(Math.max(12, AppSettings.textSizeSp(this) - 3));
@@ -1053,7 +1187,9 @@ public class ChatsActivity extends Activity {
         row.addView(side, sideParams);
 
         icon.setOnClickListener(v -> showPublicProfile(summary.peerUid, summary.username));
-        texts.setOnClickListener(v -> showPublicProfile(summary.peerUid, summary.username));
+        // The whole conversation row is for entering the chat. The
+        // separate avatar remains the profile entry point.
+        texts.setOnClickListener(v -> openDirectChat(summary.peerUid, summary.username));
         row.setOnClickListener(v -> openDirectChat(summary.peerUid, summary.username));
         return row;
     }
@@ -1073,7 +1209,7 @@ public class ChatsActivity extends Activity {
         intent.putExtra(DirectChatActivity.EXTRA_UID, uid);
         intent.putExtra(DirectChatActivity.EXTRA_USERNAME, username);
         startActivity(intent);
-        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+        overridePendingTransition(0, 0);
     }
 
     private void runGlobalSearch(String query, boolean officialMatch) {
@@ -1380,35 +1516,24 @@ public class ChatsActivity extends Activity {
     }
 
     private String ensureIdToken() {
-        if (latestIdToken != null
-                && System.currentTimeMillis() - latestIdTokenAt < 40 * 60 * 1000L) {
-            return latestIdToken;
-        }
         String expectedUid = userId == null || userId.length() == 0
                 ? TokenStore.uid(this) : userId;
-        String refreshToken = TokenStore.refreshToken(this);
-        if (refreshToken == null || refreshToken.length() == 0) {
+        String token = SessionTokens.token(this, expectedUid);
+        if (token == null) {
             return null;
         }
-        AuthClient.Result result = AuthClient.refresh(refreshToken);
-        if (!result.ok || result.uid.length() == 0
-                || (expectedUid != null && expectedUid.length() > 0
-                        && !expectedUid.equals(result.uid))) {
-            return null;
-        }
-        String tokenEmail = AuthClient.emailFromIdToken(result.idToken);
-        String accountEmail = tokenEmail.length() > 0 ? tokenEmail : userEmail;
-        if (!TokenStore.saveRefreshedSession(this, result.uid,
-                accountEmail, result.refreshToken)) {
-            return null;
-        }
-        latestIdToken = result.idToken;
-        latestIdTokenAt = System.currentTimeMillis();
+        String tokenEmail = AuthClient.emailFromIdToken(token);
         if (tokenEmail.length() > 0) {
             userEmail = tokenEmail;
         }
-        userId = result.uid;
-        return latestIdToken;
+        String storedUid = TokenStore.uid(this);
+        if (AuthClient.validUid(storedUid)) {
+            userId = storedUid;
+        }
+        latestIdToken = token;
+        latestIdTokenAt = System.currentTimeMillis();
+        NotificationFx.scheduleBackgroundChecks(this);
+        return token;
     }
 
     private void updateIdDisplay() {
@@ -1576,6 +1701,270 @@ public class ChatsActivity extends Activity {
                 });
             });
         });
+    }
+
+
+    private void prepareE2eeAsync(boolean force) {
+        final String accountUid = userId;
+        if (accountUid == null || accountUid.length() == 0) {
+            return;
+        }
+        executor.execute(() -> {
+            String token = ensureIdToken();
+            if (token == null || !accountUid.equals(userId)) {
+                return;
+            }
+            E2eeManager.Preparation preparation = E2eeManager.prepareOwn(
+                    this, token, accountUid, force);
+            runOnUiThread(() -> {
+                if (!accountUid.equals(userId) || isFinishing()) {
+                    return;
+                }
+                e2eePreparation = preparation;
+                updateE2eeUi();
+                maybePromptE2ee(preparation);
+            });
+        });
+    }
+
+    private void updateE2eeUi() {
+        if (e2eeValue == null) {
+            return;
+        }
+        E2eeManager.Preparation preparation = e2eePreparation;
+        if (preparation == null) {
+            e2eeValue.setText(E2eeManager.localSession(this, userId) != null
+                    ? R.string.e2ee_status_ready : R.string.e2ee_status_restore);
+            return;
+        }
+        if (preparation.state == E2eeManager.STATE_NEEDS_RESTORE) {
+            e2eeValue.setText(R.string.e2ee_status_restore);
+        } else if (preparation.state == E2eeManager.STATE_CONFLICT) {
+            e2eeValue.setText(R.string.e2ee_status_conflict);
+        } else if (preparation.state == E2eeManager.STATE_READY) {
+            e2eeValue.setText(preparation.backupKnown && !preparation.backupExists
+                    ? R.string.e2ee_status_no_backup : R.string.e2ee_status_ready);
+        } else {
+            e2eeValue.setText(R.string.e2ee_not_ready);
+        }
+    }
+
+    private void maybePromptE2ee(E2eeManager.Preparation preparation) {
+        if (e2eePromptShown || preparation == null || isFinishing()) {
+            return;
+        }
+        if (preparation.state == E2eeManager.STATE_NEEDS_RESTORE
+                || preparation.state == E2eeManager.STATE_CONFLICT) {
+            e2eePromptShown = true;
+            showE2eeRestoreDialog();
+            return;
+        }
+        if (preparation.state == E2eeManager.STATE_READY
+                && preparation.session != null
+                && (!preparation.backupKnown || !preparation.backupExists)
+                && !E2eeKeyStore.backupPromptDismissed(this, userId)) {
+            e2eePromptShown = true;
+            showE2eeBackupDialog(true);
+        }
+    }
+
+    private void showE2eeDialog() {
+        E2eeManager.Preparation preparation = e2eePreparation;
+        if (preparation == null) {
+            prepareE2eeAsync(true);
+            Toast.makeText(this, R.string.loading, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<String> labels = new ArrayList<>();
+        List<Integer> actions = new ArrayList<>();
+        if (preparation.session != null) {
+            labels.add(getString(preparation.backupExists
+                    ? R.string.e2ee_backup_update : R.string.e2ee_backup_create));
+            actions.add(0);
+            labels.add(getString(R.string.e2ee_fingerprint));
+            actions.add(2);
+        }
+        if (preparation.state == E2eeManager.STATE_NEEDS_RESTORE
+                || preparation.state == E2eeManager.STATE_CONFLICT
+                || preparation.backupExists) {
+            labels.add(getString(R.string.e2ee_backup_restore));
+            actions.add(1);
+        }
+        labels.add(getString(R.string.e2ee_reset));
+        actions.add(3);
+        String status = e2eeValue == null ? "" : e2eeValue.getText().toString();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.e2ee_title)
+                .setMessage(getString(R.string.e2ee_status) + ": " + status
+                        + "\n\n" + getString(R.string.e2ee_ready))
+                .setItems(labels.toArray(new String[0]), (dialog, which) -> {
+                    int action = actions.get(which);
+                    if (action == 0) {
+                        showE2eeBackupDialog(false);
+                    } else if (action == 1) {
+                        showE2eeRestoreDialog();
+                    } else if (action == 2) {
+                        showE2eeFingerprintDialog();
+                    } else {
+                        showE2eeResetDialog();
+                    }
+                })
+                .setNegativeButton(R.string.close, null)
+                .show();
+    }
+
+    private void showE2eeFingerprintDialog() {
+        E2eeManager.Preparation preparation = e2eePreparation;
+        E2eeCrypto.Session session = preparation == null ? null : preparation.session;
+        if (session == null) {
+            session = E2eeManager.localSession(this, userId);
+        }
+        if (session == null) {
+            Toast.makeText(this, R.string.e2ee_not_ready, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        TextView value = new TextView(this);
+        String fingerprint = E2eeManager.ownFingerprint(session);
+        StringBuilder grouped = new StringBuilder();
+        for (int i = 0; i < fingerprint.length(); i += 4) {
+            if (grouped.length() > 0) {
+                grouped.append(' ');
+            }
+            grouped.append(fingerprint, i,
+                    Math.min(fingerprint.length(), i + 4));
+        }
+        value.setText(grouped.toString().toUpperCase(Locale.ROOT));
+        value.setTextIsSelectable(true);
+        value.setTypeface(Typeface.MONOSPACE);
+        value.setTextColor(getColor(R.color.text_main));
+        value.setPadding(dp(24), dp(8), dp(24), dp(8));
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.e2ee_fingerprint)
+                .setView(value)
+                .setPositiveButton(R.string.close, null)
+                .show();
+    }
+
+    private void showE2eeBackupDialog(boolean prompt) {
+        EditText password = passwordField(getString(R.string.e2ee_password));
+        EditText confirm = passwordField(getString(R.string.e2ee_confirm_password));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.e2ee_backup_title)
+                .setMessage(R.string.e2ee_backup_body)
+                .setView(dialogBox(password, confirm))
+                .setNegativeButton(R.string.e2ee_later, null)
+                .setPositiveButton(R.string.save, null)
+                .create();
+        dialog.setOnDismissListener(d -> e2eePromptShown = false);
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(v -> {
+            if (prompt) {
+                E2eeKeyStore.setBackupPromptDismissed(this, userId, true);
+            }
+            dialog.dismiss();
+        });
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String pw = password.getText().toString();
+            if (pw.length() < 8 || pw.length() > 256) {
+                Toast.makeText(this, R.string.e2ee_password_short,
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!pw.equals(confirm.getText().toString())) {
+                Toast.makeText(this, R.string.e2ee_password_mismatch,
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            char[] chars = pw.toCharArray();
+            dialog.dismiss();
+            final String accountUid = userId;
+            executor.execute(() -> {
+                String token = ensureIdToken();
+                boolean ok = token != null && accountUid.equals(userId)
+                        && E2eeManager.saveBackup(this, token, accountUid, chars);
+                java.util.Arrays.fill(chars, '\0');
+                runOnUiThread(() -> {
+                    Toast.makeText(this, ok ? R.string.e2ee_backup_saved
+                                    : R.string.e2ee_not_ready,
+                            Toast.LENGTH_LONG).show();
+                    if (ok) {
+                        E2eeKeyStore.setBackupPromptDismissed(
+                                this, accountUid, false);
+                        prepareE2eeAsync(true);
+                    }
+                });
+            });
+        });
+    }
+
+    private void showE2eeRestoreDialog() {
+        EditText password = passwordField(getString(R.string.e2ee_password));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.e2ee_restore_title)
+                .setMessage(R.string.e2ee_restore_body)
+                .setView(dialogBox(password))
+                .setNegativeButton(R.string.e2ee_later, null)
+                .setNeutralButton(R.string.e2ee_reset, null)
+                .setPositiveButton(R.string.e2ee_unlock, null)
+                .create();
+        dialog.setOnDismissListener(d -> e2eePromptShown = false);
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+            dialog.dismiss();
+            showE2eeResetDialog();
+        });
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String pw = password.getText().toString();
+            if (pw.length() < 8 || pw.length() > 256) {
+                Toast.makeText(this, R.string.e2ee_password_short,
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            char[] chars = pw.toCharArray();
+            dialog.dismiss();
+            final String accountUid = userId;
+            executor.execute(() -> {
+                String token = ensureIdToken();
+                boolean ok = token != null && accountUid.equals(userId)
+                        && E2eeManager.restoreBackup(this, token, accountUid, chars);
+                java.util.Arrays.fill(chars, '\0');
+                runOnUiThread(() -> {
+                    Toast.makeText(this, ok ? R.string.e2ee_restored
+                                    : R.string.e2ee_password_wrong,
+                            Toast.LENGTH_LONG).show();
+                    if (ok) {
+                        prepareE2eeAsync(true);
+                    }
+                });
+            });
+        });
+    }
+
+    private void showE2eeResetDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.e2ee_reset_title)
+                .setMessage(R.string.e2ee_reset_body)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.e2ee_reset, (dialog, which) -> {
+                    final String accountUid = userId;
+                    executor.execute(() -> {
+                        String token = ensureIdToken();
+                        boolean ok = token != null && accountUid.equals(userId)
+                                && E2eeManager.resetIdentity(
+                                        this, token, accountUid);
+                        runOnUiThread(() -> {
+                            Toast.makeText(this, ok ? R.string.e2ee_reset_done
+                                            : R.string.e2ee_not_ready,
+                                    Toast.LENGTH_LONG).show();
+                            if (ok) {
+                                E2eeKeyStore.setBackupPromptDismissed(
+                                        this, accountUid, false);
+                                prepareE2eeAsync(true);
+                            }
+                        });
+                    });
+                })
+                .show();
     }
 
     private void showTwoFaDialog() {

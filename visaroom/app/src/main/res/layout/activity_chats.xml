@@ -55,7 +55,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="46dp"
                     android:background="@drawable/bg_input"
-                    android:hint="Search chats, channels or @username"
+                    android:hint="@string/search_chats_channels_username"
                     android:inputType="text"
                     android:maxLines="1"
                     android:paddingLeft="42dp"
@@ -77,7 +77,7 @@
                     android:layout_height="40dp"
                     android:layout_gravity="end|center_vertical"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Clear search"
+                    android:contentDescription="@string/clear_search"
                     android:src="@drawable/ic_close"
                     android:visibility="gone" />
             </FrameLayout>
@@ -105,7 +105,7 @@
                         android:paddingLeft="16dp"
                         android:paddingTop="12dp"
                         android:paddingBottom="4dp"
-                        android:text="Chats"
+                        android:text="@string/chats"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -160,7 +160,7 @@
                                     android:layout_width="16dp"
                                     android:layout_height="16dp"
                                     android:layout_marginLeft="5dp"
-                                    android:contentDescription="Verified"
+                                    android:contentDescription="@string/verified"
                                     android:src="@drawable/ic_verified" />
                             </LinearLayout>
 
@@ -169,7 +169,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
-                                android:text="Official channel"
+                                android:text="@string/official_channel"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="13sp" />
                         </LinearLayout>
@@ -187,7 +187,7 @@
                         android:paddingLeft="16dp"
                         android:paddingTop="14dp"
                         android:paddingBottom="4dp"
-                        android:text="Direct chats"
+                        android:text="@string/direct_chats"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold"
@@ -206,7 +206,7 @@
                         android:paddingLeft="16dp"
                         android:paddingRight="16dp"
                         android:paddingTop="12dp"
-                        android:text="No direct chats yet. Find a person by @username, open the profile and tap Message."
+                        android:text="@string/no_direct_chats_yet"
                         android:textColor="@color/text_hint"
                         android:textSize="13sp"
                         android:visibility="gone" />
@@ -218,7 +218,7 @@
                         android:paddingLeft="16dp"
                         android:paddingTop="14dp"
                         android:paddingBottom="4dp"
-                        android:text="People"
+                        android:text="@string/people"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold"
@@ -237,7 +237,7 @@
                         android:paddingLeft="16dp"
                         android:paddingRight="16dp"
                         android:paddingTop="14dp"
-                        android:text="Type at least 2 characters to find people by username."
+                        android:text="@string/search_people_hint"
                         android:textColor="@color/text_hint"
                         android:textSize="13sp"
                         android:visibility="gone" />
@@ -247,7 +247,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:padding="20dp"
-                        android:text="Nothing found."
+                        android:text="@string/nothing_found"
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp"
                         android:visibility="gone" />
@@ -274,7 +274,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Profile"
+                    android:text="@string/profile"
                     android:textColor="@color/text_main"
                     android:textSize="24sp"
                     android:textStyle="bold" />
@@ -283,7 +283,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="Your account details."
+                    android:text="@string/account_details"
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
 
@@ -293,7 +293,7 @@
                     android:layout_height="96dp"
                     android:layout_gravity="center_horizontal"
                     android:layout_marginTop="28dp"
-                    android:contentDescription="Profile photo"
+                    android:contentDescription="@string/profile_photo"
                     android:src="@drawable/ic_logo" />
 
                 <TextView
@@ -304,7 +304,7 @@
                     android:layout_marginTop="10dp"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:padding="6dp"
-                    android:text="Change photo"
+                    android:text="@string/change_photo"
                     android:textColor="@color/text_main"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -312,7 +312,7 @@
                 <TextView
                     style="@style/Label"
                     android:layout_marginTop="24dp"
-                    android:text="Username" />
+                    android:text="@string/username" />
 
                 <EditText
                     android:id="@+id/profile_username"
@@ -334,14 +334,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="3-24 characters: letters, numbers or underscores."
+                    android:text="@string/username_rules"
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
 
                 <TextView
                     style="@style/Label"
                     android:layout_marginTop="18dp"
-                    android:text="Bio" />
+                    android:text="@string/bio" />
 
                 <EditText
                     android:id="@+id/profile_bio"
@@ -350,7 +350,7 @@
                     android:layout_marginTop="8dp"
                     android:background="@drawable/bg_input"
                     android:gravity="top"
-                    android:hint="About you"
+                    android:hint="@string/about_you"
                     android:inputType="textCapSentences|textMultiLine"
                     android:maxLength="160"
                     android:minHeight="84dp"
@@ -378,7 +378,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Find me by username"
+                            android:text="@string/find_me_username"
                             android:textColor="@color/text_main"
                             android:textSize="14sp" />
 
@@ -386,7 +386,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Your email is never shown in search."
+                            android:text="@string/email_never_search"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
                     </LinearLayout>
@@ -400,7 +400,7 @@
                 <TextView
                     style="@style/Label"
                     android:layout_marginTop="22dp"
-                    android:text="Email" />
+                    android:text="@string/email" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -428,7 +428,7 @@
                         android:layout_height="wrap_content"
                         android:background="?android:attr/selectableItemBackgroundBorderless"
                         android:padding="8dp"
-                        android:text="Change"
+                        android:text="@string/change"
                         android:textColor="@color/text_main"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -437,7 +437,7 @@
                 <TextView
                     style="@style/Label"
                     android:layout_marginTop="18dp"
-                    android:text="User ID" />
+                    android:text="@string/user_id" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -466,7 +466,7 @@
                         android:layout_height="wrap_content"
                         android:background="?android:attr/selectableItemBackgroundBorderless"
                         android:padding="8dp"
-                        android:text="Copy"
+                        android:text="@string/copy"
                         android:textColor="@color/text_main"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -476,7 +476,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="Your ID is permanent and cannot be changed."
+                    android:text="@string/permanent_id_note"
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
 
@@ -500,7 +500,7 @@
                     android:layout_height="52dp"
                     android:layout_marginTop="22dp"
                     android:background="@drawable/bg_button_primary"
-                    android:text="Save changes"
+                    android:text="@string/save_changes"
                     android:textAllCaps="false"
                     android:textColor="@color/on_primary"
                     android:textSize="15sp" />
@@ -520,7 +520,7 @@
                     android:layout_height="52dp"
                     android:layout_marginTop="14dp"
                     android:background="@drawable/bg_input_normal"
-                    android:text="Sign out"
+                    android:text="@string/sign_out"
                     android:textAllCaps="false"
                     android:textColor="@color/text_main"
                     android:textSize="15sp" />
@@ -546,7 +546,7 @@
                     android:layout_height="wrap_content"
                     android:paddingLeft="24dp"
                     android:paddingRight="24dp"
-                    android:text="Settings"
+                    android:text="@string/settings"
                     android:textColor="@color/text_main"
                     android:textSize="24sp"
                     android:textStyle="bold" />
@@ -557,7 +557,7 @@
                     android:layout_marginTop="6dp"
                     android:paddingLeft="24dp"
                     android:paddingRight="24dp"
-                    android:text="Tap a folder to open it. Long-press Settings below for accounts."
+                    android:text="@string/settings_intro"
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
 
@@ -573,7 +573,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="28dp"
                     android:paddingLeft="24dp"
-                    android:text="CHATS"
+                    android:text="@string/chats"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -602,7 +602,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Appearance"
+                        android:text="@string/appearance"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -610,7 +610,51 @@
                         android:id="@+id/setting_appearance_value"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="System"
+                        android:text="@string/language_system"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/setting_language"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chat_row"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="56dp"
+                    android:orientation="horizontal"
+                    android:paddingLeft="24dp"
+                    android:paddingRight="24dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/language"
+                            android:textColor="@color/text_main"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/choose_app_language"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/setting_language_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/language_system"
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp" />
                 </LinearLayout>
@@ -632,7 +676,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Message text size"
+                        android:text="@string/message_text_size"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -640,7 +684,7 @@
                         android:id="@+id/setting_text_size_value"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Medium"
+                        android:text="@string/text_size_medium"
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp" />
                 </LinearLayout>
@@ -662,7 +706,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Chat background"
+                        android:text="@string/chat_background"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -670,7 +714,7 @@
                         android:id="@+id/setting_background_value"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="White"
+                        android:text="@string/chat_background_white"
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp" />
                 </LinearLayout>
@@ -688,7 +732,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Show timestamps"
+                        android:text="@string/show_timestamps"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -711,7 +755,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Send with Enter"
+                        android:text="@string/send_with_enter"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -732,7 +776,7 @@
                     android:gravity="center_vertical"
                     android:paddingLeft="24dp"
                     android:paddingRight="24dp"
-                    android:text="Clear current search"
+                    android:text="@string/clear_current_search"
                     android:textColor="@color/text_main"
                     android:textSize="15sp" />
 
@@ -750,7 +794,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="22dp"
                     android:paddingLeft="24dp"
-                    android:text="NOTIFICATIONS"
+                    android:text="@string/notifications"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -775,7 +819,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Message notifications"
+                        android:text="@string/message_notifications"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -798,7 +842,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Sounds"
+                        android:text="@string/sounds"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -823,7 +867,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="22dp"
                     android:paddingLeft="24dp"
-                    android:text="SECURITY"
+                    android:text="@string/security"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -857,7 +901,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Two-step verification"
+                            android:text="@string/two_step_verification"
                             android:textColor="@color/text_main"
                             android:textSize="15sp" />
 
@@ -865,7 +909,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Additional password at sign-in"
+                            android:text="@string/additional_password_signin"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
                     </LinearLayout>
@@ -874,7 +918,51 @@
                         android:id="@+id/setting_2fa_value"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Off"
+                        android:text="@string/off"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/setting_e2ee"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chat_row"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="56dp"
+                    android:orientation="horizontal"
+                    android:paddingLeft="24dp"
+                    android:paddingRight="24dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/e2ee_title"
+                            android:textColor="@color/text_main"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/e2ee_ready"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/setting_e2ee_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/e2ee_status_ready"
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp" />
                 </LinearLayout>
@@ -893,7 +981,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="22dp"
                     android:paddingLeft="24dp"
-                    android:text="PRIVACY"
+                    android:text="@string/privacy"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -918,7 +1006,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Read receipts"
+                        android:text="@string/read_receipts"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -942,7 +1030,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Show my bio"
+                        android:text="@string/show_my_bio"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -965,7 +1053,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Show my profile photo"
+                        android:text="@string/show_my_profile_photo"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -988,7 +1076,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Show my ID"
+                        android:text="@string/show_my_id"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -1003,7 +1091,7 @@
                     android:layout_height="wrap_content"
                     android:paddingLeft="24dp"
                     android:paddingRight="24dp"
-                    android:text="Username search can be turned off in your profile. Your email is never public."
+                    android:text="@string/privacy_username_note"
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
 
@@ -1028,7 +1116,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="22dp"
                         android:paddingLeft="24dp"
-                        android:text="MODERATION"
+                        android:text="@string/moderation"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
@@ -1051,7 +1139,7 @@
                         android:minHeight="56dp"
                         android:paddingLeft="24dp"
                         android:paddingRight="24dp"
-                        android:text="Find user by username or ID"
+                        android:text="@string/find_user_username_id"
                         android:textColor="@color/text_main"
                         android:textSize="15sp" />
 
@@ -1060,7 +1148,7 @@
                         android:layout_height="wrap_content"
                         android:paddingLeft="24dp"
                         android:paddingRight="24dp"
-                        android:text="Open a profile to block the account, set any ID, remove the username, clear the bio or remove the photo."
+                        android:text="@string/admin_profile_hint"
                         android:textColor="@color/text_hint"
                         android:textSize="12sp" />
                     </LinearLayout>
@@ -1079,7 +1167,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="22dp"
                     android:paddingLeft="24dp"
-                    android:text="ACCOUNT"
+                    android:text="@string/account"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -1113,7 +1201,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Accounts"
+                            android:text="@string/accounts"
                             android:textColor="@color/text_main"
                             android:textSize="15sp" />
 
@@ -1121,7 +1209,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Switch or add up to 3 accounts"
+                            android:text="@string/accounts_subtitle"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
                     </LinearLayout>
@@ -1146,7 +1234,7 @@
                     android:minHeight="56dp"
                     android:paddingLeft="24dp"
                     android:paddingRight="24dp"
-                    android:text="Sign out"
+                    android:text="@string/sign_out"
                     android:textColor="@color/text_main"
                     android:textSize="15sp" />
 
@@ -1157,9 +1245,53 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:gravity="center"
-                    android:text="visaroom 1.10.0"
+                    android:text="visaroom 1.11.0"
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
+
+                <LinearLayout
+                    android:id="@+id/setting_user_agreement"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:background="@drawable/bg_chat_row"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="60dp"
+                    android:orientation="horizontal"
+                    android:paddingLeft="24dp"
+                    android:paddingRight="24dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/user_agreement"
+                            android:textColor="@color/text_main"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/open_full_document"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/open"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+                </LinearLayout>
             </LinearLayout>
         </ScrollView>
     </FrameLayout>
@@ -1203,7 +1335,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_marginTop="5dp"
-                android:contentDescription="Chats"
+                android:contentDescription="@string/chats"
                 android:src="@drawable/ic_nav_chats" />
 
             <TextView
@@ -1211,7 +1343,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Chats"
+                android:text="@string/chats"
                 android:textColor="@color/text_main"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -1240,7 +1372,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_marginTop="5dp"
-                android:contentDescription="Profile"
+                android:contentDescription="@string/profile"
                 android:src="@drawable/ic_nav_profile" />
 
             <TextView
@@ -1248,7 +1380,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Profile"
+                android:text="@string/profile"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp" />
         </LinearLayout>
@@ -1276,7 +1408,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_marginTop="5dp"
-                android:contentDescription="Settings"
+                android:contentDescription="@string/settings"
                 android:src="@drawable/ic_nav_settings" />
 
             <TextView
@@ -1284,7 +1416,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:text="Settings"
+                android:text="@string/settings"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp" />
         </LinearLayout>
