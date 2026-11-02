@@ -1085,7 +1085,7 @@ final class ProfileClient {
 
     private static boolean validUsername(String username) {
         return username != null
-                && (username.length() == 0 || ProfileData.isValidUsername(username));
+                && (username.length() == 0 || validClaimUsername(username));
     }
 
     private static boolean validClaimUsername(String username) {
