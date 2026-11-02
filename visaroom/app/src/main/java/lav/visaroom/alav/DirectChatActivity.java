@@ -141,8 +141,14 @@ public class DirectChatActivity extends Activity {
         if (fallbackUsername == null) {
             fallbackUsername = "";
         }
+        if (!AuthClient.validUid(peerUid)) {
+            peerUid = "";
+        }
+        if (!fallbackUsername.matches("[A-Za-z0-9_]{3,24}")) {
+            fallbackUsername = "";
+        }
         String uid = TokenStore.uid(this);
-        myUid = uid == null ? "" : uid;
+        myUid = AuthClient.validUid(uid) ? uid : "";
 
         messagesScroll = findViewById(R.id.messages_scroll);
         messagesContainer = findViewById(R.id.messages_container);
@@ -291,26 +297,28 @@ public class DirectChatActivity extends Activity {
                 && System.currentTimeMillis() - latestIdTokenAt < 40 * 60 * 1000L) {
             return latestIdToken;
         }
+        String expectedUid = myUid == null || myUid.length() == 0
+                ? TokenStore.uid(this) : myUid;
         String refreshToken = TokenStore.refreshToken(this);
         if (refreshToken == null || refreshToken.length() == 0) {
             return null;
         }
         AuthClient.Result session = AuthClient.refresh(refreshToken);
-        if (!session.ok) {
+        if (!session.ok || session.uid.length() == 0
+                || (expectedUid != null && expectedUid.length() > 0
+                        && !expectedUid.equals(session.uid))) {
+            return null;
+        }
+        String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
+        String accountEmail = tokenEmail.length() > 0
+                ? tokenEmail : TokenStore.email(this);
+        if (!TokenStore.saveRefreshedSession(this, session.uid,
+                accountEmail, session.refreshToken)) {
             return null;
         }
         latestIdToken = session.idToken;
         latestIdTokenAt = System.currentTimeMillis();
-        String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
-        if (tokenEmail.length() > 0) {
-            TokenStore.save(this, tokenEmail, session.refreshToken);
-        } else {
-            TokenStore.save(this, null, session.refreshToken);
-        }
-        if (session.uid.length() > 0) {
-            myUid = session.uid;
-            TokenStore.saveUid(this, session.uid);
-        }
+        myUid = session.uid;
         return latestIdToken;
     }
 
@@ -445,7 +453,7 @@ public class DirectChatActivity extends Activity {
         peerVerified.setVisibility(peerProfile != null && peerProfile.verified
                 ? View.VISIBLE : View.GONE);
         Bitmap bmp = avatarBytes == null ? null
-                : BitmapFactory.decodeByteArray(avatarBytes, 0, avatarBytes.length);
+                : ImageDecode.decodeBytes(avatarBytes, 256, 256 * 256);
         if (bmp != null) {
             peerAvatar.clearColorFilter();
             peerAvatar.setImageBitmap(circular(bmp));
@@ -751,11 +759,11 @@ public class DirectChatActivity extends Activity {
     }
 
     private void handlePickedFile(Uri uri) {
-        String name = sanitizeFileName(queryFileValue(uri, true));
-        String mime = getContentResolver().getType(uri);
-        if (mime == null || mime.length() == 0) {
-            mime = "application/octet-stream";
-        }
+        String cleanName = VrProto.safeFileName(queryFileValue(uri, true));
+        String name = cleanName.length() > 0 ? cleanName : "file";
+        String cleanMime = VrProto.safeMimeType(getContentResolver().getType(uri));
+        String mime = cleanMime.length() > 0
+                ? cleanMime : "application/octet-stream";
         long queriedSize = queryFileSize(uri);
         String finalMime = mime;
         executor.execute(() -> {
@@ -866,19 +874,6 @@ public class DirectChatActivity extends Activity {
                 }
             }
         }
-    }
-
-    private String sanitizeFileName(String raw) {
-        String name = raw == null ? "file" : raw.trim();
-        name = name.replace('/', '_').replace((char) 92, '_');
-        StringBuilder clean = new StringBuilder();
-        for (int i = 0; i < name.length() && clean.length() < 255; i++) {
-            char c = name.charAt(i);
-            if (c >= 32 && c != 127) {
-                clean.append(c);
-            }
-        }
-        return clean.length() == 0 ? "file" : clean.toString();
     }
 
     private void updateProgressById(String id, int percent, boolean downloading) {
@@ -1059,11 +1054,13 @@ public class DirectChatActivity extends Activity {
             return;
         }
         pendingDownload = message;
+        String safeName = VrProto.safeFileName(message.fileName);
+        String safeMime = VrProto.safeMimeType(message.mimeType);
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType(message.mimeType.length() == 0
-                ? "*/*" : message.mimeType);
-        intent.putExtra(Intent.EXTRA_TITLE, message.fileName);
+        intent.setType(safeMime.length() == 0 ? "*/*" : safeMime);
+        intent.putExtra(Intent.EXTRA_TITLE,
+                safeName.length() > 0 ? safeName : "file");
         startActivityForResult(intent, REQ_SAVE_FILE);
     }
 
@@ -1203,10 +1200,10 @@ public class DirectChatActivity extends Activity {
             if (first != null) {
                 first.close();
             }
-            int sample = 1;
-            while (bounds.outWidth / sample > 1800
-                    || bounds.outHeight / sample > 1800) {
-                sample *= 2;
+            int sample = ImageDecode.sampleSize(bounds.outWidth, bounds.outHeight,
+                    1800, 1800 * 1800);
+            if (sample <= 0) {
+                return null;
             }
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inSampleSize = sample;
@@ -1394,20 +1391,11 @@ public class DirectChatActivity extends Activity {
     }
 
     private Bitmap decodeWallpaper(byte[] image) {
-        if (image == null || image.length == 0) {
+        if (image == null || image.length == 0
+                || image.length > VrProto.MAX_WALLPAPER_BYTES) {
             return null;
         }
-        BitmapFactory.Options bounds = new BitmapFactory.Options();
-        bounds.inJustDecodeBounds = true;
-        BitmapFactory.decodeByteArray(image, 0, image.length, bounds);
-        int sample = 1;
-        while (bounds.outWidth / sample > 1200
-                || bounds.outHeight / sample > 1200) {
-            sample *= 2;
-        }
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = sample;
-        return BitmapFactory.decodeByteArray(image, 0, image.length, options);
+        return ImageDecode.decodeBytes(image, 1200, 1200 * 1200);
     }
 
     private String formatBytes(long bytes) {

@@ -53,10 +53,6 @@ final class Vault {
                 46, 53, 49, 63, 52, 101, 49, 63, 35, 103}) + apiKey();
     }
 
-    static String usersUrl() {
-        return firestoreBaseUrl() + "users/";
-    }
-
     static String firestoreBaseUrl() {
         return d(new int[]{50, 46, 46, 42, 41, 96, 117, 117, 60, 51, 40, 63, 41, 46, 53, 40, 63, 116,
                 61, 53, 53, 61, 54, 63, 59, 42, 51, 41, 116, 57, 53, 55, 117, 44, 107, 117, 42, 40, 53,

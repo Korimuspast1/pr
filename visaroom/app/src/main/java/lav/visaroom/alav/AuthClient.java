@@ -10,12 +10,9 @@ import android.util.Base64;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
@@ -113,6 +110,10 @@ final class AuthClient {
     static Result updateEmail(String idToken, String newEmail) {
         Result result = new Result();
         try {
+            if (!validTokenString(idToken) || !validEmail(newEmail)) {
+                result.errorCode = "INVALID_REQUEST";
+                return result;
+            }
             JSONObject body = new JSONObject();
             body.put("idToken", idToken);
             body.put("email", newEmail);
@@ -121,11 +122,13 @@ final class AuthClient {
             if (json == null) {
                 return result;
             }
-            result.ok = true;
             result.email = json.optString("email");
             result.uid = json.optString("localId");
             result.idToken = json.optString("idToken");
             result.refreshToken = json.optString("refreshToken");
+            if (!acceptSession(result, true)) {
+                return invalidResponse();
+            }
             return result;
         } catch (Exception ignored) {
             result.networkError = true;
@@ -136,6 +139,11 @@ final class AuthClient {
     static Result refresh(String refreshToken) {
         Result result = new Result();
         try {
+            if (!validTokenString(refreshToken)) {
+                result.errorCode = "INVALID_REFRESH_TOKEN";
+                result.sessionExpired = true;
+                return result;
+            }
             JSONObject body = new JSONObject();
             body.put("grant_type", "refresh_token");
             body.put("refresh_token", refreshToken);
@@ -143,10 +151,12 @@ final class AuthClient {
             if (json == null) {
                 return result;
             }
-            result.ok = true;
             result.idToken = json.optString("id_token");
             result.refreshToken = json.optString("refresh_token");
             result.uid = json.optString("user_id");
+            if (!acceptSession(result, false)) {
+                return invalidResponse();
+            }
             return result;
         } catch (Exception ignored) {
             result.networkError = true;
@@ -154,37 +164,14 @@ final class AuthClient {
         }
     }
 
-    /** Creates users/{uid} in Firestore. Allowed only for the owner by the security rules. */
-    static void createUserDocument(String idToken, String uid, String email) {
-        try {
-            JSONObject value = new JSONObject();
-            value.put("stringValue", email);
-            JSONObject fields = new JSONObject();
-            fields.put("email", value);
-            JSONObject body = new JSONObject();
-            body.put("fields", fields);
-            HttpURLConnection connection =
-                    (HttpURLConnection) new URL(Vault.usersUrl() + uid).openConnection();
-            connection.setRequestMethod("PATCH");
-            connection.setConnectTimeout(15000);
-            connection.setReadTimeout(15000);
-            connection.setDoOutput(true);
-            connection.setRequestProperty("Content-Type", "application/json");
-            applyAndroidHeaders(connection);
-            connection.setRequestProperty("Authorization", "Bearer " + idToken);
-            OutputStream out = connection.getOutputStream();
-            out.write(body.toString().getBytes(StandardCharsets.UTF_8));
-            out.close();
-            connection.getResponseCode();
-            connection.disconnect();
-        } catch (Exception ignored) {
-            // Non-blocking: the account exists in Auth even if Firestore is not created yet.
-        }
-    }
-
     private static Result passwordAuth(String url, String email, String password) {
         Result result = new Result();
         try {
+            if (!validEmail(email) || password == null
+                    || password.length() == 0 || password.length() > 4096) {
+                result.errorCode = "INVALID_REQUEST";
+                return result;
+            }
             JSONObject body = new JSONObject();
             body.put("email", email);
             body.put("password", password);
@@ -193,11 +180,13 @@ final class AuthClient {
             if (json == null) {
                 return result;
             }
-            result.ok = true;
             result.email = json.optString("email");
             result.uid = json.optString("localId");
             result.idToken = json.optString("idToken");
             result.refreshToken = json.optString("refreshToken");
+            if (!acceptSession(result, true)) {
+                return invalidResponse();
+            }
             return result;
         } catch (Exception ignored) {
             result.networkError = true;
@@ -205,12 +194,70 @@ final class AuthClient {
         }
     }
 
+    private static Result invalidResponse() {
+        Result result = new Result();
+        result.errorCode = "INVALID_AUTH_RESPONSE";
+        return result;
+    }
+
+    /**
+     * A syntactically successful Auth response is trusted only when it
+     * contains a complete, plausible session.  This stops an empty or
+     * malformed 2xx body from being saved as a (broken) signed-in state.
+     */
+    private static boolean acceptSession(Result result, boolean requireEmail) {
+        boolean ok = validUid(result.uid)
+                && validTokenString(result.idToken)
+                && validTokenString(result.refreshToken)
+                && (!requireEmail || validEmail(result.email));
+        result.ok = ok;
+        if (!ok) {
+            result.email = "";
+            result.uid = "";
+            result.idToken = "";
+            result.refreshToken = "";
+        }
+        return ok;
+    }
+
+    static boolean validUid(String uid) {
+        return uid != null && uid.matches("[A-Za-z0-9_-]{1,128}");
+    }
+
+    private static boolean validEmail(String email) {
+        if (email == null || email.length() < 3 || email.length() > 320) {
+            return false;
+        }
+        int at = email.indexOf('@');
+        if (at <= 0 || at != email.lastIndexOf('@') || at == email.length() - 1) {
+            return false;
+        }
+        for (int i = 0; i < email.length(); i++) {
+            char c = email.charAt(i);
+            if (c <= 32 || c == 127) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean validTokenString(String token) {
+        if (token == null || token.length() < 16 || token.length() > 8192) {
+            return false;
+        }
+        for (int i = 0; i < token.length(); i++) {
+            char c = token.charAt(i);
+            if (c <= 32 || c == 127) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static JSONObject postJson(String url, JSONObject body, String bearer, Result result)
             throws Exception {
-        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        HttpURLConnection connection = SafeHttp.open(url);
         connection.setRequestMethod("POST");
-        connection.setConnectTimeout(15000);
-        connection.setReadTimeout(15000);
         connection.setDoOutput(true);
         connection.setRequestProperty("Content-Type", "application/json");
         applyAndroidHeaders(connection);
@@ -233,7 +280,9 @@ final class AuthClient {
         }
         result.errorCode = parseErrorCode(json);
         result.sessionExpired = result.errorCode.contains("INVALID_REFRESH_TOKEN")
+                || result.errorCode.contains("INVALID_ID_TOKEN")
                 || result.errorCode.contains("TOKEN_EXPIRED")
+                || result.errorCode.contains("CREDENTIAL_TOO_OLD_LOGIN_AGAIN")
                 || result.errorCode.contains("USER_DISABLED")
                 || result.errorCode.contains("USER_NOT_FOUND");
         return null;
@@ -250,7 +299,8 @@ final class AuthClient {
                 return "";
             }
             String[] parts = idToken.split("\\.");
-            if (parts.length < 2) {
+            if (parts.length != 3 || parts[1].length() == 0
+                    || parts[1].length() > 8192) {
                 return "";
             }
             String part = parts[1];
@@ -292,17 +342,8 @@ final class AuthClient {
     }
 
     private static String readAll(InputStream stream) throws Exception {
-        if (stream == null) {
-            return "";
-        }
-        StringBuilder builder = new StringBuilder();
-        BufferedReader reader = new BufferedReader(
-                new InputStreamReader(stream, StandardCharsets.UTF_8));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            builder.append(line);
-        }
-        reader.close();
-        return builder.toString();
+        // Firebase Auth responses are small; never let a malformed or
+        // hostile endpoint make the client buffer an unbounded body.
+        return SafeHttp.readText(stream, 64 * 1024);
     }
 }

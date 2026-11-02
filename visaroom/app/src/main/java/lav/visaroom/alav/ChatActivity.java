@@ -239,6 +239,25 @@ public class ChatActivity extends Activity {
         announcementSend.setAlpha(enabled ? 1f : 0.55f);
     }
 
+    private AuthClient.Result refreshSession() {
+        String expectedUid = TokenStore.uid(this);
+        String refreshToken = TokenStore.refreshToken(this);
+        if (refreshToken == null || refreshToken.length() == 0) {
+            return null;
+        }
+        AuthClient.Result session = AuthClient.refresh(refreshToken);
+        if (!session.ok || session.uid.length() == 0
+                || (expectedUid != null && expectedUid.length() > 0
+                        && !expectedUid.equals(session.uid))) {
+            return null;
+        }
+        String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
+        String accountEmail = tokenEmail.length() > 0
+                ? tokenEmail : TokenStore.email(this);
+        return TokenStore.saveRefreshedSession(this, session.uid,
+                accountEmail, session.refreshToken) ? session : null;
+    }
+
     private void publishAnnouncement() {
         if (!adminComposer || publishingAnnouncement
                 || announcementInput == null) {
@@ -270,22 +289,14 @@ public class ChatActivity extends Activity {
         executor.execute(() -> {
             boolean published = false;
             boolean confirmedAdmin = false;
-            String refreshToken = TokenStore.refreshToken(this);
-            if (refreshToken != null && refreshToken.length() > 0) {
-                AuthClient.Result session = AuthClient.refresh(refreshToken);
-                if (session.ok) {
-                    TokenStore.save(this, null, session.refreshToken);
-                    TokenStore.saveUid(this, session.uid);
-                    String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
-                    if (tokenEmail.length() > 0) {
-                        TokenStore.save(this, tokenEmail, session.refreshToken);
-                    }
-                    confirmedAdmin = Admin.isAdminEmail(tokenEmail);
-                    if (confirmedAdmin) {
-                        published = ProfileClient.publishAnnouncement(
-                                session.idToken, session.uid, announcementId,
-                                text, createdAt);
-                    }
+            AuthClient.Result session = refreshSession();
+            if (session != null) {
+                String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
+                confirmedAdmin = Admin.isAdminEmail(tokenEmail);
+                if (confirmedAdmin) {
+                    published = ProfileClient.publishAnnouncement(
+                            session.idToken, session.uid, announcementId,
+                            text, createdAt);
                 }
             }
             boolean resultPublished = published;
@@ -318,21 +329,13 @@ public class ChatActivity extends Activity {
 
     private void loadAnnouncements() {
         executor.execute(() -> {
-            String refreshToken = TokenStore.refreshToken(this);
             List<ProfileClient.Announcement> loaded = new ArrayList<>();
             boolean confirmedAdmin = false;
-            if (refreshToken != null && refreshToken.length() > 0) {
-                AuthClient.Result session = AuthClient.refresh(refreshToken);
-                if (session.ok) {
-                    TokenStore.save(this, null, session.refreshToken);
-                    TokenStore.saveUid(this, session.uid);
-                    String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
-                    if (tokenEmail.length() > 0) {
-                        TokenStore.save(this, tokenEmail, session.refreshToken);
-                    }
-                    confirmedAdmin = Admin.isAdminEmail(tokenEmail);
-                    loaded = ProfileClient.listAnnouncements(session.idToken);
-                }
+            AuthClient.Result session = refreshSession();
+            if (session != null) {
+                String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
+                confirmedAdmin = Admin.isAdminEmail(tokenEmail);
+                loaded = ProfileClient.listAnnouncements(session.idToken);
             }
             List<ProfileClient.Announcement> result = loaded;
             boolean resultAdmin = confirmedAdmin;

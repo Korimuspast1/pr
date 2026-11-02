@@ -106,14 +106,14 @@ final class TokenStore {
 
     // ---------- legacy active-account API ----------
 
-    static void save(Context context, String email, String refreshToken) {
+    static synchronized void save(Context context, String email, String refreshToken) {
         try {
             SharedPreferences.Editor e = prefs(context).edit();
             if (email != null) {
-                e.putString(KEY_EMAIL, encrypt(email));
+                e.putString(KEY_EMAIL, encrypt(KEY_EMAIL, email));
             }
             if (refreshToken != null) {
-                e.putString(KEY_TOKEN, encrypt(refreshToken));
+                e.putString(KEY_TOKEN, encrypt(KEY_TOKEN, refreshToken));
             }
             e.commit();
             syncActiveFromLegacy(context);
@@ -122,33 +122,84 @@ final class TokenStore {
         }
     }
 
-    static void saveUid(Context context, String uid) {
+    static synchronized void saveUid(Context context, String uid) {
         if (uid == null || uid.length() == 0) {
             return;
         }
         try {
-            prefs(context).edit().putString(KEY_UID, encrypt(uid)).commit();
+            prefs(context).edit().putString(KEY_UID, encrypt(KEY_UID, uid)).commit();
             syncActiveFromLegacy(context);
         } catch (Exception ignored) {
         }
+    }
+
+    /**
+     * Persists a refreshed session into the account slot that owns the
+     * given Firebase UID.  Refreshes run on background threads, while the
+     * user can switch accounts on the UI thread; writing a completed
+     * refresh through the legacy "active account" keys could otherwise
+     * copy account A's new refresh token over account B's slot.
+     */
+    static synchronized boolean saveRefreshedSession(Context context, String accountUid,
+                                                     String email,
+                                                     String refreshToken) {
+        if (accountUid == null || accountUid.length() == 0
+                || refreshToken == null || refreshToken.length() == 0) {
+            return false;
+        }
+        ensureMigrated(context);
+        Account target = null;
+        for (int slot = 0; slot < MAX_ACCOUNTS; slot++) {
+            Account account = readAccount(context, slot);
+            if (accountUid.equals(account.uid)
+                    && account.refreshToken.length() > 0) {
+                target = account;
+                break;
+            }
+        }
+        if (target == null) {
+            int active = prefs(context).getInt(KEY_ACTIVE, -1);
+            if (active < 0 || active >= MAX_ACCOUNTS) {
+                return false;
+            }
+            Account activeAccount = readAccount(context, active);
+            // Very old migrated slots may not have a UID yet.  Only an
+            // unlabelled active slot may adopt this UID; a labelled
+            // different account must never be overwritten.
+            if (activeAccount.refreshToken.length() == 0
+                    || activeAccount.uid.length() > 0) {
+                return false;
+            }
+            target = activeAccount;
+        }
+        if (email != null && email.length() > 0) {
+            target.email = email;
+        }
+        target.uid = accountUid;
+        target.refreshToken = refreshToken;
+        writeAccount(context, target);
+        if (prefs(context).getInt(KEY_ACTIVE, -1) == target.slot) {
+            mirror(context, target);
+        }
+        return true;
     }
 
     static String uid(Context context) {
         return read(context, KEY_UID);
     }
 
-    static void saveTwoFa(Context context, String marker, String verifier) {
+    static synchronized void saveTwoFa(Context context, String marker, String verifier) {
         try {
             SharedPreferences.Editor e = prefs(context).edit();
             if (marker == null || marker.length() == 0) {
                 e.remove(KEY_2FA_MARKER);
             } else {
-                e.putString(KEY_2FA_MARKER, encrypt(marker));
+                e.putString(KEY_2FA_MARKER, encrypt(KEY_2FA_MARKER, marker));
             }
             if (verifier == null || verifier.length() == 0) {
                 e.remove(KEY_2FA_VERIFIER);
             } else {
-                e.putString(KEY_2FA_VERIFIER, encrypt(verifier));
+                e.putString(KEY_2FA_VERIFIER, encrypt(KEY_2FA_VERIFIER, verifier));
             }
             e.commit();
             syncActiveFromLegacy(context);
@@ -156,15 +207,59 @@ final class TokenStore {
         }
     }
 
+    /** UID-bound variant; stale background work cannot write one
+     * account's 2FA state into another account's slot after a switch. */
+    static synchronized boolean saveTwoFaForUid(Context context, String accountUid,
+                                                String marker, String verifier) {
+        if (accountUid == null || accountUid.length() == 0) {
+            return false;
+        }
+        ensureMigrated(context);
+        for (int slot = 0; slot < MAX_ACCOUNTS; slot++) {
+            Account account = readAccount(context, slot);
+            if (!accountUid.equals(account.uid)
+                    || account.refreshToken.length() == 0) {
+                continue;
+            }
+            account.twoFaMarker = marker == null ? "" : marker;
+            account.twoFaVerifier = verifier == null ? "" : verifier;
+            writeAccount(context, account);
+            if (prefs(context).getInt(KEY_ACTIVE, -1) == slot) {
+                mirror(context, account);
+            }
+            return true;
+        }
+        if (accountUid.equals(uid(context))) {
+            saveTwoFa(context, marker, verifier);
+            return true;
+        }
+        return false;
+    }
+
     static String twoFaMarker(Context context) {
         return read(context, KEY_2FA_MARKER);
+    }
+
+    static synchronized String twoFaMarkerForUid(Context context, String uid) {
+        ensureMigrated(context);
+        if (uid != null && uid.length() > 0) {
+            for (int slot = 0; slot < MAX_ACCOUNTS; slot++) {
+                Account account = readAccount(context, slot);
+                if (uid.equals(account.uid)) {
+                    return account.twoFaMarker.length() == 0
+                            ? null : account.twoFaMarker;
+                }
+            }
+        }
+        String activeUid = uid(context);
+        return uid != null && uid.equals(activeUid) ? twoFaMarker(context) : null;
     }
 
     static String twoFaVerifier(Context context) {
         return read(context, KEY_2FA_VERIFIER);
     }
 
-    static String twoFaVerifierForUid(Context context, String uid) {
+    static synchronized String twoFaVerifierForUid(Context context, String uid) {
         ensureMigrated(context);
         if (uid != null && uid.length() > 0) {
             for (int slot = 0; slot < MAX_ACCOUNTS; slot++) {
@@ -188,7 +283,7 @@ final class TokenStore {
     }
 
     /** Removes the active saved account and activates another one, if any. */
-    static void clear(Context context) {
+    static synchronized void clear(Context context) {
         ensureMigrated(context);
         int slot = activeSlot(context);
         if (slot >= 0) {
@@ -198,7 +293,7 @@ final class TokenStore {
         }
     }
 
-    static void clearAll(Context context) {
+    static synchronized void clearAll(Context context) {
         prefs(context).edit().clear().commit();
     }
 
@@ -248,22 +343,35 @@ final class TokenStore {
             return false;
         }
         ensureMigrated(context);
-        Account target = null;
+        Account[] existing = new Account[MAX_ACCOUNTS];
         int freeSlot = -1;
         for (int slot = 0; slot < MAX_ACCOUNTS; slot++) {
-            Account account = readAccount(context, slot);
-            if (account.refreshToken.length() == 0) {
-                if (freeSlot < 0) {
-                    freeSlot = slot;
-                }
-                continue;
+            existing[slot] = readAccount(context, slot);
+            if (existing[slot].refreshToken.length() == 0 && freeSlot < 0) {
+                freeSlot = slot;
             }
-            boolean sameUid = uid != null && uid.length() > 0 && uid.equals(account.uid);
-            boolean sameEmail = email != null && email.length() > 0
-                    && email.equalsIgnoreCase(account.email);
-            if (sameUid || sameEmail) {
-                target = account;
-                break;
+        }
+        Account target = null;
+        if (uid != null && uid.length() > 0) {
+            for (Account account : existing) {
+                if (account.refreshToken.length() > 0 && uid.equals(account.uid)) {
+                    target = account;
+                    break;
+                }
+            }
+        }
+        if (target == null && email != null && email.length() > 0) {
+            for (Account account : existing) {
+                // An email match may only adopt a legacy slot that has
+                // no UID yet.  A deleted-and-recreated Firebase account
+                // with the same email is a different account and must
+                // not inherit the old slot's 2FA marker/verifier.
+                if (account.refreshToken.length() > 0
+                        && account.uid.length() == 0
+                        && email.equalsIgnoreCase(account.email)) {
+                    target = account;
+                    break;
+                }
             }
         }
         if (target == null) {
@@ -433,7 +541,7 @@ final class TokenStore {
         if (value == null || value.length() == 0) {
             editor.remove(key);
         } else {
-            editor.putString(key, encrypt(value));
+            editor.putString(key, encrypt(key, value));
         }
     }
 
@@ -451,13 +559,13 @@ final class TokenStore {
             if (value == null || value.length() == 0) {
                 return null;
             }
-            return decrypt(value);
+            return decrypt(key, value);
         } catch (Exception ignored) {
             return null;
         }
     }
 
-    private static SecretKey key() throws Exception {
+    private static synchronized SecretKey key() throws Exception {
         KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
         keyStore.load(null);
         KeyStore.Entry entry = keyStore.getEntry(ALIAS, null);
@@ -475,22 +583,51 @@ final class TokenStore {
         return generator.generateKey();
     }
 
-    private static String encrypt(String plain) throws Exception {
+    /**
+     * Current format: {@code v2.<base64 IV>.<base64 ciphertext>}.  The
+     * preference key is bound into the AES-GCM tag as AAD, so a copied
+     * ciphertext cannot be replayed as a different field or account
+     * slot.  The original {@code <IV>.<ciphertext>} format remains
+     * readable and is rewritten as v2 on the next save/mirror.
+     */
+    private static String encrypt(String keyName, String plain) throws Exception {
         Cipher cipher = Cipher.getInstance(TRANSFORM);
         cipher.init(Cipher.ENCRYPT_MODE, key());
+        cipher.updateAAD(aad(keyName));
         byte[] iv = cipher.getIV();
         byte[] data = cipher.doFinal(plain.getBytes(StandardCharsets.UTF_8));
-        return Base64.encodeToString(iv, Base64.NO_WRAP)
+        return "v2."
+                + Base64.encodeToString(iv, Base64.NO_WRAP)
                 + "."
                 + Base64.encodeToString(data, Base64.NO_WRAP);
     }
 
-    private static String decrypt(String stored) throws Exception {
-        int split = stored.indexOf('.');
-        byte[] iv = Base64.decode(stored.substring(0, split), Base64.NO_WRAP);
-        byte[] data = Base64.decode(stored.substring(split + 1), Base64.NO_WRAP);
+    private static String decrypt(String keyName, String stored) throws Exception {
+        if (stored == null || stored.length() == 0 || stored.length() > 65536) {
+            throw new IllegalArgumentException("Invalid stored value");
+        }
+        boolean versioned = stored.startsWith("v2.");
+        String encoded = versioned ? stored.substring(3) : stored;
+        int split = encoded.indexOf('.');
+        if (split <= 0 || split == encoded.length() - 1) {
+            throw new IllegalArgumentException("Invalid stored value");
+        }
+        byte[] iv = Base64.decode(encoded.substring(0, split), Base64.NO_WRAP);
+        byte[] data = Base64.decode(encoded.substring(split + 1), Base64.NO_WRAP);
+        if (iv.length < 12 || iv.length > 16 || data.length == 0
+                || data.length > 32768) {
+            throw new IllegalArgumentException("Invalid stored value");
+        }
         Cipher cipher = Cipher.getInstance(TRANSFORM);
         cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128, iv));
+        if (versioned) {
+            cipher.updateAAD(aad(keyName));
+        }
         return new String(cipher.doFinal(data), StandardCharsets.UTF_8);
+    }
+
+    private static byte[] aad(String keyName) {
+        return ("visaroom/session/v2|" + (keyName == null ? "" : keyName))
+                .getBytes(StandardCharsets.UTF_8);
     }
 }

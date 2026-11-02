@@ -68,10 +68,16 @@ public class UserProfileActivity extends Activity {
         if (fallbackUsername == null) {
             fallbackUsername = "";
         }
+        if (!AuthClient.validUid(targetUid)) {
+            targetUid = "";
+        }
+        if (!fallbackUsername.matches("[A-Za-z0-9_]{3,24}")) {
+            fallbackUsername = "";
+        }
         String myEmail = TokenStore.email(this);
         iAmAdmin = Admin.isAdminEmail(myEmail);
         String uid = TokenStore.uid(this);
-        myUid = uid == null ? "" : uid;
+        myUid = AuthClient.validUid(uid) ? uid : "";
 
         avatarView = findViewById(R.id.user_avatar);
         nameView = findViewById(R.id.user_name);
@@ -124,25 +130,29 @@ public class UserProfileActivity extends Activity {
     }
 
     private String ensureToken() {
+        String expectedUid = myUid == null || myUid.length() == 0
+                ? TokenStore.uid(this) : myUid;
         String refreshToken = TokenStore.refreshToken(this);
         if (refreshToken == null || refreshToken.length() == 0) {
             return null;
         }
         AuthClient.Result session = AuthClient.refresh(refreshToken);
-        if (!session.ok) {
+        if (!session.ok || session.uid.length() == 0
+                || (expectedUid != null && expectedUid.length() > 0
+                        && !expectedUid.equals(session.uid))) {
+            iAmAdmin = false;
             return null;
         }
         String tokenEmail = AuthClient.emailFromIdToken(session.idToken);
-        if (tokenEmail.length() > 0) {
-            iAmAdmin = Admin.isAdminEmail(tokenEmail);
-            TokenStore.save(this, tokenEmail, session.refreshToken);
-        } else {
-            TokenStore.save(this, null, session.refreshToken);
+        iAmAdmin = Admin.isAdminEmail(tokenEmail);
+        String accountEmail = tokenEmail.length() > 0
+                ? tokenEmail : TokenStore.email(this);
+        if (!TokenStore.saveRefreshedSession(this, session.uid,
+                accountEmail, session.refreshToken)) {
+            iAmAdmin = false;
+            return null;
         }
-        if (session.uid.length() > 0) {
-            myUid = session.uid;
-            TokenStore.saveUid(this, session.uid);
-        }
+        myUid = session.uid;
         return session.idToken;
     }
 
@@ -156,7 +166,7 @@ public class UserProfileActivity extends Activity {
             ProfileData priv = null;
             if (token != null && iAmAdmin) {
                 ProfileData loaded = new ProfileData();
-                if (ProfileClient.loadMyProfile(token, targetUid, loaded)) {
+                if (ProfileClient.loadProfileForAdmin(token, targetUid, loaded)) {
                     priv = loaded;
                 }
             }
@@ -197,7 +207,7 @@ public class UserProfileActivity extends Activity {
         }
 
         Bitmap bmp = avatar == null ? null
-                : BitmapFactory.decodeByteArray(avatar, 0, avatar.length);
+                : ImageDecode.decodeBytes(avatar, 256, 256 * 256);
         if (bmp != null) {
             avatarView.setImageBitmap(circular(bmp));
         } else {
@@ -272,7 +282,7 @@ public class UserProfileActivity extends Activity {
     }
 
     private boolean adminReady() {
-        if (targetData == null) {
+        if (!iAmAdmin || !AuthClient.validUid(targetUid) || targetData == null) {
             Toast.makeText(this, "Profile data is not loaded yet.", Toast.LENGTH_SHORT).show();
             return false;
         }
@@ -327,7 +337,7 @@ public class UserProfileActivity extends Activity {
             if (token != null) {
                 targetData.blocked = blocked;
                 targetData.blockedAt = blocked ? System.currentTimeMillis() : 0;
-                ok = ProfileClient.saveMyProfile(token, targetUid, targetData);
+                ok = ProfileClient.saveProfileAsAdmin(token, targetUid, targetData);
                 if (ok && blocked && usernameLower.length() > 0) {
                     ProfileClient.deleteUsername(token, usernameLower);
                 }
@@ -335,7 +345,8 @@ public class UserProfileActivity extends Activity {
                         && targetData.discoverable) {
                     ProfileClient.claimUsername(token, targetUid,
                             targetData.username, usernameLower,
-                            true, targetData.publicId, targetData.verified);
+                            true, targetData.showId ? targetData.publicId : 0,
+                            targetData.verified);
                 }
                 if (!ok) {
                     targetData.blocked = oldBlocked;
@@ -384,12 +395,13 @@ public class UserProfileActivity extends Activity {
             boolean ok = false;
             if (token != null) {
                 targetData.verified = verified;
-                ok = ProfileClient.saveMyProfile(token, targetUid, targetData);
+                ok = ProfileClient.saveProfileAsAdmin(token, targetUid, targetData);
                 if (ok && !targetData.blocked && targetData.username.length() > 0
                         && targetData.discoverable) {
                     ProfileClient.claimUsername(token, targetUid,
                             targetData.username, targetData.usernameLower(),
-                            true, targetData.publicId, verified);
+                            true, targetData.showId ? targetData.publicId : 0,
+                            verified);
                 }
                 if (!ok) {
                     targetData.verified = oldVerified;
@@ -455,27 +467,26 @@ public class UserProfileActivity extends Activity {
             boolean ok = false;
             String error = "Could not change ID.";
             if (token != null) {
-                if (newId == oldId) {
-                    ok = true;
-                } else {
-                    int claim = ProfileClient.tryClaimPublicId(token, targetUid, newId);
-                    if (claim == 1) {
-                        error = "This ID is already taken.";
-                    } else if (claim == 0) {
-                        targetData.publicId = newId;
-                        ok = ProfileClient.saveMyProfile(token, targetUid, targetData);
-                        if (ok) {
-                            if (targetData.username.length() > 0) {
-                                ProfileClient.claimUsername(token, targetUid,
-                                        targetData.username, targetData.usernameLower(),
-                                        targetData.discoverable, newId,
-                                        targetData.verified);
-                            }
-                            if (oldId > 0) {
-                                ProfileClient.releasePublicId(token, oldId);
-                            }
-                        } else {
-                            targetData.publicId = oldId;
+                int claim = ProfileClient.tryClaimPublicId(token, targetUid, newId);
+                if (claim == 1) {
+                    error = "This ID is already taken.";
+                } else if (claim == 0) {
+                    targetData.publicId = newId;
+                    ok = ProfileClient.saveProfileAsAdmin(token, targetUid, targetData);
+                    if (ok) {
+                        if (targetData.username.length() > 0) {
+                            ProfileClient.claimUsername(token, targetUid,
+                                    targetData.username, targetData.usernameLower(),
+                                    targetData.discoverable,
+                                    targetData.showId ? newId : 0,
+                                    targetData.verified);
+                        }
+                        if (oldId > 0 && oldId != newId) {
+                            ProfileClient.releasePublicId(token, oldId);
+                        }
+                    } else {
+                        targetData.publicId = oldId;
+                        if (oldId != newId) {
                             ProfileClient.releasePublicId(token, newId);
                         }
                     }
@@ -504,7 +515,7 @@ public class UserProfileActivity extends Activity {
             boolean ok = false;
             if (token != null) {
                 targetData.username = "";
-                ok = ProfileClient.saveMyProfile(token, targetUid, targetData);
+                ok = ProfileClient.saveProfileAsAdmin(token, targetUid, targetData);
                 if (ok && oldLower.length() > 0) {
                     ProfileClient.deleteUsername(token, oldLower);
                 }
@@ -533,7 +544,7 @@ public class UserProfileActivity extends Activity {
             boolean ok = false;
             if (token != null) {
                 targetData.bio = "";
-                ok = ProfileClient.saveMyProfile(token, targetUid, targetData);
+                ok = ProfileClient.saveProfileAsAdmin(token, targetUid, targetData);
                 if (!ok) {
                     targetData.bio = oldBio;
                 }
@@ -558,11 +569,12 @@ public class UserProfileActivity extends Activity {
             String token = ensureToken();
             boolean ok = false;
             if (token != null) {
-                ProfileClient.deleteAvatar(token, targetUid);
                 targetData.hasAvatar = false;
                 targetData.avatarUpdatedAt = System.currentTimeMillis();
-                ok = ProfileClient.saveMyProfile(token, targetUid, targetData);
-                if (!ok) {
+                ok = ProfileClient.saveProfileAsAdmin(token, targetUid, targetData);
+                if (ok) {
+                    ProfileClient.deleteAvatar(token, targetUid);
+                } else {
                     targetData.hasAvatar = oldHas;
                 }
             }

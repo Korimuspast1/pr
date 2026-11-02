@@ -159,7 +159,7 @@ public class ChatsActivity extends Activity {
 
         emailView.setText(userEmail);
         updateAdminUi();
-        idView.setText(userId.length() == 0 ? "Loading..." : userId);
+        idView.setText("Loading...");
 
         loadLocalProfile();
         displayAvatar();
@@ -576,6 +576,66 @@ public class ChatsActivity extends Activity {
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
+    private void switchToSavedAccount(TokenStore.Account account, AlertDialog parent) {
+        String verifier = account.twoFaVerifier;
+        boolean locallyEnabled = account.uid.length() > 0
+                ? TokenStore.profilePrefs(this, account.uid)
+                        .getBoolean("two_fa", false)
+                : TwoFa.isValidVerifier(verifier);
+        if (locallyEnabled && !TwoFa.isValidVerifier(verifier)) {
+            Toast.makeText(this,
+                    "Two-step verification data is unavailable. Remove this saved account and sign in again.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (locallyEnabled && !TwoFa.markerFor(verifier).equals(account.twoFaMarker)) {
+            showSavedAccountTwoFaPrompt(account, parent, verifier);
+            return;
+        }
+        performSavedAccountSwitch(account, parent, null);
+    }
+
+    private void showSavedAccountTwoFaPrompt(TokenStore.Account account,
+                                             AlertDialog parent, String verifier) {
+        EditText password = passwordField("Additional password");
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Two-step verification")
+                .setMessage("Enter the additional password for this account.")
+                .setView(dialogBox(password))
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Continue", null)
+                .create();
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            if (TwoFa.verify(password.getText().toString(), verifier)) {
+                dialog.dismiss();
+                performSavedAccountSwitch(account, parent, verifier);
+            } else {
+                Toast.makeText(this, "Incorrect password.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void performSavedAccountSwitch(TokenStore.Account account,
+                                           AlertDialog parent, String trustedVerifier) {
+        if (!TokenStore.switchAccount(this, account.slot)) {
+            Toast.makeText(this, "This saved session is no longer available.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (TwoFa.isValidVerifier(trustedVerifier)) {
+            if (account.uid.length() > 0) {
+                TokenStore.saveTwoFaForUid(this, account.uid,
+                        TwoFa.markerFor(trustedVerifier), trustedVerifier);
+            } else {
+                TokenStore.saveTwoFa(this,
+                        TwoFa.markerFor(trustedVerifier), trustedVerifier);
+            }
+        }
+        parent.dismiss();
+        restartChatsForAccount();
+    }
+
     private void showAccountsDialog() {
         java.util.List<TokenStore.Account> accountsList = TokenStore.accounts(this);
         int activeSlot = TokenStore.activeSlot(this);
@@ -644,12 +704,8 @@ public class ChatsActivity extends Activity {
             row.setOnClickListener(v -> {
                 if (current) {
                     dialog.dismiss();
-                } else if (TokenStore.switchAccount(this, account.slot)) {
-                    dialog.dismiss();
-                    restartChatsForAccount();
                 } else {
-                    Toast.makeText(this, "This saved session is no longer available.",
-                            Toast.LENGTH_SHORT).show();
+                    switchToSavedAccount(account, dialog);
                 }
             });
             if (!current) {
@@ -1143,12 +1199,8 @@ public class ChatsActivity extends Activity {
         }
         twoFaEnabledState = p.getBoolean("two_fa", false);
         String localVerifier = TokenStore.twoFaVerifierForUid(this, userId);
-        if (localVerifier == null) {
-            localVerifier = TokenStore.twoFaVerifier(this);
-        }
-        if (localVerifier != null) {
-            twoFaVerifierState = localVerifier;
-        }
+        twoFaVerifierState = TwoFa.isValidVerifier(localVerifier)
+                ? localVerifier : "";
         showBioState = p.getBoolean("show_bio", true);
         showAvatarState = p.getBoolean("show_avatar", true);
         showIdState = p.getBoolean("show_id", true);
@@ -1200,7 +1252,8 @@ public class ChatsActivity extends Activity {
     private void displayAvatar() {
         File f = avatarFile();
         if (f.exists()) {
-            Bitmap bmp = BitmapFactory.decodeFile(f.getAbsolutePath());
+            Bitmap bmp = ImageDecode.decodeFile(
+                    f.getAbsolutePath(), 512, 512 * 512);
             if (bmp != null) {
                 profileAvatar.setImageBitmap(circularBitmap(bmp));
                 return;
@@ -1256,9 +1309,10 @@ public class ChatsActivity extends Activity {
             if (first != null) {
                 first.close();
             }
-            int sample = 1;
-            while (bounds.outWidth / sample > 1024 || bounds.outHeight / sample > 1024) {
-                sample *= 2;
+            int sample = ImageDecode.sampleSize(bounds.outWidth, bounds.outHeight,
+                    1024, 1024 * 1024);
+            if (sample <= 0) {
+                return false;
             }
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inSampleSize = sample;
@@ -1293,18 +1347,35 @@ public class ChatsActivity extends Activity {
     }
 
     private byte[] readAvatarFile() {
+        FileInputStream in = null;
         try {
-            FileInputStream in = new FileInputStream(avatarFile());
+            File file = avatarFile();
+            if (!file.isFile() || file.length() <= 0
+                    || file.length() > ProfileClient.MAX_AVATAR_BYTES) {
+                return null;
+            }
+            in = new FileInputStream(file);
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             byte[] chunk = new byte[8192];
+            int total = 0;
             int n;
             while ((n = in.read(chunk)) != -1) {
+                total += n;
+                if (total > ProfileClient.MAX_AVATAR_BYTES) {
+                    return null;
+                }
                 buffer.write(chunk, 0, n);
             }
-            in.close();
             return buffer.toByteArray();
         } catch (Exception ignored) {
             return null;
+        } finally {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (Exception ignored) {
+                }
+            }
         }
     }
 
@@ -1313,27 +1384,30 @@ public class ChatsActivity extends Activity {
                 && System.currentTimeMillis() - latestIdTokenAt < 40 * 60 * 1000L) {
             return latestIdToken;
         }
+        String expectedUid = userId == null || userId.length() == 0
+                ? TokenStore.uid(this) : userId;
         String refreshToken = TokenStore.refreshToken(this);
         if (refreshToken == null || refreshToken.length() == 0) {
             return null;
         }
         AuthClient.Result result = AuthClient.refresh(refreshToken);
-        if (!result.ok) {
+        if (!result.ok || result.uid.length() == 0
+                || (expectedUid != null && expectedUid.length() > 0
+                        && !expectedUid.equals(result.uid))) {
+            return null;
+        }
+        String tokenEmail = AuthClient.emailFromIdToken(result.idToken);
+        String accountEmail = tokenEmail.length() > 0 ? tokenEmail : userEmail;
+        if (!TokenStore.saveRefreshedSession(this, result.uid,
+                accountEmail, result.refreshToken)) {
             return null;
         }
         latestIdToken = result.idToken;
         latestIdTokenAt = System.currentTimeMillis();
-        String tokenEmail = AuthClient.emailFromIdToken(result.idToken);
         if (tokenEmail.length() > 0) {
             userEmail = tokenEmail;
-            TokenStore.save(this, tokenEmail, result.refreshToken);
-        } else {
-            TokenStore.save(this, null, result.refreshToken);
         }
-        if (result.uid.length() > 0) {
-            userId = result.uid;
-            TokenStore.saveUid(this, result.uid);
-        }
+        userId = result.uid;
         return latestIdToken;
     }
 
@@ -1357,9 +1431,10 @@ public class ChatsActivity extends Activity {
         data.discoverable = discoverableSwitch.isChecked();
         data.hasAvatar = hasAvatar;
         data.avatarUpdatedAt = avatarUpdatedAt;
-        data.publicId = publicId;
+        data.publicId = ProfileClient.validPublicId(publicId) ? publicId : 0;
         data.twoFaEnabled = twoFaEnabledState;
-        data.twoFaVerifier = twoFaVerifierState;
+        data.twoFaVerifier = TwoFa.isValidVerifier(twoFaVerifierState)
+                ? twoFaVerifierState : "";
         data.showBio = showBioState;
         data.showAvatar = showAvatarState;
         data.showId = showIdState;
@@ -1372,11 +1447,30 @@ public class ChatsActivity extends Activity {
             return;
         }
         ProfileData snapshot = currentProfileData();
+        String accountUid = userId;
         cacheProfile(snapshot.username, snapshot.bio, snapshot.discoverable);
         executor.execute(() -> {
             String token = ensureIdToken();
-            if (token != null && userId.length() > 0) {
-                ProfileClient.saveMyProfile(token, userId, snapshot);
+            if (token == null || accountUid.length() == 0
+                    || !accountUid.equals(userId)) {
+                return;
+            }
+            boolean saved = ProfileClient.saveMyProfile(token, accountUid, snapshot);
+            if (!saved) {
+                return;
+            }
+            ProfileClient.claimUsername(token, accountUid, snapshot.username,
+                    snapshot.usernameLower(), snapshot.discoverable,
+                    snapshot.showId ? snapshot.publicId : 0, snapshot.verified);
+            if (snapshot.publicId > 0 && snapshot.publicId != publicId) {
+                runOnUiThread(() -> {
+                    if (accountUid.equals(userId)) {
+                        publicId = snapshot.publicId;
+                        cacheProfile(snapshot.username, snapshot.bio,
+                                snapshot.discoverable);
+                        updateIdDisplay();
+                    }
+                });
             }
         });
     }
@@ -1498,8 +1592,8 @@ public class ChatsActivity extends Activity {
             dialog.show();
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
                 String pw = password.getText().toString();
-                if (pw.length() < 4) {
-                    Toast.makeText(this, "Use at least 4 characters.", Toast.LENGTH_SHORT).show();
+                if (pw.length() < 4 || pw.length() > 1024) {
+                    Toast.makeText(this, "Use 4 to 1024 characters.", Toast.LENGTH_SHORT).show();
                     return;
                 }
                 if (!pw.equals(confirm.getText().toString())) {
@@ -1532,7 +1626,8 @@ public class ChatsActivity extends Activity {
                 dialog.dismiss();
                 return;
             }
-            if (pw.length() < 4 || !pw.equals(confirm.getText().toString())) {
+            if (pw.length() < 4 || pw.length() > 1024
+                    || !pw.equals(confirm.getText().toString())) {
                 Toast.makeText(this, "Check the new password.", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -1551,19 +1646,33 @@ public class ChatsActivity extends Activity {
 
     private void saveTwoFa(boolean enabled, String plainPassword) {
         ProfileData snapshot = currentProfileData();
+        String accountUid = userId;
         executor.execute(() -> {
             String verifier = enabled ? TwoFa.makeVerifier(plainPassword) : "";
+            if (enabled && !TwoFa.isValidVerifier(verifier)) {
+                runOnUiThread(() -> Toast.makeText(this,
+                        "Could not save two-step verification.",
+                        Toast.LENGTH_SHORT).show());
+                return;
+            }
             snapshot.twoFaEnabled = enabled;
             snapshot.twoFaVerifier = verifier;
             String token = ensureIdToken();
-            boolean savedCloud = token != null && userId.length() > 0
-                    && ProfileClient.saveMyProfile(token, userId, snapshot);
-            TokenStore.saveTwoFa(this,
-                    enabled ? TwoFa.markerFor(verifier) : null,
-                    enabled ? verifier : null);
+            boolean savedCloud = token != null && accountUid.length() > 0
+                    && accountUid.equals(userId)
+                    && ProfileClient.saveMyProfile(token, accountUid, snapshot);
+            TokenStore.saveTwoFaForUid(this, accountUid,
+                    enabled ? TwoFa.markerFor(verifier) : "",
+                    enabled ? verifier : "");
             runOnUiThread(() -> {
+                if (!accountUid.equals(userId)) {
+                    return;
+                }
                 twoFaEnabledState = enabled;
                 twoFaVerifierState = verifier;
+                if (snapshot.publicId > 0) {
+                    publicId = snapshot.publicId;
+                }
                 cacheProfile(snapshot.username, snapshot.bio, snapshot.discoverable);
                 updateTwoFaUi();
                 Toast.makeText(this, savedCloud
@@ -1577,13 +1686,15 @@ public class ChatsActivity extends Activity {
     private void loadProfileFromCloud() {
         final ProfileData fallback = currentProfileData();
         final boolean hadLocalAvatar = avatarFile().exists();
+        final String accountUid = userId;
         executor.execute(() -> {
             String token = ensureIdToken();
-            if (token == null || userId.length() == 0) {
+            if (token == null || accountUid.length() == 0
+                    || !accountUid.equals(userId)) {
                 return;
             }
             ProfileData data = fallback;
-            boolean existed = ProfileClient.loadMyProfile(token, userId, data);
+            boolean existed = ProfileClient.loadMyProfile(token, accountUid, data);
             boolean synced;
             if (!existed) {
                 // First open after Firestore/rules were created, or an
@@ -1592,7 +1703,7 @@ public class ChatsActivity extends Activity {
                 if (hadLocalAvatar) {
                     byte[] jpeg = readAvatarFile();
                     boolean uploaded = jpeg != null
-                            && ProfileClient.uploadAvatar(token, userId, jpeg);
+                            && ProfileClient.uploadAvatar(token, accountUid, jpeg);
                     data.hasAvatar = uploaded;
                     if (uploaded && data.avatarUpdatedAt == 0) {
                         data.avatarUpdatedAt = System.currentTimeMillis();
@@ -1600,16 +1711,16 @@ public class ChatsActivity extends Activity {
                 } else {
                     data.hasAvatar = false;
                 }
-                synced = ProfileClient.ensureUserDocuments(token, userId, data);
+                synced = ProfileClient.ensureUserDocuments(token, accountUid, data);
             } else {
                 // Heal a missing public profile, public ID claim or
                 // username directory entry for an existing account.
-                synced = ProfileClient.ensureUserDocuments(token, userId, data);
+                synced = ProfileClient.ensureUserDocuments(token, accountUid, data);
             }
             boolean loaded = existed || synced;
             if (loaded && data.hasAvatar) {
                 if (!avatarFile().exists() || data.avatarUpdatedAt != avatarUpdatedAt) {
-                    byte[] bytes = ProfileClient.downloadAvatar(token, userId);
+                    byte[] bytes = ProfileClient.downloadAvatar(token, accountUid);
                     if (bytes != null) {
                         try {
                             FileOutputStream out = new FileOutputStream(avatarFile());
@@ -1618,16 +1729,19 @@ public class ChatsActivity extends Activity {
                         } catch (Exception ignored) {
                         }
                     }
-                } else if (ProfileClient.downloadAvatar(token, userId) == null) {
+                } else if (ProfileClient.downloadAvatar(token, accountUid) == null) {
                     // Profile says there is a photo, but its Firestore
                     // avatar document is missing (older install): reupload it.
                     byte[] jpeg = readAvatarFile();
                     if (jpeg != null) {
-                        ProfileClient.uploadAvatar(token, userId, jpeg);
+                        ProfileClient.uploadAvatar(token, accountUid, jpeg);
                     }
                 }
             }
             runOnUiThread(() -> {
+                if (!accountUid.equals(userId)) {
+                    return;
+                }
                 if (data.blocked) {
                     new AlertDialog.Builder(this)
                             .setTitle("Account blocked")
@@ -1647,10 +1761,15 @@ public class ChatsActivity extends Activity {
                     if (data.publicId > 0) {
                         publicId = data.publicId;
                     }
-                    twoFaEnabledState = data.twoFaEnabled;
-                    twoFaVerifierState = data.twoFaVerifier;
-                    TokenStore.saveTwoFa(this, TokenStore.twoFaMarker(this),
-                            twoFaEnabledState ? twoFaVerifierState : null);
+                    if (!data.twoFaEnabled
+                            || TwoFa.isValidVerifier(data.twoFaVerifier)) {
+                        twoFaEnabledState = data.twoFaEnabled;
+                        twoFaVerifierState = data.twoFaEnabled
+                                ? data.twoFaVerifier : "";
+                        TokenStore.saveTwoFaForUid(this, accountUid,
+                                TokenStore.twoFaMarkerForUid(this, accountUid),
+                                twoFaVerifierState);
+                    }
                     showBioState = data.showBio;
                     showAvatarState = data.showAvatar;
                     showIdState = data.showId;
@@ -1691,42 +1810,52 @@ public class ChatsActivity extends Activity {
 
         setProfileLoading(true);
         final String finalUsername = username;
+        final String accountUid = userId;
+        final String oldUsernameLower = originalUsernameLower;
+        final boolean avatarChangedSnapshot = avatarChanged;
+        final ProfileData snapshot = currentProfileData();
+        snapshot.username = username;
+        snapshot.bio = bio;
+        snapshot.discoverable = discoverable;
         executor.execute(() -> {
             String token = ensureIdToken();
             boolean uploadFailed = false;
-            boolean cloudAvatar = hasAvatar && !avatarChanged;
-            long cloudAvatarAt = avatarUpdatedAt;
+            boolean cloudAvatar = snapshot.hasAvatar && !avatarChangedSnapshot;
+            long cloudAvatarAt = snapshot.avatarUpdatedAt;
+            long effectivePublicId = snapshot.publicId;
             int claim = ProfileClient.USERNAME_ERROR;
             boolean savedCloud = false;
 
-            if (token != null && userId.length() > 0) {
-                if (avatarChanged) {
+            if (token != null && accountUid.length() > 0
+                    && accountUid.equals(userId)) {
+                if (avatarChangedSnapshot) {
                     byte[] jpeg = readAvatarFile();
-                    if (jpeg != null && ProfileClient.uploadAvatar(token, userId, jpeg)) {
+                    if (jpeg != null && ProfileClient.uploadAvatar(token, accountUid, jpeg)) {
                         cloudAvatar = true;
                     } else {
                         uploadFailed = true;
                         cloudAvatar = false;
                     }
                 }
-                claim = ProfileClient.claimUsername(token, userId, finalUsername,
-                        originalUsernameLower, discoverable, publicId, verifiedState);
+                // Reserve/delete the directory entry without a numeric
+                // ID first.  saveMyProfile() then verifies or claims
+                // the ID; only after that may a visible ID be copied
+                // into the searchable directory.
+                claim = ProfileClient.claimUsername(token, accountUid, finalUsername,
+                        oldUsernameLower, discoverable, 0, snapshot.verified);
                 if (claim == ProfileClient.USERNAME_OK) {
-                    ProfileData data = new ProfileData();
-                    data.email = userEmail;
-                    data.username = finalUsername;
-                    data.bio = bio;
-                    data.discoverable = discoverable;
-                    data.publicId = publicId;
-                    data.twoFaEnabled = twoFaEnabledState;
-                    data.twoFaVerifier = twoFaVerifierState;
-                    data.showBio = showBioState;
-                    data.showAvatar = showAvatarState;
-                    data.showId = showIdState;
-                    data.verified = verifiedState;
-                    data.hasAvatar = cloudAvatar;
-                    data.avatarUpdatedAt = cloudAvatarAt;
-                    savedCloud = ProfileClient.saveMyProfile(token, userId, data);
+                    snapshot.hasAvatar = cloudAvatar;
+                    snapshot.avatarUpdatedAt = cloudAvatarAt;
+                    savedCloud = ProfileClient.saveMyProfile(
+                            token, accountUid, snapshot);
+                    effectivePublicId = snapshot.publicId;
+                    if (savedCloud) {
+                        claim = ProfileClient.claimUsername(token, accountUid,
+                                finalUsername, oldUsernameLower, discoverable,
+                                snapshot.showId ? effectivePublicId : 0,
+                                snapshot.verified);
+                        savedCloud = claim == ProfileClient.USERNAME_OK;
+                    }
                 }
             }
 
@@ -1734,14 +1863,22 @@ public class ChatsActivity extends Activity {
             final int finalClaim = claim;
             final boolean finalSaved = savedCloud;
             final boolean finalCloudAvatar = cloudAvatar;
+            final long finalEffectivePublicId = effectivePublicId;
             runOnUiThread(() -> {
+                if (!accountUid.equals(userId)) {
+                    return;
+                }
                 setProfileLoading(false);
                 if (finalClaim == ProfileClient.USERNAME_TAKEN) {
                     showProfileStatus("This username is already taken.");
                     return;
                 }
                 hasAvatar = finalCloudAvatar || avatarFile().exists();
+                if (finalSaved && finalEffectivePublicId > 0) {
+                    publicId = finalEffectivePublicId;
+                }
                 cacheProfile(finalUsername, bio, discoverable);
+                updateIdDisplay();
                 originalUsernameLower = discoverable
                         ? finalUsername.toLowerCase(Locale.ROOT) : "";
                 if (finalSaved) {
@@ -1808,9 +1945,12 @@ public class ChatsActivity extends Activity {
 
     private void changeEmail(String newEmail, String currentPassword) {
         setProfileLoading(true);
+        final String accountUid = userId;
+        final String accountEmail = userEmail;
+        final ProfileData snapshot = currentProfileData();
         executor.execute(() -> {
-            AuthClient.Result recent = AuthClient.signIn(userEmail, currentPassword);
-            if (!recent.ok) {
+            AuthClient.Result recent = AuthClient.signIn(accountEmail, currentPassword);
+            if (!recent.ok || !accountUid.equals(recent.uid)) {
                 runOnUiThread(() -> {
                     setProfileLoading(false);
                     showProfileStatus("Current password is incorrect.");
@@ -1818,7 +1958,7 @@ public class ChatsActivity extends Activity {
                 return;
             }
             AuthClient.Result updated = AuthClient.updateEmail(recent.idToken, newEmail);
-            if (!updated.ok) {
+            if (!updated.ok || !accountUid.equals(updated.uid)) {
                 String message = updated.errorCode.contains("EMAIL_EXISTS")
                         ? "An account with this email already exists."
                         : "Could not change email. " + firstError(updated.errorCode);
@@ -1828,35 +1968,31 @@ public class ChatsActivity extends Activity {
                 });
                 return;
             }
-            TokenStore.save(this, updated.email, updated.refreshToken);
-            TokenStore.saveUid(this, updated.uid);
+            if (!TokenStore.saveRefreshedSession(this, accountUid,
+                    updated.email, updated.refreshToken)) {
+                runOnUiThread(() -> {
+                    setProfileLoading(false);
+                    showProfileStatus("Email changed, but the session could not be saved. Sign in again.");
+                });
+                return;
+            }
             latestIdToken = updated.idToken;
             latestIdTokenAt = System.currentTimeMillis();
             userEmail = updated.email;
-            if (updated.uid.length() > 0) {
-                userId = updated.uid;
-            }
-            ProfileData data = new ProfileData();
-            data.email = updated.email;
-            data.username = usernameInput.getText().toString().trim().replaceFirst("^@", "");
-            data.bio = bioInput.getText().toString().trim();
-            data.discoverable = discoverableSwitch.isChecked();
-            data.publicId = publicId;
-            data.twoFaEnabled = twoFaEnabledState;
-            data.twoFaVerifier = twoFaVerifierState;
-            data.showBio = showBioState;
-            data.showAvatar = showAvatarState;
-            data.showId = showIdState;
-            data.verified = verifiedState;
-            data.hasAvatar = hasAvatar;
-            data.avatarUpdatedAt = avatarUpdatedAt;
-            ProfileClient.saveMyProfile(updated.idToken, userId, data);
+            snapshot.email = updated.email;
+            ProfileClient.saveMyProfile(updated.idToken, accountUid, snapshot);
 
             runOnUiThread(() -> {
+                if (!accountUid.equals(userId)) {
+                    return;
+                }
                 setProfileLoading(false);
                 emailView.setText(userEmail);
+                if (snapshot.publicId > 0) {
+                    publicId = snapshot.publicId;
+                }
                 updateAdminUi();
-                idView.setText(userId);
+                updateIdDisplay();
                 showProfileStatus("Email changed.");
             });
         });

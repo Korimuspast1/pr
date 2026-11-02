@@ -109,7 +109,11 @@ public class AuthActivity extends Activity {
         if (verifier == null && uid != null && uid.equals(TokenStore.uid(this))) {
             verifier = TokenStore.twoFaVerifier(this);
         }
-        return enabled && verifier != null ? verifier : "";
+        return enabled && TwoFa.isValidVerifier(verifier) ? verifier : "";
+    }
+
+    private boolean localTwoFaEnabled(String uid) {
+        return TokenStore.profilePrefs(this, uid).getBoolean("two_fa", false);
     }
 
     private ProfileData localProfileData(String uid, String email) {
@@ -124,7 +128,7 @@ public class AuthActivity extends Activity {
         data.publicId = prefs.getLong("public_id", 0);
         data.twoFaEnabled = prefs.getBoolean("two_fa", false);
         String verifier = TokenStore.twoFaVerifierForUid(this, uid);
-        data.twoFaVerifier = verifier == null ? "" : verifier;
+        data.twoFaVerifier = TwoFa.isValidVerifier(verifier) ? verifier : "";
         if (!data.twoFaEnabled) {
             data.twoFaVerifier = "";
         }
@@ -135,18 +139,19 @@ public class AuthActivity extends Activity {
         return data;
     }
 
-    private boolean markerMatches(String verifier) {
-        String marker = TokenStore.twoFaMarker(this);
-        return marker != null && marker.equals(TwoFa.markerFor(verifier));
+    private boolean markerMatches(String uid, String verifier) {
+        String marker = TokenStore.twoFaMarkerForUid(this, uid);
+        return marker != null && marker.length() > 0
+                && marker.equals(TwoFa.markerFor(verifier));
     }
 
-    private void proceedWithGate(String verifier, boolean forcePrompt) {
-        if (verifier == null || verifier.length() == 0
-                || !forcePrompt && markerMatches(verifier)) {
+    private void proceedWithGate(String uid, String verifier, boolean forcePrompt) {
+        if (!TwoFa.isValidVerifier(verifier)
+                || !forcePrompt && markerMatches(uid, verifier)) {
             openChats();
             return;
         }
-        showTwoFaPrompt(verifier);
+        showTwoFaPrompt(uid, verifier);
     }
 
     private EditText gatePasswordField(String hint) {
@@ -178,7 +183,7 @@ public class AuthActivity extends Activity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private void showTwoFaPrompt(String verifier) {
+    private void showTwoFaPrompt(String uid, String verifier) {
         EditText password = gatePasswordField("Additional password");
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Two-step verification")
@@ -194,7 +199,8 @@ public class AuthActivity extends Activity {
         dialog.show();
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             if (TwoFa.verify(password.getText().toString(), verifier)) {
-                TokenStore.saveTwoFa(this, TwoFa.markerFor(verifier), verifier);
+                TokenStore.saveTwoFaForUid(this, uid,
+                        TwoFa.markerFor(verifier), verifier);
                 dialog.dismiss();
                 openChats();
             } else {
@@ -222,7 +228,8 @@ public class AuthActivity extends Activity {
                     setup.show();
                     setup.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
                         String pw = password.getText().toString();
-                        if (pw.length() < 4 || !pw.equals(confirm.getText().toString())) {
+                        if (pw.length() < 4 || pw.length() > 1024
+                                || !pw.equals(confirm.getText().toString())) {
                             Toast.makeText(this, "Check the password.", Toast.LENGTH_SHORT).show();
                             return;
                         }
@@ -235,11 +242,26 @@ public class AuthActivity extends Activity {
                             data.publicId = publicId;
                             data.twoFaEnabled = true;
                             data.twoFaVerifier = verifier;
-                            ProfileClient.saveMyProfile(result.idToken, result.uid, data);
-                            TokenStore.saveTwoFa(this, TwoFa.markerFor(verifier), verifier);
-                            TokenStore.profilePrefs(this, result.uid)
-                                    .edit().putBoolean("two_fa", true).apply();
-                            runOnUiThread(this::openChats);
+                            boolean saved = TwoFa.isValidVerifier(verifier)
+                                    && ProfileClient.saveMyProfile(
+                                            result.idToken, result.uid, data);
+                            if (saved) {
+                                TokenStore.saveTwoFaForUid(this, result.uid,
+                                        TwoFa.markerFor(verifier), verifier);
+                                TokenStore.profilePrefs(this, result.uid)
+                                        .edit().putBoolean("two_fa", true).apply();
+                            } else {
+                                TokenStore.profilePrefs(this, result.uid)
+                                        .edit().putBoolean("two_fa", false).apply();
+                            }
+                            runOnUiThread(() -> {
+                                if (!saved) {
+                                    Toast.makeText(this,
+                                            "Could not enable two-step verification.",
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                                openChats();
+                            });
                         });
                     });
                 })
@@ -253,36 +275,79 @@ public class AuthActivity extends Activity {
         }
         setLoading(true);
         executor.execute(() -> {
+            String storedUid = TokenStore.uid(this);
             AuthClient.Result result = AuthClient.refresh(token);
             String verifier = "";
             boolean blockedAccount = false;
-            if (result.ok) {
+            boolean securityCheckFailed = false;
+            if (result.ok && storedUid != null && storedUid.length() > 0
+                    && !storedUid.equals(result.uid)) {
+                securityCheckFailed = true;
+            } else if (result.ok) {
                 String accountEmail = result.email == null || result.email.length() == 0
                         ? AuthClient.emailFromIdToken(result.idToken) : result.email;
                 if (accountEmail == null || accountEmail.length() == 0) {
                     accountEmail = TokenStore.email(this);
                 }
-                TokenStore.activateAccount(this, accountEmail,
-                        result.refreshToken, result.uid);
-                ProfileData data = localProfileData(result.uid, accountEmail);
-                boolean synced = ProfileClient.ensureUserDocuments(
-                        result.idToken, result.uid, data);
-                blockedAccount = data.blocked;
-                if (synced && data.twoFaEnabled) {
-                    verifier = data.twoFaVerifier;
-                    TokenStore.saveTwoFa(this, TokenStore.twoFaMarker(this), verifier);
-                    TokenStore.profilePrefs(this, result.uid).edit()
-                            .putLong("public_id", data.publicId)
-                            .putBoolean("two_fa", true)
-                            .apply();
+                boolean sessionSaved = TokenStore.saveRefreshedSession(
+                        this, result.uid, accountEmail, result.refreshToken);
+                if (!sessionSaved) {
+                    securityCheckFailed = true;
                 } else {
-                    verifier = localTwoFaVerifier(result.uid);
+                    ProfileData data = localProfileData(result.uid, accountEmail);
+                    ProfileClient.loadMyProfile(result.idToken, result.uid, data);
+                    boolean cloudKnownAtLoad = data.cloudStateKnown;
+                    boolean cloudEnabledAtLoad = data.twoFaEnabled;
+                    String cloudVerifierAtLoad = data.twoFaVerifier;
+                    boolean synced = ProfileClient.ensureUserDocuments(
+                            result.idToken, result.uid, data);
+                    blockedAccount = data.blocked;
+                    if (!blockedAccount && synced) {
+                        if (data.twoFaEnabled) {
+                            if (TwoFa.isValidVerifier(data.twoFaVerifier)) {
+                                verifier = data.twoFaVerifier;
+                                TokenStore.saveTwoFaForUid(this, result.uid,
+                                        TokenStore.twoFaMarkerForUid(this, result.uid),
+                                        verifier);
+                            } else {
+                                securityCheckFailed = true;
+                            }
+                        } else {
+                            TokenStore.saveTwoFaForUid(this, result.uid, "", "");
+                        }
+                        TokenStore.profilePrefs(this, result.uid).edit()
+                                .putLong("public_id", data.publicId)
+                                .putBoolean("two_fa", data.twoFaEnabled)
+                                .apply();
+                    } else if (!blockedAccount && cloudKnownAtLoad) {
+                        if (cloudEnabledAtLoad) {
+                            if (TwoFa.isValidVerifier(cloudVerifierAtLoad)) {
+                                verifier = cloudVerifierAtLoad;
+                            } else {
+                                securityCheckFailed = true;
+                            }
+                        }
+                    } else if (!blockedAccount) {
+                        // Existing trusted session, temporarily offline:
+                        // the locally saved verifier/marker still gate it.
+                        if (localTwoFaEnabled(result.uid)
+                                && localTwoFaVerifier(result.uid).length() == 0) {
+                            securityCheckFailed = true;
+                        } else {
+                            verifier = localTwoFaVerifier(result.uid);
+                        }
+                    }
                 }
             }
             final String gateVerifier = verifier;
             final boolean finalBlockedAccount = blockedAccount;
+            final boolean finalSecurityCheckFailed = securityCheckFailed;
             runOnUiThread(() -> {
-                if (result.ok && finalBlockedAccount) {
+                if (result.ok && finalSecurityCheckFailed) {
+                    TokenStore.clear(AuthActivity.this);
+                    setLoading(false);
+                    showError("Could not verify account security. Sign in again.");
+                } else if (result.ok && finalBlockedAccount) {
                     TokenStore.clear(AuthActivity.this);
                     if (TokenStore.refreshToken(AuthActivity.this) != null
                             && restoreAttempts < TokenStore.MAX_ACCOUNTS) {
@@ -293,9 +358,7 @@ public class AuthActivity extends Activity {
                         showError("This account has been blocked.");
                     }
                 } else if (result.ok) {
-                    TokenStore.save(AuthActivity.this, null, result.refreshToken);
-                    TokenStore.saveUid(AuthActivity.this, result.uid);
-                    proceedWithGate(gateVerifier, false);
+                    proceedWithGate(result.uid, gateVerifier, false);
                 } else if (result.sessionExpired) {
                     TokenStore.clear(AuthActivity.this);
                     if (TokenStore.refreshToken(AuthActivity.this) != null
@@ -307,7 +370,8 @@ public class AuthActivity extends Activity {
                     }
                 } else {
                     // Offline: keep the session, still honor a locally known 2FA.
-                    proceedWithGate(localTwoFaVerifier(), false);
+                    String activeUid = TokenStore.uid(AuthActivity.this);
+                    proceedWithGate(activeUid, localTwoFaVerifier(activeUid), false);
                 }
             });
         });
@@ -362,6 +426,7 @@ public class AuthActivity extends Activity {
             long assignedId = 0;
             String gateVerifier = "";
             boolean blockedAccount = false;
+            boolean securityCheckFailed = false;
             boolean accountStored = !result.ok || TokenStore.activateAccount(
                     AuthActivity.this, result.email, result.refreshToken, result.uid);
             if (result.ok && accountStored && register) {
@@ -376,28 +441,49 @@ public class AuthActivity extends Activity {
                         .putLong("public_id", assignedId).apply();
             } else if (result.ok && accountStored) {
                 ProfileData data = localProfileData(result.uid, result.email);
-                boolean synced = ProfileClient.ensureUserDocuments(
-                        result.idToken, result.uid, data);
-                blockedAccount = data.blocked;
-                if (synced) {
-                    if (data.publicId > 0) {
-                        TokenStore.profilePrefs(this, result.uid).edit()
-                                .putLong("public_id", data.publicId).apply();
+                ProfileClient.loadMyProfile(result.idToken, result.uid, data);
+                blockedAccount = data.blocked && data.cloudProfileLoaded;
+                if (!blockedAccount && !data.cloudStateKnown) {
+                    // A fresh password sign-in must not fail open when
+                    // the cloud 2FA state could not be loaded (offline,
+                    // unpublished/broken rules, malformed document...).
+                    securityCheckFailed = true;
+                } else if (!blockedAccount) {
+                    boolean synced = ProfileClient.ensureUserDocuments(
+                            result.idToken, result.uid, data);
+                    blockedAccount = data.blocked;
+                    if (!blockedAccount && data.twoFaEnabled
+                            && !TwoFa.isValidVerifier(data.twoFaVerifier)) {
+                        securityCheckFailed = true;
+                    } else if (!blockedAccount) {
+                        if (data.twoFaEnabled) {
+                            gateVerifier = data.twoFaVerifier;
+                            TokenStore.saveTwoFaForUid(this, result.uid,
+                                    TokenStore.twoFaMarkerForUid(this, result.uid),
+                                    gateVerifier);
+                        } else if (synced) {
+                            TokenStore.saveTwoFaForUid(this, result.uid, "", "");
+                        }
+                        if (synced) {
+                            TokenStore.profilePrefs(this, result.uid).edit()
+                                    .putLong("public_id", data.publicId)
+                                    .putBoolean("two_fa", data.twoFaEnabled)
+                                    .apply();
+                        }
                     }
-                    if (data.twoFaEnabled) {
-                        gateVerifier = data.twoFaVerifier;
-                        TokenStore.saveTwoFa(this, TokenStore.twoFaMarker(this), gateVerifier);
-                    }
-                } else {
-                    gateVerifier = localTwoFaVerifier(result.uid);
                 }
             }
             final long finalAssignedId = assignedId;
             final String finalGateVerifier = gateVerifier;
             final boolean finalAccountStored = accountStored;
             final boolean finalBlockedAccount = blockedAccount;
+            final boolean finalSecurityCheckFailed = securityCheckFailed;
             runOnUiThread(() -> {
-                if (result.ok && !finalAccountStored) {
+                if (result.ok && finalSecurityCheckFailed) {
+                    TokenStore.clear(AuthActivity.this);
+                    setLoading(false);
+                    showError("Could not verify account security. Check your connection and try again.");
+                } else if (result.ok && !finalAccountStored) {
                     setLoading(false);
                     showError("Three accounts are already saved on this device. Remove one first.");
                 } else if (result.ok && finalBlockedAccount) {
@@ -405,12 +491,10 @@ public class AuthActivity extends Activity {
                     setLoading(false);
                     showError("This account has been blocked.");
                 } else if (result.ok) {
-                    TokenStore.save(AuthActivity.this, result.email, result.refreshToken);
-                    TokenStore.saveUid(AuthActivity.this, result.uid);
                     if (register) {
                         showRegistrationTwoFaPrompt(result, finalAssignedId);
                     } else {
-                        proceedWithGate(finalGateVerifier, true);
+                        proceedWithGate(result.uid, finalGateVerifier, true);
                     }
                 } else {
                     setLoading(false);

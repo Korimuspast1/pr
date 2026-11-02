@@ -5,12 +5,9 @@ import android.util.Base64;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -48,6 +45,12 @@ final class VrProto {
     // complete one full download. At 2/2 the chunks and metadata are
     // deleted automatically; interrupted downloads do not use a slot.
     static final int FILE_DOWNLOAD_LIMIT = 2;
+    static final int MAX_FILE_NAME_CHARS = 128;
+    static final int MAX_MIME_CHARS = 96;
+    private static final int MAX_FIRESTORE_RESPONSE_BYTES = 4 * 1024 * 1024;
+    private static final long MIN_CLIENT_TIME = 1577836800000L; // 2020-01-01
+    private static final long MAX_CLIENT_TIME = 4102444800000L; // 2100-01-01
+    private static final long MAX_FUTURE_SKEW_MS = 24L * 60L * 60L * 1000L;
 
     interface ProgressListener {
         void onProgress(int percent);
@@ -74,6 +77,9 @@ final class VrProto {
         long fileSize;
         int chunkCount;
         int chunkSize;
+        // SHA-256 of the complete file for envelopes sent by 1.10+.
+        // Empty only for legacy 1.7-1.9 file messages.
+        String fileSha256 = "";
 
         // Wallpaper suggestion envelope.
         String wallpaperId = "";
@@ -100,7 +106,12 @@ final class VrProto {
         boolean exists;
         String senderUid = "";
         String recipientUid = "";
+        String name = "";
+        String mimeType = "";
+        long size;
+        int chunkSize;
         int chunkCount;
+        String sha256 = "";
         int downloadCount;
         int downloadLimit = FILE_DOWNLOAD_LIMIT;
         boolean senderDownloaded;
@@ -144,6 +155,7 @@ final class VrProto {
     }
 
     private static final class Index {
+        String chatId = "";
         String peerUid = "";
         String lastText = "";
         String lastSenderUid = "";
@@ -165,8 +177,12 @@ final class VrProto {
     }
 
     static String directChatId(String firstUid, String secondUid) {
-        String a = firstUid == null ? "" : firstUid;
-        String b = secondUid == null ? "" : secondUid;
+        if (!validUid(firstUid) || !validUid(secondUid)
+                || firstUid.equals(secondUid)) {
+            return "";
+        }
+        String a = firstUid;
+        String b = secondUid;
         if (a.compareTo(b) > 0) {
             String t = a;
             a = b;
@@ -182,7 +198,7 @@ final class VrProto {
             }
             return out.toString();
         } catch (Exception ignored) {
-            return "vrp1_" + Math.abs((a + "_" + b).hashCode());
+            return "";
         }
     }
 
@@ -208,8 +224,121 @@ final class VrProto {
         return out.toString();
     }
 
+    private static boolean validUid(String uid) {
+        return AuthClient.validUid(uid);
+    }
+
+    private static boolean validPair(String firstUid, String secondUid) {
+        return validUid(firstUid) && validUid(secondUid)
+                && !firstUid.equals(secondUid)
+                && validChatId(directChatId(firstUid, secondUid));
+    }
+
+    private static boolean validChatId(String chatId) {
+        return chatId != null && chatId.matches("^vrp1_[0-9a-f]{64}$");
+    }
+
+    private static boolean validMessageId(String messageId) {
+        return messageId != null && messageId.matches("^m[0-9a-z]{1,20}[0-9a-f]{20}$");
+    }
+
+    private static boolean validFileId(String fileId) {
+        // In VRProto 1 the metadata document deliberately uses the
+        // same client ID as its message envelope.
+        return validMessageId(fileId);
+    }
+
+    private static boolean validWallpaperId(String wallpaperId) {
+        return wallpaperId != null
+                && wallpaperId.matches("^w[0-9a-z]{1,20}[0-9a-f]{20}$");
+    }
+
+    private static boolean validSha256(String value) {
+        return value != null && value.matches("^[0-9a-f]{64}$");
+    }
+
+    private static boolean validTime(long value) {
+        return value >= MIN_CLIENT_TIME && value <= MAX_CLIENT_TIME;
+    }
+
+    private static long saneTime(long value) {
+        return validTime(value) ? value : 0;
+    }
+
+    private static String bounded(String value, int maxChars) {
+        return value == null || value.length() > maxChars ? "" : value;
+    }
+
+    /** Removes path separators/control characters from a display name. */
+    static String safeFileName(String value) {
+        if (value == null) {
+            return "";
+        }
+        String name = value.replace('\\', '/');
+        int slash = name.lastIndexOf('/');
+        if (slash >= 0) {
+            name = name.substring(slash + 1);
+        }
+        StringBuilder out = new StringBuilder(Math.min(name.length(), MAX_FILE_NAME_CHARS));
+        for (int i = 0; i < name.length() && out.length() < MAX_FILE_NAME_CHARS; i++) {
+            char c = name.charAt(i);
+            if (c < 0x20 || c == 0x7f || c == '/' || c == '\\'
+                    || c == ':' || c == '*' || c == '?' || c == '"'
+                    || c == '<' || c == '>' || c == '|') {
+                out.append('_');
+            } else {
+                out.append(c);
+            }
+        }
+        String clean = out.toString().trim();
+        while (clean.startsWith(".")) {
+            clean = clean.substring(1).trim();
+        }
+        return clean;
+    }
+
+    static String safeMimeType(String value) {
+        if (value == null) {
+            return "";
+        }
+        String mime = value.trim().toLowerCase(java.util.Locale.ROOT);
+        return mime.length() <= MAX_MIME_CHARS
+                && mime.matches("^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$")
+                ? mime : "";
+    }
+
+    private static boolean validFileGeometry(long size, int chunkSize, int count) {
+        if (chunkSize != FILE_CHUNK_BYTES || size < 0 || size > MAX_FILE_BYTES) {
+            return false;
+        }
+        if (size == 0) {
+            return count == 0;
+        }
+        return count > 0
+                && count == chunkCount(size, chunkSize)
+                && count <= chunkCount(MAX_FILE_BYTES, FILE_CHUNK_BYTES);
+    }
+
+    private static int expectedChunkLength(long size, int chunkSize, int count, int index) {
+        if (!validFileGeometry(size, chunkSize, count)
+                || index < 0 || index >= count) {
+            return -1;
+        }
+        long remaining = size - (long) index * chunkSize;
+        return (int) Math.min(chunkSize, remaining);
+    }
+
+    private static String sha256Hex(MessageDigest digest) {
+        byte[] value = digest.digest();
+        StringBuilder out = new StringBuilder(value.length * 2);
+        for (byte b : value) {
+            out.append(String.format("%02x", b & 0xff));
+        }
+        return out.toString();
+    }
+
     static List<ChatSummary> listChats(String idToken, String myUid) {
-        if (idToken == null || myUid == null || myUid.length() == 0) {
+        if (idToken == null || !validUid(myUid)) {
             return null;
         }
         try {
@@ -227,15 +356,21 @@ final class VrProto {
             for (int i = 0; i < docs.length(); i++) {
                 JSONObject doc = docs.optJSONObject(i);
                 Index index = parseIndex(doc);
-                if (index == null || index.peerUid.length() == 0
-                        || index.peerUid.equals(myUid) || index.lastMessageAt == 0) {
+                String indexedChatId = documentId(doc);
+                if (index == null || !validUid(index.peerUid)
+                        || index.peerUid.equals(myUid) || index.lastMessageAt == 0
+                        || !indexedChatId.equals(index.chatId)
+                        || !indexedChatId.equals(directChatId(myUid, index.peerUid))
+                        || !(myUid.equals(index.lastSenderUid)
+                                || index.peerUid.equals(index.lastSenderUid))) {
                     continue;
                 }
                 ChatSummary summary = new ChatSummary();
-                summary.chatId = documentId(doc);
+                summary.chatId = indexedChatId;
                 summary.peerUid = index.peerUid;
                 summary.lastText = index.lastText;
                 summary.lastSenderUid = index.lastSenderUid;
+                summary.lastMessageId = index.lastMessageId;
                 summary.lastMessageAt = index.lastMessageAt;
                 summary.updatedAt = index.updatedAt;
                 summary.lastReadAt = index.lastReadAt;
@@ -256,14 +391,12 @@ final class VrProto {
 
     static SyncResult syncDirect(String idToken, String myUid, String peerUid) {
         SyncResult result = new SyncResult();
-        if (idToken == null || myUid == null || peerUid == null
-                || myUid.length() == 0 || peerUid.length() == 0
-                || myUid.equals(peerUid)) {
+        if (idToken == null || !validPair(myUid, peerUid)) {
             return result;
         }
         String chatId = directChatId(myUid, peerUid);
         Index own = loadIndex(idToken, myUid, chatId);
-        List<Message> messages = listMessages(idToken, chatId);
+        List<Message> messages = listMessages(idToken, myUid, peerUid, chatId);
         if (own == null && messages == null) {
             result.ok = true;
             result.exists = false;
@@ -285,10 +418,11 @@ final class VrProto {
     }
 
     static boolean sendText(String idToken, String myUid, String peerUid, Message message) {
-        if (idToken == null || myUid == null || peerUid == null || message == null
-                || myUid.length() == 0 || peerUid.length() == 0
-                || myUid.equals(peerUid) || message.id.length() == 0
-                || message.text.trim().length() == 0
+        if (idToken == null || !validPair(myUid, peerUid) || message == null
+                || !validMessageId(message.id)
+                || !myUid.equals(message.senderUid)
+                || !validTime(message.createdAt)
+                || message.text == null || message.text.trim().length() == 0
                 || message.text.length() > MAX_TEXT) {
             return false;
         }
@@ -302,16 +436,16 @@ final class VrProto {
 
     static boolean editText(String idToken, String myUid, String peerUid,
                             Message message, String newText, long editedAt) {
-        if (idToken == null || myUid == null || peerUid == null || message == null
+        if (idToken == null || !validPair(myUid, peerUid) || message == null
                 || newText == null || newText.trim().length() == 0
-                || newText.length() > MAX_TEXT || editedAt <= 0
+                || newText.length() > MAX_TEXT || !validTime(editedAt)
                 || !TYPE_TEXT.equals(message.type)
                 || !myUid.equals(message.senderUid)
-                || message.id.length() == 0) {
+                || !validMessageId(message.id)) {
             return false;
         }
         String chatId = directChatId(myUid, peerUid);
-        List<Message> before = listMessages(idToken, chatId);
+        List<Message> before = listMessages(idToken, myUid, peerUid, chatId);
         Message current = messageById(before, message.id);
         if (current == null || !TYPE_TEXT.equals(current.type)
                 || !myUid.equals(current.senderUid)) {
@@ -331,7 +465,7 @@ final class VrProto {
             boolean ok = r.code >= 200 && r.code < 300;
             if (!ok) {
                 Message reloaded = messageById(
-                        listMessages(idToken, chatId), message.id);
+                        listMessages(idToken, myUid, peerUid, chatId), message.id);
                 ok = reloaded != null && newText.equals(reloaded.text)
                         && reloaded.editedAt == editedAt;
                 if (!ok) {
@@ -356,13 +490,13 @@ final class VrProto {
 
     static boolean deleteMessage(String idToken, String myUid, String peerUid,
                                  Message message, long operationAt) {
-        if (idToken == null || myUid == null || peerUid == null || message == null
-                || message.id.length() == 0 || operationAt <= 0
+        if (idToken == null || !validPair(myUid, peerUid) || message == null
+                || !validMessageId(message.id) || !validTime(operationAt)
                 || !myUid.equals(message.senderUid)) {
             return false;
         }
         String chatId = directChatId(myUid, peerUid);
-        List<Message> before = listMessages(idToken, chatId);
+        List<Message> before = listMessages(idToken, myUid, peerUid, chatId);
         Message current = messageById(before, message.id);
         if (current == null || !myUid.equals(current.senderUid)) {
             return false;
@@ -379,7 +513,7 @@ final class VrProto {
             boolean deleted = (r.code >= 200 && r.code < 300) || r.code == 404;
             if (!deleted) {
                 Message reloaded = messageById(
-                        listMessages(idToken, chatId), message.id);
+                        listMessages(idToken, myUid, peerUid, chatId), message.id);
                 deleted = reloaded == null;
             }
             if (!deleted) {
@@ -392,7 +526,7 @@ final class VrProto {
             deleteFileMetadataQuietly(idToken, chatId, current.fileId);
         }
         if (wasLatest) {
-            List<Message> after = listMessages(idToken, chatId);
+            List<Message> after = listMessages(idToken, myUid, peerUid, chatId);
             Message latest = latestExcluding(after, message.id);
             if (after == null) {
                 latest = latestExcluding(before, message.id);
@@ -447,7 +581,11 @@ final class VrProto {
             return false;
         }
         String chatId = directChatId(myUid, peerUid);
-        int count = status.chunkCount > 0 ? status.chunkCount : message.chunkCount;
+        int count = status.chunkCount;
+        if (!validChatId(chatId) || !validFileId(message.fileId) || count < 0
+                || (count == 0 && status.size != 0)) {
+            return false;
+        }
         try {
             for (int index = 0; index < count; index++) {
                 Response r = request("DELETE", Vault.firestoreBaseUrl()
@@ -466,6 +604,9 @@ final class VrProto {
     private static void deleteFileMetadataQuietly(String idToken, String chatId,
                                                   String fileId) {
         try {
+            if (idToken == null || !validChatId(chatId) || !validFileId(fileId)) {
+                return;
+            }
             request("DELETE", fileMetadataUrl(chatId, fileId), idToken, null);
         } catch (Exception ignored) {
         }
@@ -473,10 +614,11 @@ final class VrProto {
 
     static boolean sendWallpaper(String idToken, String myUid, String peerUid,
                                  Message message) {
-        if (idToken == null || myUid == null || peerUid == null || message == null
-                || myUid.length() == 0 || peerUid.length() == 0
-                || myUid.equals(peerUid) || message.id.length() == 0
-                || message.wallpaperId.length() == 0
+        if (idToken == null || !validPair(myUid, peerUid) || message == null
+                || !validMessageId(message.id)
+                || !myUid.equals(message.senderUid)
+                || !validTime(message.createdAt)
+                || !validWallpaperId(message.wallpaperId)
                 || !myUid.equals(message.wallpaperOwnerUid)) {
             return false;
         }
@@ -492,25 +634,39 @@ final class VrProto {
     static boolean sendFile(String idToken, String myUid, String peerUid,
                             Message message, InputStreamFactory factory,
                             ProgressListener progress) {
-        if (idToken == null || myUid == null || peerUid == null || message == null
-                || factory == null || myUid.length() == 0 || peerUid.length() == 0
-                || myUid.equals(peerUid) || message.id.length() == 0
-                || message.fileName.trim().length() == 0
-                || message.fileName.length() > 255
+        if (idToken == null || !validPair(myUid, peerUid) || message == null
+                || factory == null || !validMessageId(message.id)
+                || !myUid.equals(message.senderUid)
+                || !validTime(message.createdAt)
                 || message.fileSize < 0 || message.fileSize > MAX_FILE_BYTES) {
+            return false;
+        }
+        String cleanName = safeFileName(message.fileName);
+        if (cleanName.length() == 0) {
             return false;
         }
         message.type = TYPE_FILE;
         message.fileId = message.id;
-        message.text = message.fileName;
-        if (message.mimeType == null || message.mimeType.length() == 0) {
-            message.mimeType = "application/octet-stream";
-        }
-        if (message.mimeType.length() > 128) {
-            message.mimeType = message.mimeType.substring(0, 128);
-        }
+        message.fileName = cleanName;
+        message.text = cleanName;
+        String cleanMime = safeMimeType(message.mimeType);
+        message.mimeType = cleanMime.length() > 0
+                ? cleanMime : "application/octet-stream";
         message.chunkSize = FILE_CHUNK_BYTES;
         message.chunkCount = chunkCount(message.fileSize, message.chunkSize);
+        if (!validFileGeometry(message.fileSize, message.chunkSize,
+                message.chunkCount)) {
+            return false;
+        }
+        // Hash the complete source stream before any metadata is
+        // published.  The source is then opened a second time for the
+        // chunk upload and hashed again there; a provider stream that
+        // changes between passes cannot be published under this digest.
+        String digest = hashInput(factory, message.fileSize);
+        if (!validSha256(digest)) {
+            return false;
+        }
+        message.fileSha256 = digest;
         String chatId = directChatId(myUid, peerUid);
         if (!ensureDirectChat(idToken, myUid, peerUid, chatId, message.createdAt)
                 || !ensureFileMetadata(idToken, chatId, myUid, peerUid, message)) {
@@ -522,6 +678,7 @@ final class VrProto {
             if (input == null) {
                 return false;
             }
+            MessageDigest uploadDigest = MessageDigest.getInstance("SHA-256");
             byte[] buffer = new byte[FILE_CHUNK_BYTES];
             long sent = 0;
             for (int index = 0; index < message.chunkCount; index++) {
@@ -531,6 +688,7 @@ final class VrProto {
                 if (read != expected) {
                     return false;
                 }
+                uploadDigest.update(buffer, 0, expected);
                 byte[] chunk = expected == buffer.length
                         ? buffer : Arrays.copyOf(buffer, expected);
                 if (!ensureFileChunk(idToken, chatId, message.fileId, index, chunk)) {
@@ -542,7 +700,8 @@ final class VrProto {
                             : (int) Math.min(100, sent * 100L / message.fileSize));
                 }
             }
-            if (input.read() != -1) {
+            if (input.read() != -1
+                    || !sha256Hex(uploadDigest).equals(message.fileSha256)) {
                 return false;
             }
             if (progress != null) {
@@ -561,21 +720,82 @@ final class VrProto {
         return createMessageAndPatch(idToken, myUid, peerUid, chatId, message);
     }
 
+    private static String hashInput(InputStreamFactory factory, long expectedSize) {
+        InputStream input = null;
+        try {
+            input = factory.open();
+            if (input == null || expectedSize < 0 || expectedSize > MAX_FILE_BYTES) {
+                return "";
+            }
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[32 * 1024];
+            long total = 0;
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                if (read == 0) {
+                    continue;
+                }
+                total += read;
+                if (total > expectedSize || total > MAX_FILE_BYTES) {
+                    return "";
+                }
+                digest.update(buffer, 0, read);
+            }
+            return total == expectedSize ? sha256Hex(digest) : "";
+        } catch (Exception ignored) {
+            return "";
+        } finally {
+            if (input != null) {
+                try {
+                    input.close();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+    }
+
     static boolean downloadFile(String idToken, String myUid, String peerUid,
                                 Message message, OutputStream output,
                                 ProgressListener progress) {
-        if (idToken == null || myUid == null || peerUid == null || message == null
+        if (idToken == null || !validPair(myUid, peerUid) || message == null
                 || output == null || !TYPE_FILE.equals(message.type)
-                || message.fileId.length() == 0 || message.fileSize < 0
-                || message.fileSize > MAX_FILE_BYTES) {
+                || !validMessageId(message.id)
+                || !message.id.equals(message.fileId)
+                || !(myUid.equals(message.senderUid)
+                        || peerUid.equals(message.senderUid))
+                || safeFileName(message.fileName).length() == 0
+                || !validFileGeometry(message.fileSize, message.chunkSize,
+                        message.chunkCount)
+                || !(message.fileSha256 == null
+                        || message.fileSha256.length() == 0
+                        || validSha256(message.fileSha256))) {
+            return false;
+        }
+        FileStatus status = loadFileStatus(idToken, myUid, peerUid, message);
+        String expectedRecipient = myUid.equals(message.senderUid)
+                ? peerUid : myUid;
+        if (!status.ok || !status.exists
+                || !message.senderUid.equals(status.senderUid)
+                || !expectedRecipient.equals(status.recipientUid)
+                || !safeFileName(message.fileName).equals(status.name)
+                || !(safeMimeType(message.mimeType).length() > 0
+                        ? safeMimeType(message.mimeType)
+                        : "application/octet-stream").equals(status.mimeType)
+                || message.fileSize != status.size
+                || message.chunkSize != status.chunkSize
+                || message.chunkCount != status.chunkCount
+                || !(message.fileSha256 == null ? "" : message.fileSha256)
+                        .equals(status.sha256)
+                || status.downloadedBy(myUid)) {
             return false;
         }
         String chatId = directChatId(myUid, peerUid);
-        int chunkSize = message.chunkSize > 0 ? message.chunkSize : FILE_CHUNK_BYTES;
-        int count = message.chunkCount > 0
-                ? message.chunkCount : chunkCount(message.fileSize, chunkSize);
+        int chunkSize = message.chunkSize;
+        int count = message.chunkCount;
         try {
-            long written = 0;
+            List<byte[]> chunks = new ArrayList<>(count);
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            long received = 0;
             for (int index = 0; index < count; index++) {
                 Response r = request("GET", Vault.firestoreBaseUrl()
                         + "chats/" + chatId + "/files/" + message.fileId
@@ -584,23 +804,42 @@ final class VrProto {
                     return false;
                 }
                 JSONObject fields = new JSONObject(r.text).optJSONObject("fields");
-                byte[] chunk = fields == null ? null : bytes(fields, "data");
-                long expected = Math.min(chunkSize, message.fileSize - written);
+                if (fields == null || fields.length() != 2
+                        || num(fields, "index", -1) != index) {
+                    return false;
+                }
+                byte[] chunk = bytes(fields, "data",
+                        expectedChunkLength(message.fileSize, chunkSize, count, index));
+                int expected = expectedChunkLength(
+                        message.fileSize, chunkSize, count, index);
                 if (chunk == null || chunk.length != expected) {
                     return false;
                 }
-                output.write(chunk);
-                written += chunk.length;
+                chunks.add(chunk);
+                digest.update(chunk);
+                received += chunk.length;
                 if (progress != null) {
                     progress.onProgress(message.fileSize == 0 ? 100
-                            : (int) Math.min(100, written * 100L / message.fileSize));
+                            : (int) Math.min(100, received * 100L / message.fileSize));
                 }
+            }
+            // Nothing reaches the user's chosen document until the
+            // complete byte sequence has been verified.  Legacy files
+            // have no digest and retain their exact-size verification.
+            String actualSha256 = sha256Hex(digest);
+            if (received != message.fileSize
+                    || (status.sha256.length() > 0
+                            && !status.sha256.equals(actualSha256))) {
+                return false;
+            }
+            for (byte[] chunk : chunks) {
+                output.write(chunk);
             }
             output.flush();
             if (progress != null) {
                 progress.onProgress(100);
             }
-            return written == message.fileSize;
+            return true;
         } catch (Exception ignored) {
             return false;
         }
@@ -609,8 +848,12 @@ final class VrProto {
     static FileStatus loadFileStatus(String idToken, String myUid,
                                      String peerUid, Message message) {
         FileStatus status = new FileStatus();
-        if (idToken == null || myUid == null || peerUid == null || message == null
-                || !TYPE_FILE.equals(message.type) || message.fileId.length() == 0) {
+        if (idToken == null || !validPair(myUid, peerUid) || message == null
+                || !TYPE_FILE.equals(message.type)
+                || !validMessageId(message.id)
+                || !message.id.equals(message.fileId)
+                || !(myUid.equals(message.senderUid)
+                        || peerUid.equals(message.senderUid))) {
             return status;
         }
         String chatId = directChatId(myUid, peerUid);
@@ -645,6 +888,13 @@ final class VrProto {
             return current;
         }
         if (current.downloadedBy(myUid)) {
+            return current;
+        }
+        String expectedRecipient = message.senderUid.equals(myUid)
+                ? peerUid : myUid;
+        if (!message.senderUid.equals(current.senderUid)
+                || !expectedRecipient.equals(current.recipientUid)) {
+            current.ok = false;
             return current;
         }
         if (current.downloadCount >= current.downloadLimit) {
@@ -692,7 +942,10 @@ final class VrProto {
             return false;
         }
         String chatId = directChatId(myUid, peerUid);
-        int count = status.chunkCount > 0 ? status.chunkCount : message.chunkCount;
+        int count = status.chunkCount;
+        if (!validChatId(chatId) || !validFileId(message.fileId) || count < 0) {
+            return false;
+        }
         try {
             for (int index = 0; index < count; index++) {
                 Response r = request("DELETE", Vault.firestoreBaseUrl()
@@ -722,32 +975,69 @@ final class VrProto {
     private static FileStatus parseFileStatus(JSONObject doc, Message message) {
         FileStatus status = new FileStatus();
         JSONObject fields = doc == null ? null : doc.optJSONObject("fields");
-        if (fields == null) {
+        if (fields == null || message == null
+                || (fields.length() != 14 && fields.length() != 15)
+                || !message.fileId.equals(documentId(doc))
+                || num(fields, "protocolVersion", -1) != VERSION) {
             return status;
         }
+        String senderUid = bounded(str(fields, "senderUid", ""), 128);
+        String recipientUid = bounded(str(fields, "recipientUid", ""), 128);
+        String clientId = bounded(str(fields, "clientId", ""), 64);
+        String rawName = bounded(str(fields, "fileName", ""), 255);
+        String cleanName = safeFileName(rawName);
+        long size = num(fields, "fileSize", -1);
+        long chunkSizeValue = num(fields, "chunkSize", -1);
+        long chunkCountValue = num(fields, "chunkCount", -1);
+        long createdAt = num(fields, "createdAt", 0);
+        long limitValue = num(fields, "downloadLimit", -1);
+        long countValue = num(fields, "downloadCount", -1);
+        String sha256 = fields.has("fileSha256")
+                ? bounded(str(fields, "fileSha256", ""), 64) : "";
+        if (!validUid(senderUid) || !validUid(recipientUid)
+                || senderUid.equals(recipientUid)
+                || !message.fileId.equals(clientId)
+                || cleanName.length() == 0
+                || chunkSizeValue < 0 || chunkSizeValue > Integer.MAX_VALUE
+                || chunkCountValue < 0 || chunkCountValue > Integer.MAX_VALUE
+                || !validFileGeometry(size, (int) chunkSizeValue,
+                        (int) chunkCountValue)
+                || !validTime(createdAt) || createdAt != message.createdAt
+                || limitValue != FILE_DOWNLOAD_LIMIT
+                || countValue < 0 || countValue > FILE_DOWNLOAD_LIMIT
+                || (fields.has("fileSha256") && !validSha256(sha256))) {
+            return status;
+        }
+        boolean senderDownloaded = bool(fields, "senderDownloaded", false);
+        boolean recipientDownloaded = bool(fields, "recipientDownloaded", false);
+        int flagCount = (senderDownloaded ? 1 : 0) + (recipientDownloaded ? 1 : 0);
+        if (countValue != flagCount) {
+            return status;
+        }
+        status.senderUid = senderUid;
+        status.recipientUid = recipientUid;
+        status.name = cleanName;
+        String mime = safeMimeType(bounded(str(fields, "mimeType", ""), MAX_MIME_CHARS));
+        status.mimeType = mime.length() > 0 ? mime : "application/octet-stream";
+        status.size = size;
+        status.chunkSize = (int) chunkSizeValue;
+        status.chunkCount = (int) chunkCountValue;
+        status.sha256 = sha256;
+        status.downloadCount = (int) countValue;
+        status.downloadLimit = FILE_DOWNLOAD_LIMIT;
+        status.senderDownloaded = senderDownloaded;
+        status.recipientDownloaded = recipientDownloaded;
         status.ok = true;
         status.exists = true;
-        status.senderUid = str(fields, "senderUid",
-                message == null ? "" : message.senderUid);
-        status.recipientUid = str(fields, "recipientUid", "");
-        status.chunkCount = (int) num(fields, "chunkCount",
-                message == null ? 0 : message.chunkCount);
-        status.downloadCount = (int) num(fields, "downloadCount", 0);
-        status.downloadLimit = (int) num(fields, "downloadLimit",
-                FILE_DOWNLOAD_LIMIT);
-        if (status.downloadLimit <= 0) {
-            status.downloadLimit = FILE_DOWNLOAD_LIMIT;
-        }
-        status.senderDownloaded = bool(fields, "senderDownloaded", false);
-        status.recipientDownloaded = bool(fields, "recipientDownloaded", false);
         return status;
     }
 
     static boolean uploadWallpaper(String idToken, String myUid, String peerUid,
                                    String wallpaperId, byte[] image,
                                    boolean shared, long createdAt) {
-        if (idToken == null || myUid == null || peerUid == null
-                || wallpaperId == null || wallpaperId.length() == 0
+        if (idToken == null || !validPair(myUid, peerUid)
+                || !validWallpaperId(wallpaperId)
+                || !validTime(createdAt)
                 || image == null || image.length == 0
                 || image.length > MAX_WALLPAPER_BYTES) {
             return false;
@@ -761,7 +1051,8 @@ final class VrProto {
                     + "/wallpapers/" + wallpaperId;
             Response existing = request("GET", docUrl, idToken, null);
             if (existing.code == 200) {
-                return true;
+                return wallpaperDocumentMatches(new JSONObject(existing.text),
+                        wallpaperId, chatId, myUid, shared, image);
             }
             JSONObject fields = new JSONObject();
             putStr(fields, "chatId", chatId);
@@ -777,16 +1068,21 @@ final class VrProto {
             if (r.code >= 200 && r.code < 300) {
                 return true;
             }
-            return (r.code == 409 || r.code == 400)
-                    && request("GET", docUrl, idToken, null).code == 200;
+            if (r.code == 409 || r.code == 400) {
+                Response reloaded = request("GET", docUrl, idToken, null);
+                return reloaded.code == 200
+                        && wallpaperDocumentMatches(new JSONObject(reloaded.text),
+                                wallpaperId, chatId, myUid, shared, image);
+            }
+            return false;
         } catch (Exception ignored) {
             return false;
         }
     }
 
     static byte[] loadWallpaper(String idToken, String ownerUid, String wallpaperId) {
-        if (idToken == null || ownerUid == null || wallpaperId == null
-                || ownerUid.length() == 0 || wallpaperId.length() == 0) {
+        if (idToken == null || !validUid(ownerUid)
+                || !validWallpaperId(wallpaperId)) {
             return null;
         }
         try {
@@ -795,18 +1091,59 @@ final class VrProto {
             if (r.code != 200) {
                 return null;
             }
-            JSONObject fields = new JSONObject(r.text).optJSONObject("fields");
-            return fields == null ? null : bytes(fields, "image");
+            JSONObject doc = new JSONObject(r.text);
+            JSONObject fields = validWallpaperFields(doc, wallpaperId, ownerUid);
+            return fields == null ? null
+                    : bytes(fields, "image", MAX_WALLPAPER_BYTES);
         } catch (Exception ignored) {
             return null;
         }
     }
 
+    private static JSONObject validWallpaperFields(JSONObject doc, String wallpaperId,
+                                                   String ownerUid) {
+        JSONObject fields = doc == null ? null : doc.optJSONObject("fields");
+        if (fields == null || fields.length() != 5
+                || !wallpaperId.equals(documentId(doc))
+                || !validChatId(bounded(str(fields, "chatId", ""), 80))
+                || !ownerUid.equals(bounded(str(fields, "senderUid", ""), 128))
+                || !validTime(num(fields, "createdAt", 0))) {
+            return null;
+        }
+        JSONObject sharedValue = fields.optJSONObject("shared");
+        if (sharedValue == null
+                || !(sharedValue.opt("booleanValue") instanceof Boolean)) {
+            return null;
+        }
+        byte[] image = bytes(fields, "image", MAX_WALLPAPER_BYTES);
+        return image != null && image.length > 0 ? fields : null;
+    }
+
+    private static boolean wallpaperDocumentMatches(JSONObject doc, String wallpaperId,
+                                                    String chatId, String ownerUid,
+                                                    boolean shared, byte[] image) {
+        JSONObject fields = validWallpaperFields(doc, wallpaperId, ownerUid);
+        if (fields == null || image == null) {
+            return false;
+        }
+        byte[] existing = bytes(fields, "image", MAX_WALLPAPER_BYTES);
+        return chatId.equals(str(fields, "chatId", ""))
+                && bool(fields, "shared", false) == shared
+                && existing != null && Arrays.equals(existing, image);
+    }
+
     static boolean setOwnWallpaper(String idToken, String myUid, String peerUid,
                                    String wallpaperId, String ownerUid,
                                    long updatedAt) {
-        if (idToken == null || myUid == null || peerUid == null
-                || myUid.length() == 0 || peerUid.length() == 0) {
+        String cleanWallpaperId = wallpaperId == null ? "" : wallpaperId;
+        String cleanOwnerUid = ownerUid == null ? "" : ownerUid;
+        boolean clearing = cleanWallpaperId.length() == 0
+                && cleanOwnerUid.length() == 0;
+        if (idToken == null || !validPair(myUid, peerUid)
+                || !validTime(updatedAt)
+                || !(clearing || (validWallpaperId(cleanWallpaperId)
+                        && (myUid.equals(cleanOwnerUid)
+                                || peerUid.equals(cleanOwnerUid))))) {
             return false;
         }
         String chatId = directChatId(myUid, peerUid);
@@ -834,6 +1171,46 @@ final class VrProto {
     private static boolean createMessageAndPatch(String idToken, String myUid,
                                                  String peerUid, String chatId,
                                                  Message message) {
+        // Validate again at the single Firestore write boundary.  The
+        // public send* methods validate their inputs too, but this
+        // private method must not trust a future caller that forgot to.
+        if (idToken == null || !validPair(myUid, peerUid)
+                || chatId == null
+                || !chatId.equals(directChatId(myUid, peerUid))
+                || message == null
+                || !validMessageId(message.id)
+                || !myUid.equals(message.senderUid)
+                || !validTime(message.createdAt)
+                || message.text == null
+                || message.text.length() == 0
+                || message.text.length() > MAX_TEXT) {
+            return false;
+        }
+        if (TYPE_TEXT.equals(message.type)) {
+            if (message.text.trim().length() == 0) {
+                return false;
+            }
+        } else if (TYPE_FILE.equals(message.type)) {
+            String cleanName = safeFileName(message.fileName);
+            if (!message.id.equals(message.fileId)
+                    || cleanName.length() == 0
+                    || !cleanName.equals(message.fileName)
+                    || !cleanName.equals(message.text)
+                    || !safeMimeType(message.mimeType).equals(message.mimeType)
+                    || !validSha256(message.fileSha256)
+                    || !validFileGeometry(message.fileSize, message.chunkSize,
+                            message.chunkCount)) {
+                return false;
+            }
+        } else if (TYPE_WALLPAPER.equals(message.type)) {
+            if (!"Wallpaper suggestion".equals(message.text)
+                    || !validWallpaperId(message.wallpaperId)
+                    || !myUid.equals(message.wallpaperOwnerUid)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
         try {
             JSONObject fields = new JSONObject();
             putNum(fields, "protocolVersion", VERSION);
@@ -849,6 +1226,7 @@ final class VrProto {
                 putNum(fields, "fileSize", message.fileSize);
                 putNum(fields, "chunkCount", message.chunkCount);
                 putNum(fields, "chunkSize", message.chunkSize);
+                putStr(fields, "fileSha256", message.fileSha256);
             } else if (TYPE_WALLPAPER.equals(message.type)) {
                 putStr(fields, "wallpaperId", message.wallpaperId);
                 putStr(fields, "wallpaperOwnerUid", message.wallpaperOwnerUid);
@@ -862,7 +1240,9 @@ final class VrProto {
             if (!created && (r.code == 409 || r.code == 400)) {
                 Response existing = request("GET", Vault.firestoreBaseUrl()
                         + "chats/" + chatId + "/messages/" + message.id, idToken, null);
-                created = existing.code == 200;
+                created = existing.code == 200
+                        && messageDocumentMatches(new JSONObject(existing.text),
+                                myUid, peerUid, message);
             }
             if (!created) {
                 return false;
@@ -880,10 +1260,24 @@ final class VrProto {
                                               String senderUid, String recipientUid,
                                               Message message) {
         try {
+            if (idToken == null || !validPair(senderUid, recipientUid)
+                    || !chatId.equals(directChatId(senderUid, recipientUid))
+                    || message == null || !validMessageId(message.id)
+                    || !message.id.equals(message.fileId)
+                    || !senderUid.equals(message.senderUid)
+                    || !validSha256(message.fileSha256)
+                    || !validFileGeometry(message.fileSize, message.chunkSize,
+                            message.chunkCount)) {
+                return false;
+            }
             String docUrl = Vault.firestoreBaseUrl() + "chats/" + chatId
                     + "/files/" + message.fileId;
-            if (request("GET", docUrl, idToken, null).code == 200) {
-                return true;
+            Response existing = request("GET", docUrl, idToken, null);
+            if (existing.code == 200) {
+                FileStatus status = parseFileStatus(
+                        new JSONObject(existing.text), message);
+                return fileStatusMatchesMessage(status, senderUid,
+                        recipientUid, message);
             }
             JSONObject fields = new JSONObject();
             putNum(fields, "protocolVersion", VERSION);
@@ -894,6 +1288,7 @@ final class VrProto {
             putNum(fields, "fileSize", message.fileSize);
             putNum(fields, "chunkSize", message.chunkSize);
             putNum(fields, "chunkCount", message.chunkCount);
+            putStr(fields, "fileSha256", message.fileSha256);
             putNum(fields, "createdAt", message.createdAt);
             putStr(fields, "clientId", message.fileId);
             putNum(fields, "downloadLimit", FILE_DOWNLOAD_LIMIT);
@@ -908,21 +1303,59 @@ final class VrProto {
             if (r.code >= 200 && r.code < 300) {
                 return true;
             }
-            return (r.code == 409 || r.code == 400)
-                    && request("GET", docUrl, idToken, null).code == 200;
+            if (r.code == 409 || r.code == 400) {
+                Response reloaded = request("GET", docUrl, idToken, null);
+                if (reloaded.code == 200) {
+                    FileStatus status = parseFileStatus(
+                            new JSONObject(reloaded.text), message);
+                    return fileStatusMatchesMessage(status, senderUid,
+                            recipientUid, message);
+                }
+            }
+            return false;
         } catch (Exception ignored) {
             return false;
         }
+    }
+
+    private static boolean fileStatusMatchesMessage(FileStatus status,
+                                                    String senderUid,
+                                                    String recipientUid,
+                                                    Message message) {
+        if (status == null || !status.ok || !status.exists || message == null) {
+            return false;
+        }
+        String expectedMime = safeMimeType(message.mimeType);
+        if (expectedMime.length() == 0) {
+            expectedMime = "application/octet-stream";
+        }
+        return senderUid.equals(status.senderUid)
+                && recipientUid.equals(status.recipientUid)
+                && safeFileName(message.fileName).equals(status.name)
+                && expectedMime.equals(status.mimeType)
+                && message.fileSize == status.size
+                && message.chunkSize == status.chunkSize
+                && message.chunkCount == status.chunkCount
+                && (message.fileSha256 == null ? "" : message.fileSha256)
+                        .equals(status.sha256);
     }
 
     private static boolean ensureFileChunk(String idToken, String chatId,
                                            String fileId, int index,
                                            byte[] chunk) {
         try {
+            if (idToken == null || !validChatId(chatId) || !validFileId(fileId)
+                    || index < 0 || index > chunkCount(MAX_FILE_BYTES, FILE_CHUNK_BYTES)
+                    || chunk == null || chunk.length == 0
+                    || chunk.length > FILE_CHUNK_BYTES) {
+                return false;
+            }
             String docUrl = Vault.firestoreBaseUrl() + "chats/" + chatId
                     + "/files/" + fileId + "/chunks/" + index;
-            if (request("GET", docUrl, idToken, null).code == 200) {
-                return true;
+            Response existing = request("GET", docUrl, idToken, null);
+            if (existing.code == 200) {
+                return chunkDocumentMatches(new JSONObject(existing.text),
+                        index, chunk);
             }
             JSONObject fields = new JSONObject();
             putNum(fields, "index", index);
@@ -935,11 +1368,28 @@ final class VrProto {
             if (r.code >= 200 && r.code < 300) {
                 return true;
             }
-            return (r.code == 409 || r.code == 400)
-                    && request("GET", docUrl, idToken, null).code == 200;
+            if (r.code == 409 || r.code == 400) {
+                Response reloaded = request("GET", docUrl, idToken, null);
+                return reloaded.code == 200
+                        && chunkDocumentMatches(new JSONObject(reloaded.text),
+                                index, chunk);
+            }
+            return false;
         } catch (Exception ignored) {
             return false;
         }
+    }
+
+    private static boolean chunkDocumentMatches(JSONObject doc, int index,
+                                                byte[] expected) {
+        JSONObject fields = doc == null ? null : doc.optJSONObject("fields");
+        if (fields == null || fields.length() != 2
+                || !String.valueOf(index).equals(documentId(doc))
+                || num(fields, "index", -1) != index) {
+            return false;
+        }
+        byte[] existing = bytes(fields, "data", FILE_CHUNK_BYTES);
+        return existing != null && Arrays.equals(existing, expected);
     }
 
     private static int readExactly(InputStream input, byte[] buffer,
@@ -956,12 +1406,12 @@ final class VrProto {
     }
 
     static boolean markRead(String idToken, String myUid, String peerUid, long readAt) {
-        if (idToken == null || myUid == null || peerUid == null || readAt <= 0) {
+        if (idToken == null || !validPair(myUid, peerUid) || !validTime(readAt)) {
             return false;
         }
         String chatId = directChatId(myUid, peerUid);
         Index own = loadIndex(idToken, myUid, chatId);
-        if (own == null) {
+        if (own == null || !peerUid.equals(own.peerUid)) {
             return false;
         }
         if (own.lastReadAt >= readAt) {
@@ -981,8 +1431,13 @@ final class VrProto {
         }
     }
 
-    private static List<Message> listMessages(String idToken, String chatId) {
+    private static List<Message> listMessages(String idToken, String myUid,
+                                              String peerUid, String chatId) {
         try {
+            if (idToken == null || !validPair(myUid, peerUid)
+                    || !chatId.equals(directChatId(myUid, peerUid))) {
+                return null;
+            }
             String url = Vault.firestoreBaseUrl() + "chats/" + chatId
                     + "/messages?pageSize=100&orderBy=createdAt%20desc";
             Response r = request("GET", url, idToken, null);
@@ -992,40 +1447,13 @@ final class VrProto {
             List<Message> out = new ArrayList<>();
             JSONArray docs = new JSONObject(r.text).optJSONArray("documents");
             if (docs != null) {
+                if (docs.length() > 100) {
+                    return null;
+                }
                 for (int i = 0; i < docs.length(); i++) {
-                    JSONObject doc = docs.optJSONObject(i);
-                    if (doc == null) {
-                        continue;
-                    }
-                    JSONObject fields = doc.optJSONObject("fields");
-                    if (fields == null) {
-                        continue;
-                    }
-                    String type = str(fields, "type", TYPE_TEXT);
-                    if (!TYPE_TEXT.equals(type) && !TYPE_FILE.equals(type)
-                            && !TYPE_WALLPAPER.equals(type)) {
-                        continue;
-                    }
-                    Message m = new Message();
-                    m.id = str(fields, "clientId", documentId(doc));
-                    if (m.id.length() == 0) {
-                        m.id = documentId(doc);
-                    }
-                    m.type = type;
-                    m.senderUid = str(fields, "senderUid", "");
-                    m.text = str(fields, "text", "");
-                    m.createdAt = num(fields, "createdAt", 0);
-                    m.editedAt = num(fields, "editedAt", 0);
-                    m.fileId = str(fields, "fileId", "");
-                    m.fileName = str(fields, "fileName", m.text);
-                    m.mimeType = str(fields, "mimeType", "application/octet-stream");
-                    m.fileSize = num(fields, "fileSize", 0);
-                    m.chunkCount = (int) num(fields, "chunkCount", 0);
-                    m.chunkSize = (int) num(fields, "chunkSize", FILE_CHUNK_BYTES);
-                    m.wallpaperId = str(fields, "wallpaperId", "");
-                    m.wallpaperOwnerUid = str(fields, "wallpaperOwnerUid", "");
-                    if (m.senderUid.length() > 0 && m.text.length() > 0) {
-                        out.add(m);
+                    Message message = parseMessage(docs.optJSONObject(i), myUid, peerUid);
+                    if (message != null) {
+                        out.add(message);
                     }
                 }
             }
@@ -1039,11 +1467,147 @@ final class VrProto {
         }
     }
 
+    /**
+     * Strict VRProto envelope parser.  Firestore rules are the first
+     * boundary, but the client does not trust a returned document just
+     * because it came from Firestore: IDs, participant, field count,
+     * text bounds, timestamps and file geometry all have to agree.
+     */
+    private static Message parseMessage(JSONObject doc, String myUid, String peerUid) {
+        JSONObject fields = doc == null ? null : doc.optJSONObject("fields");
+        if (fields == null || !validPair(myUid, peerUid)
+                || num(fields, "protocolVersion", -1) != VERSION) {
+            return null;
+        }
+        String id = documentId(doc);
+        String clientId = bounded(str(fields, "clientId", ""), 64);
+        String type = bounded(str(fields, "type", ""), 16);
+        String senderUid = bounded(str(fields, "senderUid", ""), 128);
+        String text = str(fields, "text", "");
+        long createdAt = num(fields, "createdAt", 0);
+        long editedAt = fields.has("editedAt") ? num(fields, "editedAt", 0) : 0;
+        boolean participant = myUid.equals(senderUid) || peerUid.equals(senderUid);
+        if (!validMessageId(id) || !id.equals(clientId) || !participant
+                || text == null || text.length() == 0 || text.length() > MAX_TEXT
+                || !validTime(createdAt)
+                || (editedAt != 0 && (!validTime(editedAt) || editedAt < createdAt))) {
+            return null;
+        }
+        Message message = new Message();
+        message.id = id;
+        message.type = type;
+        message.senderUid = senderUid;
+        message.text = text;
+        message.createdAt = createdAt;
+        message.editedAt = editedAt;
+        if (TYPE_TEXT.equals(type)) {
+            int expectedFields = fields.has("editedAt") ? 7 : 6;
+            return fields.length() == expectedFields ? message : null;
+        }
+        if (TYPE_FILE.equals(type)) {
+            if (editedAt != 0 || (fields.length() != 12 && fields.length() != 13)) {
+                return null;
+            }
+            String fileId = bounded(str(fields, "fileId", ""), 64);
+            String rawName = bounded(str(fields, "fileName", ""), 255);
+            String cleanName = safeFileName(rawName);
+            long fileSize = num(fields, "fileSize", -1);
+            long chunkSizeValue = num(fields, "chunkSize", -1);
+            long chunkCountValue = num(fields, "chunkCount", -1);
+            String sha256 = fields.has("fileSha256")
+                    ? bounded(str(fields, "fileSha256", ""), 64) : "";
+            // Files written by 1.7-1.9 used the name as the envelope
+            // text but allowed names up to 255 chars.  The safe name is
+            // the display/save name now; metadata is compared again
+            // before any chunk is downloaded.
+            if (!id.equals(fileId) || cleanName.length() == 0
+                    || chunkSizeValue < 0 || chunkSizeValue > Integer.MAX_VALUE
+                    || chunkCountValue < 0 || chunkCountValue > Integer.MAX_VALUE
+                    || !validFileGeometry(fileSize, (int) chunkSizeValue,
+                            (int) chunkCountValue)
+                    || (fields.has("fileSha256") && !validSha256(sha256))) {
+                return null;
+            }
+            message.fileId = fileId;
+            message.fileName = cleanName;
+            String mime = safeMimeType(bounded(
+                    str(fields, "mimeType", ""), MAX_MIME_CHARS));
+            message.mimeType = mime.length() > 0
+                    ? mime : "application/octet-stream";
+            message.fileSize = fileSize;
+            message.chunkSize = (int) chunkSizeValue;
+            message.chunkCount = (int) chunkCountValue;
+            message.fileSha256 = sha256;
+            return message;
+        }
+        if (TYPE_WALLPAPER.equals(type)) {
+            if (editedAt != 0 || fields.length() != 8
+                    || !"Wallpaper suggestion".equals(text)) {
+                return null;
+            }
+            String wallpaperId = bounded(str(fields, "wallpaperId", ""), 64);
+            String ownerUid = bounded(str(fields, "wallpaperOwnerUid", ""), 128);
+            if (!validWallpaperId(wallpaperId)
+                    || !senderUid.equals(ownerUid)) {
+                return null;
+            }
+            message.wallpaperId = wallpaperId;
+            message.wallpaperOwnerUid = ownerUid;
+            return message;
+        }
+        return null;
+    }
+
+    private static boolean messageDocumentMatches(JSONObject doc, String myUid,
+                                                  String peerUid, Message expected) {
+        Message actual = parseMessage(doc, myUid, peerUid);
+        if (actual == null || expected == null
+                || !expected.id.equals(actual.id)
+                || !expected.type.equals(actual.type)
+                || !myUid.equals(actual.senderUid)
+                || expected.createdAt != actual.createdAt) {
+            return false;
+        }
+        if (TYPE_TEXT.equals(expected.type)) {
+            // A retry may race with an edit made on another device; an
+            // edited envelope is still the same message.  Unedited text
+            // must match exactly.
+            return actual.editedAt > 0 || expected.text.equals(actual.text);
+        }
+        if (TYPE_FILE.equals(expected.type)) {
+            String expectedMime = safeMimeType(expected.mimeType);
+            if (expectedMime.length() == 0) {
+                expectedMime = "application/octet-stream";
+            }
+            return expected.fileId.equals(actual.fileId)
+                    && safeFileName(expected.fileName).equals(actual.fileName)
+                    && expectedMime.equals(actual.mimeType)
+                    && expected.fileSize == actual.fileSize
+                    && expected.chunkSize == actual.chunkSize
+                    && expected.chunkCount == actual.chunkCount
+                    && (expected.fileSha256 == null ? "" : expected.fileSha256)
+                            .equals(actual.fileSha256);
+        }
+        return TYPE_WALLPAPER.equals(expected.type)
+                && expected.wallpaperId.equals(actual.wallpaperId)
+                && expected.wallpaperOwnerUid.equals(actual.wallpaperOwnerUid)
+                && actual.text.equals("Wallpaper suggestion");
+    }
+
     private static boolean ensureDirectChat(String idToken, String myUid,
                                             String peerUid, String chatId, long now) {
         try {
+            if (idToken == null || !validPair(myUid, peerUid)
+                    || !chatId.equals(directChatId(myUid, peerUid))
+                    || !validTime(now)) {
+                return false;
+            }
             Response existing = request("GET",
                     Vault.firestoreBaseUrl() + "chats/" + chatId, idToken, null);
+            if (existing.code == 200 && !validDirectChatDocument(
+                    new JSONObject(existing.text), chatId, myUid, peerUid)) {
+                return false;
+            }
             if (existing.code != 200) {
                 List<String> participants = new ArrayList<>();
                 participants.add(myUid);
@@ -1067,7 +1631,8 @@ final class VrProto {
                 if (!ok && (created.code == 409 || created.code == 400)) {
                     Response check = request("GET",
                             Vault.firestoreBaseUrl() + "chats/" + chatId, idToken, null);
-                    ok = check.code == 200;
+                    ok = check.code == 200 && validDirectChatDocument(
+                            new JSONObject(check.text), chatId, myUid, peerUid);
                 }
                 if (!ok) {
                     return false;
@@ -1080,10 +1645,64 @@ final class VrProto {
         }
     }
 
+    private static boolean validDirectChatDocument(JSONObject doc, String chatId,
+                                                   String myUid, String peerUid) {
+        JSONObject fields = doc == null ? null : doc.optJSONObject("fields");
+        if (fields == null || fields.length() != 9
+                || !chatId.equals(documentId(doc))
+                || !"direct".equals(bounded(str(fields, "type", ""), 16))
+                || !"VRProto/1".equals(bounded(str(fields, "protocol", ""), 32))) {
+            return false;
+        }
+        JSONObject participantsValue = fields.optJSONObject("participants");
+        JSONObject arrayValue = participantsValue == null ? null
+                : participantsValue.optJSONObject("arrayValue");
+        JSONArray values = arrayValue == null ? null : arrayValue.optJSONArray("values");
+        if (values == null || values.length() != 2) {
+            return false;
+        }
+        List<String> expected = new ArrayList<>();
+        expected.add(myUid);
+        expected.add(peerUid);
+        Collections.sort(expected);
+        for (int i = 0; i < values.length(); i++) {
+            JSONObject item = values.optJSONObject(i);
+            Object raw = item == null ? null : item.opt("stringValue");
+            if (!(raw instanceof String) || !expected.get(i).equals(raw)) {
+                return false;
+            }
+        }
+        long createdAt = num(fields, "createdAt", 0);
+        long updatedAt = num(fields, "updatedAt", 0);
+        long lastMessageAt = num(fields, "lastMessageAt", -1);
+        String lastText = str(fields, "lastMessageText", "");
+        String lastSenderUid = bounded(str(fields, "lastSenderUid", ""), 128);
+        String lastMessageId = bounded(str(fields, "lastMessageId", ""), 64);
+        if (!validTime(createdAt) || !validTime(updatedAt)
+                || updatedAt < createdAt
+                || lastText == null || lastText.length() > MAX_TEXT
+                || (lastMessageAt != 0 && !validTime(lastMessageAt))) {
+            return false;
+        }
+        if (lastMessageAt == 0) {
+            return lastText.length() == 0 && lastSenderUid.length() == 0
+                    && lastMessageId.length() == 0;
+        }
+        return lastMessageAt >= createdAt && lastText.length() > 0
+                && (myUid.equals(lastSenderUid) || peerUid.equals(lastSenderUid))
+                && validMessageId(lastMessageId);
+    }
+
     private static boolean ensureIndex(String idToken, String ownerUid,
                                        String peerUid, String chatId, long now) {
-        if (loadIndex(idToken, ownerUid, chatId) != null) {
-            return true;
+        Index existingIndex = loadIndex(idToken, ownerUid, chatId);
+        if (existingIndex != null) {
+            return peerUid.equals(existingIndex.peerUid);
+        }
+        if (idToken == null || !validPair(ownerUid, peerUid)
+                || !chatId.equals(directChatId(ownerUid, peerUid))
+                || !validTime(now)) {
+            return false;
         }
         try {
             JSONObject fields = indexFields(chatId, peerUid, now, "", 0, "", "", 0);
@@ -1095,8 +1714,11 @@ final class VrProto {
             if (r.code >= 200 && r.code < 300) {
                 return true;
             }
-            return (r.code == 409 || r.code == 400)
-                    && loadIndex(idToken, ownerUid, chatId) != null;
+            if (r.code == 409 || r.code == 400) {
+                Index reloaded = loadIndex(idToken, ownerUid, chatId);
+                return reloaded != null && peerUid.equals(reloaded.peerUid);
+            }
+            return false;
         } catch (Exception ignored) {
             return false;
         }
@@ -1104,12 +1726,26 @@ final class VrProto {
 
     private static Index loadIndex(String idToken, String ownerUid, String chatId) {
         try {
+            if (idToken == null || !validUid(ownerUid) || !validChatId(chatId)) {
+                return null;
+            }
             Response r = request("GET", Vault.firestoreBaseUrl()
                     + "users/" + ownerUid + "/chats/" + chatId, idToken, null);
             if (r.code != 200) {
                 return null;
             }
-            return parseIndex(new JSONObject(r.text));
+            Index index = parseIndex(new JSONObject(r.text));
+            if (index == null || !chatId.equals(index.chatId)
+                    || !chatId.equals(directChatId(ownerUid, index.peerUid))
+                    || !(index.lastSenderUid.length() == 0
+                            || ownerUid.equals(index.lastSenderUid)
+                            || index.peerUid.equals(index.lastSenderUid))
+                    || !(index.wallpaperOwnerUid.length() == 0
+                            || ownerUid.equals(index.wallpaperOwnerUid)
+                            || index.peerUid.equals(index.wallpaperOwnerUid))) {
+                return null;
+            }
+            return index;
         } catch (Exception ignored) {
             return null;
         }
@@ -1120,20 +1756,59 @@ final class VrProto {
             return null;
         }
         JSONObject fields = doc.optJSONObject("fields");
-        if (fields == null) {
+        if (fields == null || (fields.length() != 8 && fields.length() != 11)) {
             return null;
         }
         Index index = new Index();
-        index.peerUid = str(fields, "peerUid", "");
+        index.chatId = bounded(str(fields, "chatId", ""), 80);
+        index.peerUid = bounded(str(fields, "peerUid", ""), 128);
         index.lastText = str(fields, "lastMessageText", "");
-        index.lastSenderUid = str(fields, "lastSenderUid", "");
-        index.lastMessageId = str(fields, "lastMessageId", "");
-        index.lastMessageAt = num(fields, "lastMessageAt", 0);
-        index.updatedAt = num(fields, "updatedAt", index.lastMessageAt);
-        index.lastReadAt = num(fields, "lastReadAt", 0);
-        index.wallpaperId = str(fields, "wallpaperId", "");
-        index.wallpaperOwnerUid = str(fields, "wallpaperOwnerUid", "");
+        index.lastSenderUid = bounded(str(fields, "lastSenderUid", ""), 128);
+        index.lastMessageId = bounded(str(fields, "lastMessageId", ""), 64);
+        index.lastMessageAt = num(fields, "lastMessageAt", -1);
+        index.updatedAt = num(fields, "updatedAt", -1);
+        index.lastReadAt = num(fields, "lastReadAt", -1);
+        index.wallpaperId = bounded(str(fields, "wallpaperId", ""), 64);
+        index.wallpaperOwnerUid = bounded(
+                str(fields, "wallpaperOwnerUid", ""), 128);
         index.wallpaperUpdatedAt = num(fields, "wallpaperUpdatedAt", 0);
+        boolean noMessage = index.lastMessageAt == 0;
+        if (!validChatId(index.chatId)
+                || !index.chatId.equals(documentId(doc))
+                || !validUid(index.peerUid)
+                || index.lastText == null || index.lastText.length() > MAX_TEXT
+                || !(index.lastSenderUid.length() == 0
+                        || validUid(index.lastSenderUid))
+                || !(index.lastMessageId.length() == 0
+                        || validMessageId(index.lastMessageId))
+                || (index.lastMessageAt != 0 && !validTime(index.lastMessageAt))
+                || (index.updatedAt != 0 && !validTime(index.updatedAt))
+                || index.updatedAt < 0
+                || (index.lastReadAt != 0 && !validTime(index.lastReadAt))
+                || index.lastReadAt < 0
+                || (index.wallpaperUpdatedAt != 0
+                        && !validTime(index.wallpaperUpdatedAt))
+                || index.wallpaperUpdatedAt < 0) {
+            return null;
+        }
+        if (noMessage) {
+            if (index.lastText.length() > 0 || index.lastSenderUid.length() > 0
+                    || index.lastMessageId.length() > 0) {
+                return null;
+            }
+        } else if (index.lastText.length() == 0
+                || index.lastSenderUid.length() == 0
+                || index.lastMessageId.length() == 0
+                || index.updatedAt == 0) {
+            return null;
+        }
+        boolean noWallpaper = index.wallpaperId.length() == 0
+                && index.wallpaperOwnerUid.length() == 0;
+        if (!noWallpaper && (!validWallpaperId(index.wallpaperId)
+                || !validUid(index.wallpaperOwnerUid)
+                || index.wallpaperUpdatedAt == 0)) {
+            return null;
+        }
         return index;
     }
 
@@ -1157,6 +1832,13 @@ final class VrProto {
     private static void patchChatAfterSend(String idToken, String chatId,
                                            String senderUid, Message message) {
         try {
+            if (idToken == null || !validChatId(chatId) || !validUid(senderUid)
+                    || message == null || !validMessageId(message.id)
+                    || !senderUid.equals(message.senderUid)
+                    || message.text == null || message.text.length() > MAX_TEXT
+                    || !validTime(message.createdAt)) {
+                return;
+            }
             JSONObject fields = new JSONObject();
             putNum(fields, "updatedAt", message.createdAt);
             putStr(fields, "lastMessageText", message.text);
@@ -1180,6 +1862,15 @@ final class VrProto {
                                             String peerUid, String chatId,
                                             String senderUid, Message message) {
         try {
+            if (idToken == null || !validPair(ownerUid, peerUid)
+                    || !chatId.equals(directChatId(ownerUid, peerUid))
+                    || message == null || !validMessageId(message.id)
+                    || !senderUid.equals(message.senderUid)
+                    || !(ownerUid.equals(senderUid) || peerUid.equals(senderUid))
+                    || message.text == null || message.text.length() > MAX_TEXT
+                    || !validTime(message.createdAt)) {
+                return;
+            }
             Index existing = loadIndex(idToken, ownerUid, chatId);
             long readAt = ownerUid.equals(senderUid) ? message.createdAt
                     : existing == null ? 0 : existing.lastReadAt;
@@ -1206,6 +1897,13 @@ final class VrProto {
                                              String senderUid, Message message,
                                              long editedAt) {
         try {
+            if (idToken == null || !validChatId(chatId) || !validUid(senderUid)
+                    || message == null || !validMessageId(message.id)
+                    || !senderUid.equals(message.senderUid)
+                    || message.text == null || message.text.length() > MAX_TEXT
+                    || !validTime(message.createdAt) || !validTime(editedAt)) {
+                return;
+            }
             JSONObject fields = new JSONObject();
             putNum(fields, "updatedAt", editedAt);
             putStr(fields, "lastMessageText", message.text);
@@ -1229,6 +1927,15 @@ final class VrProto {
                                               String peerUid, String chatId,
                                               Message message) {
         try {
+            if (idToken == null || !validPair(ownerUid, peerUid)
+                    || !chatId.equals(directChatId(ownerUid, peerUid))
+                    || message == null || !validMessageId(message.id)
+                    || !(ownerUid.equals(message.senderUid)
+                            || peerUid.equals(message.senderUid))
+                    || message.text == null || message.text.length() > MAX_TEXT
+                    || !validTime(message.createdAt)) {
+                return;
+            }
             Index existing = loadIndex(idToken, ownerUid, chatId);
             if (existing == null) {
                 return;
@@ -1256,6 +1963,14 @@ final class VrProto {
     private static void patchChatAfterDelete(String idToken, String chatId,
                                                Message latest, long operationAt) {
         try {
+            if (idToken == null || !validChatId(chatId) || !validTime(operationAt)
+                    || (latest != null && (!validMessageId(latest.id)
+                            || !validUid(latest.senderUid)
+                            || latest.text == null
+                            || latest.text.length() > MAX_TEXT
+                            || !validTime(latest.createdAt)))) {
+                return;
+            }
             JSONObject fields = new JSONObject();
             putNum(fields, "updatedAt", operationAt);
             putStr(fields, "lastMessageText", latest == null ? "" : latest.text);
@@ -1279,6 +1994,16 @@ final class VrProto {
                                                 String peerUid, String chatId,
                                                 Message latest) {
         try {
+            if (idToken == null || !validPair(ownerUid, peerUid)
+                    || !chatId.equals(directChatId(ownerUid, peerUid))
+                    || (latest != null && (!validMessageId(latest.id)
+                            || !(ownerUid.equals(latest.senderUid)
+                                    || peerUid.equals(latest.senderUid))
+                            || latest.text == null
+                            || latest.text.length() > MAX_TEXT
+                            || !validTime(latest.createdAt)))) {
+                return;
+            }
             Index existing = loadIndex(idToken, ownerUid, chatId);
             if (existing == null) {
                 return;
@@ -1309,9 +2034,16 @@ final class VrProto {
         if (doc == null) {
             return "";
         }
-        String name = doc.optString("name", "");
+        Object raw = doc.opt("name");
+        if (!(raw instanceof String)) {
+            return "";
+        }
+        String name = (String) raw;
+        if (name.length() > 1024) {
+            return "";
+        }
         int slash = name.lastIndexOf('/');
-        return slash >= 0 ? name.substring(slash + 1) : name;
+        return slash >= 0 ? name.substring(slash + 1) : "";
     }
 
     private static void putStr(JSONObject fields, String name, String value)
@@ -1335,17 +2067,23 @@ final class VrProto {
         fields.put(name, v);
     }
 
-    private static byte[] bytes(JSONObject fields, String name) {
+    private static byte[] bytes(JSONObject fields, String name, int maxBytes) {
         JSONObject v = fields.optJSONObject(name);
-        if (v == null) {
+        if (v == null || maxBytes < 0) {
             return null;
         }
-        String encoded = v.optString("bytesValue");
-        if (encoded.length() == 0) {
+        Object raw = v.opt("bytesValue");
+        if (!(raw instanceof String)) {
+            return null;
+        }
+        String encoded = (String) raw;
+        int maxEncoded = ((maxBytes + 2) / 3) * 4 + 4;
+        if (encoded.length() == 0 || encoded.length() > maxEncoded) {
             return null;
         }
         try {
-            return Base64.decode(encoded, Base64.DEFAULT);
+            byte[] decoded = Base64.decode(encoded, Base64.DEFAULT);
+            return decoded.length <= maxBytes ? decoded : null;
         } catch (Exception ignored) {
             return null;
         }
@@ -1378,13 +2116,17 @@ final class VrProto {
         if (v == null) {
             return fallback;
         }
-        String s = v.optString("stringValue");
-        return s.length() == 0 && !v.has("stringValue") ? fallback : s;
+        Object raw = v.opt("stringValue");
+        return raw instanceof String ? (String) raw : fallback;
     }
 
     private static boolean bool(JSONObject fields, String name, boolean fallback) {
         JSONObject v = fields.optJSONObject(name);
-        return v == null ? fallback : v.optBoolean("booleanValue", fallback);
+        if (v == null) {
+            return fallback;
+        }
+        Object raw = v.opt("booleanValue");
+        return raw instanceof Boolean ? (Boolean) raw : fallback;
     }
 
     private static long num(JSONObject fields, String name, long fallback) {
@@ -1393,7 +2135,11 @@ final class VrProto {
             return fallback;
         }
         try {
-            return Long.parseLong(v.optString("integerValue"));
+            Object raw = v.opt("integerValue");
+            if (raw instanceof String) {
+                return Long.parseLong((String) raw);
+            }
+            return raw instanceof Number ? ((Number) raw).longValue() : fallback;
         } catch (Exception ignored) {
             return fallback;
         }
@@ -1401,42 +2147,28 @@ final class VrProto {
 
     private static Response request(String method, String url, String idToken,
                                     JSONObject body) throws Exception {
-        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
-        c.setRequestMethod(method);
-        c.setConnectTimeout(15000);
-        c.setReadTimeout(15000);
-        c.setRequestProperty("Content-Type", "application/json");
-        AuthClient.applyAndroidHeaders(c);
-        if (idToken != null) {
-            c.setRequestProperty("Authorization", "Bearer " + idToken);
+        HttpURLConnection c = SafeHttp.open(url);
+        try {
+            c.setRequestMethod(method);
+            c.setRequestProperty("Content-Type", "application/json");
+            AuthClient.applyAndroidHeaders(c);
+            if (idToken != null) {
+                c.setRequestProperty("Authorization", "Bearer " + idToken);
+            }
+            if (body != null) {
+                c.setDoOutput(true);
+                OutputStream out = c.getOutputStream();
+                out.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                out.close();
+            }
+            Response r = new Response();
+            r.code = c.getResponseCode();
+            InputStream stream = r.code >= 200 && r.code < 300
+                    ? c.getInputStream() : c.getErrorStream();
+            r.text = SafeHttp.readText(stream, MAX_FIRESTORE_RESPONSE_BYTES);
+            return r;
+        } finally {
+            c.disconnect();
         }
-        if (body != null) {
-            c.setDoOutput(true);
-            OutputStream out = c.getOutputStream();
-            out.write(body.toString().getBytes(StandardCharsets.UTF_8));
-            out.close();
-        }
-        Response r = new Response();
-        r.code = c.getResponseCode();
-        InputStream stream = r.code >= 200 && r.code < 300
-                ? c.getInputStream() : c.getErrorStream();
-        r.text = readAll(stream);
-        c.disconnect();
-        return r;
-    }
-
-    private static String readAll(InputStream stream) throws Exception {
-        if (stream == null) {
-            return "";
-        }
-        StringBuilder builder = new StringBuilder();
-        BufferedReader reader = new BufferedReader(
-                new InputStreamReader(stream, StandardCharsets.UTF_8));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            builder.append(line);
-        }
-        reader.close();
-        return builder.toString();
     }
 }

@@ -2,8 +2,9 @@ rules_version = '2';
 
 // visaroom — deny by default.
 // Private collections are NOT listable ("get" one document by exact ID !=
-// "list" enumerate), so the database cannot be dumped. The only listable
-// collection is the username directory (username + owner ID + public ID).
+// "list" enumerate), so the database cannot be dumped. The few listable
+// collections have server-side query limits; the username directory is
+// capped at 10 results per request.
 // Avatars are small (<= 120000 bytes) Firestore bytes documents in
 // avatars/{uid}; Firebase Storage / Blaze is not used.
 // Admin authority comes from the Firebase Auth EMAIL below — never from a
@@ -25,12 +26,19 @@ rules_version = '2';
 // Per-chat wallpaper images live privately under the owner's
 // users/{uid}/wallpapers/{wallpaperId}; shared=true is required before
 // the other participant may read a suggested wallpaper.
+// The 2FA verifier lives only in the owner-only document
+// users/{uid}/security/twoFa. Legacy verifier fields in users/{uid}
+// may be preserved by an administrator update, but an owner update
+// from the current app deletes them after migration.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null
+        && 'firebase' in request.auth.token
+        && 'sign_in_provider' in request.auth.token.firebase
+        && request.auth.token.firebase.sign_in_provider == 'password';
     }
 
     function isOwner(uid) {
@@ -54,7 +62,8 @@ service cloud.firestore {
     function isParticipant(chatId) {
       return activeSignedIn()
         && exists(/databases/$(database)/documents/chats/$(chatId))
-        && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        && canonicalParticipants(chatId, chatData(chatId).participants)
+        && request.auth.uid in chatData(chatId).participants;
     }
 
     function profileVerified(uid) {
@@ -68,8 +77,9 @@ service cloud.firestore {
     }
 
     function directoryVerifiedMatches(data) {
-      return !('verified' in data)
-        || data.verified == profileVerified(data.uid);
+      return 'verified' in data
+        && data.verified is bool
+        && data.verified == profileVerified(data.uid);
     }
 
     function sameVerified(data) {
@@ -77,7 +87,46 @@ service cloud.firestore {
     }
 
     function validUidValue(value) {
-      return value is string && value.size() > 0 && value.size() <= 128;
+      return value is string
+        && value.matches('^[A-Za-z0-9_-]{1,128}$');
+    }
+
+    function historicalMillis(value) {
+      return value is int
+        && value >= 1577836800000
+        && value <= request.time.toMillis() + 86400000;
+    }
+
+    function recentMillis(value) {
+      return value is int
+        && value >= request.time.toMillis() - 86400000
+        && value <= request.time.toMillis() + 86400000;
+    }
+
+    function canonicalChatId(firstUid, secondUid) {
+      return 'vrp1_'
+        + hashing.sha256(
+            ('VRProto/1/direct\n' + firstUid + '\n' + secondUid)
+              .toUtf8()).toHexString().lower();
+    }
+
+    function canonicalParticipants(chatId, participants) {
+      return participants is list
+        && participants.size() == 2
+        && validUidValue(participants[0])
+        && validUidValue(participants[1])
+        && participants[0] < participants[1]
+        && chatId == canonicalChatId(participants[0], participants[1]);
+    }
+
+    function canonicalPair(chatId, firstUid, secondUid) {
+      return validUidValue(firstUid)
+        && validUidValue(secondUid)
+        && firstUid != secondUid
+        && ((firstUid < secondUid
+              && chatId == canonicalChatId(firstUid, secondUid))
+          || (secondUid < firstUid
+              && chatId == canonicalChatId(secondUid, firstUid)));
     }
 
     function chatData(chatId) {
@@ -86,6 +135,7 @@ service cloud.firestore {
 
     function chatPairData(uid, peerUid, chat) {
       return chat.participants is list
+        && chat.participants.size() == 2
         && uid in chat.participants
         && peerUid in chat.participants
         && uid != peerUid;
@@ -97,14 +147,16 @@ service cloud.firestore {
     }
 
     function messageMatches(data, message) {
-      return message.get('senderUid', '') == data.lastSenderUid
+      return message.get('clientId', '') == data.lastMessageId
+        && message.get('senderUid', '') == data.lastSenderUid
         && message.get('text', '') == data.lastMessageText
         && message.get('createdAt', 0) == data.lastMessageAt;
     }
 
     function lastMessageMatches(chatId, data) {
       return data.lastMessageId is string
-        && data.lastMessageId.matches('^[A-Za-z0-9_-]{0,80}$')
+        && (data.lastMessageId == ''
+          || data.lastMessageId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$'))
         && ((data.lastMessageId == ''
               && data.lastMessageAt == 0
               && data.lastMessageText == ''
@@ -119,27 +171,33 @@ service cloud.firestore {
         && !exists(/databases/$(database)/documents/chats/$(chatId)/messages/$(resource.data.lastMessageId));
     }
 
-    function validDirectChat(data) {
+    function validDirectChat(data, chatId) {
       return data.keys().hasOnly(['participants', 'type', 'protocol',
             'createdAt', 'updatedAt', 'lastMessageText', 'lastMessageAt',
             'lastSenderUid', 'lastMessageId'])
         && data.keys().hasAll(['participants', 'type', 'protocol',
             'createdAt', 'updatedAt', 'lastMessageText', 'lastMessageAt',
             'lastSenderUid', 'lastMessageId'])
-        && data.participants is list
-        && data.participants.size() == 2
-        && validUidValue(data.participants[0])
-        && validUidValue(data.participants[1])
-        && data.participants[0] != data.participants[1]
+        && canonicalParticipants(chatId, data.participants)
         && data.type == 'direct'
         && data.protocol == 'VRProto/1'
-        && data.createdAt is int && data.createdAt > 0
-        && data.updatedAt is int && data.updatedAt >= data.createdAt
+        && historicalMillis(data.createdAt)
+        && historicalMillis(data.updatedAt)
+        && data.updatedAt >= data.createdAt
         && data.lastMessageText is string
         && data.lastMessageText.size() <= 4000
-        && data.lastMessageAt is int && data.lastMessageAt >= 0
-        && data.lastSenderUid is string && data.lastSenderUid.size() <= 128
-        && data.lastMessageId is string && data.lastMessageId.size() <= 80;
+        && (data.lastMessageAt == 0 || historicalMillis(data.lastMessageAt))
+        && (data.lastSenderUid == ''
+          || data.lastSenderUid in data.participants)
+        && (data.lastMessageId == ''
+          || data.lastMessageId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$'))
+        && ((data.lastMessageId == ''
+              && data.lastMessageAt == 0
+              && data.lastMessageText == ''
+              && data.lastSenderUid == '')
+          || (data.lastMessageId != ''
+              && data.lastMessageAt >= data.createdAt
+              && data.lastSenderUid in data.participants));
     }
 
     function validChatIndex(data, uid, chatId) {
@@ -152,15 +210,24 @@ service cloud.firestore {
             'lastMessageId', 'lastReadAt'])
         && data.chatId == chatId
         && validUidValue(data.peerUid)
+        && canonicalPair(chatId, uid, data.peerUid)
         && chatPair(uid, data.peerUid, chatId)
-        && data.updatedAt is int && data.updatedAt >= 0
+        && (data.updatedAt == 0 || historicalMillis(data.updatedAt))
         && data.lastMessageText is string
         && data.lastMessageText.size() <= 4000
-        && data.lastMessageAt is int && data.lastMessageAt >= 0
-        && data.lastSenderUid is string && data.lastSenderUid.size() <= 128
-        && data.lastMessageId is string && data.lastMessageId.size() <= 80
-        && data.lastReadAt is int && data.lastReadAt >= 0
-        && validWallpaperIndexFields(data);
+        && (data.lastMessageAt == 0 || historicalMillis(data.lastMessageAt))
+        && (data.lastSenderUid == ''
+          || data.lastSenderUid == uid
+          || data.lastSenderUid == data.peerUid)
+        && (data.lastMessageId == ''
+          || data.lastMessageId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$'))
+        && ((data.lastMessageId == ''
+              && data.lastMessageAt == 0
+              && data.lastMessageText == ''
+              && data.lastSenderUid == '')
+          || (data.lastMessageId != '' && data.lastMessageAt > 0))
+        && (data.lastReadAt == 0 || historicalMillis(data.lastReadAt))
+        && validWallpaperIndexFields(data, uid, chatId);
     }
 
     function sameWallpaper(data) {
@@ -171,14 +238,33 @@ service cloud.firestore {
           == resource.data.get('wallpaperUpdatedAt', 0);
     }
 
-    function validWallpaperIndexFields(data) {
-      return (!('wallpaperId' in data) || (
-            data.wallpaperId is string && data.wallpaperId.size() <= 80))
-        && (!('wallpaperOwnerUid' in data) || (
-            data.wallpaperOwnerUid is string
-            && data.wallpaperOwnerUid.size() <= 128))
-        && (!('wallpaperUpdatedAt' in data) || (
-            data.wallpaperUpdatedAt is int && data.wallpaperUpdatedAt >= 0));
+    function noWallpaperIndex(data) {
+      return (!('wallpaperId' in data)
+            && !('wallpaperOwnerUid' in data)
+            && !('wallpaperUpdatedAt' in data))
+        || (data.get('wallpaperId', '') == ''
+          && data.get('wallpaperOwnerUid', '') == ''
+          && !('wallpaperUpdatedAt' in data));
+    }
+
+    function wallpaperIndexTargetData(data) {
+      return get(/databases/$(database)/documents/users/$(data.wallpaperOwnerUid)/wallpapers/$(data.wallpaperId)).data;
+    }
+
+    function validWallpaperIndexFields(data, uid, chatId) {
+      return noWallpaperIndex(data)
+        || (data.keys().hasAll(['wallpaperId', 'wallpaperOwnerUid',
+              'wallpaperUpdatedAt'])
+          && data.wallpaperId.matches('^w[0-9a-z]{1,20}[0-9a-f]{20}$')
+          && (data.wallpaperOwnerUid == uid
+            || data.wallpaperOwnerUid == data.peerUid)
+          && historicalMillis(data.wallpaperUpdatedAt)
+          && exists(/databases/$(database)/documents/users/$(data.wallpaperOwnerUid)/wallpapers/$(data.wallpaperId))
+          && wallpaperIndexTargetData(data).get('chatId', '') == chatId
+          && wallpaperIndexTargetData(data).get('senderUid', '')
+            == data.wallpaperOwnerUid
+          && (data.wallpaperOwnerUid == uid
+            || wallpaperIndexTargetData(data).get('shared', false) == true));
     }
 
     function fileData(chatId, fileId) {
@@ -192,13 +278,14 @@ service cloud.firestore {
         && file.get('fileSize', -1) == data.fileSize
         && file.get('chunkSize', 0) == data.chunkSize
         && file.get('chunkCount', -1) == data.chunkCount
+        && file.get('fileSha256', '') == data.fileSha256
         && file.get('createdAt', 0) == data.createdAt
         && file.get('clientId', '') == data.fileId;
     }
 
     function fileReferenceMatches(chatId, data) {
       return data.fileId is string
-        && data.fileId.matches('^[A-Za-z0-9_-]{8,80}$')
+        && data.fileId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$')
         && exists(/databases/$(database)/documents/chats/$(chatId)/files/$(data.fileId))
         && fileReferenceMatchesData(data, fileData(chatId, data.fileId));
     }
@@ -212,12 +299,28 @@ service cloud.firestore {
 
     function wallpaperReferenceMatches(chatId, data) {
       return data.wallpaperId is string
-        && data.wallpaperId.matches('^[A-Za-z0-9_-]{8,80}$')
+        && data.wallpaperId.matches('^w[0-9a-z]{1,20}[0-9a-f]{20}$')
         && validUidValue(data.wallpaperOwnerUid)
         && exists(/databases/$(database)/documents/users/$(data.wallpaperOwnerUid)/wallpapers/$(data.wallpaperId))
         && wallpaperReferenceMatchesData(data,
             get(/databases/$(database)/documents/users/$(data.wallpaperOwnerUid)/wallpapers/$(data.wallpaperId)).data,
             chatId);
+    }
+
+    function validFileName(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 180
+        && value != '.'
+        && value != '..'
+        && value.matches('^[^/\\\\]{1,180}$');
+    }
+
+    function validMimeType(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 127
+        && value.matches('^[a-z0-9][a-z0-9!#$&^_.+-]*/[a-z0-9][a-z0-9!#$&^_.+-]*$');
     }
 
     function validFileCounts(data) {
@@ -237,7 +340,7 @@ service cloud.firestore {
     function validDirectMessage(data, chatId, messageId) {
       return data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
             'text', 'createdAt', 'clientId', 'fileId', 'fileName',
-            'mimeType', 'fileSize', 'chunkCount', 'chunkSize',
+            'mimeType', 'fileSize', 'chunkCount', 'chunkSize', 'fileSha256',
             'wallpaperId', 'wallpaperOwnerUid'])
         && data.keys().hasAll(['protocolVersion', 'type', 'senderUid',
             'text', 'createdAt', 'clientId'])
@@ -246,26 +349,24 @@ service cloud.firestore {
         && data.text is string
         && data.text.size() > 0
         && data.text.size() <= 4000
-        && data.createdAt is int && data.createdAt > 0
+        && recentMillis(data.createdAt)
         && data.clientId == messageId
-        && messageId.matches('^[A-Za-z0-9_-]{8,80}$')
+        && messageId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$')
         && ((data.type == 'text'
               && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
                     'text', 'createdAt', 'clientId']))
           || (data.type == 'file'
               && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
                     'text', 'createdAt', 'clientId', 'fileId', 'fileName',
-                    'mimeType', 'fileSize', 'chunkCount', 'chunkSize'])
+                    'mimeType', 'fileSize', 'chunkCount', 'chunkSize',
+                    'fileSha256'])
               && data.keys().hasAll(['fileId', 'fileName', 'mimeType',
-                    'fileSize', 'chunkCount', 'chunkSize'])
+                    'fileSize', 'chunkCount', 'chunkSize', 'fileSha256'])
               && data.fileId == messageId
-              && data.fileName is string
-              && data.fileName.size() > 0
-              && data.fileName.size() <= 255
+              && validFileName(data.fileName)
               && data.text == data.fileName
-              && data.mimeType is string
-              && data.mimeType.size() > 0
-              && data.mimeType.size() <= 128
+              && validMimeType(data.mimeType)
+              && data.fileSha256.matches('^[0-9a-f]{64}$')
               && validFileCounts(data)
               && fileReferenceMatches(chatId, data))
           || (data.type == 'wallpaper'
@@ -273,6 +374,7 @@ service cloud.firestore {
                     'text', 'createdAt', 'clientId', 'wallpaperId',
                     'wallpaperOwnerUid'])
               && data.keys().hasAll(['wallpaperId', 'wallpaperOwnerUid'])
+              && data.wallpaperOwnerUid == request.auth.uid
               && data.text == 'Wallpaper suggestion'
               && wallpaperReferenceMatches(chatId, data)));
     }
@@ -293,7 +395,8 @@ service cloud.firestore {
         && data.createdAt == resource.data.createdAt
         && data.clientId == resource.data.clientId
         && data.clientId == messageId
-        && data.editedAt is int
+        && messageId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$')
+        && recentMillis(data.editedAt)
         && data.editedAt >= resource.data.createdAt
         && data.editedAt >= resource.data.get('editedAt', 0);
     }
@@ -316,35 +419,39 @@ service cloud.firestore {
         || file.get('senderUid', '') == request.auth.uid;
     }
 
-    function validFileMetadata(data, chatId, fileId) {
+    function validFileMetadata(data, chatId, fileId, requireSha256) {
       return data.keys().hasOnly(['protocolVersion', 'senderUid',
             'recipientUid', 'fileName', 'mimeType', 'fileSize', 'chunkSize',
-            'chunkCount', 'createdAt', 'clientId', 'downloadLimit',
-            'downloadCount', 'senderDownloaded', 'recipientDownloaded'])
+            'chunkCount', 'fileSha256', 'createdAt', 'clientId',
+            'downloadLimit', 'downloadCount', 'senderDownloaded',
+            'recipientDownloaded'])
         && data.keys().hasAll(['protocolVersion', 'senderUid',
             'recipientUid', 'fileName', 'mimeType', 'fileSize', 'chunkSize',
             'chunkCount', 'createdAt', 'clientId', 'downloadLimit',
             'downloadCount', 'senderDownloaded', 'recipientDownloaded'])
-        && fileId.matches('^[A-Za-z0-9_-]{8,80}$')
+        && fileId.matches('^m[0-9a-z]{1,20}[0-9a-f]{20}$')
         && data.protocolVersion == 1
         && validUidValue(data.senderUid)
         && validUidValue(data.recipientUid)
+        && canonicalPair(chatId, data.senderUid, data.recipientUid)
         && chatPair(data.senderUid, data.recipientUid, chatId)
-        && data.fileName is string
-        && data.fileName.size() > 0
-        && data.fileName.size() <= 255
-        && data.mimeType is string
-        && data.mimeType.size() > 0
-        && data.mimeType.size() <= 128
+        && validFileName(data.fileName)
+        && validMimeType(data.mimeType)
+        && (!requireSha256 || 'fileSha256' in data)
+        && (!('fileSha256' in data)
+          || data.fileSha256.matches('^[0-9a-f]{64}$'))
         && validFileCounts(data)
-        && data.createdAt is int && data.createdAt > 0
+        && historicalMillis(data.createdAt)
         && data.clientId == fileId
         && data.downloadLimit == 2
         && data.downloadCount is int
         && data.downloadCount >= 0
         && data.downloadCount <= 2
         && data.senderDownloaded is bool
-        && data.recipientDownloaded is bool;
+        && data.recipientDownloaded is bool
+        && data.downloadCount
+          == (data.senderDownloaded ? 1 : 0)
+            + (data.recipientDownloaded ? 1 : 0);
     }
 
     function sameFileMetadataExceptDownloads(data) {
@@ -356,6 +463,7 @@ service cloud.firestore {
         && data.fileSize == resource.data.fileSize
         && data.chunkSize == resource.data.chunkSize
         && data.chunkCount == resource.data.chunkCount
+        && data.get('fileSha256', '') == resource.data.get('fileSha256', '')
         && data.createdAt == resource.data.createdAt
         && data.clientId == resource.data.clientId
         && data.downloadLimit == resource.data.downloadLimit;
@@ -367,12 +475,21 @@ service cloud.firestore {
         && chunkId.matches('^(0|[1-9][0-9]*)$')
         && file.get('senderUid', '') == request.auth.uid
         && file.get('downloadCount', 0) == 0
+        && file.get('senderDownloaded', false) == false
+        && file.get('recipientDownloaded', false) == false
         && data.index is int
+        && string(data.index) == chunkId
         && data.index >= 0
         && data.index < file.get('chunkCount', 0)
         && data.data is bytes
         && data.data.size() > 0
-        && data.data.size() <= file.get('chunkSize', 0);
+        && data.data.size() <= file.get('chunkSize', 0)
+        && ((data.index < file.get('chunkCount', 0) - 1
+              && data.data.size() == file.get('chunkSize', 0))
+          || (data.index == file.get('chunkCount', 0) - 1
+              && data.data.size()
+                == file.get('fileSize', 0)
+                  - data.index * file.get('chunkSize', 0)));
     }
 
     function validWallpaperDoc(data, uid, wallpaperId) {
@@ -380,7 +497,7 @@ service cloud.firestore {
             'createdAt'])
         && data.keys().hasAll(['chatId', 'senderUid', 'shared', 'image',
             'createdAt'])
-        && wallpaperId.matches('^[A-Za-z0-9_-]{8,80}$')
+        && wallpaperId.matches('^w[0-9a-z]{1,20}[0-9a-f]{20}$')
         && data.chatId is string
         && data.chatId.matches('^vrp1_[0-9a-f]{64}$')
         && data.senderUid == uid
@@ -389,7 +506,7 @@ service cloud.firestore {
         && data.image is bytes
         && data.image.size() > 0
         && data.image.size() <= 716800
-        && data.createdAt is int && data.createdAt > 0;
+        && recentMillis(data.createdAt);
     }
 
     function validPublicIdValue(data, allowAny) {
@@ -400,15 +517,64 @@ service cloud.firestore {
             && data.publicId <= 999999999999)));
     }
 
+    function privateData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function publicIdClaimMatches(uid, publicId) {
+      return publicId is int
+        && publicId >= 1
+        && publicId <= 999999999999
+        && exists(/databases/$(database)/documents/publicIds/$(string(publicId)))
+        && get(/databases/$(database)/documents/publicIds/$(string(publicId))).data.get('uid', '') == uid;
+    }
+
+    function profilePublicIdValid(uid, data) {
+      return !('publicId' in data)
+        || publicIdClaimMatches(uid, data.publicId);
+    }
+
+    function publicIdVisible(pid, uid) {
+      return validUidValue(uid)
+        && exists(/databases/$(database)/documents/profiles/$(uid))
+        && get(/databases/$(database)/documents/profiles/$(uid)).data.get('showId', true) == true
+        && get(/databases/$(database)/documents/profiles/$(uid)).data.get('blocked', false) == false
+        && string(get(/databases/$(database)/documents/profiles/$(uid)).data.get('publicId', 0)) == pid;
+    }
+
+    function publicIdIsCurrent(uid, pid) {
+      return exists(/databases/$(database)/documents/users/$(uid))
+        && string(privateData(uid).get('publicId', 0)) == pid;
+    }
+
     function ownPublicIdMatches(data) {
       return signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && data.get('publicId', 0)
-          == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('publicId', 0);
+          == privateData(request.auth.uid).get('publicId', 0);
     }
 
     function samePublicId(data) {
       return data.get('publicId', 0) == resource.data.get('publicId', 0);
+    }
+
+    function ownerPublicIdTransition(uid, data) {
+      return profilePublicIdValid(uid, data)
+        && (samePublicId(data)
+          || (!publicIdClaimMatches(uid, resource.data.get('publicId', 0))
+            && data.get('publicId', 0) >= 100000
+            && data.get('publicId', 0) <= 5000000));
+    }
+
+    function ownerProfilePublicIdTransition(data) {
+      return profilePublicIdValid(request.auth.uid, data)
+        && (!('publicId' in data)
+          || samePublicId(data)
+          || ownPublicIdMatches(data)
+          || (!publicIdClaimMatches(request.auth.uid,
+                resource.data.get('publicId', 0))
+            && data.get('publicId', 0) >= 100000
+            && data.get('publicId', 0) <= 5000000));
     }
 
     function sameBlocked(data) {
@@ -416,39 +582,59 @@ service cloud.firestore {
         && data.get('blockedAt', 0) == resource.data.get('blockedAt', 0);
     }
 
+    function noLegacyProfileSecrets(data) {
+      return !('email' in data)
+        && !('twoFaEnabled' in data)
+        && !('twoFaVerifier' in data);
+    }
+
+    function sameLegacyProfileSecrets(data) {
+      return (('email' in data) == ('email' in resource.data))
+        && data.get('email', '') == resource.data.get('email', '')
+        && (('twoFaEnabled' in data) == ('twoFaEnabled' in resource.data))
+        && data.get('twoFaEnabled', false)
+          == resource.data.get('twoFaEnabled', false)
+        && (('twoFaVerifier' in data) == ('twoFaVerifier' in resource.data))
+        && data.get('twoFaVerifier', '')
+          == resource.data.get('twoFaVerifier', '');
+    }
+
     function validCommon(data, allowAnyPublicId) {
-      return (!('username' in data) || (
-            data.username is string
-            && data.username.size() <= 24
-            && data.username.matches('^[A-Za-z0-9_]{0,24}$')))
-        && (!('bio' in data) || (
-            data.bio is string
-            && data.bio.size() <= 160))
-        && (!('hasAvatar' in data) || data.hasAvatar is bool)
-        && (!('avatarUpdatedAt' in data) || data.avatarUpdatedAt is int)
-        && (!('showBio' in data) || data.showBio is bool)
-        && (!('showAvatar' in data) || data.showAvatar is bool)
-        && (!('showId' in data) || data.showId is bool)
-        && (!('blocked' in data) || data.blocked is bool)
-        && (!('verified' in data) || data.verified is bool)
+      return data.username is string
+        && (data.username == ''
+          || data.username.matches('^[A-Za-z0-9_]{3,24}$'))
+        && data.bio is string
+        && data.bio.size() <= 160
+        && data.hasAvatar is bool
+        && (data.avatarUpdatedAt == 0
+          || historicalMillis(data.avatarUpdatedAt))
+        && data.showBio is bool
+        && data.showAvatar is bool
+        && data.showId is bool
+        && data.blocked is bool
+        && data.verified is bool
         && validPublicIdValue(data, allowAnyPublicId);
     }
 
-    function validPrivateProfile(data, expectedEmail, allowAnyPublicId) {
+    function validPrivateProfile(data, allowAnyPublicId) {
       return data.keys().hasOnly(['email', 'username', 'bio', 'hasAvatar',
             'avatarUpdatedAt', 'discoverable', 'publicId', 'twoFaEnabled',
             'twoFaVerifier', 'showBio', 'showAvatar', 'showId',
             'blocked', 'blockedAt', 'verified'])
-        && data.email is string
-        && data.email.size() <= 320
-        && data.email == expectedEmail
-        && (!('discoverable' in data) || data.discoverable is bool)
+        && data.keys().hasAll(['username', 'bio', 'hasAvatar',
+            'avatarUpdatedAt', 'discoverable', 'showBio', 'showAvatar',
+            'showId', 'blocked', 'blockedAt', 'verified'])
+        && data.discoverable is bool
+        && (!('email' in data) || (
+            data.email is string
+            && data.email.size() >= 3
+            && data.email.size() <= 320))
         && (!('twoFaEnabled' in data) || data.twoFaEnabled is bool)
         && (!('twoFaVerifier' in data) || (
             data.twoFaVerifier is string
             && data.twoFaVerifier.size() <= 256))
-        && (!('blockedAt' in data) || (
-            data.blockedAt is int && data.blockedAt >= 0))
+        && ((data.blocked && historicalMillis(data.blockedAt))
+          || (!data.blocked && data.blockedAt == 0))
         && validCommon(data, allowAnyPublicId);
     }
 
@@ -456,7 +642,65 @@ service cloud.firestore {
       return data.keys().hasOnly(['username', 'bio', 'hasAvatar',
             'avatarUpdatedAt', 'publicId', 'showBio', 'showAvatar', 'showId',
             'blocked', 'verified'])
+        && data.keys().hasAll(['username', 'bio', 'hasAvatar',
+            'avatarUpdatedAt', 'showBio', 'showAvatar', 'showId',
+            'blocked', 'verified'])
+        && (data.showBio || data.bio == '')
+        && (data.showAvatar
+          || (data.hasAvatar == false && data.avatarUpdatedAt == 0))
+        && (data.showId || !('publicId' in data))
         && validCommon(data, allowAnyPublicId);
+    }
+
+    function publicMatchesPrivate(uid, data) {
+      return !exists(/databases/$(database)/documents/users/$(uid))
+        || (data.username == privateData(uid).get('username', '')
+          && data.showBio == privateData(uid).get('showBio', true)
+          && data.showAvatar == privateData(uid).get('showAvatar', true)
+          && data.showId == privateData(uid).get('showId', true)
+          && data.blocked == privateData(uid).get('blocked', false)
+          && data.verified == privateData(uid).get('verified', false)
+          && data.bio == (data.showBio
+            ? privateData(uid).get('bio', '') : '')
+          && data.hasAvatar == (data.showAvatar
+            && privateData(uid).get('hasAvatar', false))
+          && data.avatarUpdatedAt == (data.showAvatar
+            ? privateData(uid).get('avatarUpdatedAt', 0) : 0)
+          && ((!data.showId && !('publicId' in data))
+            || (data.showId
+              && ((privateData(uid).get('publicId', 0) <= 0
+                    && !('publicId' in data))
+                || data.get('publicId', 0)
+                  == privateData(uid).get('publicId', 0)))));
+    }
+
+    function directoryMatchesProfile(data) {
+      return validUidValue(data.uid)
+        && exists(/databases/$(database)/documents/users/$(data.uid))
+        && privateData(data.uid).get('username', '') == data.username
+        && privateData(data.uid).get('discoverable', true) == true
+        && privateData(data.uid).get('blocked', false) == false
+        && (!('publicId' in data)
+          || (privateData(data.uid).get('showId', true) == true
+            && privateData(data.uid).get('publicId', 0) == data.publicId
+            && publicIdClaimMatches(data.uid, data.publicId)));
+    }
+
+    function validTwoFaVerifier(value) {
+      return value is string
+        && value.size() >= 32
+        && value.size() <= 256
+        && value.matches('^[0-9]{5,6}:[A-Za-z0-9+/]+={0,2}:[A-Za-z0-9+/]+={0,2}$');
+    }
+
+    function validTwoFaDocument(data) {
+      return data.keys().hasOnly(['enabled', 'verifier'])
+        && data.keys().hasAll(['enabled'])
+        && data.enabled is bool
+        && ((data.enabled
+              && 'verifier' in data
+              && validTwoFaVerifier(data.verifier))
+          || (!data.enabled && !('verifier' in data)));
     }
 
 
@@ -470,7 +714,8 @@ service cloud.firestore {
         && data.text.size() <= 4000
         && validUidValue(data.authorUid)
         && data.authorUid == request.auth.uid
-        && data.createdAt is timestamp;
+        && data.createdAt is timestamp
+        && recentMillis(data.createdAt.toMillis());
     }
 
     function publicAvatarVisible(uid) {
@@ -480,34 +725,51 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/profiles/$(uid)).data.get('blocked', false) == false;
     }
 
-    // --- Private account profile (email + 2FA verifier live here) ----------
+    // --- Private account profile --------------------------------------------
+    // New documents intentionally contain no email and no 2FA verifier.
+    // Email remains in Firebase Auth; the verifier has its own
+    // owner-only security document below.
     match /users/{uid} {
       allow get: if isOwner(uid) || isAdmin();
       allow list: if false;
       allow create: if isOwner(uid)
-        && request.resource.data.get('blocked', false) == false
-        && request.resource.data.get('blockedAt', 0) == 0
-        && request.resource.data.get('verified', false) == false
-        && validPrivateProfile(request.resource.data,
-            request.auth.token.email, false);
+        && request.resource.data.blocked == false
+        && request.resource.data.blockedAt == 0
+        && request.resource.data.verified == false
+        && noLegacyProfileSecrets(request.resource.data)
+        && profilePublicIdValid(uid, request.resource.data)
+        && validPrivateProfile(request.resource.data, false);
       // The owner can edit only while not blocked and can never change
       // blocked/blockedAt or verified. An existing admin-assigned
-      // arbitrary ID may be kept unchanged. The admin can moderate, set
-      // any positive ID, block/unblock and grant/remove the verified
-      // badge, but can never change the account email.
+      // arbitrary ID may be kept; a replacement owner-selected ID is
+      // allowed only to repair a missing/other-owned claim and must be
+      // in the automatic range. The admin can moderate, set any
+      // positive claimed ID, block/unblock and grant/remove the badge.
+      // An admin update may preserve, but never change, legacy
+      // email/2FA fields in an account that has not migrated yet.
       allow update: if (isOwner(uid)
             && resource.data.get('blocked', false) == false
             && sameBlocked(request.resource.data)
             && sameVerified(request.resource.data)
-            && (validPrivateProfile(request.resource.data,
-                  request.auth.token.email, false)
-              || (validPrivateProfile(request.resource.data,
-                    request.auth.token.email, true)
-                && samePublicId(request.resource.data))))
+            && noLegacyProfileSecrets(request.resource.data)
+            && ownerPublicIdTransition(uid, request.resource.data)
+            && validPrivateProfile(request.resource.data, true))
         || (isAdmin()
-            && validPrivateProfile(request.resource.data,
-                resource.data.email, true));
+            && sameLegacyProfileSecrets(request.resource.data)
+            && profilePublicIdValid(uid, request.resource.data)
+            && validPrivateProfile(request.resource.data, true));
       allow delete: if false;
+
+      // Owner-only 2FA verifier. Even the administrator cannot read or
+      // replace another account's verifier through Firestore rules.
+      match /security/twoFa {
+        allow get: if isOwner(uid);
+        allow list: if false;
+        allow create, update: if isOwner(uid)
+          && !accountBlocked(uid)
+          && validTwoFaDocument(request.resource.data);
+        allow delete: if false;
+      }
 
       // Cloud chat-list/read-state index for this account. A participant
       // may create/update the other side's preview after sending, but a
@@ -517,7 +779,8 @@ service cloud.firestore {
         allow get: if (isOwner(uid) && !accountBlocked(uid))
           || (isParticipant(chatId)
             && resource.data.peerUid == request.auth.uid);
-        allow list: if isOwner(uid) && !accountBlocked(uid);
+        allow list: if isOwner(uid) && !accountBlocked(uid)
+          && request.query.limit <= 100;
         allow create: if isParticipant(chatId)
           && chatId.matches('^vrp1_[0-9a-f]{64}$')
           && validChatIndex(request.resource.data, uid, chatId)
@@ -591,22 +854,28 @@ service cloud.firestore {
       allow list: if false;
       allow create: if (isOwner(uid)
             && !accountBlocked(uid)
-            && request.resource.data.get('blocked', false) == false
+            && exists(/databases/$(database)/documents/users/$(uid))
+            && request.resource.data.blocked == false
             && ownVerifiedMatches(request.resource.data)
-            && (validPublicProfile(request.resource.data, false)
-              || (validPublicProfile(request.resource.data, true)
-                && ownPublicIdMatches(request.resource.data))))
-        || (isAdmin() && validPublicProfile(request.resource.data, true));
+            && profilePublicIdValid(uid, request.resource.data)
+            && publicMatchesPrivate(uid, request.resource.data)
+            && validPublicProfile(request.resource.data, true))
+        || (isAdmin()
+            && profilePublicIdValid(uid, request.resource.data)
+            && publicMatchesPrivate(uid, request.resource.data)
+            && validPublicProfile(request.resource.data, true));
       allow update: if (isOwner(uid)
             && !accountBlocked(uid)
             && resource.data.get('blocked', false) == false
-            && request.resource.data.get('blocked', false) == false
-            && (sameVerified(request.resource.data)
-              || ownVerifiedMatches(request.resource.data))
-            && (validPublicProfile(request.resource.data, false)
-              || (validPublicProfile(request.resource.data, true)
-                && samePublicId(request.resource.data))))
-        || (isAdmin() && validPublicProfile(request.resource.data, true));
+            && request.resource.data.blocked == false
+            && ownVerifiedMatches(request.resource.data)
+            && ownerProfilePublicIdTransition(request.resource.data)
+            && publicMatchesPrivate(uid, request.resource.data)
+            && validPublicProfile(request.resource.data, true))
+        || (isAdmin()
+            && profilePublicIdValid(uid, request.resource.data)
+            && publicMatchesPrivate(uid, request.resource.data)
+            && validPublicProfile(request.resource.data, true));
       allow delete: if false;
     }
 
@@ -615,46 +884,56 @@ service cloud.firestore {
       allow get: if isOwner(uid) || isAdmin()
         || (activeSignedIn() && publicAvatarVisible(uid));
       allow list: if false;
-      allow create, update: if ((isOwner(uid) && !accountBlocked(uid)) || isAdmin())
+      allow create, update: if isOwner(uid) && !accountBlocked(uid)
         && request.resource.data.keys().hasOnly(['image', 'updatedAt'])
         && request.resource.data.keys().hasAll(['image', 'updatedAt'])
         && request.resource.data.image is bytes
         && request.resource.data.image.size() > 0
         && request.resource.data.image.size() <= 120000
-        && request.resource.data.updatedAt is int
-        && request.resource.data.updatedAt > 0;
+        && recentMillis(request.resource.data.updatedAt);
       allow delete: if (isOwner(uid) && !accountBlocked(uid)) || isAdmin();
     }
 
     // --- Username directory (search index) ---------------------------------
+    // Prefix search requires list, but every list request is capped at
+    // 10 documents. Directory writes must mirror the private profile:
+    // same username, discoverable=true, not blocked, and a public ID
+    // only when that ID is both claimed by the account and shown.
     match /usernames/{usernameLower} {
-      allow get, list: if activeSignedIn() || isAdmin();
+      allow get: if activeSignedIn() || isAdmin();
+      allow list: if (activeSignedIn() || isAdmin())
+        && request.query.limit <= 10;
       allow create: if request.resource.data.keys().hasOnly(
             ['uid', 'username', 'usernameLower', 'publicId', 'verified'])
+        && request.resource.data.keys().hasAll(
+            ['uid', 'username', 'usernameLower', 'verified'])
+        && validUidValue(request.resource.data.uid)
         && directoryVerifiedMatches(request.resource.data)
+        && directoryMatchesProfile(request.resource.data)
+        && validPublicIdValue(request.resource.data, true)
         && request.resource.data.usernameLower == usernameLower
         && usernameLower.matches('^[a-z0-9_]{3,24}$')
-        && request.resource.data.username is string
-        && request.resource.data.username.size() <= 24
+        && request.resource.data.username.matches('^[A-Za-z0-9_]{3,24}$')
+        && request.resource.data.username.lower() == usernameLower
         && ((activeSignedIn()
-              && request.resource.data.uid == request.auth.uid
-              && (validPublicIdValue(request.resource.data, false)
-                || (validPublicIdValue(request.resource.data, true)
-                  && ownPublicIdMatches(request.resource.data))))
-          || (isAdmin()
-              && validPublicIdValue(request.resource.data, true)));
+              && request.resource.data.uid == request.auth.uid)
+          || isAdmin());
       allow update: if request.resource.data.keys().hasOnly(
             ['uid', 'username', 'usernameLower', 'publicId', 'verified'])
+        && request.resource.data.keys().hasAll(
+            ['uid', 'username', 'usernameLower', 'verified'])
+        && validUidValue(request.resource.data.uid)
+        && request.resource.data.uid == resource.data.uid
         && directoryVerifiedMatches(request.resource.data)
+        && directoryMatchesProfile(request.resource.data)
+        && validPublicIdValue(request.resource.data, true)
         && request.resource.data.usernameLower == usernameLower
+        && usernameLower.matches('^[a-z0-9_]{3,24}$')
+        && request.resource.data.username.matches('^[A-Za-z0-9_]{3,24}$')
+        && request.resource.data.username.lower() == usernameLower
         && ((activeSignedIn()
-              && resource.data.uid == request.auth.uid
-              && (validPublicIdValue(request.resource.data, false)
-                || (validPublicIdValue(request.resource.data, true)
-                  && (samePublicId(request.resource.data)
-                    || ownPublicIdMatches(request.resource.data)))))
-          || (isAdmin()
-              && validPublicIdValue(request.resource.data, true)));
+              && resource.data.uid == request.auth.uid)
+          || isAdmin());
       allow delete: if (activeSignedIn()
             && resource.data.uid == request.auth.uid)
         || isAdmin();
@@ -664,17 +943,27 @@ service cloud.firestore {
     // Auto IDs: 100000-5000000. Admin-only manual IDs: any positive
     // integer with up to 12 digits (1-999999999999).
     match /publicIds/{pid} {
-      allow get: if activeSignedIn() || isAdmin();
+      // Exact-ID lookup is available to the owner/admin always, and to
+      // other active users only when the target profile shows this ID.
+      allow get: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid)
+        || (activeSignedIn() && publicIdVisible(pid, resource.data.uid));
       allow list: if false;
       allow create: if request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.keys().hasAll(['uid'])
+        && validUidValue(request.resource.data.uid)
         && ((activeSignedIn()
               && request.resource.data.uid == request.auth.uid
               && pid.matches('^([1-9][0-9]{5}|[1-4][0-9]{6}|5000000)$'))
           || (isAdmin()
               && pid.matches('^[1-9][0-9]{0,11}$')));
       allow update: if false;
+      // An owner may release only an ID that is no longer the current
+      // private-profile ID. This prevents deleting one's live claim
+      // and immediately losing the number to another account.
       allow delete: if (activeSignedIn()
-            && resource.data.uid == request.auth.uid)
+            && resource.data.uid == request.auth.uid
+            && !publicIdIsCurrent(resource.data.uid, pid))
         || isAdmin();
     }
 
@@ -684,7 +973,8 @@ service cloud.firestore {
       allow list: if false;
       allow create: if activeSignedIn()
         && chatId.matches('^vrp1_[0-9a-f]{64}$')
-        && validDirectChat(request.resource.data)
+        && validDirectChat(request.resource.data, chatId)
+        && recentMillis(request.resource.data.createdAt)
         && request.auth.uid in request.resource.data.participants
         && request.resource.data.updatedAt == request.resource.data.createdAt
         && request.resource.data.lastMessageText == ''
@@ -692,7 +982,7 @@ service cloud.firestore {
         && request.resource.data.lastSenderUid == ''
         && request.resource.data.lastMessageId == '';
       allow update: if isParticipant(chatId)
-        && validDirectChat(request.resource.data)
+        && validDirectChat(request.resource.data, chatId)
         && lastMessageMatches(chatId, request.resource.data)
         && request.resource.data.participants == resource.data.participants
         && request.resource.data.type == resource.data.type
@@ -718,7 +1008,9 @@ service cloud.firestore {
       allow delete: if false;
 
       match /messages/{messageId} {
-        allow get, list: if isParticipant(chatId);
+        allow get: if isParticipant(chatId);
+        allow list: if isParticipant(chatId)
+          && request.query.limit <= 100;
         allow create: if isParticipant(chatId)
           && validDirectMessage(request.resource.data, chatId, messageId);
         allow update: if isParticipant(chatId)
@@ -735,7 +1027,8 @@ service cloud.firestore {
         allow get: if isParticipant(chatId);
         allow list: if false;
         allow create: if isParticipant(chatId)
-          && validFileMetadata(request.resource.data, chatId, fileId)
+          && validFileMetadata(request.resource.data, chatId, fileId, true)
+          && recentMillis(request.resource.data.createdAt)
           && request.resource.data.senderUid == request.auth.uid
           && request.resource.data.downloadCount == 0
           && request.resource.data.senderDownloaded == false
@@ -744,7 +1037,8 @@ service cloud.firestore {
         // flag after a complete download and increment the counter by
         // exactly one. All file identity/size fields are immutable.
         allow update: if isParticipant(chatId)
-          && validFileMetadata(request.resource.data, chatId, fileId)
+          && validFileMetadata(request.resource.data, chatId, fileId,
+              'fileSha256' in resource.data)
           && sameFileMetadataExceptDownloads(request.resource.data)
           && request.resource.data.downloadCount
             == resource.data.downloadCount + 1
@@ -764,6 +1058,11 @@ service cloud.firestore {
         match /chunks/{chunkId} {
           allow get: if isParticipant(chatId)
             && exists(/databases/$(database)/documents/chats/$(chatId)/files/$(fileId))
+            && 'index' in resource.data
+            && resource.data.index is int
+            && string(resource.data.index) == chunkId
+            && resource.data.index >= 0
+            && resource.data.index < fileData(chatId, fileId).get('chunkCount', 0)
             && fileDownloadSlotOpen(fileData(chatId, fileId));
           allow list: if false;
           allow create: if isParticipant(chatId)
@@ -788,7 +1087,9 @@ service cloud.firestore {
 
     // --- Official visaroom announcements ------------------------------------
     match /announcements/{announcementId} {
-      allow get, list: if activeSignedIn() || isAdmin();
+      allow get: if activeSignedIn() || isAdmin();
+      allow list: if (activeSignedIn() || isAdmin())
+        && request.query.limit <= 50;
       // The app shows the composer only to the administrator, but this
       // rule is the actual authorization boundary: only the Firebase
       // Auth email checked by isAdmin() may create an announcement.

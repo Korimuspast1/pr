@@ -28,6 +28,14 @@ final class ProfileData {
     boolean showAvatar = true;
     boolean showId = true;
 
+    // Loading state only; these three values are never written to
+    // Firestore.  They let the sign-in gate distinguish a definitive
+    // cloud answer ("2FA is off") from a failed profile load, where the
+    // safe choice is not to fail open.
+    boolean cloudProfileLoaded;
+    boolean cloudStateKnown;
+    boolean twoFaStateKnown;
+
     String usernameLower() {
         return username == null ? "" : username.trim().toLowerCase(java.util.Locale.ROOT);
     }
