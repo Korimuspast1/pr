@@ -16,12 +16,6 @@
                     <corners android:radius="28dp" />
                 </shape>
             </item>
-            <item android:height="20dp" android:gravity="top" android:left="12dp" android:right="12dp" android:top="1dp">
-                <shape android:shape="rectangle">
-                    <solid android:color="#50FFFFFF" />
-                    <corners android:radius="18dp" />
-                </shape>
-            </item>
         </layer-list>
     </item>
 </selector>

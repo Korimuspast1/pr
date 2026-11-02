@@ -20,6 +20,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.OpenableColumns;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
@@ -124,6 +125,7 @@ public class DirectChatActivity extends Activity {
         super.onCreate(savedInstanceState);
         AuthClient.init(this);
         setContentView(R.layout.activity_direct_chat);
+        PressFx.install(this);
 
         peerUid = getIntent().getStringExtra(EXTRA_UID);
         if (peerUid == null) {
@@ -408,6 +410,14 @@ public class DirectChatActivity extends Activity {
                 m.downloadStatusLoaded = old.downloadStatusLoaded;
                 m.downloadStatusCheckedAt = old.downloadStatusCheckedAt;
                 m.receiptPending = old.receiptPending;
+                m.operationPending = old.operationPending;
+                m.deleting = old.deleting;
+                if (old.operationPending
+                        && VrProto.TYPE_TEXT.equals(old.type)
+                        && old.editedAt > m.editedAt) {
+                    m.text = old.text;
+                    m.editedAt = old.editedAt;
+                }
             }
             merged.add(m);
         }
@@ -515,6 +525,213 @@ public class DirectChatActivity extends Activity {
         lastRenderSignature = "";
         renderMessages(true);
         submitMessage(message);
+    }
+
+    private void copyMessageText(VrProto.Message message) {
+        ClipboardManager clipboard =
+                (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (clipboard != null) {
+            String copied = VrProto.TYPE_FILE.equals(message.type)
+                    ? message.fileName : message.text;
+            clipboard.setPrimaryClip(ClipData.newPlainText("Message", copied));
+            Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showMessageActions(VrProto.Message message, boolean mine) {
+        List<String> labels = new ArrayList<>();
+        List<Integer> actions = new ArrayList<>();
+        labels.add("Copy");
+        actions.add(0);
+        boolean canEdit = mine && VrProto.TYPE_TEXT.equals(message.type)
+                && !message.pending && !message.operationPending
+                && !message.deleting;
+        boolean canDelete = mine && !message.pending && !message.downloading
+                && !message.operationPending && !message.deleting;
+        if (canEdit) {
+            labels.add("Edit");
+            actions.add(1);
+        }
+        if (canDelete) {
+            labels.add("Delete");
+            actions.add(2);
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Message")
+                .setItems(labels.toArray(new String[0]), (d, which) -> {
+                    int action = actions.get(which);
+                    if (action == 0) {
+                        copyMessageText(message);
+                    } else if (action == 1) {
+                        showEditMessageDialog(message);
+                    } else if (action == 2) {
+                        confirmDeleteMessage(message);
+                    }
+                })
+                .create();
+        dialog.show();
+        PressFx.install(dialog);
+    }
+
+    private void showEditMessageDialog(VrProto.Message message) {
+        VrProto.Message current = messageById(message.id);
+        if (current == null) {
+            return;
+        }
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(24), dp(8), dp(24), dp(8));
+
+        EditText input = new EditText(this);
+        input.setText(current.text);
+        input.setSelection(input.getText().length());
+        input.setMinLines(3);
+        input.setMaxLines(6);
+        input.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        box.addView(input, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Edit message")
+                .setView(box)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Save", null)
+                .create();
+        dialog.show();
+        PressFx.install(dialog);
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String newText = input.getText().toString().trim();
+            if (newText.length() == 0) {
+                Toast.makeText(this, "Message cannot be empty.",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (newText.length() > VrProto.MAX_TEXT) {
+                Toast.makeText(this, "Message is too long.",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (newText.equals(current.text)) {
+                dialog.dismiss();
+                return;
+            }
+            dialog.dismiss();
+            submitEditMessage(current.id, newText);
+        });
+    }
+
+    private void submitEditMessage(String messageId, String newText) {
+        VrProto.Message current = messageById(messageId);
+        if (current == null || current.operationPending) {
+            return;
+        }
+        if (current.failed) {
+            current.text = newText;
+            current.editedAt = 0;
+            lastRenderSignature = "";
+            renderMessages(true);
+            return;
+        }
+        String originalText = current.text;
+        long originalEditedAt = current.editedAt;
+        long editedAt = System.currentTimeMillis();
+        current.text = newText;
+        current.editedAt = editedAt;
+        current.operationPending = true;
+        lastRenderSignature = "";
+        renderMessages(true);
+        VrProto.Message operationMessage = current;
+        executor.execute(() -> {
+            String token = ensureToken();
+            boolean ok = token != null && VrProto.editText(
+                    token, myUid, peerUid, operationMessage, newText, editedAt);
+            runOnUiThread(() -> {
+                VrProto.Message latest = messageById(messageId);
+                if (latest != null) {
+                    latest.operationPending = false;
+                    if (ok) {
+                        latest.text = newText;
+                        latest.editedAt = editedAt;
+                    } else {
+                        latest.text = originalText;
+                        latest.editedAt = originalEditedAt;
+                    }
+                }
+                lastRenderSignature = "";
+                renderMessages(true);
+                if (ok) {
+                    syncNow(false);
+                } else {
+                    Toast.makeText(this,
+                            "Message was not edited. Check the connection and Firebase rules.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+    }
+
+    private void confirmDeleteMessage(VrProto.Message message) {
+        String text = message.failed
+                ? "Remove this unsent message from this screen?"
+                : VrProto.TYPE_FILE.equals(message.type)
+                        ? "Delete this file for both participants? Its cloud copy will also be deleted."
+                        : "Delete this message for both participants?";
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Delete message?")
+                .setMessage(text)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Delete", (d, which) ->
+                        submitDeleteMessage(message.id))
+                .create();
+        dialog.show();
+        PressFx.install(dialog);
+    }
+
+    private void submitDeleteMessage(String messageId) {
+        VrProto.Message current = messageById(messageId);
+        if (current == null || current.operationPending) {
+            return;
+        }
+        if (current.failed) {
+            messages.remove(current);
+            lastRenderSignature = "";
+            renderMessages(true);
+            return;
+        }
+        current.operationPending = true;
+        current.deleting = true;
+        lastRenderSignature = "";
+        renderMessages(true);
+        long operationAt = System.currentTimeMillis();
+        VrProto.Message operationMessage = current;
+        executor.execute(() -> {
+            String token = ensureToken();
+            boolean ok = token != null && VrProto.deleteMessage(
+                    token, myUid, peerUid, operationMessage, operationAt);
+            runOnUiThread(() -> {
+                VrProto.Message latest = messageById(messageId);
+                if (ok) {
+                    if (latest != null) {
+                        messages.remove(latest);
+                    }
+                } else if (latest != null) {
+                    latest.operationPending = false;
+                    latest.deleting = false;
+                }
+                lastRenderSignature = "";
+                renderMessages(true);
+                if (ok) {
+                    syncNow(false);
+                } else {
+                    Toast.makeText(this,
+                            "Message was not deleted. Check the connection and Firebase rules.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        });
     }
 
     private void pickFile() {
@@ -1255,6 +1472,10 @@ public class DirectChatActivity extends Activity {
                 .append('|').append(messages.size());
         for (VrProto.Message m : messages) {
             b.append('|').append(m.id).append(':').append(m.type)
+                    .append(':').append(m.text.hashCode())
+                    .append(':').append(m.editedAt)
+                    .append(m.operationPending ? 'u' : 'v')
+                    .append(m.deleting ? 'g' : 'h')
                     .append(':').append(m.pending ? 'p' : 's')
                     .append(m.failed ? 'f' : 'o')
                     .append(':').append(m.progress)
@@ -1287,8 +1508,8 @@ public class DirectChatActivity extends Activity {
 
         List<VrProto.Message> visible = new ArrayList<>();
         for (VrProto.Message m : messages) {
-            if (query.length() == 0
-                    || m.text.toLowerCase(Locale.ROOT).contains(query)) {
+            if (!m.deleting && (query.length() == 0
+                    || m.text.toLowerCase(Locale.ROOT).contains(query))) {
                 visible.add(m);
             }
         }
@@ -1303,6 +1524,7 @@ public class DirectChatActivity extends Activity {
         for (VrProto.Message m : visible) {
             messagesContainer.addView(makeMessageRow(m));
         }
+        PressFx.applyTree(messagesContainer);
         if (stickToBottom && query.length() == 0) {
             messagesScroll.post(() -> messagesScroll.fullScroll(View.FOCUS_DOWN));
         }
@@ -1380,14 +1602,8 @@ public class DirectChatActivity extends Activity {
             bubble.setOnClickListener(v -> requestDownload(message));
         }
         bubble.setOnLongClickListener(v -> {
-            ClipboardManager clipboard =
-                    (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            if (clipboard != null) {
-                String copied = VrProto.TYPE_FILE.equals(message.type)
-                        ? message.fileName : message.text;
-                clipboard.setPrimaryClip(ClipData.newPlainText("Message", copied));
-                Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
-            }
+            PressFx.release(v);
+            showMessageActions(message, mine);
             return true;
         });
 
@@ -1429,6 +1645,7 @@ public class DirectChatActivity extends Activity {
             bubble.addView(metaView, metaParams);
         }
 
+        PressFx.attach(bubble);
         row.addView(bubble, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -1540,6 +1757,7 @@ public class DirectChatActivity extends Activity {
                 setButton.setTextColor(getColor(R.color.text_main));
                 setButton.setBackgroundResource(R.drawable.bg_glass_pill);
                 setButton.setOnClickListener(v -> acceptWallpaper(message));
+                PressFx.attach(setButton);
                 LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, dp(44));
                 buttonParams.topMargin = dp(10);
@@ -1553,8 +1771,15 @@ public class DirectChatActivity extends Activity {
         if (AppSettings.showTimestamps(this) && message.createdAt > 0) {
             out.append(formatTime(message.createdAt));
         }
+        if (VrProto.TYPE_TEXT.equals(message.type) && message.editedAt > 0) {
+            if (out.length() > 0) {
+                out.append("  ");
+            }
+            out.append("Edited");
+        }
         if (mine) {
-            String status = message.failed ? "Failed. Tap to retry"
+            String status = message.operationPending ? "Updating..."
+                    : message.failed ? "Failed. Tap to retry"
                     : message.pending && VrProto.TYPE_FILE.equals(message.type)
                             ? "Uploading " + message.progress + "%"
                     : message.pending ? "Sending..."

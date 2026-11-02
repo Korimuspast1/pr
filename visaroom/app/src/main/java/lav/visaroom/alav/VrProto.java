@@ -63,6 +63,7 @@ final class VrProto {
         String senderUid = "";
         String text = "";
         long createdAt;
+        long editedAt;
         boolean pending;
         boolean failed;
 
@@ -90,6 +91,8 @@ final class VrProto {
         boolean downloadStatusLoaded;
         long downloadStatusCheckedAt;
         boolean receiptPending;
+        boolean operationPending;
+        boolean deleting;
     }
 
     static final class FileStatus {
@@ -123,6 +126,7 @@ final class VrProto {
         boolean blocked;
         String lastText = "";
         String lastSenderUid = "";
+        String lastMessageId = "";
         long lastMessageAt;
         long updatedAt;
         long lastReadAt;
@@ -143,6 +147,7 @@ final class VrProto {
         String peerUid = "";
         String lastText = "";
         String lastSenderUid = "";
+        String lastMessageId = "";
         long lastMessageAt;
         long updatedAt;
         long lastReadAt;
@@ -293,6 +298,177 @@ final class VrProto {
             return false;
         }
         return createMessageAndPatch(idToken, myUid, peerUid, chatId, message);
+    }
+
+    static boolean editText(String idToken, String myUid, String peerUid,
+                            Message message, String newText, long editedAt) {
+        if (idToken == null || myUid == null || peerUid == null || message == null
+                || newText == null || newText.trim().length() == 0
+                || newText.length() > MAX_TEXT || editedAt <= 0
+                || !TYPE_TEXT.equals(message.type)
+                || !myUid.equals(message.senderUid)
+                || message.id.length() == 0) {
+            return false;
+        }
+        String chatId = directChatId(myUid, peerUid);
+        List<Message> before = listMessages(idToken, chatId);
+        Message current = messageById(before, message.id);
+        if (current == null || !TYPE_TEXT.equals(current.type)
+                || !myUid.equals(current.senderUid)) {
+            return false;
+        }
+        boolean wasLatest = isLatest(before, current.id);
+        try {
+            JSONObject fields = new JSONObject();
+            putStr(fields, "text", newText);
+            putNum(fields, "editedAt", editedAt);
+            JSONObject body = new JSONObject();
+            body.put("fields", fields);
+            Response r = request("PATCH", Vault.firestoreBaseUrl()
+                    + "chats/" + chatId + "/messages/" + message.id
+                    + "?updateMask.fieldPaths=text"
+                    + "&updateMask.fieldPaths=editedAt", idToken, body);
+            boolean ok = r.code >= 200 && r.code < 300;
+            if (!ok) {
+                Message reloaded = messageById(
+                        listMessages(idToken, chatId), message.id);
+                ok = reloaded != null && newText.equals(reloaded.text)
+                        && reloaded.editedAt == editedAt;
+                if (!ok) {
+                    return false;
+                }
+                current = reloaded;
+            }
+            current.text = newText;
+            current.editedAt = editedAt;
+            message.text = newText;
+            message.editedAt = editedAt;
+            if (wasLatest) {
+                patchChatAfterEdit(idToken, chatId, myUid, current, editedAt);
+                patchIndexAfterEdit(idToken, myUid, peerUid, chatId, current);
+                patchIndexAfterEdit(idToken, peerUid, myUid, chatId, current);
+            }
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    static boolean deleteMessage(String idToken, String myUid, String peerUid,
+                                 Message message, long operationAt) {
+        if (idToken == null || myUid == null || peerUid == null || message == null
+                || message.id.length() == 0 || operationAt <= 0
+                || !myUid.equals(message.senderUid)) {
+            return false;
+        }
+        String chatId = directChatId(myUid, peerUid);
+        List<Message> before = listMessages(idToken, chatId);
+        Message current = messageById(before, message.id);
+        if (current == null || !myUid.equals(current.senderUid)) {
+            return false;
+        }
+        boolean wasLatest = isLatest(before, current.id);
+        if (TYPE_FILE.equals(current.type)
+                && !deleteOwnFileChunks(idToken, myUid, peerUid, current)) {
+            return false;
+        }
+        try {
+            Response r = request("DELETE", Vault.firestoreBaseUrl()
+                    + "chats/" + chatId + "/messages/" + message.id,
+                    idToken, null);
+            boolean deleted = (r.code >= 200 && r.code < 300) || r.code == 404;
+            if (!deleted) {
+                Message reloaded = messageById(
+                        listMessages(idToken, chatId), message.id);
+                deleted = reloaded == null;
+            }
+            if (!deleted) {
+                return false;
+            }
+        } catch (Exception ignored) {
+            return false;
+        }
+        if (TYPE_FILE.equals(current.type)) {
+            deleteFileMetadataQuietly(idToken, chatId, current.fileId);
+        }
+        if (wasLatest) {
+            List<Message> after = listMessages(idToken, chatId);
+            Message latest = latestExcluding(after, message.id);
+            if (after == null) {
+                latest = latestExcluding(before, message.id);
+            }
+            patchChatAfterDelete(idToken, chatId, latest, operationAt);
+            patchIndexAfterDelete(idToken, myUid, peerUid, chatId, latest);
+            patchIndexAfterDelete(idToken, peerUid, myUid, chatId, latest);
+        }
+        return true;
+    }
+
+    private static Message messageById(List<Message> list, String id) {
+        if (list == null || id == null) {
+            return null;
+        }
+        for (Message item : list) {
+            if (id.equals(item.id)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isLatest(List<Message> list, String id) {
+        Message latest = latestExcluding(list, null);
+        return latest != null && latest.id.equals(id);
+    }
+
+    private static Message latestExcluding(List<Message> list, String excludedId) {
+        if (list == null) {
+            return null;
+        }
+        for (int i = list.size() - 1; i >= 0; i--) {
+            Message item = list.get(i);
+            if (excludedId == null || !excludedId.equals(item.id)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private static boolean deleteOwnFileChunks(String idToken, String myUid,
+                                               String peerUid, Message message) {
+        FileStatus status = loadFileStatus(idToken, myUid, peerUid, message);
+        if (!status.ok) {
+            return false;
+        }
+        if (!status.exists) {
+            return true;
+        }
+        if (!myUid.equals(status.senderUid)) {
+            return false;
+        }
+        String chatId = directChatId(myUid, peerUid);
+        int count = status.chunkCount > 0 ? status.chunkCount : message.chunkCount;
+        try {
+            for (int index = 0; index < count; index++) {
+                Response r = request("DELETE", Vault.firestoreBaseUrl()
+                        + "chats/" + chatId + "/files/" + message.fileId
+                        + "/chunks/" + index, idToken, null);
+                if (!(r.code >= 200 && r.code < 300) && r.code != 404) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static void deleteFileMetadataQuietly(String idToken, String chatId,
+                                                  String fileId) {
+        try {
+            request("DELETE", fileMetadataUrl(chatId, fileId), idToken, null);
+        } catch (Exception ignored) {
+        }
     }
 
     static boolean sendWallpaper(String idToken, String myUid, String peerUid,
@@ -839,6 +1015,7 @@ final class VrProto {
                     m.senderUid = str(fields, "senderUid", "");
                     m.text = str(fields, "text", "");
                     m.createdAt = num(fields, "createdAt", 0);
+                    m.editedAt = num(fields, "editedAt", 0);
                     m.fileId = str(fields, "fileId", "");
                     m.fileName = str(fields, "fileName", m.text);
                     m.mimeType = str(fields, "mimeType", "application/octet-stream");
@@ -950,6 +1127,7 @@ final class VrProto {
         index.peerUid = str(fields, "peerUid", "");
         index.lastText = str(fields, "lastMessageText", "");
         index.lastSenderUid = str(fields, "lastSenderUid", "");
+        index.lastMessageId = str(fields, "lastMessageId", "");
         index.lastMessageAt = num(fields, "lastMessageAt", 0);
         index.updatedAt = num(fields, "updatedAt", index.lastMessageAt);
         index.lastReadAt = num(fields, "lastReadAt", 0);
@@ -1007,6 +1185,109 @@ final class VrProto {
                     : existing == null ? 0 : existing.lastReadAt;
             JSONObject fields = indexFields(chatId, peerUid, message.createdAt,
                     message.text, message.createdAt, senderUid, message.id, readAt);
+            JSONObject body = new JSONObject();
+            body.put("fields", fields);
+            String url = Vault.firestoreBaseUrl() + "users/" + ownerUid
+                    + "/chats/" + chatId
+                    + "?updateMask.fieldPaths=chatId"
+                    + "&updateMask.fieldPaths=peerUid"
+                    + "&updateMask.fieldPaths=updatedAt"
+                    + "&updateMask.fieldPaths=lastMessageText"
+                    + "&updateMask.fieldPaths=lastMessageAt"
+                    + "&updateMask.fieldPaths=lastSenderUid"
+                    + "&updateMask.fieldPaths=lastMessageId"
+                    + "&updateMask.fieldPaths=lastReadAt";
+            request("PATCH", url, idToken, body);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void patchChatAfterEdit(String idToken, String chatId,
+                                             String senderUid, Message message,
+                                             long editedAt) {
+        try {
+            JSONObject fields = new JSONObject();
+            putNum(fields, "updatedAt", editedAt);
+            putStr(fields, "lastMessageText", message.text);
+            putNum(fields, "lastMessageAt", message.createdAt);
+            putStr(fields, "lastSenderUid", senderUid);
+            putStr(fields, "lastMessageId", message.id);
+            JSONObject body = new JSONObject();
+            body.put("fields", fields);
+            String url = Vault.firestoreBaseUrl() + "chats/" + chatId
+                    + "?updateMask.fieldPaths=updatedAt"
+                    + "&updateMask.fieldPaths=lastMessageText"
+                    + "&updateMask.fieldPaths=lastMessageAt"
+                    + "&updateMask.fieldPaths=lastSenderUid"
+                    + "&updateMask.fieldPaths=lastMessageId";
+            request("PATCH", url, idToken, body);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void patchIndexAfterEdit(String idToken, String ownerUid,
+                                              String peerUid, String chatId,
+                                              Message message) {
+        try {
+            Index existing = loadIndex(idToken, ownerUid, chatId);
+            if (existing == null) {
+                return;
+            }
+            JSONObject fields = indexFields(chatId, peerUid, message.createdAt,
+                    message.text, message.createdAt, message.senderUid,
+                    message.id, existing.lastReadAt);
+            JSONObject body = new JSONObject();
+            body.put("fields", fields);
+            String url = Vault.firestoreBaseUrl() + "users/" + ownerUid
+                    + "/chats/" + chatId
+                    + "?updateMask.fieldPaths=chatId"
+                    + "&updateMask.fieldPaths=peerUid"
+                    + "&updateMask.fieldPaths=updatedAt"
+                    + "&updateMask.fieldPaths=lastMessageText"
+                    + "&updateMask.fieldPaths=lastMessageAt"
+                    + "&updateMask.fieldPaths=lastSenderUid"
+                    + "&updateMask.fieldPaths=lastMessageId"
+                    + "&updateMask.fieldPaths=lastReadAt";
+            request("PATCH", url, idToken, body);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void patchChatAfterDelete(String idToken, String chatId,
+                                               Message latest, long operationAt) {
+        try {
+            JSONObject fields = new JSONObject();
+            putNum(fields, "updatedAt", operationAt);
+            putStr(fields, "lastMessageText", latest == null ? "" : latest.text);
+            putNum(fields, "lastMessageAt", latest == null ? 0 : latest.createdAt);
+            putStr(fields, "lastSenderUid", latest == null ? "" : latest.senderUid);
+            putStr(fields, "lastMessageId", latest == null ? "" : latest.id);
+            JSONObject body = new JSONObject();
+            body.put("fields", fields);
+            String url = Vault.firestoreBaseUrl() + "chats/" + chatId
+                    + "?updateMask.fieldPaths=updatedAt"
+                    + "&updateMask.fieldPaths=lastMessageText"
+                    + "&updateMask.fieldPaths=lastMessageAt"
+                    + "&updateMask.fieldPaths=lastSenderUid"
+                    + "&updateMask.fieldPaths=lastMessageId";
+            request("PATCH", url, idToken, body);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void patchIndexAfterDelete(String idToken, String ownerUid,
+                                                String peerUid, String chatId,
+                                                Message latest) {
+        try {
+            Index existing = loadIndex(idToken, ownerUid, chatId);
+            if (existing == null) {
+                return;
+            }
+            long at = latest == null ? 0 : latest.createdAt;
+            JSONObject fields = indexFields(chatId, peerUid, at,
+                    latest == null ? "" : latest.text, at,
+                    latest == null ? "" : latest.senderUid,
+                    latest == null ? "" : latest.id, existing.lastReadAt);
             JSONObject body = new JSONObject();
             body.put("fields", fields);
             String url = Vault.firestoreBaseUrl() + "users/" + ownerUid

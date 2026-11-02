@@ -52,6 +52,7 @@ public class UserProfileActivity extends Activity {
         super.onCreate(savedInstanceState);
         AuthClient.init(this);
         setContentView(R.layout.activity_user_profile);
+        PressFx.install(this);
 
         targetUid = getIntent().getStringExtra(EXTRA_UID);
         if (targetUid == null) {

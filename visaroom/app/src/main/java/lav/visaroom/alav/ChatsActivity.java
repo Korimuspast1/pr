@@ -132,6 +132,7 @@ public class ChatsActivity extends Activity {
         super.onCreate(savedInstanceState);
         AuthClient.init(this);
         setContentView(R.layout.activity_chats);
+        PressFx.install(this);
 
         bindViews();
         setupNavigation();
@@ -667,6 +668,8 @@ public class ChatsActivity extends Activity {
         }
 
         dialog.show();
+        PressFx.install(dialog);
+        PressFx.applyTree(box);
         box.setAlpha(0f);
         box.setTranslationY(dp(14));
         box.animate().alpha(1f).translationY(0f)
@@ -853,6 +856,7 @@ public class ChatsActivity extends Activity {
             directChats.addView(divider);
             shown++;
         }
+        PressFx.applyTree(directChats);
         directLabel.setVisibility(shown > 0 ? View.VISIBLE : View.GONE);
         directEmpty.setVisibility(q.length() == 0 && directChatsLoaded
                 && directChatList.isEmpty() ? View.VISIBLE : View.GONE);
@@ -1019,6 +1023,7 @@ public class ChatsActivity extends Activity {
             globalResults.addView(divider);
             shown++;
         }
+        PressFx.applyTree(globalResults);
         peopleLabel.setVisibility(shown > 0 ? View.VISIBLE : View.GONE);
         noChats.setVisibility(shown == 0 && !officialMatch && directMatchCount() == 0
                 ? View.VISIBLE : View.GONE);

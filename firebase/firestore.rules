@@ -18,6 +18,8 @@ rules_version = '2';
 // Each participant has one full-download slot (Downloads: 0/2). Only a
 // completed download may flip that participant's flag; at 2/2 either
 // participant may delete all chunks and then the file metadata.
+// A sender may edit their own text message or delete their own message.
+// Deleting a file message also lets that sender remove its cloud chunks.
 // Per-chat wallpaper images live privately under the owner's
 // users/{uid}/wallpapers/{wallpaperId}; shared=true is required before
 // the other participant may read a suggested wallpaper.
@@ -108,6 +110,11 @@ service cloud.firestore {
           || (exists(/databases/$(database)/documents/chats/$(chatId)/messages/$(data.lastMessageId))
               && messageMatches(data,
                   get(/databases/$(database)/documents/chats/$(chatId)/messages/$(data.lastMessageId)).data)));
+    }
+
+    function previousPreviewMissing(chatId) {
+      return resource.data.lastMessageId != ''
+        && !exists(/databases/$(database)/documents/chats/$(chatId)/messages/$(resource.data.lastMessageId));
     }
 
     function validDirectChat(data) {
@@ -268,6 +275,27 @@ service cloud.firestore {
               && wallpaperReferenceMatches(chatId, data)));
     }
 
+    function validEditedTextMessage(data, messageId) {
+      return resource.data.type == 'text'
+        && data.keys().hasOnly(['protocolVersion', 'type', 'senderUid',
+              'text', 'createdAt', 'clientId', 'editedAt'])
+        && data.keys().hasAll(['protocolVersion', 'type', 'senderUid',
+              'text', 'createdAt', 'clientId', 'editedAt'])
+        && data.protocolVersion == resource.data.protocolVersion
+        && data.type == resource.data.type
+        && data.senderUid == resource.data.senderUid
+        && data.senderUid == request.auth.uid
+        && data.text is string
+        && data.text.size() > 0
+        && data.text.size() <= 4000
+        && data.createdAt == resource.data.createdAt
+        && data.clientId == resource.data.clientId
+        && data.clientId == messageId
+        && data.editedAt is int
+        && data.editedAt >= resource.data.createdAt
+        && data.editedAt >= resource.data.get('editedAt', 0);
+    }
+
     function fileDownloadSlotOpen(file) {
       return (request.auth.uid == file.get('senderUid', '')
             && file.get('senderDownloaded', false) == false)
@@ -279,6 +307,11 @@ service cloud.firestore {
       return file.get('downloadCount', 0) >= file.get('downloadLimit', 2)
         && file.get('senderDownloaded', false) == true
         && file.get('recipientDownloaded', false) == true;
+    }
+
+    function fileDataDeleteAllowed(file) {
+      return fileDownloadsComplete(file)
+        || file.get('senderUid', '') == request.auth.uid;
     }
 
     function validFileMetadata(data, chatId, fileId) {
@@ -500,7 +533,20 @@ service cloud.firestore {
                       && request.resource.data.lastReadAt >= resource.data.lastReadAt)
                   || (uid != request.auth.uid
                       && resource.data.peerUid == request.auth.uid
-                      && request.resource.data.lastReadAt == resource.data.lastReadAt))));
+                      && request.resource.data.lastReadAt == resource.data.lastReadAt)))
+            || (isParticipant(chatId)
+                && sameWallpaper(request.resource.data)
+                && resource.data.lastSenderUid == request.auth.uid
+                && previousPreviewMissing(chatId)
+                && request.resource.data.chatId == resource.data.chatId
+                && request.resource.data.peerUid == resource.data.peerUid
+                && request.resource.data.updatedAt
+                  == request.resource.data.lastMessageAt
+                && request.resource.data.lastMessageAt
+                  <= resource.data.lastMessageAt
+                && request.resource.data.lastReadAt == resource.data.lastReadAt
+                && (uid == request.auth.uid
+                  || resource.data.peerUid == request.auth.uid)));
         allow delete: if false;
       }
 
@@ -636,17 +682,34 @@ service cloud.firestore {
         && request.resource.data.type == resource.data.type
         && request.resource.data.protocol == resource.data.protocol
         && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.lastSenderUid == request.auth.uid
-        && request.resource.data.updatedAt == request.resource.data.lastMessageAt
-        && request.resource.data.updatedAt >= resource.data.updatedAt
-        && request.resource.data.lastMessageAt >= resource.data.lastMessageAt;
+        && ((request.resource.data.lastSenderUid == request.auth.uid
+              && request.resource.data.updatedAt
+                == request.resource.data.lastMessageAt
+              && request.resource.data.updatedAt >= resource.data.updatedAt
+              && request.resource.data.lastMessageAt
+                >= resource.data.lastMessageAt)
+          || (request.resource.data.lastMessageId == resource.data.lastMessageId
+              && request.resource.data.lastSenderUid == request.auth.uid
+              && resource.data.lastSenderUid == request.auth.uid
+              && request.resource.data.lastMessageAt
+                == resource.data.lastMessageAt
+              && request.resource.data.updatedAt >= resource.data.updatedAt)
+          || (resource.data.lastSenderUid == request.auth.uid
+              && previousPreviewMissing(chatId)
+              && request.resource.data.lastMessageAt
+                <= resource.data.lastMessageAt
+              && request.resource.data.updatedAt >= resource.data.updatedAt));
       allow delete: if false;
 
       match /messages/{messageId} {
         allow get, list: if isParticipant(chatId);
         allow create: if isParticipant(chatId)
           && validDirectMessage(request.resource.data, chatId, messageId);
-        allow update, delete: if false;
+        allow update: if isParticipant(chatId)
+          && resource.data.senderUid == request.auth.uid
+          && validEditedTextMessage(request.resource.data, messageId);
+        allow delete: if isParticipant(chatId)
+          && resource.data.senderUid == request.auth.uid;
       }
 
       // Attachment metadata and immutable byte chunks. Only the two
@@ -680,7 +743,7 @@ service cloud.firestore {
                 && request.resource.data.senderDownloaded
                   == resource.data.senderDownloaded));
         allow delete: if isParticipant(chatId)
-          && fileDownloadsComplete(resource.data);
+          && fileDataDeleteAllowed(resource.data);
 
         match /chunks/{chunkId} {
           allow get: if isParticipant(chatId)
@@ -694,7 +757,7 @@ service cloud.firestore {
           allow update: if false;
           allow delete: if isParticipant(chatId)
             && exists(/databases/$(database)/documents/chats/$(chatId)/files/$(fileId))
-            && fileDownloadsComplete(fileData(chatId, fileId));
+            && fileDataDeleteAllowed(fileData(chatId, fileId));
         }
 
         match /{sub=**} {

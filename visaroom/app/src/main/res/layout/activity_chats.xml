@@ -1127,7 +1127,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:gravity="center"
-                    android:text="visaroom 1.7.0"
+                    android:text="visaroom 1.8.0"
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
             </LinearLayout>

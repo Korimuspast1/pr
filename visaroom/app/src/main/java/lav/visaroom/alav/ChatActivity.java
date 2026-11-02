@@ -40,6 +40,7 @@ public class ChatActivity extends Activity {
         super.onCreate(savedInstanceState);
         AuthClient.init(this);
         setContentView(R.layout.activity_chat);
+        PressFx.install(this);
 
         messagesScroll = findViewById(R.id.messages_scroll);
         messagesContainer = (LinearLayout) messagesScroll.getChildAt(0);
@@ -212,6 +213,7 @@ public class ChatActivity extends Activity {
         for (ProfileClient.Announcement m : visible) {
             messagesContainer.addView(makeMessageCard(m));
         }
+        PressFx.applyTree(messagesContainer);
     }
 
     private void renderEmpty(String query) {

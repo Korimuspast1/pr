@@ -7,10 +7,4 @@
             <corners android:bottomLeftRadius="28dp" android:bottomRightRadius="28dp" />
         </shape>
     </item>
-    <item android:height="20dp" android:gravity="top" android:left="16dp" android:right="16dp" android:top="1dp">
-        <shape android:shape="rectangle">
-            <solid android:color="#45FFFFFF" />
-            <corners android:radius="16dp" />
-        </shape>
-    </item>
 </layer-list>

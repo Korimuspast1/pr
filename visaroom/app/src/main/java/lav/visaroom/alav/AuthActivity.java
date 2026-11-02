@@ -50,6 +50,7 @@ public class AuthActivity extends Activity {
         super.onCreate(savedInstanceState);
         AuthClient.init(this);
         setContentView(R.layout.activity_auth);
+        PressFx.install(this);
 
         emailInput = findViewById(R.id.email);
         passwordInput = findViewById(R.id.password);
