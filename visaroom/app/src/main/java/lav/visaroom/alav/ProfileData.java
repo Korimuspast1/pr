@@ -8,8 +8,15 @@ final class ProfileData {
     long avatarUpdatedAt;
     boolean discoverable = true;
 
-    /** Public numeric ID, 100000-5000000, assigned at registration. 0 = none yet. */
+    /**
+     * Public numeric ID. Registration auto-generates 100000-5000000;
+     * an admin may later assign any positive ID. 0 = none yet.
+     */
     long publicId;
+
+    /** Admin account block. Only an admin may change these fields. */
+    boolean blocked;
+    long blockedAt;
 
     boolean twoFaEnabled;
     String twoFaVerifier = "";

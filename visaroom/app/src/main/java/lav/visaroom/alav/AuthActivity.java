@@ -248,6 +248,7 @@ public class AuthActivity extends Activity {
         executor.execute(() -> {
             AuthClient.Result result = AuthClient.refresh(token);
             String verifier = "";
+            boolean blockedAccount = false;
             if (result.ok) {
                 String accountEmail = result.email == null || result.email.length() == 0
                         ? AuthClient.emailFromIdToken(result.idToken) : result.email;
@@ -257,8 +258,10 @@ public class AuthActivity extends Activity {
                 TokenStore.activateAccount(this, accountEmail,
                         result.refreshToken, result.uid);
                 ProfileData data = localProfileData(result.uid, accountEmail);
-                if (ProfileClient.ensureUserDocuments(result.idToken, result.uid, data)
-                        && data.twoFaEnabled) {
+                boolean synced = ProfileClient.ensureUserDocuments(
+                        result.idToken, result.uid, data);
+                blockedAccount = data.blocked;
+                if (synced && data.twoFaEnabled) {
                     verifier = data.twoFaVerifier;
                     TokenStore.saveTwoFa(this, TokenStore.twoFaMarker(this), verifier);
                     TokenStore.profilePrefs(this, result.uid).edit()
@@ -270,8 +273,19 @@ public class AuthActivity extends Activity {
                 }
             }
             final String gateVerifier = verifier;
+            final boolean finalBlockedAccount = blockedAccount;
             runOnUiThread(() -> {
-                if (result.ok) {
+                if (result.ok && finalBlockedAccount) {
+                    TokenStore.clear(AuthActivity.this);
+                    if (TokenStore.refreshToken(AuthActivity.this) != null
+                            && restoreAttempts < TokenStore.MAX_ACCOUNTS) {
+                        restoreAttempts++;
+                        restoreSession();
+                    } else {
+                        setLoading(false);
+                        showError("This account has been blocked.");
+                    }
+                } else if (result.ok) {
                     TokenStore.save(AuthActivity.this, null, result.refreshToken);
                     TokenStore.saveUid(AuthActivity.this, result.uid);
                     proceedWithGate(gateVerifier, false);
@@ -340,6 +354,7 @@ public class AuthActivity extends Activity {
                     : AuthClient.signIn(email, password);
             long assignedId = 0;
             String gateVerifier = "";
+            boolean blockedAccount = false;
             boolean accountStored = !result.ok || TokenStore.activateAccount(
                     AuthActivity.this, result.email, result.refreshToken, result.uid);
             if (result.ok && accountStored && register) {
@@ -354,7 +369,10 @@ public class AuthActivity extends Activity {
                         .putLong("public_id", assignedId).apply();
             } else if (result.ok && accountStored) {
                 ProfileData data = localProfileData(result.uid, result.email);
-                if (ProfileClient.ensureUserDocuments(result.idToken, result.uid, data)) {
+                boolean synced = ProfileClient.ensureUserDocuments(
+                        result.idToken, result.uid, data);
+                blockedAccount = data.blocked;
+                if (synced) {
                     if (data.publicId > 0) {
                         TokenStore.profilePrefs(this, result.uid).edit()
                                 .putLong("public_id", data.publicId).apply();
@@ -370,10 +388,15 @@ public class AuthActivity extends Activity {
             final long finalAssignedId = assignedId;
             final String finalGateVerifier = gateVerifier;
             final boolean finalAccountStored = accountStored;
+            final boolean finalBlockedAccount = blockedAccount;
             runOnUiThread(() -> {
                 if (result.ok && !finalAccountStored) {
                     setLoading(false);
                     showError("Three accounts are already saved on this device. Remove one first.");
+                } else if (result.ok && finalBlockedAccount) {
+                    TokenStore.clear(AuthActivity.this);
+                    setLoading(false);
+                    showError("This account has been blocked.");
                 } else if (result.ok) {
                     TokenStore.save(AuthActivity.this, result.email, result.refreshToken);
                     TokenStore.saveUid(AuthActivity.this, result.uid);

@@ -8,6 +8,8 @@ rules_version = '2';
 // avatars/{uid}; Firebase Storage / Blaze is not used.
 // Admin authority comes from the Firebase Auth EMAIL below — never from a
 // username, which anybody could claim.
+// Registration auto-generates public IDs in 100000-5000000. Only the admin
+// may assign any other positive ID (1-999999999999) or block an account.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -25,20 +27,46 @@ service cloud.firestore {
         && request.auth.token.email == 'debugger821@gmail.com';
     }
 
+    function accountBlocked(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.get('blocked', false) == true;
+    }
+
+    function activeSignedIn() {
+      return signedIn() && !accountBlocked(request.auth.uid);
+    }
+
     function isParticipant(chatId) {
-      return signedIn()
+      return activeSignedIn()
         && exists(/databases/$(database)/documents/chats/$(chatId))
         && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
     }
 
-    function validPublicIdValue(data) {
+    function validPublicIdValue(data, allowAny) {
       return !('publicId' in data) || (
         data.publicId is int
-        && data.publicId >= 100000
-        && data.publicId <= 5000000);
+        && ((data.publicId >= 100000 && data.publicId <= 5000000)
+          || (allowAny && data.publicId >= 1
+            && data.publicId <= 999999999999)));
     }
 
-    function validCommon(data) {
+    function ownPublicIdMatches(data) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && data.get('publicId', 0)
+          == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('publicId', 0);
+    }
+
+    function samePublicId(data) {
+      return data.get('publicId', 0) == resource.data.get('publicId', 0);
+    }
+
+    function sameBlocked(data) {
+      return data.get('blocked', false) == resource.data.get('blocked', false)
+        && data.get('blockedAt', 0) == resource.data.get('blockedAt', 0);
+    }
+
+    function validCommon(data, allowAnyPublicId) {
       return (!('username' in data) || (
             data.username is string
             && data.username.size() <= 24
@@ -51,13 +79,15 @@ service cloud.firestore {
         && (!('showBio' in data) || data.showBio is bool)
         && (!('showAvatar' in data) || data.showAvatar is bool)
         && (!('showId' in data) || data.showId is bool)
-        && validPublicIdValue(data);
+        && (!('blocked' in data) || data.blocked is bool)
+        && validPublicIdValue(data, allowAnyPublicId);
     }
 
-    function validPrivateProfile(data, expectedEmail) {
+    function validPrivateProfile(data, expectedEmail, allowAnyPublicId) {
       return data.keys().hasOnly(['email', 'username', 'bio', 'hasAvatar',
             'avatarUpdatedAt', 'discoverable', 'publicId', 'twoFaEnabled',
-            'twoFaVerifier', 'showBio', 'showAvatar', 'showId'])
+            'twoFaVerifier', 'showBio', 'showAvatar', 'showId',
+            'blocked', 'blockedAt'])
         && data.email is string
         && data.email.size() <= 320
         && data.email == expectedEmail
@@ -66,19 +96,23 @@ service cloud.firestore {
         && (!('twoFaVerifier' in data) || (
             data.twoFaVerifier is string
             && data.twoFaVerifier.size() <= 256))
-        && validCommon(data);
+        && (!('blockedAt' in data) || (
+            data.blockedAt is int && data.blockedAt >= 0))
+        && validCommon(data, allowAnyPublicId);
     }
 
-    function validPublicProfile(data) {
+    function validPublicProfile(data, allowAnyPublicId) {
       return data.keys().hasOnly(['username', 'bio', 'hasAvatar',
-            'avatarUpdatedAt', 'publicId', 'showBio', 'showAvatar', 'showId'])
-        && validCommon(data);
+            'avatarUpdatedAt', 'publicId', 'showBio', 'showAvatar', 'showId',
+            'blocked'])
+        && validCommon(data, allowAnyPublicId);
     }
 
     function publicAvatarVisible(uid) {
       return exists(/databases/$(database)/documents/profiles/$(uid))
         && get(/databases/$(database)/documents/profiles/$(uid)).data.get('hasAvatar', false) == true
-        && get(/databases/$(database)/documents/profiles/$(uid)).data.get('showAvatar', true) == true;
+        && get(/databases/$(database)/documents/profiles/$(uid)).data.get('showAvatar', true) == true
+        && get(/databases/$(database)/documents/profiles/$(uid)).data.get('blocked', false) == false;
     }
 
     // --- Private account profile (email + 2FA verifier live here) ----------
@@ -86,17 +120,29 @@ service cloud.firestore {
       allow get: if isOwner(uid) || isAdmin();
       allow list: if false;
       allow create: if isOwner(uid)
-        && validPrivateProfile(request.resource.data, request.auth.token.email);
-      // Owner edits own profile; admin may moderate but can never change
-      // the account's email (it must stay equal to the stored one).
+        && request.resource.data.get('blocked', false) == false
+        && request.resource.data.get('blockedAt', 0) == 0
+        && validPrivateProfile(request.resource.data,
+            request.auth.token.email, false);
+      // The owner can edit only while not blocked and can never change
+      // blocked/blockedAt. An existing admin-assigned arbitrary ID may be
+      // kept unchanged. The admin can moderate, set any positive ID and
+      // block/unblock, but can never change the account email.
       allow update: if (isOwner(uid)
-            && validPrivateProfile(request.resource.data, request.auth.token.email))
+            && resource.data.get('blocked', false) == false
+            && sameBlocked(request.resource.data)
+            && (validPrivateProfile(request.resource.data,
+                  request.auth.token.email, false)
+              || (validPrivateProfile(request.resource.data,
+                    request.auth.token.email, true)
+                && samePublicId(request.resource.data))))
         || (isAdmin()
-            && validPrivateProfile(request.resource.data, resource.data.email));
+            && validPrivateProfile(request.resource.data,
+                resource.data.email, true));
       allow delete: if false;
 
       match /chats/{chatId} {
-        allow get, list: if isOwner(uid);
+        allow get, list: if isOwner(uid) && !accountBlocked(uid);
         allow write: if false; // enable in the messaging step, server-side first
       }
 
@@ -107,19 +153,32 @@ service cloud.firestore {
 
     // --- Public profile (privacy already applied by the writer) ------------
     match /profiles/{uid} {
-      allow get: if signedIn();
+      allow get: if activeSignedIn() || isAdmin();
       allow list: if false;
-      allow create, update: if (isOwner(uid) || isAdmin())
-        && validPublicProfile(request.resource.data);
+      allow create: if (isOwner(uid)
+            && !accountBlocked(uid)
+            && request.resource.data.get('blocked', false) == false
+            && (validPublicProfile(request.resource.data, false)
+              || (validPublicProfile(request.resource.data, true)
+                && ownPublicIdMatches(request.resource.data))))
+        || (isAdmin() && validPublicProfile(request.resource.data, true));
+      allow update: if (isOwner(uid)
+            && !accountBlocked(uid)
+            && resource.data.get('blocked', false) == false
+            && request.resource.data.get('blocked', false) == false
+            && (validPublicProfile(request.resource.data, false)
+              || (validPublicProfile(request.resource.data, true)
+                && samePublicId(request.resource.data))))
+        || (isAdmin() && validPublicProfile(request.resource.data, true));
       allow delete: if false;
     }
 
     // --- Avatar image (small JPEG bytes, no Firebase Storage needed) -------
     match /avatars/{uid} {
       allow get: if isOwner(uid) || isAdmin()
-        || (signedIn() && publicAvatarVisible(uid));
+        || (activeSignedIn() && publicAvatarVisible(uid));
       allow list: if false;
-      allow create, update: if (isOwner(uid) || isAdmin())
+      allow create, update: if ((isOwner(uid) && !accountBlocked(uid)) || isAdmin())
         && request.resource.data.keys().hasOnly(['image', 'updatedAt'])
         && request.resource.data.keys().hasAll(['image', 'updatedAt'])
         && request.resource.data.image is bytes
@@ -127,39 +186,56 @@ service cloud.firestore {
         && request.resource.data.image.size() <= 120000
         && request.resource.data.updatedAt is int
         && request.resource.data.updatedAt > 0;
-      allow delete: if isOwner(uid) || isAdmin();
+      allow delete: if (isOwner(uid) && !accountBlocked(uid)) || isAdmin();
     }
 
     // --- Username directory (search index) ---------------------------------
     match /usernames/{usernameLower} {
-      allow get, list: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid', 'username', 'usernameLower', 'publicId'])
-        && (request.resource.data.uid == request.auth.uid || isAdmin())
+      allow get, list: if activeSignedIn() || isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(
+            ['uid', 'username', 'usernameLower', 'publicId'])
         && request.resource.data.usernameLower == usernameLower
         && usernameLower.matches('^[a-z0-9_]{3,24}$')
         && request.resource.data.username is string
         && request.resource.data.username.size() <= 24
-        && validPublicIdValue(request.resource.data);
-      allow update: if (signedIn() && resource.data.uid == request.auth.uid
-            || isAdmin())
-        && request.resource.data.keys().hasOnly(['uid', 'username', 'usernameLower', 'publicId'])
+        && ((activeSignedIn()
+              && request.resource.data.uid == request.auth.uid
+              && (validPublicIdValue(request.resource.data, false)
+                || (validPublicIdValue(request.resource.data, true)
+                  && ownPublicIdMatches(request.resource.data))))
+          || (isAdmin()
+              && validPublicIdValue(request.resource.data, true)));
+      allow update: if request.resource.data.keys().hasOnly(
+            ['uid', 'username', 'usernameLower', 'publicId'])
         && request.resource.data.usernameLower == usernameLower
-        && validPublicIdValue(request.resource.data);
-      allow delete: if (signedIn() && resource.data.uid == request.auth.uid)
+        && ((activeSignedIn()
+              && resource.data.uid == request.auth.uid
+              && (validPublicIdValue(request.resource.data, false)
+                || (validPublicIdValue(request.resource.data, true)
+                  && (samePublicId(request.resource.data)
+                    || ownPublicIdMatches(request.resource.data)))))
+          || (isAdmin()
+              && validPublicIdValue(request.resource.data, true)));
+      allow delete: if (activeSignedIn()
+            && resource.data.uid == request.auth.uid)
         || isAdmin();
     }
 
-    // --- Public numeric IDs (100000-5000000, one per account) ---------------
+    // --- Public numeric IDs ---------------------------------------------------
+    // Auto IDs: 100000-5000000. Admin-only manual IDs: any positive
+    // integer with up to 12 digits (1-999999999999).
     match /publicIds/{pid} {
-      allow get: if signedIn();
+      allow get: if activeSignedIn() || isAdmin();
       allow list: if false;
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid'])
-        && (request.resource.data.uid == request.auth.uid || isAdmin())
-        && pid.matches('^([1-9][0-9]{5}|[1-4][0-9]{6}|5000000)$');
+      allow create: if request.resource.data.keys().hasOnly(['uid'])
+        && ((activeSignedIn()
+              && request.resource.data.uid == request.auth.uid
+              && pid.matches('^([1-9][0-9]{5}|[1-4][0-9]{6}|5000000)$'))
+          || (isAdmin()
+              && pid.matches('^[1-9][0-9]{0,11}$')));
       allow update: if false;
-      allow delete: if (signedIn() && resource.data.uid == request.auth.uid)
+      allow delete: if (activeSignedIn()
+            && resource.data.uid == request.auth.uid)
         || isAdmin();
     }
 
@@ -181,7 +257,7 @@ service cloud.firestore {
 
     // --- Official visaroom announcements ------------------------------------
     match /announcements/{announcementId} {
-      allow get, list: if signedIn();
+      allow get, list: if activeSignedIn() || isAdmin();
       allow write: if false;
     }
 

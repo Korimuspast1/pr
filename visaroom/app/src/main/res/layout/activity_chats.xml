@@ -522,7 +522,7 @@
                     android:layout_marginTop="6dp"
                     android:paddingLeft="24dp"
                     android:paddingRight="24dp"
-                    android:text="Folders for chats, privacy, security and account. Long-press Settings for accounts."
+                    android:text="Tap a folder to open it. Long-press Settings below for accounts."
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
 
@@ -995,7 +995,7 @@
                         android:layout_height="wrap_content"
                         android:paddingLeft="24dp"
                         android:paddingRight="24dp"
-                        android:text="Open a profile to change the ID, remove the username, clear the bio or remove the photo."
+                        android:text="Open a profile to block the account, set any ID, remove the username, clear the bio or remove the photo."
                         android:textColor="@color/text_hint"
                         android:textSize="12sp" />
                     </LinearLayout>
@@ -1092,7 +1092,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:gravity="center"
-                    android:text="visaroom 1.4.0"
+                    android:text="visaroom 1.5.0"
                     android:textColor="@color/text_hint"
                     android:textSize="12sp" />
             </LinearLayout>

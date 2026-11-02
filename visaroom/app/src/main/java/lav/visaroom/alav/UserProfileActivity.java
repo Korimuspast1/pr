@@ -32,6 +32,7 @@ public class UserProfileActivity extends Activity {
     private TextView bioView;
     private TextView statusView;
     private View adminPanel;
+    private Button blockButton;
 
     private String targetUid = "";
     private String fallbackUsername = "";
@@ -65,12 +66,14 @@ public class UserProfileActivity extends Activity {
         bioView = findViewById(R.id.user_bio);
         statusView = findViewById(R.id.profile_status);
         adminPanel = findViewById(R.id.admin_panel);
+        blockButton = findViewById(R.id.admin_block_account);
 
         nameView.setText(fallbackUsername.length() > 0 ? "@" + fallbackUsername : "User");
         idView.setText("Loading...");
         bioView.setText("");
 
         findViewById(R.id.back).setOnClickListener(v -> finishWithAnimation());
+        blockButton.setOnClickListener(v -> confirmToggleBlock());
         findViewById(R.id.admin_change_id).setOnClickListener(v -> showChangeIdDialog());
         findViewById(R.id.admin_remove_username).setOnClickListener(v -> confirm(
                 "Remove username?", "The user can choose a new one later.",
@@ -178,9 +181,15 @@ public class UserProfileActivity extends Activity {
 
         boolean showAdmin = iAmAdmin && targetUid.length() > 0;
         adminPanel.setVisibility(showAdmin ? View.VISIBLE : View.GONE);
-        statusView.setText(iAmAdmin && priv == null
-                ? "Admin data could not be loaded. Publish the Firebase rules first."
-                : "");
+        boolean blocked = priv != null ? priv.blocked : pub.blocked;
+        blockButton.setText(blocked ? "Unblock account" : "Block account");
+        if (blocked) {
+            statusView.setText("Account blocked");
+        } else {
+            statusView.setText(iAmAdmin && priv == null
+                    ? "Admin data could not be loaded. Publish the Firebase rules first."
+                    : "");
+        }
     }
 
     private Bitmap circular(Bitmap source) {
@@ -223,12 +232,78 @@ public class UserProfileActivity extends Activity {
     }
 
     private void setAdminBusy(boolean busy, String status) {
-        int[] ids = {R.id.admin_change_id, R.id.admin_remove_username,
-                R.id.admin_clear_bio, R.id.admin_remove_photo};
+        int[] ids = {R.id.admin_block_account, R.id.admin_change_id,
+                R.id.admin_remove_username, R.id.admin_clear_bio,
+                R.id.admin_remove_photo};
         for (int id : ids) {
             findViewById(id).setEnabled(!busy);
         }
         statusView.setText(status == null ? "" : status);
+    }
+
+    private boolean targetBlocked() {
+        if (targetData != null) {
+            return targetData.blocked;
+        }
+        return publicProfile != null && publicProfile.blocked;
+    }
+
+    private void confirmToggleBlock() {
+        if (!adminReady()) {
+            return;
+        }
+        if (targetUid.equals(myUid) && !targetBlocked()) {
+            Toast.makeText(this, "You cannot block your own admin account.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        boolean nextBlocked = !targetBlocked();
+        confirm(nextBlocked ? "Block account?" : "Unblock account?",
+                nextBlocked
+                        ? "The user will be signed out, removed from search and will not be able to sign in until unblocked."
+                        : "The user will be able to sign in and use visaroom again.",
+                () -> adminSetBlocked(nextBlocked));
+    }
+
+    private void adminSetBlocked(boolean blocked) {
+        if (!adminReady()) {
+            return;
+        }
+        setAdminBusy(true, blocked ? "Blocking account..." : "Unblocking account...");
+        boolean oldBlocked = targetData.blocked;
+        long oldBlockedAt = targetData.blockedAt;
+        String usernameLower = targetData.usernameLower();
+        executor.execute(() -> {
+            String token = ensureToken();
+            boolean ok = false;
+            if (token != null) {
+                targetData.blocked = blocked;
+                targetData.blockedAt = blocked ? System.currentTimeMillis() : 0;
+                ok = ProfileClient.saveMyProfile(token, targetUid, targetData);
+                if (ok && blocked && usernameLower.length() > 0) {
+                    ProfileClient.deleteUsername(token, usernameLower);
+                }
+                if (ok && !blocked && targetData.username.length() > 0
+                        && targetData.discoverable) {
+                    ProfileClient.claimUsername(token, targetUid,
+                            targetData.username, usernameLower,
+                            true, targetData.publicId);
+                }
+                if (!ok) {
+                    targetData.blocked = oldBlocked;
+                    targetData.blockedAt = oldBlockedAt;
+                }
+            }
+            boolean finalOk = ok;
+            runOnUiThread(() -> {
+                setAdminBusy(false, finalOk
+                        ? (blocked ? "Account blocked." : "Account unblocked.")
+                        : "Could not change the block state.");
+                if (finalOk) {
+                    loadProfile();
+                }
+            });
+        });
     }
 
     private void showChangeIdDialog() {
@@ -237,7 +312,7 @@ public class UserProfileActivity extends Activity {
         }
         EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_NUMBER);
-        input.setHint("100000 - 5000000");
+        input.setHint("Any positive ID, for example 777");
         if (targetData.publicId > 0) {
             input.setText(String.valueOf(targetData.publicId));
         }
@@ -261,7 +336,8 @@ public class UserProfileActivity extends Activity {
                 newId = 0;
             }
             if (!ProfileClient.validPublicId(newId)) {
-                Toast.makeText(this, "ID must be between 100000 and 5000000.",
+                Toast.makeText(this,
+                        "ID must be a positive number up to 999999999999.",
                         Toast.LENGTH_SHORT).show();
                 return;
             }

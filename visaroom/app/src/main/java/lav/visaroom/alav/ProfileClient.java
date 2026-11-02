@@ -45,6 +45,7 @@ final class ProfileClient {
         boolean showBio = true;
         boolean showAvatar = true;
         boolean showId = true;
+        boolean blocked;
     }
 
     static final class Announcement {
@@ -84,6 +85,8 @@ final class ProfileClient {
             out.showBio = bool(fields, "showBio", out.showBio);
             out.showAvatar = bool(fields, "showAvatar", out.showAvatar);
             out.showId = bool(fields, "showId", out.showId);
+            out.blocked = bool(fields, "blocked", out.blocked);
+            out.blockedAt = num(fields, "blockedAt", out.blockedAt);
             return true;
         } catch (Exception ignored) {
             return false;
@@ -109,6 +112,8 @@ final class ProfileClient {
             putBool(mine, "showBio", data.showBio);
             putBool(mine, "showAvatar", data.showAvatar);
             putBool(mine, "showId", data.showId);
+            putBool(mine, "blocked", data.blocked);
+            putNum(mine, "blockedAt", data.blockedAt);
             JSONObject mineBody = new JSONObject();
             mineBody.put("fields", mine);
             Response r1 = request("PATCH", Vault.firestoreBaseUrl() + "users/" + uid,
@@ -130,6 +135,7 @@ final class ProfileClient {
             putBool(pub, "showBio", data.showBio);
             putBool(pub, "showAvatar", data.showAvatar);
             putBool(pub, "showId", data.showId);
+            putBool(pub, "blocked", data.blocked);
             JSONObject pubBody = new JSONObject();
             pubBody.put("fields", pub);
             Response r2 = request("PATCH", Vault.firestoreBaseUrl() + "profiles/" + uid,
@@ -154,6 +160,11 @@ final class ProfileClient {
             return false;
         }
         loadMyProfile(idToken, uid, data);
+        if (data.blocked) {
+            // Callers check data.blocked and stop before opening chats.
+            // A blocked owner must not recreate search/avatar documents.
+            return false;
+        }
         if (!validPublicId(data.publicId)) {
             long assigned = assignPublicId(idToken, uid, data.publicId, 0);
             if (assigned > 0) {
@@ -161,8 +172,8 @@ final class ProfileClient {
             }
         }
         boolean saved = saveMyProfile(idToken, uid, data);
-        if (saved && data.username != null && data.username.trim().length() > 0
-                && data.discoverable) {
+        if (saved && !data.blocked && data.username != null
+                && data.username.trim().length() > 0 && data.discoverable) {
             claimUsername(idToken, uid, data.username,
                     data.usernameLower(), true, data.publicId);
         }
@@ -337,6 +348,7 @@ final class ProfileClient {
                 p.showBio = bool(fields, "showBio", true);
                 p.showAvatar = bool(fields, "showAvatar", true);
                 p.showId = bool(fields, "showId", true);
+                p.blocked = bool(fields, "blocked", false);
             }
             return p;
         } catch (Exception ignored) {
@@ -386,13 +398,23 @@ final class ProfileClient {
 
     static final long PUBLIC_ID_MIN = 100000L;
     static final long PUBLIC_ID_MAX = 5000000L;
+    static final long MAX_ANY_PUBLIC_ID = 999999999999L;
 
     static long randomPublicId() {
         long range = PUBLIC_ID_MAX - PUBLIC_ID_MIN + 1;
         return PUBLIC_ID_MIN + Math.floorMod(new SecureRandom().nextLong(), range);
     }
 
+    /**
+     * Valid existing ID. Auto-generated IDs stay in
+     * PUBLIC_ID_MIN..PUBLIC_ID_MAX, but an admin may assign any positive
+     * ID up to 999999999999.
+     */
     static boolean validPublicId(long id) {
+        return id >= 1 && id <= MAX_ANY_PUBLIC_ID;
+    }
+
+    static boolean validAutoPublicId(long id) {
         return id >= PUBLIC_ID_MIN && id <= PUBLIC_ID_MAX;
     }
 
