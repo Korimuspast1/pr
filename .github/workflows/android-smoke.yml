@@ -1,0 +1,108 @@
+name: Android emulator smoke test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "arena/**"
+      - "main"
+    paths:
+      - ".github/workflows/android-smoke.yml"
+      - "release/*.apk"
+
+permissions:
+  contents: write
+
+jobs:
+  smoke:
+    name: API ${{ matrix.api-level }} smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [26, 34]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Launch delivered APK in emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          API_LEVEL: ${{ matrix.api-level }}
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          target: google_apis
+          profile: Nexus 6
+          disable-animations: true
+          script: |
+            set +e
+            LOG="android-smoke-api${API_LEVEL}.txt"
+            : > "$LOG"
+            APK="$(find release -name '*.apk' | head -n 1)"
+            echo "API=$API_LEVEL APK=$APK" | tee -a "$LOG"
+            sha256sum "$APK" | tee -a "$LOG"
+            adb logcat -c
+            adb install -r "$APK" 2>&1 | tee -a "$LOG"
+            INSTALL_STATUS=${PIPESTATUS[0]}
+            echo "install_status=$INSTALL_STATUS" | tee -a "$LOG"
+            if [ "$INSTALL_STATUS" -ne 0 ]; then
+              adb logcat -d -v threadtime >> "$LOG" 2>&1
+              exit "$INSTALL_STATUS"
+            fi
+            adb shell pm grant lav.visaroom.alav android.permission.POST_NOTIFICATIONS >/dev/null 2>&1 || true
+            echo "--- launch AuthActivity ---" | tee -a "$LOG"
+            adb shell am start -W -n lav.visaroom.alav/.AuthActivity 2>&1 | tee -a "$LOG"
+            sleep 5
+            echo "pid_after_auth=$(adb shell pidof lav.visaroom.alav 2>/dev/null)" | tee -a "$LOG"
+            adb shell dumpsys activity activities 2>/dev/null | grep -A3 -B3 'lav.visaroom.alav' | head -n 100 >> "$LOG"
+            # Root shell on the emulator may open the non-exported activity;
+            # this exercises ChatsActivity inflation/setup with no session.
+            adb root >/dev/null 2>&1 || true
+            adb wait-for-device
+            echo "--- launch ChatsActivity ---" | tee -a "$LOG"
+            adb shell am start -W -n lav.visaroom.alav/.ChatsActivity 2>&1 | tee -a "$LOG"
+            sleep 10
+            PID="$(adb shell pidof lav.visaroom.alav 2>/dev/null | tr -d '\r')"
+            echo "pid_after_chats=$PID" | tee -a "$LOG"
+            adb shell dumpsys activity activities 2>/dev/null | grep -A5 -B5 'lav.visaroom.alav' | head -n 160 >> "$LOG"
+            adb logcat -d -v threadtime >> "$LOG" 2>&1
+            if [ -z "$PID" ]; then
+              echo "SMOKE_FAILED: process is not running" | tee -a "$LOG"
+              exit 1
+            fi
+            if grep -Eq 'FATAL EXCEPTION|AndroidRuntime:.*lav\.visaroom|Process: lav\.visaroom\.alav' "$LOG"; then
+              echo "SMOKE_FAILED: fatal exception in logcat" | tee -a "$LOG"
+              exit 1
+            fi
+            echo "SMOKE_PASSED" | tee -a "$LOG"
+
+      - name: Commit smoke log
+        if: always()
+        continue-on-error: true
+        run: |
+          mkdir -p build-transfer
+          SRC="android-smoke-api${{ matrix.api-level }}.txt"
+          DST="build-transfer/android-smoke-api${{ matrix.api-level }}-log.txt"
+          if [ -f "$SRC" ]; then
+            tail -n 1200 "$SRC" > "$DST"
+          else
+            echo "No smoke log was produced." > "$DST"
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f "$DST"
+          if git diff --cached --quiet; then
+            echo "Smoke log unchanged"
+            exit 0
+          fi
+          git commit -m "CI: Android smoke API ${{ matrix.api-level }} log [skip ci]"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}" || true
