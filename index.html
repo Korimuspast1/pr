@@ -3,73 +3,52 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Платформа — Процедурный домик</title>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<title>Платформа с домом</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#0f0f1a;font-family:'Nunito',sans-serif}
+html,body{width:100%;height:100%;overflow:hidden;background:#0e0e1e;font-family:'Nunito',sans-serif}
 body{touch-action:none;user-select:none}
 #wrap{position:relative;width:100%;height:100%}
-canvas#game{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;cursor:grab}
+canvas#game{width:100%;height:100%;display:block;image-rendering:pixelated;cursor:grab}
 canvas#game:active{cursor:grabbing}
 #top{
-  position:absolute;top:14px;left:14px;right:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;z-index:10;pointer-events:none;
+  position:absolute;top:16px;left:50%;transform:translateX(-50%);
+  display:flex;gap:10px;align-items:center;z-index:10;
 }
-.card{
-  background:rgba(22,22,38,0.92);border:2px solid #2f2f4a;border-radius:16px;backdrop-filter:blur(10px);
-  box-shadow:0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.07);
+.pill{
+  background:#1a1a2e;border:2px solid #2a2a45;border-radius:14px;
+  padding:10px 16px;display:flex;align-items:center;gap:10px;
+  box-shadow:0 6px 18px rgba(0,0,0,0.3);
 }
-#brand{display:flex;align-items:center;gap:12px;padding:12px 16px;pointer-events:auto}
-#brandIcon{width:38px;height:38px;border-radius:10px;background:#ffcc02;display:grid;place-items:center;font-family:'Press Start 2P',monospace;font-size:13px;box-shadow:0 3px 0 #b69200}
-#brandText h1{font-family:'Press Start 2P',monospace;font-size:10px;color:#fff;letter-spacing:0.06em}
-#brandText p{font-size:11px;color:#9aa0c0;margin-top:3px}
-#genPanel{display:flex;align-items:center;gap:8px;padding:8px 10px;pointer-events:auto;flex:1;max-width:620px}
-#seedBox{display:flex;align-items:center;gap:6px;flex:1;background:#1a1a30;border:1px solid #2f2f4a;border-radius:10px;padding:6px 8px}
-#seedBox span{font-family:'Press Start 2P',monospace;font-size:7px;color:#7d82a8;white-space:nowrap}
-#seedInput{flex:1;background:transparent;border:none;color:#fff;font-family:'Press Start 2P',monospace;font-size:8px;outline:none;width:0}
+#title{font-family:'Press Start 2P',monospace;font-size:9px;color:#fff;letter-spacing:0.04em}
+#sub{font-size:11px;color:#8a8ab0}
 #genBtn{
-  background:linear-gradient(180deg,#ffcc02,#ffb700);border:none;border-bottom:3px solid #b69200;border-radius:10px;
-  padding:10px 18px;font-family:'Press Start 2P',monospace;font-size:8px;color:#1a1a1a;cursor:pointer;white-space:nowrap;
-  box-shadow:0 4px 12px rgba(255,204,2,0.3);transition:transform 0.1s;
+  background:#ffcc02;border:none;border-bottom:3px solid #b48f00;border-radius:12px;
+  padding:12px 18px;font-family:'Press Start 2P',monospace;font-size:8px;color:#121212;
+  cursor:pointer;box-shadow:0 4px 12px rgba(255,204,2,0.35);
 }
 #genBtn:active{transform:translateY(2px);border-bottom-width:1px}
 #genBtn:hover{filter:brightness(1.05)}
-.smallBtn{
-  width:40px;height:40px;border-radius:10px;background:rgba(22,22,38,0.92);border:2px solid #2f2f4a;color:#fff;
-  display:grid;place-items:center;cursor:pointer;font-size:16px;pointer-events:auto;transition:0.15s;
-}
-.smallBtn:hover{border-color:#ffcc02;transform:translateY(-1px)}
-.smallBtn.active{background:#ffcc02;color:#111;border-color:#b69200}
 #right{
-  position:absolute;right:14px;top:84px;display:flex;flex-direction:column;gap:8px;z-index:10;
+  position:absolute;right:16px;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:8px;z-index:10;
 }
+.btn{
+  width:44px;height:44px;border-radius:12px;background:#1a1a2e;border:2px solid #2a2a45;
+  color:#fff;font-size:18px;display:grid;place-items:center;cursor:pointer;
+}
+.btn:hover{border-color:#ffcc02}
 #bottom{
-  position:absolute;bottom:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;z-index:10;pointer-events:none;
+  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  background:rgba(26,26,46,0.9);border:2px solid #2a2a45;border-radius:999px;
+  padding:8px 14px;color:#8a8ab0;font-size:12px;z-index:10;display:flex;gap:8px;
 }
-#info{padding:12px 14px;pointer-events:auto;max-width:360px}
-#info h2{font-family:'Press Start 2P',monospace;font-size:8px;color:#ffcc02;letter-spacing:0.06em}
-#info p{font-size:12px;color:#c8cce6;line-height:1.5;margin-top:6px}
-#info .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.tag{background:#1f1f35;border:1px solid #2f2f4a;border-radius:999px;padding:4px 8px;font-family:'Press Start 2P',monospace;font-size:6px;color:#9aa0c0}
-#hint{
-  position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(22,22,38,0.88);border:1px solid #2f2f4a;
-  border-radius:999px;padding:7px 12px;color:#9aa0c0;font-size:11px;z-index:10;pointer-events:none;display:flex;gap:8px;align-items:center;
-}
-#hint b{color:#ffcc02}
-#loader{
-  position:absolute;inset:0;background:radial-gradient(800px 600px at 50% 0%, #1e2140 0%, #0f0f1a 70%);display:grid;place-items:center;z-index:20;transition:opacity 0.5s;
-}
-#loaderCard{background:#161626;border:2px solid #2f2f4a;border-radius:18px;padding:22px 24px;text-align:center;max-width:380px;box-shadow:0 16px 32px rgba(0,0,0,0.4)}
-#loaderCard h2{font-family:'Press Start 2P',monospace;font-size:11px;color:#fff;line-height:1.6}
-#loaderCard p{font-size:12px;color:#8d8fb0;margin:10px 0 14px;line-height:1.5}
-.bar{height:8px;background:#1f1f35;border-radius:999px;overflow:hidden;border:1px solid #2f2f4a}
-.bar i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#ffcc02,#00e5a0);transition:width 0.25s}
-@media(max-width:820px){
-  #top{flex-direction:column;align-items:stretch}
-  #genPanel{max-width:none}
-  #hint{display:none}
-  #info{max-width:200px}
-  #right{top:148px}
+#bottom b{color:#ffcc02}
+#seedTag{
+  position:absolute;top:78px;left:50%;transform:translateX(-50%);
+  background:rgba(26,26,46,0.9);border:1px solid #2a2a45;border-radius:999px;
+  padding:6px 12px;font-family:'Press Start 2P',monospace;font-size:7px;color:#6e6e90;z-index:10;
 }
 </style>
 </head>
@@ -78,58 +57,26 @@ canvas#game:active{cursor:grabbing}
   <canvas id="game"></canvas>
 
   <div id="top">
-    <div id="brand" class="card">
-      <div id="brandIcon">◧</div>
-      <div id="brandText">
-        <h1>ПЛАТФОРМА</h1>
-        <p>домик • процедурная генерация</p>
+    <div class="pill">
+      <div style="width:34px;height:34px;background:#ffcc02;border-radius:8px;display:grid;place-items:center;font-family:'Press Start 2P',monospace;font-size:10px;color:#121212">⌂</div>
+      <div>
+        <div id="title">ПЛАТФОРМА С ДОМОМ</div>
+        <div id="sub">покрути камеру — свободное 360°</div>
       </div>
     </div>
-    <div id="genPanel" class="card">
-      <div id="seedBox">
-        <span>SEED</span>
-        <input id="seedInput" value="" placeholder="случайный">
-        <button class="smallBtn" id="btnCopy" style="width:30px;height:30px;font-size:12px" title="Копировать">⎘</button>
-      </div>
-      <button id="genBtn">🎲 ГЕНЕРИРОВАТЬ</button>
-      <button class="smallBtn" id="btnRand" title="Случайный">↻</button>
-    </div>
+    <button id="genBtn">🎲 НОВЫЙ ДОМ</button>
   </div>
+
+  <div id="seedTag">SEED: <span id="seedVal">—</span></div>
 
   <div id="right">
-    <button class="smallBtn" id="btnZoomIn">＋</button>
-    <button class="smallBtn" id="btnZoomOut">－</button>
-    <button class="smallBtn" id="btnLeft">↺</button>
-    <button class="smallBtn" id="btnRight">↻</button>
-    <button class="smallBtn" id="btnAuto">▶</button>
-    <button class="smallBtn" id="btnNight">☾</button>
+    <button class="btn" id="btnL">↺</button>
+    <button class="btn" id="btnR">↻</button>
+    <button class="btn" id="btnIn">＋</button>
+    <button class="btn" id="btnOut">－</button>
   </div>
 
-  <div id="bottom">
-    <div id="info" class="card">
-      <h2 id="biomeName">ЛЕСНОЙ ОСТРОВ</h2>
-      <p id="biomeDesc">Уютный остров в небесах. На нём стоит один домик. Покрути камеру — 360° свобода.</p>
-      <div class="tags">
-        <span class="tag" id="tagSize">—</span>
-        <span class="tag" id="tagHouse">—</span>
-        <span class="tag" id="tagHeight">—</span>
-      </div>
-    </div>
-    <div class="card" style="padding:8px 10px;display:flex;gap:8px;align-items:center;pointer-events:auto">
-      <span style="font-family:'Press Start 2P',monospace;font-size:7px;color:#7d82a8">КАМЕРА</span>
-      <span style="font-size:12px;color:#fff" id="camInfo">0°</span>
-    </div>
-  </div>
-
-  <div id="hint"><span>🖱️</span><span><b>Тяни мышью</b> — вращать • <b>Колесо</b> — зум • <b>Q/E</b> — поворот</span></div>
-
-  <div id="loader">
-    <div id="loaderCard">
-      <h2>СОЗДАЁМ НОВЫЙ МИР…</h2>
-      <p>Генерируем платформу, подбираем домик и расставляем декор. Каждый остров уникален.</p>
-      <div class="bar"><i id="loadBar"></i></div>
-    </div>
-  </div>
+  <div id="bottom"><span>🖱️ <b>тяни</b> — вращать</span><span>•</span><span><b>колёсико</b> — зум</span><span>•</span><span><b>Q/E</b> — поворот</span></div>
 </div>
 
 <script>
@@ -137,325 +84,109 @@ canvas#game:active{cursor:grabbing}
 const TILE_W=64, TILE_H=32, TILE_Z=18;
 const canvas=document.getElementById('game'), ctx=canvas.getContext('2d');
 let W=innerWidth, H=innerHeight, DPR=Math.min(devicePixelRatio||1,2);
-function resize(){
-  W=innerWidth; H=innerHeight;
-  canvas.width=W*DPR; canvas.height=H*DPR;
-  canvas.style.width=W+'px'; canvas.style.height=H+'px';
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-}
+function resize(){ W=innerWidth; H=innerHeight; canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); }
 addEventListener('resize', resize); resize();
 
 // rng
-function hashString(str){
-  let h=2166136261;
-  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return h>>>0;
-}
-function mulberry32(a){
-  return function(){
-    a|=0; a=a+0x6D2B79F5|0;
-    let t=Math.imul(a ^ a>>>15, 1|a);
-    t=t+Math.imul(t ^ t>>>7, 61|t) ^ t;
-    return ((t ^ t>>>14)>>>0)/4294967296;
+function hash(s){ let h=2166136261; for(let i=0;i<s.length;i++){h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
+function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }}
+let rng=mulberry(hash("init")), currentSeed="";
+function setSeed(s){ currentSeed=s; document.getElementById('seedVal').textContent=s; let h=hash(s); rng=mulberry(h); }
+function randSeed(){ return Math.random().toString(36).slice(2,6).toUpperCase()+"-"+Math.floor(Math.random()*9000+1000); }
+setSeed(randSeed());
+
+const camera={ angle:-0.7, targetAngle:-0.7, zoom:1.15, targetZoom:1.15 };
+
+// ПЛАТФОРМА — фиксированная 10x10
+const PLAT_W=10, PLAT_H=10;
+let platform=[];
+function buildPlatform(){
+  platform=[];
+  for(let x=0;x<PLAT_W;x++) for(let y=0;y<PLAT_H;y++){
+    let wx=x - PLAT_W/2 + 0.5, wy=y - PLAT_H/2 + 0.5;
+    platform.push({x,y,wx,wy,h:0}); // h=0 верх
   }
 }
-let rng=Math.random, currentSeed='';
-function setSeed(s){
-  currentSeed=s;
-  document.getElementById('seedInput').value=s;
-  let h=hashString(s);
-  rng=mulberry32(h);
-}
-function randomSeed(){
-  let s=Math.random().toString(36).slice(2,8).toUpperCase() + '-' + Math.floor(Math.random()*9999).toString().padStart(4,'0');
-  return s;
-}
-setSeed(randomSeed());
+buildPlatform();
 
-// camera orbit around center 0,0
-const camera={ angle:-0.75, targetAngle:-0.75, zoom:1.05, targetZoom:1.05, auto:false, autoSpeed:0.003 };
-let isNight=false;
-let time=0;
-
-// world data
-let world=null; // {tiles:Map key "x,y" -> {h,type}, house:{x,y,w,d,h,style}, decor:[], biome:{}}
-
-const BIOMES=[
-  { id:'forest', name:'ЛЕСНОЙ ОСТРОВ', desc:'Мягкий мох, сосны и тёплый дым из трубы. Самый уютный.', top:'#7bc67e', side:'#5a8a5c', water:'#4fc3f7', decor:'tree' },
-  { id:'desert', name:'ПУСТЫННЫЙ УТЁС', desc:'Песчаный утёс среди облаков. Кактусы и глиняный домик.', top:'#e8d48b', side:'#c2a46a', water:'#f7e6a5', decor:'cactus' },
-  { id:'snow', name:'СНЕЖНАЯ ВЕРШИНА', desc:'Снежный остров в небесах. Свет в окнах греет в метель.', top:'#eef2f7', side:'#b0bec5', water:'#b3e5fc', decor:'snowTree' },
-  { id:'autumn', name:'ОСЕННИЙ САД', desc:'Золотые листья, тыквы у крыльца и аромат пирога.', top:'#d7a76f', side:'#a67c52', water:'#ffab91', decor:'autumnTree' },
-  { id:'moss', name:'МШИСТЫЙ ПАРЯЩИЙ', desc:'Древний парящий камень, поросший мхом. Домик отшельника.', top:'#8aa86f', side:'#6b7f59', water:'#80cbc4', decor:'mushroom' },
+// ДОМ — рандомная генерация
+let house=null;
+const WALL_PALETTE=[
+  {wall:'#e8dcc6', wall2:'#cbb89a', name:'Бежевый'},
+  {wall:'#d7b89c', wall2:'#b89a7a', name:'Деревянный'},
+  {wall:'#eceff1', wall2:'#cfd8dc', name:'Белый'},
+  {wall:'#f8bbd0', wall2:'#f48fb1', name:'Розовый'},
+  {wall:'#ffcc80', wall2:'#ffb74d', name:'Жёлтый'},
+  {wall:'#a5d6a7', wall2:'#81c784', name:'Зелёный'},
+  {wall:'#90caf9', wall2:'#64b5f6', name:'Голубой'},
+  {wall:'#b39ddb', wall2:'#9575cd', name:'Фиолетовый'},
+  {wall:'#bc8a6a', wall2:'#a66a4a', name:'Кирпич'},
+  {wall:'#8d6e63', wall2:'#6d4c41', name:'Тёмное дерево'},
+];
+const ROOF_PALETTE=[
+  {col:'#8d6e63', col2:'#5d4037', name:'Коричневый'},
+  {col:'#37474f', col2:'#263238', name:'Графит'},
+  {col:'#c62828', col2:'#8e0000', name:'Красный'},
+  {col:'#2e7d32', col2:'#1b5e20', name:'Зелёный'},
+  {col:'#1565c0', col2:'#0d47a1', name:'Синий'},
+  {col:'#ef6c00', col2:'#e65100', name:'Оранжевый'},
+  {col:'#6a1b9a', col2:'#4a148c', name:'Пурпур'},
 ];
 
-const HOUSE_STYLES=[
-  { name:'Деревенский', wall:'#d7b89c', wall2:'#bfa07a', roof:'#8d6e63', roof2:'#6d4c41', type:'gable' },
-  { name:'Скандинавский', wall:'#eceff1', wall2:'#cfd8dc', roof:'#37474f', roof2:'#263238', type:'gable' },
-  { name:'Сказочный', wall:'#f8bbd0', wall2:'#f48fb1', roof:'#7e57c2', roof2:'#5e35b1', type:'pyramid' },
-  { name:'Кирпичный', wall:'#bc8a6a', wall2:'#a66a4a', roof:'#bf360c', roof2:'#8d2a0a', type:'gable' },
-  { name:'Лесной', wall:'#a1887f', wall2:'#8d6e63', roof:'#2e7d32', roof2:'#1b5e20', type:'gable' },
-  { name:'Пастельный', wall:'#fff9c4', wall2:'#ffe082', roof:'#4fc3f7', roof2:'#0288d1', type:'flat' },
-];
+function generateHouse(seed){
+  if(seed) setSeed(seed); else setSeed(randSeed());
+  let w = 2 + Math.floor(rng()*3); // 2-4
+  let d = 2 + Math.floor(rng()*3);
+  let h = 1.6 + rng()*1.0; // высота стен
+  // не даём дому вылезти за платформу (платформа 10x10, центр 0,0, края +-4.5)
+  // дом w=4 => половина 2, влезает
+  let wall=WALL_PALETTE[Math.floor(rng()*WALL_PALETTE.length)];
+  let roof=ROOF_PALETTE[Math.floor(rng()*ROOF_PALETTE.length)];
+  let roofType = ['gable','flat','pyramid'][Math.floor(rng()*3)];
+  // если плоская — иногда делаем чуть ниже
+  if(roofType==='flat') h*=0.9;
+  let hasChimney = rng()<0.7;
+  let hasPorch = rng()<0.35;
+  let windows = 1 + Math.floor(rng()*2); // 1-2 на боковых
 
-function fbm(x,y){
-  return Math.sin(x*1.1)*Math.cos(y*1.1)*0.5 + Math.sin(x*2.3+y*1.7)*0.25 + Math.cos(x*0.7 - y*1.3)*0.25;
+  house={ x:0, y:0, w, d, h, wall, roof, roofType, hasChimney, hasPorch, windows, baseH:0, seed:currentSeed };
 }
+generateHouse(currentSeed);
 
-function generateWorld(seed){
-  setSeed(seed);
-  let biome = BIOMES[Math.floor(rng()*BIOMES.length)];
-  // platform shape
-  let tiles=new Map();
-  let size=16; // world grid 16x16 centered
-  let radius=6.5 + rng()*1.5; // base radius
-  let irregularity = 0.8 + rng()*0.6;
-  let centerH = 1 + Math.floor(rng()*2); // 1-2
-
-  for(let x=0;x<size;x++){
-    for(let y=0;y<size;y++){
-      let wx = x - size/2 + 0.5;
-      let wy = y - size/2 + 0.5;
-      let dist = Math.hypot(wx, wy);
-      let angle = Math.atan2(wy, wx);
-      // add wavy edge
-      let edgeNoise = Math.sin(angle*3 + rng()*0.5)*0.7 + Math.cos(angle*5)*0.4 + fbm(wx*0.6, wy*0.6)*irregularity;
-      let threshold = radius + edgeNoise - dist;
-      if(threshold < 0) continue;
-      // height: higher in center, lower at edges
-      let h = centerH - Math.floor(dist*0.35 + rng()*0.6);
-      // add small hill bumps
-      let bump = Math.floor( fbm(wx*0.9, wy*0.9)*0.8 + rng()*0.5 );
-      h += bump;
-      h = Math.max(0, Math.min(3, h));
-      // type variation: edge low = stone side, top grass
-      tiles.set(`${x},${y}`, {x,y, wx, wy, h, biome:biome.id});
-    }
-  }
-
-  // find candidate house positions: near center flat
-  let candidates=[];
-  for(let x=5;x<11;x++) for(let y=5;y<11;y++){
-    let k=`${x},${y}`;
-    if(!tiles.has(k)) continue;
-    let tile=tiles.get(k);
-    // check 3x3 flat area with same h
-    let ok=true;
-    for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){
-      let nk=`${x+dx},${y+dy}`;
-      let t=tiles.get(nk);
-      if(!t || Math.abs(t.h - tile.h)>1) ok=false;
-    }
-    if(ok) candidates.push({x,y, wx:tile.wx, wy:tile.wy, h:tile.h});
-  }
-  if(candidates.length===0){
-    // fallback center
-    let c=tiles.get('8,8');
-    if(c) candidates.push({x:8,y:8, wx:c.wx, wy:c.wy, h:c.h});
-  }
-  let spot=candidates[Math.floor(rng()*candidates.length)] || {x:8,y:8,wx:0,wy:0,h:centerH};
-
-  // house
-  let houseW = 2 + (rng()<0.5?0:1); // 2-3
-  let houseD = 2 + (rng()<0.5?0:1);
-  let houseH = 1.8 + rng()*0.8; // wall height
-  let style = HOUSE_STYLES[Math.floor(rng()*HOUSE_STYLES.length)];
-  // adjust to fit within platform: if spot near edge shift
-  let house={ x:spot.wx, y:spot.wy, w:houseW, d:houseD, h:houseH, style, baseH:spot.h };
-
-  // decor
-  let decor=[];
-  for(let [k,t] of tiles){
-    // skip house footprint
-    let dx=Math.abs(t.wx - house.x), dy=Math.abs(t.wy - house.y);
-    if(dx < house.w/2+0.6 && dy < house.d/2+0.6) continue;
-    if(rng()<0.18){
-      let type=biome.decor;
-      // occasional variation
-      if(rng()<0.15) type = ['bush','rock','tree'][Math.floor(rng()*3)];
-      decor.push({ wx:t.wx + (rng()-0.5)*0.35, wy:t.wy + (rng()-0.5)*0.35, h:t.h, type, scale:0.8+rng()*0.35 });
-    }
-    // small tufts on edges
-    if(rng()<0.08){
-      decor.push({ wx:t.wx+(rng()-0.5)*0.2, wy:t.wy+(rng()-0.5)*0.2, h:t.h, type:'tuft', scale:0.6+rng()*0.3 });
-    }
-  }
-  // fence around house with some chance
-  let hasFence = rng()<0.45;
-  if(hasFence){
-    // add fence posts around house perimeter
-    for(let i=-1;i<=1;i++){
-      // not needed detailed, just flag
-    }
-  }
-
-  world={ tiles, house, decor, biome, seed, hasFence, size, centerH };
-  // update UI
-  document.getElementById('biomeName').textContent=biome.name;
-  document.getElementById('biomeDesc').textContent=biome.desc;
-  document.getElementById('tagSize').textContent=`⧉ ${tiles.size} тайлов`;
-  document.getElementById('tagHouse').textContent=`⌂ ${style.name} ${houseW}×${houseD}`;
-  document.getElementById('tagHeight').textContent=`⛰ ${centerH+houseH.toFixed(1)}м высота`;
-
-  spawnPuff(house.x, house.y, house.baseH+house.h+0.6);
-}
-
-let puffs=[];
-function spawnPuff(wx,wy,wz){
-  puffs.push({wx,wy,wz,t:0,life:0.9});
-}
-
-// initial
-generateWorld(currentSeed);
-
-// helpers
 function worldToScreen(wx,wy,wz){
-  let dx=wx, dy=wy; // camera at 0,0
-  let cos=Math.cos(camera.angle), sin=Math.sin(camera.angle);
-  let rx=dx*cos - dy*sin;
-  let ry=dx*sin + dy*cos;
+  let dx=wx, dy=wy;
+  let c=Math.cos(camera.angle), s=Math.sin(camera.angle);
+  let rx=dx*c - dy*s, ry=dx*s + dy*c;
   let sx=(rx - ry)*(TILE_W/2);
   let sy=(rx + ry)*(TILE_H/2) - wz*TILE_Z;
   sx=sx*camera.zoom + W/2;
-  sy=sy*camera.zoom + H/2 - 22; // lift island a bit
-  return {x:sx,y:sy, rx, ry, depth:rx+ry};
+  sy=sy*camera.zoom + H/2 + 14;
+  return {x:sx,y:sy,rx,ry,depth:rx+ry};
 }
 
-// sprites gen
-let sprites={};
-function makeSprites(){
-  // tree variants
-  function makeTree(canv, col1, col2){
-    let g=canv.getContext('2d'); g.imageSmoothingEnabled=false;
-    let w=canv.width, h=canv.height;
-    g.clearRect(0,0,w,h);
-    // trunk
-    g.fillStyle='#5d4037'; g.fillRect(w/2-4, h-22, 8, 18);
-    g.fillStyle='#3e2723'; g.fillRect(w/2-4, h-22, 2, 18); g.fillRect(w/2+2, h-22, 2, 18);
-    // foliage
-    g.fillStyle=col1; g.fillRect(6, 14, w-12, 18);
-    g.fillRect(10, 6, w-20, 14);
-    g.fillRect(14, 2, w-28, 10);
-    // shadow
-    g.fillStyle=col2; g.fillRect(8, 28, w-14, 4); g.fillRect(w-10, 10, 3, 16);
-    // highlight
-    g.fillStyle='rgba(255,255,255,0.18)'; g.fillRect(12,8,6,3);
-  }
-  let c1=document.createElement('canvas'); c1.width=48; c1.height=56; makeTree(c1,'#2e7d32','#1b5e20'); sprites.tree=c1;
-  let c2=document.createElement('canvas'); c2.width=40; c2.height=48; makeTree(c2,'#e8f5e9','#a5d6a7'); c2.getContext('2d').fillStyle='#fff'; sprites.snowTree=c2;
-  let c3=document.createElement('canvas'); c3.width=44; c3.height=52; makeTree(c3,'#ef6c00','#bf360c'); sprites.autumnTree=c3;
-  let c4=document.createElement('canvas'); c4.width=32; c4.height=36;
-  let g4=c4.getContext('2d'); g4.fillStyle='#8d6e63'; g4.fillRect(12,16,8,14); g4.fillStyle='#a5d6a7'; g4.fillRect(8,6,16,12); g4.fillRect(4,12,24,10); sprites.bush=g4.canvas||c4;
-  // cactus
-  let cc=document.createElement('canvas'); cc.width=32; cc.height=48; let gc=cc.getContext('2d');
-  gc.fillStyle='#558b2f'; gc.fillRect(12,8,8,28); gc.fillRect(4,14,6,14); gc.fillRect(22,18,6,10);
-  gc.fillStyle='#33691e'; gc.fillRect(12,8,2,28); gc.fillRect(22,8,2,28);
-  sprites.cactus=cc;
-  // mushroom
-  let cm=document.createElement('canvas'); cm.width=28; cm.height=32; let gm=cm.getContext('2d');
-  gm.fillStyle='#efebe9'; gm.fillRect(11,14,6,12); gm.fillStyle='#e53935'; gm.beginPath(); gm.arc(14,12,10,0,Math.PI,true); gm.fill();
-  gm.fillStyle='#fff'; gm.fillRect(9,8,4,4); gm.fillRect(16,6,3,3);
-  sprites.mushroom=cm;
-  // tuft
-  let ct=document.createElement('canvas'); ct.width=16; ct.height=12; let gt=ct.getContext('2d');
-  gt.fillStyle='#558b2f'; gt.fillRect(4,6,8,3); gt.fillRect(6,4,4,4);
-  sprites.tuft=ct;
-  // rock
-  let cr=document.createElement('canvas'); cr.width=24; cr.height=16; let gr=cr.getContext('2d');
-  gr.fillStyle='#8d8d8d'; gr.fillRect(4,6,16,8); gr.fillRect(6,4,12,4); gr.fillStyle='#5a5a5a'; gr.fillRect(4,10,16,2);
-  sprites.rock=cr;
-}
-makeSprites();
-
-// input
-const keys={};
-addEventListener('keydown', e=>{
-  keys[e.key.toLowerCase()]=true;
-  if(e.key.toLowerCase()==='q' || e.key==='й') camera.targetAngle-=0.14;
-  if(e.key.toLowerCase()==='e' || e.key==='у') camera.targetAngle+=0.14;
-  if(e.key==='r' || e.key==='к') generateWorld(randomSeed());
-});
-addEventListener('keyup', e=> keys[e.key.toLowerCase()]=false);
-
-let isDragging=false, lastX=0;
-canvas.addEventListener('mousedown', e=>{
-  if(e.button===0 || e.button===2){ isDragging=true; lastX=e.clientX; e.preventDefault(); }
-});
-addEventListener('mouseup', ()=> isDragging=false);
-addEventListener('mousemove', e=>{
-  if(!isDragging) return;
-  let dx=e.clientX-lastX; lastX=e.clientX;
-  camera.targetAngle+=dx*0.007;
-});
+// input rotation
+let isDrag=false, lastX=0;
+canvas.addEventListener('mousedown', e=>{ if(e.button===0||e.button===2){isDrag=true; lastX=e.clientX; e.preventDefault();}});
+addEventListener('mouseup', ()=> isDrag=false);
+addEventListener('mousemove', e=>{ if(!isDrag) return; let dx=e.clientX-lastX; lastX=e.clientX; camera.targetAngle+=dx*0.007; });
 canvas.addEventListener('contextmenu', e=> e.preventDefault());
-canvas.addEventListener('wheel', e=>{
-  e.preventDefault();
-  let d=Math.sign(e.deltaY)*0.09;
-  camera.targetZoom=Math.max(0.6, Math.min(1.9, camera.targetZoom - d));
-},{passive:false});
-
-// touch
-let touchId=null, startX=0, startAng=0;
-canvas.addEventListener('touchstart', e=>{
-  if(e.touches.length===1){
-    let t=e.touches[0]; touchId=t.identifier; startX=t.clientX; startAng=camera.targetAngle;
-  }
-},{passive:false});
-canvas.addEventListener('touchmove', e=>{
-  for(let t of e.touches) if(t.identifier===touchId){
-    let dx=t.clientX-startX; camera.targetAngle=startAng+dx*0.007; e.preventDefault();
-  }
-},{passive:false});
-addEventListener('touchend', ()=> touchId=null);
-
-document.getElementById('btnLeft').onclick=()=> camera.targetAngle-=0.28;
-document.getElementById('btnRight').onclick=()=> camera.targetAngle+=0.28;
-document.getElementById('btnZoomIn').onclick=()=> camera.targetZoom=Math.min(1.9,camera.targetZoom+0.15);
-document.getElementById('btnZoomOut').onclick=()=> camera.targetZoom=Math.max(0.6,camera.targetZoom-0.15);
-document.getElementById('btnAuto').onclick=function(){
-  camera.auto=!camera.auto; this.classList.toggle('active', camera.auto); this.textContent=camera.auto?'⏸':'▶';
-};
-document.getElementById('btnNight').onclick=function(){
-  isNight=!isNight; this.classList.toggle('active', isNight);
-};
-document.getElementById('btnRand').onclick=()=> generateWorld(randomSeed());
-document.getElementById('genBtn').onclick=()=>{
-  let v=document.getElementById('seedInput').value.trim();
-  if(!v) v=randomSeed();
-  generateWorld(v);
-};
-document.getElementById('seedInput').addEventListener('keydown', e=>{
-  if(e.key==='Enter'){ let v=e.target.value.trim()||randomSeed(); generateWorld(v); }
+canvas.addEventListener('wheel', e=>{ e.preventDefault(); let d=Math.sign(e.deltaY)*0.08; camera.targetZoom=Math.max(0.7,Math.min(1.9, camera.targetZoom - d)); }, {passive:false});
+let tid=null, sx0=0, ang0=0;
+canvas.addEventListener('touchstart', e=>{ if(e.touches.length===1){ let t=e.touches[0]; tid=t.identifier; sx0=t.clientX; ang0=camera.targetAngle; }},{passive:false});
+canvas.addEventListener('touchmove', e=>{ for(let t of e.touches) if(t.identifier===tid){ let dx=t.clientX-sx0; camera.targetAngle=ang0+dx*0.007; e.preventDefault(); }},{passive:false});
+addEventListener('touchend', ()=> tid=null);
+addEventListener('keydown', e=>{
+  if(e.key.toLowerCase()==='q') camera.targetAngle-=0.15;
+  if(e.key.toLowerCase()==='e') camera.targetAngle+=0.15;
+  if(e.key===' '||e.key==='Enter'){ generateHouse(); }
 });
-document.getElementById('btnCopy').onclick=()=>{
-  navigator.clipboard.writeText(currentSeed);
-  let b=document.getElementById('btnCopy'); b.textContent='✓'; setTimeout(()=> b.textContent='⎘',900);
-};
+document.getElementById('btnL').onclick=()=> camera.targetAngle-=0.3;
+document.getElementById('btnR').onclick=()=> camera.targetAngle+=0.3;
+document.getElementById('btnIn').onclick=()=> camera.targetZoom=Math.min(1.9,camera.targetZoom+0.12);
+document.getElementById('btnOut').onclick=()=> camera.targetZoom=Math.max(0.7,camera.targetZoom-0.12);
+document.getElementById('genBtn').onclick=()=> generateHouse();
 
-// render loop
-let last=performance.now();
-function frame(){
-  let now=performance.now();
-  let dt=Math.min(0.033,(now-last)/1000); last=now;
-  time+=dt;
-
-  if(camera.auto) camera.targetAngle+=camera.autoSpeed;
-  // smooth
-  let da=camera.targetAngle - camera.angle;
-  while(da>Math.PI) da-=Math.PI*2;
-  while(da<-Math.PI) da+=Math.PI*2;
-  camera.angle += da*0.09;
-  camera.zoom += (camera.targetZoom - camera.zoom)*0.12;
-
-  for(let p of puffs) p.t+=dt;
-  puffs=puffs.filter(p=> p.t<p.life);
-
-  document.getElementById('camInfo').textContent=`${((camera.angle*180/Math.PI)%360).toFixed(0)}° • ${Math.round(camera.zoom*100)}%`;
-
-  render();
-  requestAnimationFrame(frame);
-}
-
-function shadeColor(hex, f){
+function shade(hex,f){
   let r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
   r=Math.round(r*f); g=Math.round(g*f); b=Math.round(b*f);
   return `rgb(${Math.max(0,Math.min(255,r))},${Math.max(0,Math.min(255,g))},${Math.max(0,Math.min(255,b))})`;
@@ -463,369 +194,263 @@ function shadeColor(hex, f){
 
 function render(){
   // sky
-  let topCol=isNight?'#0a0e1f':'#87ceeb', botCol=isNight?'#1a1c2e':'#e1f5fe';
   let grd=ctx.createLinearGradient(0,0,0,H);
-  grd.addColorStop(0,topCol); grd.addColorStop(1,botCol);
+  grd.addColorStop(0,'#87ceeb'); grd.addColorStop(1,'#e1f5fe');
   ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
-  // horizon
-  ctx.fillStyle=isNight?'rgba(12,16,32,0.55)':'rgba(180,210,255,0.35)';
-  ctx.beginPath(); ctx.moveTo(0,H*0.58); ctx.lineTo(W,H*0.55); ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fill();
   // clouds
-  ctx.fillStyle=isNight?'rgba(255,255,255,0.06)':'rgba(255,255,255,0.85)';
-  for(let i=0;i<4;i++){
-    let cx=(W*0.15 + i*W*0.22 + Math.sin(time*0.18+i)*16)%W;
-    let cy=H*0.14 + Math.cos(i*1.7)*10;
-    let s=5; ctx.fillRect(cx,cy,s*4,s*2); ctx.fillRect(cx+s,cy-s,s*2,s); ctx.fillRect(cx-s,cy+s*0.5,s,s);
+  ctx.fillStyle='rgba(255,255,255,0.85)';
+  for(let i=0;i<3;i++){
+    let cx=(W*0.2+i*W*0.28 + Math.sin(Date.now()*0.00012+i)*10)%W;
+    let cy=H*0.13 + Math.cos(i)*8;
+    ctx.fillRect(cx,cy,24,12); ctx.fillRect(cx+6,cy-6,12,6);
   }
 
-  // prepare faces
-  let faces=[], spritesList=[];
   let cos=Math.cos(camera.angle), sin=Math.sin(camera.angle);
   let viewX=cos+sin, viewY=cos - sin; let vl=Math.hypot(viewX,viewY); viewX/=vl; viewY/=vl;
   let lightX=-0.6, lightY=-0.8; let ll=Math.hypot(lightX,lightY); lightX/=ll; lightY/=ll;
 
-  // tiles
-  for(let [k,t] of world.tiles){
-    let topZ=t.h;
-    let vertsTop=[
+  let faces=[], sprites=[];
+
+  // платформа
+  for(let t of platform){
+    let topZ=0;
+    let vTop=[
       {wx:t.wx-0.5, wy:t.wy-0.5, wz:topZ},
       {wx:t.wx+0.5, wy:t.wy-0.5, wz:topZ},
       {wx:t.wx+0.5, wy:t.wy+0.5, wz:topZ},
       {wx:t.wx-0.5, wy:t.wy+0.5, wz:topZ},
     ];
-    let projTop=vertsTop.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-    let depthTop=projTop.reduce((a,p)=>a+p.depth,0)/4;
-    faces.push({verts:vertsTop, proj:projTop, depth:depthTop, type:'top', tile:t});
+    let pTop=vTop.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+    let dTop=pTop.reduce((a,p)=>a+p.depth,0)/4;
+    faces.push({verts:vTop, proj:pTop, depth:dTop, type:'top'});
 
-    // walls to void / lower neighbors
-    let neighs=[
-      {dx:1,dy:0,n:{x:1,y:0}},
-      {dx:-1,dy:0,n:{x:-1,y:0}},
-      {dx:0,dy:1,n:{x:0,y:1}},
-      {dx:0,dy:-1,n:{x:0,y:-1}},
-    ];
-    for(let nb of neighs){
-      let nk=`${t.x+nb.dx},${t.y+nb.dy}`;
-      let nt=world.tiles.get(nk);
-      let nh = nt ? nt.h : -1.2; // void depth for floating island thickness
-      if(topZ>nh){
-        let dot=nb.n.x*viewX + nb.n.y*viewY;
-        if(dot<=0.015) continue;
-        let edge=[];
-        if(nb.dx===1) edge=[{wx:t.wx+0.5,wy:t.wy-0.5},{wx:t.wx+0.5,wy:t.wy+0.5}];
-        else if(nb.dx===-1) edge=[{wx:t.wx-0.5,wy:t.wy+0.5},{wx:t.wx-0.5,wy:t.wy-0.5}];
-        else if(nb.dy===1) edge=[{wx:t.wx+0.5,wy:t.wy+0.5},{wx:t.wx-0.5,wy:t.wy+0.5}];
-        else edge=[{wx:t.wx-0.5,wy:t.wy-0.5},{wx:t.wx+0.5,wy:t.wy-0.5}];
+    // стены платформы — только по краю
+    let isEdge = t.x===0||t.x===PLAT_W-1||t.y===0||t.y===PLAT_H-1;
+    if(isEdge){
+      let neighs=[
+        {dx:1,dy:0,n:{x:1,y:0}, edge:[{wx:t.wx+0.5,wy:t.wy-0.5},{wx:t.wx+0.5,wy:t.wy+0.5}]},
+        {dx:-1,dy:0,n:{x:-1,y:0}, edge:[{wx:t.wx-0.5,wy:t.wy+0.5},{wx:t.wx-0.5,wy:t.wy-0.5}]},
+        {dx:0,dy:1,n:{x:0,y:1}, edge:[{wx:t.wx+0.5,wy:t.wy+0.5},{wx:t.wx-0.5,wy:t.wy+0.5}]},
+        {dx:0,dy:-1,n:{x:0,y:-1}, edge:[{wx:t.wx-0.5,wy:t.wy-0.5},{wx:t.wx+0.5,wy:t.wy-0.5}]},
+      ];
+      for(let nb of neighs){
+        let nx=t.x+nb.dx, ny=t.y+nb.dy;
+        let inside = nx>=0&&nx<PLAT_W&&ny>=0&&ny<PLAT_H;
+        if(inside) continue; // внутри не рисуем швы
+        let dot=nb.n.x*viewX + nb.n.y*viewY; if(dot<=0.01) continue;
         let verts=[
-          {wx:edge[0].wx, wy:edge[0].wy, wz:nh},
-          {wx:edge[0].wx, wy:edge[0].wy, wz:topZ},
-          {wx:edge[1].wx, wy:edge[1].wy, wz:topZ},
-          {wx:edge[1].wx, wy:edge[1].wy, wz:nh},
+          {wx:nb.edge[0].wx, wy:nb.edge[0].wy, wz:-1.6},
+          {wx:nb.edge[0].wx, wy:nb.edge[0].wy, wz:topZ},
+          {wx:nb.edge[1].wx, wy:nb.edge[1].wy, wz:topZ},
+          {wx:nb.edge[1].wx, wy:nb.edge[1].wy, wz:-1.6},
         ];
         let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
         let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
-        let shade=0.88 + (nb.n.x*lightX+nb.n.y*lightY)*0.12;
-        faces.push({verts, proj, depth, type:'wall', tile:t, shade, n:nb.n});
+        let shadeV=0.9 + (nb.n.x*lightX+nb.n.y*lightY)*0.1;
+        faces.push({verts, proj, depth, type:'wall', shade:shadeV});
       }
     }
   }
 
-  // house
-  let h=world.house;
-  let hx=h.x, hy=h.y, hw=h.w, hd=h.d, hh=h.h, bh=h.baseH;
-  // house base walls
-  let houseWalls=[
-    {a:{wx:hx-hw/2+0.04, wy:hy-hd/2+0.04}, b:{wx:hx+hw/2-0.04, wy:hy-hd/2+0.04}, n:{x:0,y:-1}},
-    {a:{wx:hx+hw/2-0.04, wy:hy-hd/2+0.04}, b:{wx:hx+hw/2-0.04, wy:hy+hd/2-0.04}, n:{x:1,y:0}},
-    {a:{wx:hx+hw/2-0.04, wy:hy+hd/2-0.04}, b:{wx:hx-hw/2+0.04, wy:hy+hd/2-0.04}, n:{x:0,y:1}},
-    {a:{wx:hx-hw/2+0.04, wy:hy+hd/2-0.04}, b:{wx:hx-hw/2+0.04, wy:hy-hd/2+0.04}, n:{x:-1,y:0}},
-  ];
-  for(let e of houseWalls){
-    let dot=e.n.x*viewX + e.n.y*viewY;
-    if(dot<=0.015) continue;
-    let verts=[
-      {wx:e.a.wx, wy:e.a.wy, wz:bh},
-      {wx:e.a.wx, wy:e.a.wy, wz:bh+hh},
-      {wx:e.b.wx, wy:e.b.wy, wz:bh+hh},
-      {wx:e.b.wx, wy:e.b.wy, wz:bh},
+  // дом
+  if(house){
+    let hx=house.w/2, hy=house.d/2, hh=house.h, bh=house.baseH;
+    // стены
+    let walls=[
+      {a:{wx:-hx, wy:-hy}, b:{wx:hx, wy:-hy}, n:{x:0,y:-1}},
+      {a:{wx:hx, wy:-hy}, b:{wx:hx, wy:hy}, n:{x:1,y:0}},
+      {a:{wx:hx, wy:hy}, b:{wx:-hx, wy:hy}, n:{x:0,y:1}},
+      {a:{wx:-hx, wy:hy}, b:{wx:-hx, wy:-hy}, n:{x:-1,y:0}},
     ];
-    let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-    let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
-    let shade=0.92 + (e.n.x*lightX+e.n.y*lightY)*0.08;
-    faces.push({verts, proj, depth, type:'houseWall', house:h, shade, edge:e});
-  }
-  // roof
-  if(h.style.type==='flat'){
-    let verts=[
-      {wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh},
-      {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh},
-      {wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh},
-      {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh},
-    ];
-    let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-    let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
-    faces.push({verts, proj, depth, type:'roofFlat', house:h});
-  } else if(h.style.type==='gable'){
-    // gable roof: ridge along longer side
-    let ridgeH=hh*0.6;
-    let vertsR=[];
-    if(hw >= hd){
-      // ridge along X
-      vertsR=[
-        [{wx:hx-hw/2, wy:hy, wz:bh+hh+ridgeH}, {wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh}, {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh}, {wx:hx+hw/2, wy:hy, wz:bh+hh+ridgeH}],
-        [{wx:hx-hw/2, wy:hy, wz:bh+hh+ridgeH}, {wx:hx+hw/2, wy:hy, wz:bh+hh+ridgeH}, {wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh}, {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh}]
+    for(let e of walls){
+      let dot=e.n.x*viewX + e.n.y*viewY; if(dot<=0.01) continue;
+      let verts=[
+        {wx:e.a.wx, wy:e.a.wy, wz:bh},
+        {wx:e.a.wx, wy:e.a.wy, wz:bh+hh},
+        {wx:e.b.wx, wy:e.b.wy, wz:bh+hh},
+        {wx:e.b.wx, wy:e.b.wy, wz:bh},
       ];
-    } else {
-      vertsR=[
-        [{wx:hx, wy:hy-hd/2, wz:bh+hh+ridgeH}, {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh}, {wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh}, {wx:hx, wy:hy+hd/2, wz:bh+hh+ridgeH}],
-        [{wx:hx, wy:hy-hd/2, wz:bh+hh+ridgeH}, {wx:hx, wy:hy+hd/2, wz:bh+hh+ridgeH}, {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh}, {wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh}]
-      ];
-    }
-    for(let vr of vertsR){
-      let proj=vr.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-      let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
-      faces.push({verts:vr, proj, depth, type:'roofGable', house:h});
-    }
-    // gable triangles (side)
-    let gables=[];
-    if(hw >= hd){
-      gables=[
-        [{wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh}, {wx:hx-hw/2, wy:hy, wz:bh+hh+ridgeH}, {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh}],
-        [{wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh}, {wx:hx+hw/2, wy:hy, wz:bh+hh+ridgeH}, {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh}]
-      ];
-    } else {
-      gables=[
-        [{wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh}, {wx:hx, wy:hy-hd/2, wz:bh+hh+ridgeH}, {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh}],
-        [{wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh}, {wx:hx, wy:hy+hd/2, wz:bh+hh+ridgeH}, {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh}]
-      ];
-    }
-    for(let g of gables){
-      let proj=g.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-      let depth=proj.reduce((a,p)=>a+p.depth,0)/3;
-      // cull by normal? we'll keep both, painter will sort
-      faces.push({verts:g, proj, depth, type:'roofGableSide', house:h});
-    }
-  } else if(h.style.type==='pyramid'){
-    let apex={wx:hx, wy:hy, wz:bh+hh+0.9};
-    let base=[
-      {wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh},
-      {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh},
-      {wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh},
-      {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh},
-    ];
-    for(let i=0;i<4;i++){
-      let verts=[base[i], base[(i+1)%4], apex];
       let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-      let depth=proj.reduce((a,p)=>a+p.depth,0)/3;
-      faces.push({verts, proj, depth, type:'roofGable', house:h});
+      let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
+      let sh=0.94 + (e.n.x*lightX+e.n.y*lightY)*0.06;
+      faces.push({verts, proj, depth, type:'houseWall', wall:e, shade:sh, house});
+    }
+    // крыша
+    if(house.roofType==='flat'){
+      let v=[
+        {wx:-hx, wy:-hy, wz:bh+hh},
+        {wx:hx, wy:-hy, wz:bh+hh},
+        {wx:hx, wy:hy, wz:bh+hh},
+        {wx:-hx, wy:hy, wz:bh+hh},
+      ];
+      let proj=v.map(p=> worldToScreen(p.wx,p.wy,p.wz));
+      faces.push({verts:v, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/4, type:'roofFlat', house});
+    } else if(house.roofType==='pyramid'){
+      let apex={wx:0, wy:0, wz:bh+hh+0.9};
+      let base=[{wx:-hx,wy:-hy,wz:bh+hh},{wx:hx,wy:-hy,wz:bh+hh},{wx:hx,wy:hy,wz:bh+hh},{wx:-hx,wy:hy,wz:bh+hh}];
+      for(let i=0;i<4;i++){
+        let v=[base[i], base[(i+1)%4], apex];
+        let proj=v.map(p=> worldToScreen(p.wx,p.wy,p.wz));
+        faces.push({verts:v, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/3, type:'roofTri', house});
+      }
+    } else { // gable
+      let ridgeH=0.7 + Math.min(hx,hy)*0.25;
+      let ridgeAxis = hx >= hy ? 'x' : 'y';
+      let roofParts=[];
+      if(ridgeAxis==='x'){
+        roofParts=[
+          [{wx:-hx,wy:0,wz:bh+hh+ridgeH},{wx:-hx,wy:-hy,wz:bh+hh},{wx:hx,wy:-hy,wz:bh+hh},{wx:hx,wy:0,wz:bh+hh+ridgeH}],
+          [{wx:-hx,wy:0,wz:bh+hh+ridgeH},{wx:hx,wy:0,wz:bh+hh+ridgeH},{wx:hx,wy:hy,wz:bh+hh},{wx:-hx,wy:hy,wz:bh+hh}]
+        ];
+      } else {
+        roofParts=[
+          [{wx:0,wy:-hy,wz:bh+hh+ridgeH},{wx:hx,wy:-hy,wz:bh+hh},{wx:hx,wy:hy,wz:bh+hh},{wx:0,wy:hy,wz:bh+hh+ridgeH}],
+          [{wx:0,wy:-hy,wz:bh+hh+ridgeH},{wx:0,wy:hy,wz:bh+hh+ridgeH},{wx:-hx,wy:hy,wz:bh+hh},{wx:-hx,wy:-hy,wz:bh+hh}]
+        ];
+      }
+      for(let part of roofParts){
+        let proj=part.map(p=> worldToScreen(p.wx,p.wy,p.wz));
+        faces.push({verts:part, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/4, type:'roofGable', house});
+      }
+      // фронтоны
+      let gables=[];
+      if(ridgeAxis==='x'){
+        gables=[
+          [{wx:-hx,wy:-hy,wz:bh+hh},{wx:-hx,wy:0,wz:bh+hh+ridgeH},{wx:-hx,wy:hy,wz:bh+hh}],
+          [{wx:hx,wy:hy,wz:bh+hh},{wx:hx,wy:0,wz:bh+hh+ridgeH},{wx:hx,wy:-hy,wz:bh+hh}]
+        ];
+      } else {
+        gables=[
+          [{wx:-hx,wy:-hy,wz:bh+hh},{wx:0,wy:-hy,wz:bh+hh+ridgeH},{wx:hx,wy:-hy,wz:bh+hh}],
+          [{wx:hx,wy:hy,wz:bh+hh},{wx:0,wy:hy,wz:bh+hh+ridgeH},{wx:-hx,wy:hy,wz:bh+hh}]
+        ];
+      }
+      for(let g of gables){
+        let proj=g.map(p=> worldToScreen(p.wx,p.wy,p.wz));
+        faces.push({verts:g, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/3, type:'gable', house});
+      }
+    }
+    // труба
+    if(house.hasChimney){
+      let cx=hx*0.5, cy=-hy*0.4;
+      let chim=[
+        {a:{wx:cx-0.2,wy:cy-0.2}, b:{wx:cx+0.2,wy:cy-0.2}, n:{x:0,y:-1}},
+        {a:{wx:cx+0.2,wy:cy-0.2}, b:{wx:cx+0.2,wy:cy+0.2}, n:{x:1,y:0}},
+        {a:{wx:cx+0.2,wy:cy+0.2}, b:{wx:cx-0.2,wy:cy+0.2}, n:{x:0,y:1}},
+        {a:{wx:cx-0.2,wy:cy+0.2}, b:{wx:cx-0.2,wy:cy-0.2}, n:{x:-1,y:0}},
+      ];
+      for(let e of chim){
+        let dot=e.n.x*viewX + e.n.y*viewY; if(dot<=0.01) continue;
+        let verts=[
+          {wx:e.a.wx, wy:e.a.wy, wz:bh+hh},
+          {wx:e.a.wx, wy:e.a.wy, wz:bh+hh+0.85},
+          {wx:e.b.wx, wy:e.b.wy, wz:bh+hh+0.85},
+          {wx:e.b.wx, wy:e.b.wy, wz:bh+hh},
+        ];
+        let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+        faces.push({verts, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/4, type:'chimney'});
+      }
+      let topV=[{wx:cx-0.2,wy:cy-0.2,wz:bh+hh+0.85},{wx:cx+0.2,wy:cy-0.2,wz:bh+hh+0.85},{wx:cx+0.2,wy:cy+0.2,wz:bh+hh+0.85},{wx:cx-0.2,wy:cy+0.2,wz:bh+hh+0.85}];
+      let pTop=topV.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+      faces.push({verts:topV, proj:pTop, depth:pTop.reduce((a,p)=>a+p.depth,0)/4, type:'chimneyTop'});
     }
   }
-  // chimney
-  let chimX=hx+ hw*0.28, chimY=hy - hd*0.18;
-  let chimVerts=[
-    {a:{wx:chimX-0.18, wy:chimY-0.18}, b:{wx:chimX+0.18, wy:chimY-0.18}, n:{x:0,y:-1}},
-    {a:{wx:chimX+0.18, wy:chimY-0.18}, b:{wx:chimX+0.18, wy:chimY+0.18}, n:{x:1,y:0}},
-    {a:{wx:chimX+0.18, wy:chimY+0.18}, b:{wx:chimX-0.18, wy:chimY+0.18}, n:{x:0,y:1}},
-    {a:{wx:chimX-0.18, wy:chimY+0.18}, b:{wx:chimX-0.18, wy:chimY-0.18}, n:{x:-1,y:0}},
-  ];
-  for(let e of chimVerts){
-    let dot=e.n.x*viewX + e.n.y*viewY; if(dot<=0.015) continue;
-    let verts=[
-      {wx:e.a.wx, wy:e.a.wy, wz:bh+hh},
-      {wx:e.a.wx, wy:e.a.wy, wz:bh+hh+0.9},
-      {wx:e.b.wx, wy:e.b.wy, wz:bh+hh+0.9},
-      {wx:e.b.wx, wy:e.b.wy, wz:bh+hh},
-    ];
-    let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-    let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
-    faces.push({verts, proj, depth, type:'chimney', house:h});
-  }
-  // chimney top
-  {
-    let verts=[
-      {wx:chimX-0.18, wy:chimY-0.18, wz:bh+hh+0.9},
-      {wx:chimX+0.18, wy:chimY-0.18, wz:bh+hh+0.9},
-      {wx:chimX+0.18, wy:chimY+0.18, wz:bh+hh+0.9},
-      {wx:chimX-0.18, wy:chimY+0.18, wz:bh+hh+0.9},
-    ];
-    let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-    let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
-    faces.push({verts, proj, depth, type:'chimneyTop', house:h});
-  }
 
-  // decor sprites
-  for(let d of world.decor){
-    let p=worldToScreen(d.wx,d.wy,d.h);
-    spritesList.push({x:p.x, y:p.y, depth:p.depth, decor:d});
-  }
-  // puffs
-  for(let puff of puffs){
-    let p=worldToScreen(puff.wx, puff.wy, puff.wz + puff.t*0.6);
-    spritesList.push({x:p.x, y:p.y, depth:p.depth+0.01, puff, alpha:1-puff.t/puff.life});
-  }
-
-  // combine
-  let drawList=[];
-  for(let f of faces) drawList.push({depth:f.depth, kind:'face', f});
-  for(let s of spritesList) drawList.push({depth:s.depth, kind:'sprite', s});
-  drawList.sort((a,b)=> a.depth - b.depth);
+  // сортировка
+  let list=[];
+  for(let f of faces) list.push({depth:f.depth, kind:'face', f});
+  list.sort((a,b)=> a.depth - b.depth);
 
   ctx.imageSmoothingEnabled=false;
+  for(let it of list){
+    let f=it.f;
+    let proj=f.proj;
+    ctx.beginPath(); ctx.moveTo(proj[0].x, proj[0].y);
+    for(let i=1;i<proj.length;i++) ctx.lineTo(proj[i].x, proj[i].y);
+    ctx.closePath();
 
-  for(let item of drawList){
-    if(item.kind==='face'){
-      let f=item.f;
-      let proj=f.proj;
-      // cull offscreen
-      let minX=Math.min(...proj.map(p=>p.x)), maxX=Math.max(...proj.map(p=>p.x));
-      let minY=Math.min(...proj.map(p=>p.y)), maxY=Math.max(...proj.map(p=>p.y));
-      if(maxX < -80 || minX > W+80 || maxY < -80 || minY > H+80) continue;
-      ctx.beginPath(); ctx.moveTo(proj[0].x, proj[0].y);
-      for(let i=1;i<proj.length;i++) ctx.lineTo(proj[i].x, proj[i].y);
-      ctx.closePath();
-
-      if(f.type==='top'){
-        let col=world.biome.top;
-        if(isNight) col=shadeColor(col,0.58);
-        ctx.fillStyle=col;
-        ctx.fill();
-        // subtle pixel tuft
-        let cx=(proj[0].x+proj[2].x)/2, cy=(proj[0].y+proj[2].y)/2;
-        ctx.fillStyle=isNight?'rgba(30,40,30,0.18)':'rgba(40,80,40,0.14)';
-        ctx.fillRect(cx-3, cy-1, 2,2); ctx.fillRect(cx+2, cy+2, 1.5,1.5);
-        ctx.strokeStyle=isNight?'rgba(0,0,0,0.18)':'rgba(0,0,0,0.08)'; ctx.lineWidth=1; ctx.stroke();
-
-      } else if(f.type==='wall'){
-        let base=world.biome.side;
-        if(isNight) base=shadeColor(base,0.55);
-        let col=shadeColor(base, f.shade);
-        ctx.fillStyle=col;
-        ctx.fill();
-        // strata
-        ctx.strokeStyle='rgba(0,0,0,0.10)'; ctx.lineWidth=1; ctx.stroke();
-        // grass overhang
-        let topEdgeMidX=(proj[1].x+proj[2].x)/2, topEdgeMidY=(proj[1].y+proj[2].y)/2;
-        ctx.fillStyle=shadeColor(world.biome.top, isNight?0.48:0.85);
-        ctx.fillRect(topEdgeMidX-6, topEdgeMidY-2, 12, 3);
-
-      } else if(f.type==='houseWall'){
-        let col=f.house.style.wall;
-        if(isNight) col=shadeColor(col,0.62);
-        let c=shadeColor(col, f.shade);
-        ctx.fillStyle=c; ctx.fill();
-        ctx.strokeStyle='rgba(0,0,0,0.14)'; ctx.stroke();
-        // windows/door on front-ish walls (south and east visible most)
-        // add door on south wall (n y=1) and windows on others
-        let isSouth = f.edge && f.edge.n.y===1;
-        let cx=(proj[0].x+proj[1].x+proj[2].x+proj[3].x)/4;
-        let cy=(proj[0].y+proj[1].y+proj[2].y+proj[3].y)/4;
-        if(isSouth){
-          // door
-          ctx.fillStyle=isNight?'#3e2723':'#4e342e';
-          let w=8*camera.zoom, h=12*camera.zoom;
-          ctx.fillRect(cx-w/2, cy - h/2 + 4*camera.zoom, w, h);
-          ctx.fillStyle='#2a1a0f'; ctx.fillRect(cx-w/2+1, cy - h/2+5*camera.zoom, w-2, 2);
-          // door knob
-          ctx.fillStyle='#ffcc02'; ctx.fillRect(cx+2, cy, 2,2);
-          // side window
-          ctx.fillStyle=isNight?'#ffcc02':'#1a237e';
-          ctx.fillRect(cx - 18*camera.zoom, cy - 3*camera.zoom, 7*camera.zoom, 7*camera.zoom);
-          ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.fillRect(cx - 18*camera.zoom+1, cy -2*camera.zoom, 5*camera.zoom,1);
-        } else {
-          // window
-          ctx.fillStyle=isNight?'#5a4a2a':'#1a237e';
-          let w=7*camera.zoom, h=7*camera.zoom;
-          ctx.fillRect(cx-w/2, cy - h/2, w, h);
-          ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.strokeRect(cx-w/2, cy - h/2, w, h);
-          // cross
-          ctx.beginPath(); ctx.moveTo(cx, cy - h/2); ctx.lineTo(cx, cy + h/2); ctx.moveTo(cx - w/2, cy); ctx.lineTo(cx + w/2, cy); ctx.stroke();
-        }
-
-      } else if(f.type==='roofFlat'){
-        let col=f.house.style.roof2;
-        if(isNight) col=shadeColor(col,0.6);
-        ctx.fillStyle=col; ctx.fill();
-        // parapet highlight
-        ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(proj[0].x+3, proj[0].y+3, 6*camera.zoom, 3);
-        ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.stroke();
-
-      } else if(f.type==='roofGable'){
-        let col=f.house.style.roof;
-        if(isNight) col=shadeColor(col,0.58);
-        // shade by orientation via view (approx)
-        let shade = 0.94 + (Math.sin(camera.angle)*0.04);
-        ctx.fillStyle=shadeColor(col, shade);
-        ctx.fill();
-        // roof tiles pattern
-        ctx.strokeStyle='rgba(0,0,0,0.10)'; ctx.lineWidth=1; ctx.stroke();
-        // ridge line
-        ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.moveTo(proj[0].x, proj[0].y); ctx.lineTo(proj[3].x, proj[3].y); ctx.stroke();
-
-      } else if(f.type==='roofGableSide'){
-        let col=shadeColor(f.house.style.roof2, 0.82);
-        if(isNight) col=shadeColor(col,0.62);
-        ctx.fillStyle=col; ctx.fill();
-        ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.stroke();
-        // window on gable if visible
-        let cx=(proj[0].x+proj[1].x+proj[2].x)/3, cy=(proj[0].y+proj[1].y+proj[2].y)/3;
-        ctx.fillStyle=isNight?'#ffcc02':'#1a237e'; ctx.beginPath(); ctx.arc(cx, cy+2*camera.zoom, 4*camera.zoom,0,Math.PI*2); ctx.fill();
-        ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.stroke();
-
-      } else if(f.type==='chimney'){
-        ctx.fillStyle=isNight?'#2a2a30':'#4e342e'; ctx.fill();
-        ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.stroke();
-        // brick lines
-        ctx.strokeStyle='rgba(0,0,0,0.08)';
-        let my=(proj[1].y+proj[2].y)/2; ctx.beginPath(); ctx.moveTo(proj[1].x, my); ctx.lineTo(proj[2].x, my); ctx.stroke();
-
-      } else if(f.type==='chimneyTop'){
-        ctx.fillStyle='#3e2723'; ctx.fill();
-        ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.stroke();
-        // smoke source already via puffs
+    if(f.type==='top'){
+      ctx.fillStyle='#7bc67e';
+      ctx.fill();
+      // пиксельные детали травы
+      let cx=(proj[0].x+proj[2].x)/2, cy=(proj[0].y+proj[2].y)/2;
+      ctx.fillStyle='rgba(60,120,60,0.18)'; ctx.fillRect(cx-4,cy-2,2,2); ctx.fillRect(cx+3,cy+2,2,2);
+      ctx.strokeStyle='rgba(0,0,0,0.08)'; ctx.lineWidth=1; ctx.stroke();
+    } else if(f.type==='wall'){
+      ctx.fillStyle=shade('#9aa08a', f.shade);
+      ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.stroke();
+      // трава на краю
+      ctx.fillStyle='#7bc67e'; ctx.fillRect((proj[1].x+proj[2].x)/2-6, (proj[1].y+proj[2].y)/2-1, 12,3);
+    } else if(f.type==='houseWall'){
+      let col=shade(f.house.wall.wall, f.shade);
+      ctx.fillStyle=col; ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.14)'; ctx.lineWidth=1; ctx.stroke();
+      // окна/дверь
+      let cx=(proj[0].x+proj[1].x+proj[2].x+proj[3].x)/4;
+      let cy=(proj[0].y+proj[1].y+proj[2].y+proj[3].y)/4;
+      let isFront = f.wall.n.y===1; // юг — фасад
+      if(isFront){
+        // дверь
+        ctx.fillStyle='#4e342e'; let w=10*camera.zoom, h=14*camera.zoom;
+        ctx.fillRect(cx-w/2, cy - h/2 + 5*camera.zoom, w, h);
+        ctx.fillStyle='#3e2723'; ctx.fillRect(cx-w/2, cy+h/2-1, w,2);
+        ctx.fillStyle='#ffcc02'; ctx.fillRect(cx+2, cy+1, 2,2);
+        // окно рядом
+        ctx.fillStyle='#1a237e'; ctx.fillRect(cx-20*camera.zoom, cy-4*camera.zoom, 8*camera.zoom,8*camera.zoom);
+        ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.strokeRect(cx-20*camera.zoom, cy-4*camera.zoom, 8*camera.zoom,8*camera.zoom);
+      } else {
+        // боковое окно
+        ctx.fillStyle='#1a237e'; let w=8*camera.zoom, h=8*camera.zoom;
+        ctx.fillRect(cx-w/2, cy-h/2, w, h);
+        ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.strokeRect(cx-w/2, cy-h/2, w, h);
+        ctx.beginPath(); ctx.moveTo(cx, cy-h/2); ctx.lineTo(cx, cy+h/2); ctx.moveTo(cx-w/2, cy); ctx.lineTo(cx+w/2, cy); ctx.stroke();
       }
-
-    } else {
-      let s=item.s;
-      if(s.decor){
-        let d=s.decor;
-        let img=sprites[d.type] || sprites.tree;
-        if(!img) continue;
-        let scale=camera.zoom * d.scale;
-        // shadow
-        ctx.fillStyle=isNight?'rgba(0,0,0,0.28)':'rgba(0,0,0,0.16)';
-        ctx.beginPath(); ctx.ellipse(s.x, s.y+3*scale, 8*scale, 4*scale,0,0,Math.PI*2); ctx.fill();
-        let w=img.width*0.6*scale, h=img.height*0.6*scale;
-        let sway=(d.type==='tree'||d.type==='autumnTree') ? Math.sin(time*0.9 + d.wx*3)*1.2*scale : 0;
-        ctx.drawImage(img, s.x - w/2 + sway, s.y - h + 4*scale, w, h);
-      } else if(s.puff){
-        ctx.globalAlpha=s.alpha*0.8;
-        ctx.fillStyle=isNight?'#9fa8da':'#fff';
-        ctx.beginPath(); ctx.arc(s.x, s.y, 7*camera.zoom*s.alpha,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle='#ffcc02'; ctx.beginPath(); ctx.arc(s.x, s.y-1, 3*camera.zoom*s.alpha,0,Math.PI*2); ctx.fill();
-        ctx.globalAlpha=1;
-      }
+    } else if(f.type==='roofFlat'){
+      ctx.fillStyle=shade(f.house.roof.col2,0.95); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.stroke();
+      // маленький бортик
+      ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(proj[0].x+4, proj[0].y+4, 6,3);
+    } else if(f.type==='roofGable' || f.type==='roofTri'){
+      ctx.fillStyle=shade(f.house.roof.col, 0.96); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.stroke();
+    } else if(f.type==='gable'){
+      ctx.fillStyle=shade(f.house.wall.wall2,0.88); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.13)'; ctx.stroke();
+      // круглое окно на фронтоне
+      let cx=(proj[0].x+proj[1].x+proj[2].x)/3, cy=(proj[0].y+proj[1].y+proj[2].y)/3;
+      ctx.fillStyle='#1a237e'; ctx.beginPath(); ctx.arc(cx, cy+2*camera.zoom, 5*camera.zoom,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.stroke();
+    } else if(f.type==='chimney'){
+      ctx.fillStyle='#4e342e'; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.14)'; ctx.stroke();
+    } else if(f.type==='chimneyTop'){
+      ctx.fillStyle='#3e2723'; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.stroke();
     }
   }
 
-  // island shadow on void
-  let shadP=worldToScreen(0,0,-1.2);
-  ctx.fillStyle=isNight?'rgba(0,0,0,0.35)':'rgba(0,0,0,0.18)';
-  ctx.beginPath(); ctx.ellipse(shadP.x, shadP.y+10, 90*camera.zoom, 36*camera.zoom, 0,0,Math.PI*2); ctx.fill();
+  // тень под платформой
+  let sh=worldToScreen(0,0,-1.6);
+  ctx.fillStyle='rgba(0,0,0,0.18)';
+  ctx.beginPath(); ctx.ellipse(sh.x, sh.y+8, 78*camera.zoom, 28*camera.zoom,0,0,Math.PI*2); ctx.fill();
 
-  // vignette
+  // виньетка
   let vig=ctx.createRadialGradient(W/2,H/2, Math.min(W,H)*0.5, W/2,H/2, Math.min(W,H)*0.95);
-  vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.22)');
+  vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.20)');
   ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
 }
 
-// loader
-let lp=0, int=setInterval(()=>{
-  lp+=Math.random()*20;
-  if(lp>=100){ lp=100; clearInterval(int); setTimeout(()=>{ document.getElementById('loader').style.opacity='0'; setTimeout(()=> document.getElementById('loader').remove(),500); },280); }
-  document.getElementById('loadBar').style.width=lp+'%';
-},110);
-
-frame();
+let last=performance.now();
+function loop(){
+  let now=performance.now(), dt=Math.min(0.033,(now-last)/1000); last=now;
+  let da=camera.targetAngle - camera.angle;
+  while(da>Math.PI) da-=Math.PI*2;
+  while(da<-Math.PI) da+=Math.PI*2;
+  camera.angle += da*0.09;
+  camera.zoom += (camera.targetZoom - camera.zoom)*0.11;
+  render();
+  requestAnimationFrame(loop);
+}
+loop();
 })();
 </script>
 </body>
