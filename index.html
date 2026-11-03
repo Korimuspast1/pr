@@ -366,9 +366,7 @@ function render(){
   let allFaces=[...platformFaces, ...houseFaces];
 
   ctx.imageSmoothingEnabled=false;
-  for(let it of allFaces){
-    let f=it;
-    let f=it.f;
+  for(let f of allFaces){
     let proj=f.proj;
     ctx.beginPath(); ctx.moveTo(proj[0].x, proj[0].y);
     for(let i=1;i<proj.length;i++) ctx.lineTo(proj[i].x, proj[i].y);
