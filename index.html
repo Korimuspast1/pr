@@ -3,1213 +3,829 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>PIXEL ISOMETRIA — Свободная камера 360°</title>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Manrope:wght@600;800&display=swap" rel="stylesheet">
+<title>Платформа — Процедурный домик</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0f111a;
-    --panel:#1a1d2e;
-    --accent:#ffcc02;
-    --accent2:#00e5a0;
-    --line:#2a2e4a;
-  }
-  *{margin:0;padding:0;box-sizing:border-box}
-  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Manrope',sans-serif}
-  body{touch-action:none;user-select:none}
-  #gameWrap{position:relative;width:100%;height:100%;overflow:hidden}
-  canvas#game{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;cursor:grab}
-  canvas#game:active{cursor:grabbing}
-  /* TOP BAR */
-  #topBar{
-    position:absolute;top:12px;left:12px;right:12px;
-    display:flex;align-items:center;justify-content:space-between;gap:12px;
-    pointer-events:none;z-index:10;
-  }
-  .panel{
-    background:rgba(18,20,35,0.92);border:2px solid #2a2e4a;border-radius:14px;
-    backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
-  }
-  #logo{
-    display:flex;align-items:center;gap:12px;padding:10px 16px;pointer-events:auto;
-  }
-  #logoIcon{
-    width:36px;height:36px;background:var(--accent);border-radius:8px;display:grid;place-items:center;
-    font-family:'Press Start 2P',monospace;font-size:10px;color:#1a1a1a;box-shadow:0 2px 0 #b89300;
-  }
-  #logoText h1{font-family:'Press Start 2P',monospace;font-size:11px;letter-spacing:0.04em;color:#fff;line-height:1.4}
-  #logoText p{font-size:10px;color:#8b90b0;letter-spacing:0.08em;text-transform:uppercase;margin-top:2px}
-  #controlsHint{
-    padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;pointer-events:auto;
-  }
-  .hint{font-size:11px;color:#cbd0e8;display:flex;align-items:center;gap:6px;white-space:nowrap}
-  .kbd{
-    background:#2a2e4a;border:1px solid #3a3f62;border-bottom-width:3px;border-radius:6px;
-    padding:2px 6px;font-family:'Press Start 2P',monospace;font-size:8px;color:#fff;min-width:22px;text-align:center;
-  }
-  .kbd.accent{background:var(--accent);color:#1a1a1a;border-color:#c49a00}
-  /* RIGHT CONTROLS */
-  #rightPanel{
-    position:absolute;right:12px;top:76px;display:flex;flex-direction:column;gap:10px;z-index:10;pointer-events:auto;
-  }
-  .iconBtn{
-    width:44px;height:44px;border-radius:12px;background:rgba(18,20,35,0.92);border:2px solid #2a2e4a;
-    display:grid;place-items:center;cursor:pointer;color:#fff;font-size:18px;transition:0.15s;
-    box-shadow:0 4px 12px rgba(0,0,0,0.3);
-  }
-  .iconBtn:hover{transform:translateY(-2px);border-color:var(--accent);background:#24284a}
-  .iconBtn.active{background:var(--accent);color:#111;border-color:#c49a00}
-  #zoomPanel{display:flex;flex-direction:column;gap:6px}
-  /* BOTTOM BAR */
-  #bottomBar{
-    position:absolute;bottom:12px;left:12px;right:12px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;pointer-events:none;z-index:10;
-  }
-  #leftHud{display:flex;align-items:flex-end;gap:12px;pointer-events:auto}
-  #minimapWrap{width:132px;height:132px;padding:8px}
-  #minimap{width:100%;height:100%;border-radius:8px;background:#0f111a;display:block;image-rendering:pixelated}
-  #minimapWrap .label{font-family:'Press Start 2P',monospace;font-size:7px;color:#8b90b0;text-align:center;margin-bottom:6px;letter-spacing:0.08em}
-  #stats{padding:12px 14px;min-width:160px}
-  #stats .row{display:flex;justify-content:space-between;align-items:center;margin:4px 0;font-size:11px;color:#cbd0e8}
-  #stats .val{font-family:'Press Start 2P',monospace;font-size:9px;color:#fff}
-  #stats .bar{height:6px;background:#2a2e4a;border-radius:999px;overflow:hidden;margin-top:6px}
-  #stats .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#ff7e00);width:60%}
-  #mobileControls{display:flex;gap:10px;align-items:center;pointer-events:auto}
-  #joystick{width:112px;height:112px;position:relative;display:none}
-  #joystickBase{position:absolute;inset:0;background:rgba(18,20,35,0.7);border:2px solid #2a2e4a;border-radius:50%;backdrop-filter:blur(6px)}
-  #joystickStick{position:absolute;left:50%;top:50%;width:44px;height:44px;background:var(--accent);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 3px 0 #b89300, 0 6px 12px rgba(0,0,0,0.3);border:2px solid #fff2}
-  #actionBtns{display:flex;flex-direction:column;gap:8px;display:none}
-  .actionBtn{
-    width:56px;height:56px;border-radius:50%;background:rgba(18,20,35,0.9);border:2px solid #2a2e4a;color:#fff;
-    display:grid;place-items:center;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3)
-  }
-  .actionBtn:active{transform:scale(0.95)}
-  #centerHint{
-    position:absolute;left:50%;bottom:96px;transform:translateX(-50%);
-    background:rgba(18,20,35,0.88);border:1px solid #2a2e4a;border-radius:999px;padding:8px 14px;
-    display:flex;align-items:center;gap:8px;color:#cbd0e8;font-size:11px;pointer-events:none;z-index:10;
-  }
-  #centerHint b{color:var(--accent)}
-  /* MOBILE */
-  @media (max-width:900px){
-    #topBar{flex-direction:column;align-items:stretch}
-    #controlsHint{display:none}
-    #joystick,#actionBtns{display:flex}
-    #rightPanel{top:96px}
-    #centerHint{display:none}
-    #stats{min-width:130px;padding:8px 10px}
-    #minimapWrap{width:96px;height:96px}
-  }
-  /* LOADING */
-  #loader{
-    position:absolute;inset:0;background:radial-gradient(600px 400px at 50% 0%, #1e2340 0%, #0f111a 70%);display:grid;place-items:center;z-index:20;transition:opacity 0.6s;
-  }
-  #loaderCard{background:#1a1d2e;border:2px solid #2a2e4a;border-radius:16px;padding:24px 28px;text-align:center;max-width:360px;box-shadow:0 12px 32px rgba(0,0,0,0.5)}
-  #loaderCard h2{font-family:'Press Start 2P',monospace;font-size:12px;color:#fff;line-height:1.6}
-  #loaderCard p{font-size:12px;color:#8b90b0;margin:12px 0 16px;line-height:1.5}
-  .progress{height:8px;background:#2a2e4a;border-radius:999px;overflow:hidden}
-  .progress i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 0.3s}
-  #tooltip{
-    position:absolute;pointer-events:none;background:rgba(10,12,20,0.9);border:1px solid #2a2e4a;color:#fff;
-    font-size:11px;padding:6px 8px;border-radius:8px;z-index:15;display:none;white-space:nowrap;
-  }
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#0f0f1a;font-family:'Nunito',sans-serif}
+body{touch-action:none;user-select:none}
+#wrap{position:relative;width:100%;height:100%}
+canvas#game{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;cursor:grab}
+canvas#game:active{cursor:grabbing}
+#top{
+  position:absolute;top:14px;left:14px;right:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;z-index:10;pointer-events:none;
+}
+.card{
+  background:rgba(22,22,38,0.92);border:2px solid #2f2f4a;border-radius:16px;backdrop-filter:blur(10px);
+  box-shadow:0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+#brand{display:flex;align-items:center;gap:12px;padding:12px 16px;pointer-events:auto}
+#brandIcon{width:38px;height:38px;border-radius:10px;background:#ffcc02;display:grid;place-items:center;font-family:'Press Start 2P',monospace;font-size:13px;box-shadow:0 3px 0 #b69200}
+#brandText h1{font-family:'Press Start 2P',monospace;font-size:10px;color:#fff;letter-spacing:0.06em}
+#brandText p{font-size:11px;color:#9aa0c0;margin-top:3px}
+#genPanel{display:flex;align-items:center;gap:8px;padding:8px 10px;pointer-events:auto;flex:1;max-width:620px}
+#seedBox{display:flex;align-items:center;gap:6px;flex:1;background:#1a1a30;border:1px solid #2f2f4a;border-radius:10px;padding:6px 8px}
+#seedBox span{font-family:'Press Start 2P',monospace;font-size:7px;color:#7d82a8;white-space:nowrap}
+#seedInput{flex:1;background:transparent;border:none;color:#fff;font-family:'Press Start 2P',monospace;font-size:8px;outline:none;width:0}
+#genBtn{
+  background:linear-gradient(180deg,#ffcc02,#ffb700);border:none;border-bottom:3px solid #b69200;border-radius:10px;
+  padding:10px 18px;font-family:'Press Start 2P',monospace;font-size:8px;color:#1a1a1a;cursor:pointer;white-space:nowrap;
+  box-shadow:0 4px 12px rgba(255,204,2,0.3);transition:transform 0.1s;
+}
+#genBtn:active{transform:translateY(2px);border-bottom-width:1px}
+#genBtn:hover{filter:brightness(1.05)}
+.smallBtn{
+  width:40px;height:40px;border-radius:10px;background:rgba(22,22,38,0.92);border:2px solid #2f2f4a;color:#fff;
+  display:grid;place-items:center;cursor:pointer;font-size:16px;pointer-events:auto;transition:0.15s;
+}
+.smallBtn:hover{border-color:#ffcc02;transform:translateY(-1px)}
+.smallBtn.active{background:#ffcc02;color:#111;border-color:#b69200}
+#right{
+  position:absolute;right:14px;top:84px;display:flex;flex-direction:column;gap:8px;z-index:10;
+}
+#bottom{
+  position:absolute;bottom:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;z-index:10;pointer-events:none;
+}
+#info{padding:12px 14px;pointer-events:auto;max-width:360px}
+#info h2{font-family:'Press Start 2P',monospace;font-size:8px;color:#ffcc02;letter-spacing:0.06em}
+#info p{font-size:12px;color:#c8cce6;line-height:1.5;margin-top:6px}
+#info .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{background:#1f1f35;border:1px solid #2f2f4a;border-radius:999px;padding:4px 8px;font-family:'Press Start 2P',monospace;font-size:6px;color:#9aa0c0}
+#hint{
+  position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(22,22,38,0.88);border:1px solid #2f2f4a;
+  border-radius:999px;padding:7px 12px;color:#9aa0c0;font-size:11px;z-index:10;pointer-events:none;display:flex;gap:8px;align-items:center;
+}
+#hint b{color:#ffcc02}
+#loader{
+  position:absolute;inset:0;background:radial-gradient(800px 600px at 50% 0%, #1e2140 0%, #0f0f1a 70%);display:grid;place-items:center;z-index:20;transition:opacity 0.5s;
+}
+#loaderCard{background:#161626;border:2px solid #2f2f4a;border-radius:18px;padding:22px 24px;text-align:center;max-width:380px;box-shadow:0 16px 32px rgba(0,0,0,0.4)}
+#loaderCard h2{font-family:'Press Start 2P',monospace;font-size:11px;color:#fff;line-height:1.6}
+#loaderCard p{font-size:12px;color:#8d8fb0;margin:10px 0 14px;line-height:1.5}
+.bar{height:8px;background:#1f1f35;border-radius:999px;overflow:hidden;border:1px solid #2f2f4a}
+.bar i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#ffcc02,#00e5a0);transition:width 0.25s}
+@media(max-width:820px){
+  #top{flex-direction:column;align-items:stretch}
+  #genPanel{max-width:none}
+  #hint{display:none}
+  #info{max-width:200px}
+  #right{top:148px}
+}
 </style>
 </head>
 <body>
-<div id="gameWrap">
+<div id="wrap">
   <canvas id="game"></canvas>
 
-  <div id="topBar">
-    <div id="logo" class="panel">
-      <div id="logoIcon">◆</div>
-      <div id="logoText">
-        <h1>PIXEL ISOMETRIA</h1>
-        <p>Свободное вращение камеры • 360°</p>
-      </div>
-      <div style="margin-left:8px;display:flex;gap:6px">
-        <span class="kbd accent">Q</span><span class="kbd accent">E</span>
+  <div id="top">
+    <div id="brand" class="card">
+      <div id="brandIcon">◧</div>
+      <div id="brandText">
+        <h1>ПЛАТФОРМА</h1>
+        <p>домик • процедурная генерация</p>
       </div>
     </div>
-    <div id="controlsHint" class="panel">
-      <span class="hint"><span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span> движение</span>
-      <span class="hint"><span class="kbd">Q</span><span class="kbd">E</span> вращение</span>
-      <span class="hint"><span class="kbd">⎋</span> перетаскивание мышью</span>
-      <span class="hint"><span class="kbd">SCROLL</span> зум</span>
-      <span class="hint" style="color:var(--accent)">● Клик по миру — построить</span>
-    </div>
-  </div>
-
-  <div id="rightPanel">
-    <div id="zoomPanel">
-      <button class="iconBtn" id="btnZoomIn" title="Приблизить">＋</button>
-      <button class="iconBtn" id="btnZoomOut" title="Отдалить">－</button>
-    </div>
-    <button class="iconBtn" id="btnRotateLeft" title="Вращать влево (Q)">↺</button>
-    <button class="iconBtn" id="btnRotateRight" title="Вращать вправо (E)">↻</button>
-    <button class="iconBtn" id="btnDayNight" title="День / Ночь">☀</button>
-    <button class="iconBtn" id="btnBuildMode" title="Режим стройки">🧱</button>
-  </div>
-
-  <div id="bottomBar">
-    <div id="leftHud">
-      <div id="minimapWrap" class="panel">
-        <div class="label">КАРТА МИРА</div>
-        <canvas id="minimap" width="116" height="96"></canvas>
+    <div id="genPanel" class="card">
+      <div id="seedBox">
+        <span>SEED</span>
+        <input id="seedInput" value="" placeholder="случайный">
+        <button class="smallBtn" id="btnCopy" style="width:30px;height:30px;font-size:12px" title="Копировать">⎘</button>
       </div>
-      <div id="stats" class="panel">
-        <div class="row"><span>📍 Позиция</span><span class="val" id="posVal">0, 0</span></div>
-        <div class="row"><span>🧭 Поворот</span><span class="val" id="angVal">0°</span></div>
-        <div class="row"><span>🔍 Зум</span><span class="val" id="zoomVal">100%</span></div>
-        <div class="bar"><i id="staminaBar" style="width:78%"></i></div>
-        <div class="row" style="font-size:10px;color:#8b90b0;margin-top:6px">Зажми ПКМ и тяни — крути камеру</div>
-      </div>
-    </div>
-    <div id="mobileControls">
-      <div id="joystick">
-        <div id="joystickBase"></div>
-        <div id="joystickStick"></div>
-      </div>
-      <div id="actionBtns">
-        <button class="actionBtn" id="mRotateL">↺</button>
-        <button class="actionBtn" id="mRotateR">↻</button>
-      </div>
+      <button id="genBtn">🎲 ГЕНЕРИРОВАТЬ</button>
+      <button class="smallBtn" id="btnRand" title="Случайный">↻</button>
     </div>
   </div>
 
-  <div id="centerHint"><span>🎮</span><span><b>Перетащи</b> мир мышью чтобы вращать • <b>Колесо</b> — зум • <b>Клик</b> — построить домик</span></div>
-  <div id="tooltip"></div>
+  <div id="right">
+    <button class="smallBtn" id="btnZoomIn">＋</button>
+    <button class="smallBtn" id="btnZoomOut">－</button>
+    <button class="smallBtn" id="btnLeft">↺</button>
+    <button class="smallBtn" id="btnRight">↻</button>
+    <button class="smallBtn" id="btnAuto">▶</button>
+    <button class="smallBtn" id="btnNight">☾</button>
+  </div>
+
+  <div id="bottom">
+    <div id="info" class="card">
+      <h2 id="biomeName">ЛЕСНОЙ ОСТРОВ</h2>
+      <p id="biomeDesc">Уютный остров в небесах. На нём стоит один домик. Покрути камеру — 360° свобода.</p>
+      <div class="tags">
+        <span class="tag" id="tagSize">—</span>
+        <span class="tag" id="tagHouse">—</span>
+        <span class="tag" id="tagHeight">—</span>
+      </div>
+    </div>
+    <div class="card" style="padding:8px 10px;display:flex;gap:8px;align-items:center;pointer-events:auto">
+      <span style="font-family:'Press Start 2P',monospace;font-size:7px;color:#7d82a8">КАМЕРА</span>
+      <span style="font-size:12px;color:#fff" id="camInfo">0°</span>
+    </div>
+  </div>
+
+  <div id="hint"><span>🖱️</span><span><b>Тяни мышью</b> — вращать • <b>Колесо</b> — зум • <b>Q/E</b> — поворот</span></div>
 
   <div id="loader">
     <div id="loaderCard">
-      <h2>ЗАГРУЗКА ПИКСЕЛЬНОГО МИРА…</h2>
-      <p>Генерируем изометрический город, леса и подземелья. Камера уже готова к свободному вращению на 360°.</p>
-      <div class="progress"><i id="loadBar"></i></div>
-      <p style="font-size:10px;color:#5a5f85;margin-top:10px">Управление: WASD + мышь • Q/E вращение</p>
+      <h2>СОЗДАЁМ НОВЫЙ МИР…</h2>
+      <p>Генерируем платформу, подбираем домик и расставляем декор. Каждый остров уникален.</p>
+      <div class="bar"><i id="loadBar"></i></div>
     </div>
   </div>
 </div>
 
 <script>
 (() => {
-// CONFIG
-const TILE_W = 64;
-const TILE_H = 32;
-const TILE_Z = 20;
-const WORLD_W = 26;
-const WORLD_H = 26;
-
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-const minimap = document.getElementById('minimap');
-const mctx = minimap.getContext('2d');
-
-let DPR = Math.min(window.devicePixelRatio||1, 2);
-let W=0,H=0;
+const TILE_W=64, TILE_H=32, TILE_Z=18;
+const canvas=document.getElementById('game'), ctx=canvas.getContext('2d');
+let W=innerWidth, H=innerHeight, DPR=Math.min(devicePixelRatio||1,2);
 function resize(){
-  W = window.innerWidth;
-  H = window.innerHeight;
-  canvas.width = W * DPR;
-  canvas.height = H * DPR;
-  canvas.style.width = W+'px';
-  canvas.style.height = H+'px';
+  W=innerWidth; H=innerHeight;
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
 }
-window.addEventListener('resize', resize);
-resize();
+addEventListener('resize', resize); resize();
 
-// CAMERA
-const camera = {
-  x: 0, y: 0,
-  angle: -0.6,
-  targetAngle: -0.6,
-  zoom: 1.0,
-  targetZoom: 1.0,
-  vel: 0
-};
-
-// WORLD
-let world = [];
-let waterTime = 0;
-let isNight = false;
-let buildMode = true;
-
-// Generate world
-function genWorld(){
-  world = [];
-  for(let x=0;x<WORLD_W;x++){
-    world[x]=[];
-    for(let y=0;y<WORLD_H;y++){
-      let dx = (x - WORLD_W/2)/ (WORLD_W/2);
-      let dy = (y - WORLD_H/2)/ (WORLD_H/2);
-      let dist = Math.sqrt(dx*dx+dy*dy);
-      // height noise
-      let nx = x*0.35, ny = y*0.35;
-      let h = Math.sin(nx)*0.8 + Math.cos(ny*1.3)*0.6 + Math.sin((nx+ny)*0.7)*0.4;
-      h += (Math.random()-0.5)*0.5;
-      let ih = 0;
-      if(h>0.8) ih=2;
-      else if(h>0.2) ih=1;
-      else if(h<-0.6) ih=0;
-      // type
-      let type='grass';
-      if(dist>0.92){
-        type='water';
-        ih=0;
-      } else if(dist>0.82 && Math.random()>0.35){
-        type='water';
-        ih=0;
-      } else if(ih===0 && Math.random()<0.35){
-        type='sand';
-      } else if(Math.random()<0.06){
-        type='stone';
-      }
-      // forest patches
-      if(type==='grass' && Math.random()<0.04) type='forest';
-
-      let building=0;
-      // city center buildings
-      if(type==='grass' || type==='stone'){
-        let cityDist = Math.hypot(x-13, y-11);
-        if(cityDist<4 && Math.random()<0.55){
-          building = 1+Math.floor(Math.random()*3);
-          if(cityDist<2) building+=1;
-        } else if(cityDist<7 && Math.random()<0.18){
-          building = 1+Math.floor(Math.random()*2);
-        }
-      }
-      let tree=false;
-      if(!building && (type==='grass' || type==='forest') && Math.random()< (type==='forest'?0.45:0.12)){
-        tree=true;
-      }
-      // roads: clear buildings/trees on roads
-      let isRoad = false;
-      if((x===13 || y===13) && dist<0.9){
-        isRoad=true;
-        building=0;
-        tree=false;
-        if(type==='water') type='grass';
-        type='road';
-        ih=0;
-      }
-      if((x===10 || x===16 || y===10 || y===16) && dist<0.85 && !isRoad && Math.random()<0.7){
-        isRoad=true;
-        building=0;
-        tree=false;
-        type='road';
-      }
-
-      world[x][y]={h:ih, type, building, tree, road:isRoad, decor: Math.random()};
-    }
-  }
-  // spawn clear around player
-  for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){
-    let ix=13+dx, iy=13+dy;
-    if(world[ix] && world[ix][iy]){
-      world[ix][iy].building=0;
-      world[ix][iy].tree=false;
-      world[ix][iy].type='grass';
-      world[ix][iy].h=1;
-    }
+// rng
+function hashString(str){
+  let h=2166136261;
+  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h>>>0;
+}
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a ^ a>>>15, 1|a);
+    t=t+Math.imul(t ^ t>>>7, 61|t) ^ t;
+    return ((t ^ t>>>14)>>>0)/4294967296;
   }
 }
-genWorld();
+let rng=Math.random, currentSeed='';
+function setSeed(s){
+  currentSeed=s;
+  document.getElementById('seedInput').value=s;
+  let h=hashString(s);
+  rng=mulberry32(h);
+}
+function randomSeed(){
+  let s=Math.random().toString(36).slice(2,8).toUpperCase() + '-' + Math.floor(Math.random()*9999).toString().padStart(4,'0');
+  return s;
+}
+setSeed(randomSeed());
 
-// PLAYER
-const player = {
-  wx: 0.3, wy: 0.3, wz: 0,
-  vx:0, vy:0,
-  dir:0, // world angle
-  walkPhase:0,
-  moving:false
-};
+// camera orbit around center 0,0
+const camera={ angle:-0.75, targetAngle:-0.75, zoom:1.05, targetZoom:1.05, auto:false, autoSpeed:0.003 };
+let isNight=false;
+let time=0;
 
-// INPUT
+// world data
+let world=null; // {tiles:Map key "x,y" -> {h,type}, house:{x,y,w,d,h,style}, decor:[], biome:{}}
+
+const BIOMES=[
+  { id:'forest', name:'ЛЕСНОЙ ОСТРОВ', desc:'Мягкий мох, сосны и тёплый дым из трубы. Самый уютный.', top:'#7bc67e', side:'#5a8a5c', water:'#4fc3f7', decor:'tree' },
+  { id:'desert', name:'ПУСТЫННЫЙ УТЁС', desc:'Песчаный утёс среди облаков. Кактусы и глиняный домик.', top:'#e8d48b', side:'#c2a46a', water:'#f7e6a5', decor:'cactus' },
+  { id:'snow', name:'СНЕЖНАЯ ВЕРШИНА', desc:'Снежный остров в небесах. Свет в окнах греет в метель.', top:'#eef2f7', side:'#b0bec5', water:'#b3e5fc', decor:'snowTree' },
+  { id:'autumn', name:'ОСЕННИЙ САД', desc:'Золотые листья, тыквы у крыльца и аромат пирога.', top:'#d7a76f', side:'#a67c52', water:'#ffab91', decor:'autumnTree' },
+  { id:'moss', name:'МШИСТЫЙ ПАРЯЩИЙ', desc:'Древний парящий камень, поросший мхом. Домик отшельника.', top:'#8aa86f', side:'#6b7f59', water:'#80cbc4', decor:'mushroom' },
+];
+
+const HOUSE_STYLES=[
+  { name:'Деревенский', wall:'#d7b89c', wall2:'#bfa07a', roof:'#8d6e63', roof2:'#6d4c41', type:'gable' },
+  { name:'Скандинавский', wall:'#eceff1', wall2:'#cfd8dc', roof:'#37474f', roof2:'#263238', type:'gable' },
+  { name:'Сказочный', wall:'#f8bbd0', wall2:'#f48fb1', roof:'#7e57c2', roof2:'#5e35b1', type:'pyramid' },
+  { name:'Кирпичный', wall:'#bc8a6a', wall2:'#a66a4a', roof:'#bf360c', roof2:'#8d2a0a', type:'gable' },
+  { name:'Лесной', wall:'#a1887f', wall2:'#8d6e63', roof:'#2e7d32', roof2:'#1b5e20', type:'gable' },
+  { name:'Пастельный', wall:'#fff9c4', wall2:'#ffe082', roof:'#4fc3f7', roof2:'#0288d1', type:'flat' },
+];
+
+function fbm(x,y){
+  return Math.sin(x*1.1)*Math.cos(y*1.1)*0.5 + Math.sin(x*2.3+y*1.7)*0.25 + Math.cos(x*0.7 - y*1.3)*0.25;
+}
+
+function generateWorld(seed){
+  setSeed(seed);
+  let biome = BIOMES[Math.floor(rng()*BIOMES.length)];
+  // platform shape
+  let tiles=new Map();
+  let size=16; // world grid 16x16 centered
+  let radius=6.5 + rng()*1.5; // base radius
+  let irregularity = 0.8 + rng()*0.6;
+  let centerH = 1 + Math.floor(rng()*2); // 1-2
+
+  for(let x=0;x<size;x++){
+    for(let y=0;y<size;y++){
+      let wx = x - size/2 + 0.5;
+      let wy = y - size/2 + 0.5;
+      let dist = Math.hypot(wx, wy);
+      let angle = Math.atan2(wy, wx);
+      // add wavy edge
+      let edgeNoise = Math.sin(angle*3 + rng()*0.5)*0.7 + Math.cos(angle*5)*0.4 + fbm(wx*0.6, wy*0.6)*irregularity;
+      let threshold = radius + edgeNoise - dist;
+      if(threshold < 0) continue;
+      // height: higher in center, lower at edges
+      let h = centerH - Math.floor(dist*0.35 + rng()*0.6);
+      // add small hill bumps
+      let bump = Math.floor( fbm(wx*0.9, wy*0.9)*0.8 + rng()*0.5 );
+      h += bump;
+      h = Math.max(0, Math.min(3, h));
+      // type variation: edge low = stone side, top grass
+      tiles.set(`${x},${y}`, {x,y, wx, wy, h, biome:biome.id});
+    }
+  }
+
+  // find candidate house positions: near center flat
+  let candidates=[];
+  for(let x=5;x<11;x++) for(let y=5;y<11;y++){
+    let k=`${x},${y}`;
+    if(!tiles.has(k)) continue;
+    let tile=tiles.get(k);
+    // check 3x3 flat area with same h
+    let ok=true;
+    for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){
+      let nk=`${x+dx},${y+dy}`;
+      let t=tiles.get(nk);
+      if(!t || Math.abs(t.h - tile.h)>1) ok=false;
+    }
+    if(ok) candidates.push({x,y, wx:tile.wx, wy:tile.wy, h:tile.h});
+  }
+  if(candidates.length===0){
+    // fallback center
+    let c=tiles.get('8,8');
+    if(c) candidates.push({x:8,y:8, wx:c.wx, wy:c.wy, h:c.h});
+  }
+  let spot=candidates[Math.floor(rng()*candidates.length)] || {x:8,y:8,wx:0,wy:0,h:centerH};
+
+  // house
+  let houseW = 2 + (rng()<0.5?0:1); // 2-3
+  let houseD = 2 + (rng()<0.5?0:1);
+  let houseH = 1.8 + rng()*0.8; // wall height
+  let style = HOUSE_STYLES[Math.floor(rng()*HOUSE_STYLES.length)];
+  // adjust to fit within platform: if spot near edge shift
+  let house={ x:spot.wx, y:spot.wy, w:houseW, d:houseD, h:houseH, style, baseH:spot.h };
+
+  // decor
+  let decor=[];
+  for(let [k,t] of tiles){
+    // skip house footprint
+    let dx=Math.abs(t.wx - house.x), dy=Math.abs(t.wy - house.y);
+    if(dx < house.w/2+0.6 && dy < house.d/2+0.6) continue;
+    if(rng()<0.18){
+      let type=biome.decor;
+      // occasional variation
+      if(rng()<0.15) type = ['bush','rock','tree'][Math.floor(rng()*3)];
+      decor.push({ wx:t.wx + (rng()-0.5)*0.35, wy:t.wy + (rng()-0.5)*0.35, h:t.h, type, scale:0.8+rng()*0.35 });
+    }
+    // small tufts on edges
+    if(rng()<0.08){
+      decor.push({ wx:t.wx+(rng()-0.5)*0.2, wy:t.wy+(rng()-0.5)*0.2, h:t.h, type:'tuft', scale:0.6+rng()*0.3 });
+    }
+  }
+  // fence around house with some chance
+  let hasFence = rng()<0.45;
+  if(hasFence){
+    // add fence posts around house perimeter
+    for(let i=-1;i<=1;i++){
+      // not needed detailed, just flag
+    }
+  }
+
+  world={ tiles, house, decor, biome, seed, hasFence, size, centerH };
+  // update UI
+  document.getElementById('biomeName').textContent=biome.name;
+  document.getElementById('biomeDesc').textContent=biome.desc;
+  document.getElementById('tagSize').textContent=`⧉ ${tiles.size} тайлов`;
+  document.getElementById('tagHouse').textContent=`⌂ ${style.name} ${houseW}×${houseD}`;
+  document.getElementById('tagHeight').textContent=`⛰ ${centerH+houseH.toFixed(1)}м высота`;
+
+  spawnPuff(house.x, house.y, house.baseH+house.h+0.6);
+}
+
+let puffs=[];
+function spawnPuff(wx,wy,wz){
+  puffs.push({wx,wy,wz,t:0,life:0.9});
+}
+
+// initial
+generateWorld(currentSeed);
+
+// helpers
+function worldToScreen(wx,wy,wz){
+  let dx=wx, dy=wy; // camera at 0,0
+  let cos=Math.cos(camera.angle), sin=Math.sin(camera.angle);
+  let rx=dx*cos - dy*sin;
+  let ry=dx*sin + dy*cos;
+  let sx=(rx - ry)*(TILE_W/2);
+  let sy=(rx + ry)*(TILE_H/2) - wz*TILE_Z;
+  sx=sx*camera.zoom + W/2;
+  sy=sy*camera.zoom + H/2 - 22; // lift island a bit
+  return {x:sx,y:sy, rx, ry, depth:rx+ry};
+}
+
+// sprites gen
+let sprites={};
+function makeSprites(){
+  // tree variants
+  function makeTree(canv, col1, col2){
+    let g=canv.getContext('2d'); g.imageSmoothingEnabled=false;
+    let w=canv.width, h=canv.height;
+    g.clearRect(0,0,w,h);
+    // trunk
+    g.fillStyle='#5d4037'; g.fillRect(w/2-4, h-22, 8, 18);
+    g.fillStyle='#3e2723'; g.fillRect(w/2-4, h-22, 2, 18); g.fillRect(w/2+2, h-22, 2, 18);
+    // foliage
+    g.fillStyle=col1; g.fillRect(6, 14, w-12, 18);
+    g.fillRect(10, 6, w-20, 14);
+    g.fillRect(14, 2, w-28, 10);
+    // shadow
+    g.fillStyle=col2; g.fillRect(8, 28, w-14, 4); g.fillRect(w-10, 10, 3, 16);
+    // highlight
+    g.fillStyle='rgba(255,255,255,0.18)'; g.fillRect(12,8,6,3);
+  }
+  let c1=document.createElement('canvas'); c1.width=48; c1.height=56; makeTree(c1,'#2e7d32','#1b5e20'); sprites.tree=c1;
+  let c2=document.createElement('canvas'); c2.width=40; c2.height=48; makeTree(c2,'#e8f5e9','#a5d6a7'); c2.getContext('2d').fillStyle='#fff'; sprites.snowTree=c2;
+  let c3=document.createElement('canvas'); c3.width=44; c3.height=52; makeTree(c3,'#ef6c00','#bf360c'); sprites.autumnTree=c3;
+  let c4=document.createElement('canvas'); c4.width=32; c4.height=36;
+  let g4=c4.getContext('2d'); g4.fillStyle='#8d6e63'; g4.fillRect(12,16,8,14); g4.fillStyle='#a5d6a7'; g4.fillRect(8,6,16,12); g4.fillRect(4,12,24,10); sprites.bush=g4.canvas||c4;
+  // cactus
+  let cc=document.createElement('canvas'); cc.width=32; cc.height=48; let gc=cc.getContext('2d');
+  gc.fillStyle='#558b2f'; gc.fillRect(12,8,8,28); gc.fillRect(4,14,6,14); gc.fillRect(22,18,6,10);
+  gc.fillStyle='#33691e'; gc.fillRect(12,8,2,28); gc.fillRect(22,8,2,28);
+  sprites.cactus=cc;
+  // mushroom
+  let cm=document.createElement('canvas'); cm.width=28; cm.height=32; let gm=cm.getContext('2d');
+  gm.fillStyle='#efebe9'; gm.fillRect(11,14,6,12); gm.fillStyle='#e53935'; gm.beginPath(); gm.arc(14,12,10,0,Math.PI,true); gm.fill();
+  gm.fillStyle='#fff'; gm.fillRect(9,8,4,4); gm.fillRect(16,6,3,3);
+  sprites.mushroom=cm;
+  // tuft
+  let ct=document.createElement('canvas'); ct.width=16; ct.height=12; let gt=ct.getContext('2d');
+  gt.fillStyle='#558b2f'; gt.fillRect(4,6,8,3); gt.fillRect(6,4,4,4);
+  sprites.tuft=ct;
+  // rock
+  let cr=document.createElement('canvas'); cr.width=24; cr.height=16; let gr=cr.getContext('2d');
+  gr.fillStyle='#8d8d8d'; gr.fillRect(4,6,16,8); gr.fillRect(6,4,12,4); gr.fillStyle='#5a5a5a'; gr.fillRect(4,10,16,2);
+  sprites.rock=cr;
+}
+makeSprites();
+
+// input
 const keys={};
-window.addEventListener('keydown', e=>{
+addEventListener('keydown', e=>{
   keys[e.key.toLowerCase()]=true;
-  if(e.key==='q' || e.key==='й') camera.targetAngle -= 0.12;
-  if(e.key==='e' || e.key==='у') camera.targetAngle += 0.12;
-  if(e.key==='+'||e.key==='=') camera.targetZoom = Math.min(1.8, camera.targetZoom+0.1);
-  if(e.key==='-'||e.key==='_') camera.targetZoom = Math.max(0.55, camera.targetZoom-0.1);
+  if(e.key.toLowerCase()==='q' || e.key==='й') camera.targetAngle-=0.14;
+  if(e.key.toLowerCase()==='e' || e.key==='у') camera.targetAngle+=0.14;
+  if(e.key==='r' || e.key==='к') generateWorld(randomSeed());
 });
-window.addEventListener('keyup', e=> keys[e.key.toLowerCase()]=false);
+addEventListener('keyup', e=> keys[e.key.toLowerCase()]=false);
 
-// Mouse camera rotation
-let isDragging=false, lastX=0, lastY=0, dragMode='rotate';
+let isDragging=false, lastX=0;
 canvas.addEventListener('mousedown', e=>{
-  if(e.button===2 || e.button===0){
-    isDragging=true;
-    lastX=e.clientX; lastY=e.clientY;
-    dragMode = (e.button===2 || e.altKey) ? 'rotate' : (buildMode && e.button===0 ? 'buildCheck' : 'rotate');
-    // prevent text selection
-    e.preventDefault();
-  }
+  if(e.button===0 || e.button===2){ isDragging=true; lastX=e.clientX; e.preventDefault(); }
 });
-window.addEventListener('mouseup', e=>{
-  if(isDragging && dragMode==='buildCheck'){
-    // if small drag, treat as click build
-    let dx=e.clientX-lastX, dy=e.clientY-lastY;
-    if(Math.hypot(dx,dy)<6) handleBuildClick(e.clientX, e.clientY);
-  }
-  isDragging=false;
-});
-window.addEventListener('mousemove', e=>{
+addEventListener('mouseup', ()=> isDragging=false);
+addEventListener('mousemove', e=>{
   if(!isDragging) return;
-  let dx = e.clientX - lastX;
-  let dy = e.clientY - lastY;
-  lastX=e.clientX; lastY=e.clientY;
-  if(dragMode==='rotate'){
-    camera.targetAngle += dx * 0.007;
-    // vertical drag could tilt? keep for future pitch
-  }
+  let dx=e.clientX-lastX; lastX=e.clientX;
+  camera.targetAngle+=dx*0.007;
 });
 canvas.addEventListener('contextmenu', e=> e.preventDefault());
 canvas.addEventListener('wheel', e=>{
   e.preventDefault();
-  let delta = Math.sign(e.deltaY)*0.08;
-  camera.targetZoom = Math.max(0.55, Math.min(1.8, camera.targetZoom - delta));
+  let d=Math.sign(e.deltaY)*0.09;
+  camera.targetZoom=Math.max(0.6, Math.min(1.9, camera.targetZoom - d));
 },{passive:false});
 
-// Touch
-let touchId=null, touchStartX=0, touchStartAngle=0;
-let joyActive=false, joyDX=0, joyDY=0;
-const joystick = document.getElementById('joystick');
-const stick = document.getElementById('joystickStick');
-function joyPos(e){
-  let rect=joystick.getBoundingClientRect();
-  let t = e.touches[0];
-  let cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
-  let dx=t.clientX-cx, dy=t.clientY-cy;
-  let dist=Math.hypot(dx,dy);
-  let max=42;
-  if(dist>max){ dx=dx/dist*max; dy=dy/dist*max; }
-  stick.style.transform=`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-  joyDX=dx/max; joyDY=dy/max;
-}
-joystick.addEventListener('touchstart', e=>{
-  e.preventDefault();
-  joyActive=true;
-  joyPos(e);
-},{passive:false});
-joystick.addEventListener('touchmove', e=>{
-  e.preventDefault();
-  if(joyActive) joyPos(e);
-},{passive:false});
-window.addEventListener('touchend', e=>{
-  joyActive=false; joyDX=0; joyDY=0;
-  stick.style.transform='translate(-50%,-50%)';
-});
+// touch
+let touchId=null, startX=0, startAng=0;
 canvas.addEventListener('touchstart', e=>{
-  if(e.touches.length===1 && e.target===canvas){
-    let t=e.touches[0];
-    // if touch on right half -> rotate, left half -> joystick already
-    if(t.clientX > W*0.55){
-      touchId=t.identifier;
-      touchStartX=t.clientX;
-      touchStartAngle=camera.targetAngle;
-    }
+  if(e.touches.length===1){
+    let t=e.touches[0]; touchId=t.identifier; startX=t.clientX; startAng=camera.targetAngle;
   }
 },{passive:false});
 canvas.addEventListener('touchmove', e=>{
-  for(let t of e.touches){
-    if(t.identifier===touchId){
-      let dx=t.clientX - touchStartX;
-      camera.targetAngle = touchStartAngle + dx*0.007;
-      e.preventDefault();
-    }
+  for(let t of e.touches) if(t.identifier===touchId){
+    let dx=t.clientX-startX; camera.targetAngle=startAng+dx*0.007; e.preventDefault();
   }
 },{passive:false});
-canvas.addEventListener('touchend', e=>{
-  touchId=null;
-},{passive:false});
+addEventListener('touchend', ()=> touchId=null);
 
-// Buttons
-document.getElementById('btnZoomIn').onclick=()=> camera.targetZoom=Math.min(1.8,camera.targetZoom+0.12);
-document.getElementById('btnZoomOut').onclick=()=> camera.targetZoom=Math.max(0.55,camera.targetZoom-0.12);
-document.getElementById('btnRotateLeft').onclick=()=> camera.targetAngle-=0.25;
-document.getElementById('btnRotateRight').onclick=()=> camera.targetAngle+=0.25;
-document.getElementById('btnDayNight').onclick=()=>{
-  isNight=!isNight;
-  document.getElementById('btnDayNight').textContent = isNight?'☾':'☀';
-  document.getElementById('btnDayNight').classList.toggle('active', isNight);
+document.getElementById('btnLeft').onclick=()=> camera.targetAngle-=0.28;
+document.getElementById('btnRight').onclick=()=> camera.targetAngle+=0.28;
+document.getElementById('btnZoomIn').onclick=()=> camera.targetZoom=Math.min(1.9,camera.targetZoom+0.15);
+document.getElementById('btnZoomOut').onclick=()=> camera.targetZoom=Math.max(0.6,camera.targetZoom-0.15);
+document.getElementById('btnAuto').onclick=function(){
+  camera.auto=!camera.auto; this.classList.toggle('active', camera.auto); this.textContent=camera.auto?'⏸':'▶';
 };
-document.getElementById('btnBuildMode').onclick=(e)=>{
-  buildMode=!buildMode;
-  e.currentTarget.classList.toggle('active', buildMode);
+document.getElementById('btnNight').onclick=function(){
+  isNight=!isNight; this.classList.toggle('active', isNight);
 };
-document.getElementById('mRotateL').onclick=()=> camera.targetAngle-=0.25;
-document.getElementById('mRotateR').onclick=()=> camera.targetAngle+=0.25;
+document.getElementById('btnRand').onclick=()=> generateWorld(randomSeed());
+document.getElementById('genBtn').onclick=()=>{
+  let v=document.getElementById('seedInput').value.trim();
+  if(!v) v=randomSeed();
+  generateWorld(v);
+};
+document.getElementById('seedInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ let v=e.target.value.trim()||randomSeed(); generateWorld(v); }
+});
+document.getElementById('btnCopy').onclick=()=>{
+  navigator.clipboard.writeText(currentSeed);
+  let b=document.getElementById('btnCopy'); b.textContent='✓'; setTimeout(()=> b.textContent='⎘',900);
+};
 
-// Build click: raycast to tile
-function screenToWorld(sx, sy){
-  // inverse of worldToScreen for ground plane z=0
-  // We have: sx = (rx - ry)*TW/2 *zoom + W/2
-  // sy = (rx+ry)*TH/2 *zoom + H/2
-  // So rx = ( (sx-W/2)/zoom / (TW/2) + (sy-H/2)/zoom / (TH/2) )/2
-  // ry = ( -(sx-W/2)/zoom/(TW/2) + (sy-H/2)/zoom/(TH/2) )/2
-  let cx = (sx - W/2)/camera.zoom;
-  let cy = (sy - H/2)/camera.zoom;
-  let rx = (cx/(TILE_W/2) + cy/(TILE_H/2))/2;
-  let ry = (-cx/(TILE_W/2) + cy/(TILE_H/2))/2;
-  // unrotate
-  let cos=Math.cos(camera.angle), sin=Math.sin(camera.angle);
-  let dx = rx*cos + ry*sin;
-  let dy = -rx*sin + ry*cos;
-  let wx = camera.x + dx;
-  let wy = camera.y + dy;
-  return {wx, wy};
-}
-function handleBuildClick(sx, sy){
-  let p = screenToWorld(sx, sy);
-  // find tile under player? We need to consider height: we approximated ground 0, but buildings offset sy upward.
-  // For simplicity use ground.
-  let ix = Math.round(p.wx + WORLD_W/2 -0.5);
-  let iy = Math.round(p.wy + WORLD_H/2 -0.5);
-  // Actually mapping: wx = ix - WORLD_W/2 +0.5? Let's define precise
-  // We defined tile center at wx = ix - WORLD_W/2 +0.5 ??? Let's unify
-  // In gen we used dx = (x - WORLD_W/2) ??? Need to fix.
-  // Let's compute tile center correctly for our world array:
-  // For index x, world center wx = x - WORLD_W/2 + 0.5
-  // Check: x=13 (center) => wx=13-13+0.5=0.5, but player at 0.3 near. That's okay.
-  // So inverse: ix = floor(wx + WORLD_W/2 -0.5 +0.5) => wx+W/2
-  ix = Math.floor(p.wx + WORLD_W/2);
-  iy = Math.floor(p.wy + WORLD_H/2);
-  if(ix<0||ix>=WORLD_W||iy<0||iy>=WORLD_H) return;
-  let cell = world[ix][iy];
-  if(!cell) return;
-  if(cell.type==='water') return;
-  // toggle building
-  if(cell.building>0){
-    cell.building=0;
-    // chance spawn tree
-    if(Math.random()<0.3) cell.tree=true;
-  } else {
-    cell.building = 1+Math.floor(Math.random()*3);
-    cell.tree=false;
-  }
-  // puff effect
-  spawnPuff(p.wx, p.wy, cell.h + (cell.building||0));
-}
-
-// Puffs
-let puffs=[];
-function spawnPuff(wx,wy,wz){
-  puffs.push({wx,wy,wz, t:0, life:0.6});
-}
-
-// Sprites generation
-let sprites={};
-function makeSprites(){
-  // tree sprite 48x64
-  let c=document.createElement('canvas'); c.width=64; c.height=80; let g=c.getContext('2d');
-  g.imageSmoothingEnabled=false;
-  // trunk
-  g.fillStyle='#5d4037'; g.fillRect(28,40,8,24);
-  g.fillStyle='#3e2723'; g.fillRect(28,40,2,24); g.fillRect(34,40,2,24);
-  // foliage layers
-  function foliage(x,y,w,h,col,shad){
-    g.fillStyle=col; g.fillRect(x,y,w,h);
-    // pixel bumps
-    g.fillStyle=shad;
-    g.fillRect(x+2,y+h-4,w-4,2);
-    g.fillRect(x+w-2,y+2,2,h-4);
-    // highlight
-    g.fillStyle='#81c784'; g.fillRect(x+2,y+2,4,2); g.fillRect(x+2,y+6,2,2);
-  }
-  foliage(12,28,40,16,'#2e7d32','#1b5e20');
-  foliage(16,16,32,16,'#388e3c','#1b5e20');
-  foliage(20,6,24,14,'#43a047','#2e7d32');
-  // outline
-  g.strokeStyle='#10210f'; g.lineWidth=1;
-  // simple outline via stroke rects? keep
-  sprites.tree=c;
-
-  // player sprites 4 dirs: S,E,N,W
-  const dirs=['south','east','north','west'];
-  const cols={skin:'#ffdbac', shirt:'#ff3b30', pants:'#0a84ff', hair:'#2d1b0e', outline:'#0f111a'};
-  for(let d of dirs){
-    let pc=document.createElement('canvas'); pc.width=48; pc.height=56; let pg=pc.getContext('2d');
-    pg.imageSmoothingEnabled=false;
-    pg.clearRect(0,0,48,56);
-    // shadow ellipse base will be drawn separately, here just char
-    // body
-    // head 14x14
-    // For each dir draw slightly differently
-    let ox=16;
-    // legs
-    pg.fillStyle=cols.pants;
-    pg.fillRect(ox+4,32,6,10); pg.fillRect(ox+10,32,6,10);
-    pg.fillStyle='#0f111a'; pg.fillRect(ox+4,32,1,10); pg.fillRect(ox+10,32,1,10); pg.fillRect(ox+4,42,6,1);
-    // shoes
-    pg.fillStyle='#1a1a1a'; pg.fillRect(ox+3,42,7,3); pg.fillRect(ox+10,42,7,3);
-    // torso
-    pg.fillStyle=cols.shirt;
-    if(d==='north'){
-      pg.fillRect(ox+2,20,16,12);
-      pg.fillStyle='#b71c1c'; pg.fillRect(ox+2,20,16,2);
-    } else if(d==='east' || d==='west'){
-      pg.fillRect(ox+4,20,12,12);
-      // arm
-      pg.fillStyle=cols.skin; pg.fillRect(ox+2,22,4,8); pg.fillRect(ox+14,22,4,8);
-    } else {
-      pg.fillRect(ox+2,20,16,12);
-      // buttons
-      pg.fillStyle='#fff'; pg.fillRect(ox+9,24,2,2); pg.fillRect(ox+9,28,2,2);
-    }
-    // outline torso
-    pg.fillStyle=cols.outline; pg.fillRect(ox+2,20,16,1); pg.fillRect(ox+2,31,16,1);
-    if(d==='south' || d==='north'){
-      pg.fillRect(ox+2,20,1,12); pg.fillRect(ox+17,20,1,12);
-    }
-    // head
-    pg.fillStyle=cols.skin;
-    pg.fillRect(ox+5,8,10,12);
-    pg.fillStyle=cols.hair;
-    if(d==='south'){
-      pg.fillRect(ox+4,6,12,4); pg.fillRect(ox+3,8,2,6); pg.fillRect(ox+15,8,2,6);
-      // eyes
-      pg.fillStyle='#0f111a'; pg.fillRect(ox+7,14,2,2); pg.fillRect(ox+11,14,2,2);
-      pg.fillStyle='#ff8a80'; pg.fillRect(ox+6,17,3,1); pg.fillRect(ox+11,17,3,1);
-    } else if(d==='north'){
-      pg.fillRect(ox+5,6,10,4); // back of head hair
-      pg.fillStyle='#4e342e'; pg.fillRect(ox+5,10,10,8);
-    } else if(d==='east'){
-      pg.fillRect(ox+5,6,10,4); pg.fillRect(ox+12,8,3,8);
-      pg.fillStyle='#0f111a'; pg.fillRect(ox+10,14,2,2);
-    } else { // west
-      pg.fillRect(ox+5,6,10,4); pg.fillRect(ox+3,8,3,8);
-      pg.fillStyle='#0f111a'; pg.fillRect(ox+7,14,2,2);
-    }
-    // head outline
-    pg.fillStyle=cols.outline; pg.fillRect(ox+5,8,10,1); pg.fillRect(ox+5,19,10,1);
-    sprites['player_'+d]=pc;
-  }
-
-  // house roof pattern (will be used for fill)
-  // create pattern canvases for tile types
-  sprites.patterns={};
-  function makePattern(col, accent){
-    let pat=document.createElement('canvas'); pat.width=16; pat.height=16; let pg=pat.getContext('2d');
-    pg.fillStyle=col; pg.fillRect(0,0,16,16);
-    pg.fillStyle=accent; pg.fillRect(0,0,2,2); pg.fillRect(8,8,2,2); pg.fillRect(4,12,1,1);
-    return pat;
-  }
-  sprites.patterns.grass = makePattern('#7bc67e','#5fa15f');
-  sprites.patterns.sand = makePattern('#f7e6a5','#e8d48b');
-  sprites.patterns.stone = makePattern('#b0bec5','#90a4ae');
-  sprites.patterns.road = makePattern('#3a3f5a','#2a2e4a');
-  sprites.patterns.forest = makePattern('#5a9e6f','#3d7a4f');
-}
-makeSprites();
-
-// Helpers
-function worldToScreen(wx,wy,wz){
-  let dx = wx - camera.x;
-  let dy = wy - camera.y;
-  let cos=Math.cos(camera.angle), sin=Math.sin(camera.angle);
-  let rx = dx*cos - dy*sin;
-  let ry = dx*sin + dy*cos;
-  let sx = (rx - ry) * (TILE_W/2);
-  let sy = (rx + ry) * (TILE_H/2) - wz * TILE_Z;
-  sx = sx*camera.zoom + W/2;
-  sy = sy*camera.zoom + H/2;
-  return {x:sx,y:sy, rx, ry, depth: rx+ry};
-}
-function getTileCenter(ix,iy){
-  // center in world coords
-  return {wx: ix - WORLD_W/2 +0.5, wy: iy - WORLD_H/2 +0.5};
-}
-
-// Update loop
-let lastTime=performance.now();
-function update(){
+// render loop
+let last=performance.now();
+function frame(){
   let now=performance.now();
-  let dt = Math.min(0.033, (now-lastTime)/1000);
-  lastTime=now;
-  waterTime+=dt;
+  let dt=Math.min(0.033,(now-last)/1000); last=now;
+  time+=dt;
 
-  // smooth camera
-  // angle velocity damping
-  let da = camera.targetAngle - camera.angle;
-  // wrap to shortest
-  while(da > Math.PI) da-=Math.PI*2;
-  while(da < -Math.PI) da+=Math.PI*2;
-  camera.vel = camera.vel*0.85 + da*0.12;
-  camera.angle += camera.vel;
+  if(camera.auto) camera.targetAngle+=camera.autoSpeed;
+  // smooth
+  let da=camera.targetAngle - camera.angle;
+  while(da>Math.PI) da-=Math.PI*2;
+  while(da<-Math.PI) da+=Math.PI*2;
+  camera.angle += da*0.09;
   camera.zoom += (camera.targetZoom - camera.zoom)*0.12;
 
-  // player input
-  let cos=Math.cos(camera.angle), sin=Math.sin(camera.angle);
-  // forward (W) and right (D) world vectors (normalized roughly)
-  let fx = -(cos+sin), fy = sin - cos;
-  let rx = cos - sin, ry = -(sin+cos);
-  let lenF=Math.hypot(fx,fy), lenR=Math.hypot(rx,ry);
-  fx/=lenF; fy/=lenF; rx/=lenR; ry/=lenR;
-
-  let mvx=0, mvy=0;
-  let isMoving=false;
-  if(keys['w'] || keys['arrowup']){ mvx+=fx; mvy+=fy; isMoving=true; }
-  if(keys['s'] || keys['arrowdown']){ mvx-=fx; mvy-=fy; isMoving=true; }
-  if(keys['a'] || keys['arrowleft']){ mvx-=rx; mvy-=ry; isMoving=true; }
-  if(keys['d'] || keys['arrowright']){ mvx+=rx; mvy+=ry; isMoving=true; }
-  // joystick
-  if(joyActive){
-    // joyDX is screen X (right), joyDY screen Y (down)
-    // Convert screen joy to world: same as forward/right but joyDY down = S direction
-    let jx = joyDX, jy = joyDY;
-    // screen vec to world: world = jx*right + jy*forward? Need check.
-    // Forward is screen up (-Y), Right is screen right (+X)
-    // So joy vector (jx,jy) screen: worldDelta = jx*rightWorld + (-jy)*forwardWorld? Actually jy positive down = -forward
-    // forwardWorld corresponds to screen up (-Y), so screen down (+Y) = -forward
-    // So: world = jx*rx + jy*(-fx?) Let's derive:
-    // We have forwardWorld = screenUp, rightWorld=screenRight
-    // So screen vector (sx,sy) => world = sx*right + sy*down ; down = -forward
-    // So world = jx*right - jy*forward
-    let wjx = jx*rx - jy*fx;
-    let wjy = jx*ry - jy*fy;
-    mvx = wjx; mvy = wjy;
-    if(Math.hypot(mvx,mvy)>0.1) isMoving=true;
-  }
-
-  if(isMoving){
-    let len=Math.hypot(mvx,mvy);
-    if(len>0){ mvx/=len; mvy/=len; }
-    let speed = 3.2 * dt; // world units per sec
-    let nx = player.wx + mvx*speed;
-    let ny = player.wy + mvy*speed;
-    // collision check
-    let canMove=true;
-    let ix = Math.floor(nx + WORLD_W/2);
-    let iy = Math.floor(ny + WORLD_H/2);
-    if(ix>=0&&ix<WORLD_W&&iy>=0&&iy<WORLD_H){
-      let cell = world[ix][iy];
-      if(cell && (cell.type==='water' || cell.building>0)){
-        canMove=false;
-        // slide attempt: try X only then Y only
-        let ix2 = Math.floor(player.wx + WORLD_W/2);
-        let iy2 = Math.floor(ny + WORLD_H/2);
-        let cell2 = world[ix2] && world[ix2][iy2];
-        if(cell2 && cell2.type!=='water' && cell2.building===0){
-          nx = player.wx; ny = ny; canMove=true;
-        } else {
-          let ix3 = Math.floor(nx + WORLD_W/2);
-          let iy3 = Math.floor(player.wy + WORLD_H/2);
-          let cell3 = world[ix3] && world[ix3][iy3];
-          if(cell3 && cell3.type!=='water' && cell3.building===0){
-            nx = nx; ny = player.wy; canMove=true;
-          } else canMove=false;
-        }
-      }
-    } else canMove=false;
-    if(canMove){
-      player.wx=nx; player.wy=ny;
-      player.dir = Math.atan2(mvy, mvx);
-    }
-  }
-  player.moving=isMoving;
-  if(isMoving) player.walkPhase += dt*10; else player.walkPhase *=0.9;
-
-  // update player height based on terrain
-  let pix = Math.floor(player.wx + WORLD_W/2);
-  let piy = Math.floor(player.wy + WORLD_H/2);
-  let targetZ=0;
-  if(pix>=0&&pix<WORLD_W&&piy>=0&&piy<WORLD_H){
-    targetZ = world[pix][piy].h;
-  }
-  player.wz += (targetZ - player.wz)*0.2;
-
-  // camera follow
-  camera.x += (player.wx - camera.x)*0.12;
-  camera.y += (player.wy - camera.y)*0.12;
-
-  // puffs
   for(let p of puffs) p.t+=dt;
-  puffs = puffs.filter(p=> p.t<p.life);
+  puffs=puffs.filter(p=> p.t<p.life);
 
-  // update minimap
-  drawMinimap();
-
-  // stats
-  document.getElementById('posVal').textContent = `${player.wx.toFixed(1)}, ${player.wy.toFixed(1)}`;
-  document.getElementById('angVal').textContent = `${((camera.angle*180/Math.PI)%360).toFixed(0)}°`;
-  document.getElementById('zoomVal').textContent = `${Math.round(camera.zoom*100)}%`;
+  document.getElementById('camInfo').textContent=`${((camera.angle*180/Math.PI)%360).toFixed(0)}° • ${Math.round(camera.zoom*100)}%`;
 
   render();
-  requestAnimationFrame(update);
+  requestAnimationFrame(frame);
 }
 
-// MINIMAP
-function drawMinimap(){
-  let s=4;
-  mctx.clearRect(0,0,minimap.width,minimap.height);
-  mctx.fillStyle='#0f111a'; mctx.fillRect(0,0,minimap.width,minimap.height);
-  let ox=8, oy=10;
-  for(let x=0;x<WORLD_W;x++) for(let y=0;y<WORLD_H;y++){
-    let c=world[x][y];
-    let col='#7bc67e';
-    if(c.type==='water') col='#29b6f6';
-    else if(c.type==='sand') col='#f7e6a5';
-    else if(c.type==='stone') col='#90a4ae';
-    else if(c.type==='road') col='#3a3f5a';
-    else if(c.type==='forest') col='#2e7d32';
-    if(c.building) col='#ef5350';
-    mctx.fillStyle=col;
-    mctx.fillRect(ox + x*s, oy + y*s, s, s);
-  }
-  // player
-  let px = ox + (player.wx+WORLD_W/2)*s;
-  let py = oy + (player.wy+WORLD_H/2)*s;
-  mctx.fillStyle='#ffcc02';
-  mctx.beginPath(); mctx.arc(px,py,3,0,Math.PI*2); mctx.fill();
-  mctx.strokeStyle='#fff'; mctx.lineWidth=1; mctx.stroke();
-  // camera dir
-  mctx.strokeStyle='#00e5a0'; mctx.beginPath(); mctx.moveTo(px,py);
-  mctx.lineTo(px + Math.cos(camera.angle+Math.PI/2)*8, py + Math.sin(camera.angle+Math.PI/2)*8); mctx.stroke();
+function shadeColor(hex, f){
+  let r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  r=Math.round(r*f); g=Math.round(g*f); b=Math.round(b*f);
+  return `rgb(${Math.max(0,Math.min(255,r))},${Math.max(0,Math.min(255,g))},${Math.max(0,Math.min(255,b))})`;
 }
 
-// RENDER
 function render(){
-  // background gradient
-  let skyTop = isNight ? '#0a0e1e' : '#87ceeb';
-  let skyBot = isNight ? '#1a1d2e' : '#e0f7fa';
+  // sky
+  let topCol=isNight?'#0a0e1f':'#87ceeb', botCol=isNight?'#1a1c2e':'#e1f5fe';
   let grd=ctx.createLinearGradient(0,0,0,H);
-  grd.addColorStop(0, skyTop); grd.addColorStop(1, skyBot);
-  ctx.fillStyle=grd;
-  ctx.fillRect(0,0,W,H);
-  // distant horizon fog
-  ctx.fillStyle= isNight ? 'rgba(10,14,30,0.5)' : 'rgba(200,230,255,0.45)';
-  ctx.beginPath();
-  ctx.moveTo(0,H*0.55); ctx.lineTo(W,H*0.52); ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fill();
-
-  // clouds (pixel)
-  ctx.fillStyle= isNight ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.85)';
-  for(let i=0;i<5;i++){
-    let cx = (W*0.2 + i*W*0.18 + Math.sin(waterTime*0.2+i)*20) % W;
-    let cy = H*0.18 + Math.sin(i*1.3)*12;
-    drawPixelCloud(cx, cy, 1.2 + Math.sin(i)*0.2);
+  grd.addColorStop(0,topCol); grd.addColorStop(1,botCol);
+  ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+  // horizon
+  ctx.fillStyle=isNight?'rgba(12,16,32,0.55)':'rgba(180,210,255,0.35)';
+  ctx.beginPath(); ctx.moveTo(0,H*0.58); ctx.lineTo(W,H*0.55); ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath(); ctx.fill();
+  // clouds
+  ctx.fillStyle=isNight?'rgba(255,255,255,0.06)':'rgba(255,255,255,0.85)';
+  for(let i=0;i<4;i++){
+    let cx=(W*0.15 + i*W*0.22 + Math.sin(time*0.18+i)*16)%W;
+    let cy=H*0.14 + Math.cos(i*1.7)*10;
+    let s=5; ctx.fillRect(cx,cy,s*4,s*2); ctx.fillRect(cx+s,cy-s,s*2,s); ctx.fillRect(cx-s,cy+s*0.5,s,s);
   }
+
+  // prepare faces
+  let faces=[], spritesList=[];
+  let cos=Math.cos(camera.angle), sin=Math.sin(camera.angle);
+  let viewX=cos+sin, viewY=cos - sin; let vl=Math.hypot(viewX,viewY); viewX/=vl; viewY/=vl;
+  let lightX=-0.6, lightY=-0.8; let ll=Math.hypot(lightX,lightY); lightX/=ll; lightY/=ll;
+
+  // tiles
+  for(let [k,t] of world.tiles){
+    let topZ=t.h;
+    let vertsTop=[
+      {wx:t.wx-0.5, wy:t.wy-0.5, wz:topZ},
+      {wx:t.wx+0.5, wy:t.wy-0.5, wz:topZ},
+      {wx:t.wx+0.5, wy:t.wy+0.5, wz:topZ},
+      {wx:t.wx-0.5, wy:t.wy+0.5, wz:topZ},
+    ];
+    let projTop=vertsTop.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+    let depthTop=projTop.reduce((a,p)=>a+p.depth,0)/4;
+    faces.push({verts:vertsTop, proj:projTop, depth:depthTop, type:'top', tile:t});
+
+    // walls to void / lower neighbors
+    let neighs=[
+      {dx:1,dy:0,n:{x:1,y:0}},
+      {dx:-1,dy:0,n:{x:-1,y:0}},
+      {dx:0,dy:1,n:{x:0,y:1}},
+      {dx:0,dy:-1,n:{x:0,y:-1}},
+    ];
+    for(let nb of neighs){
+      let nk=`${t.x+nb.dx},${t.y+nb.dy}`;
+      let nt=world.tiles.get(nk);
+      let nh = nt ? nt.h : -1.2; // void depth for floating island thickness
+      if(topZ>nh){
+        let dot=nb.n.x*viewX + nb.n.y*viewY;
+        if(dot<=0.015) continue;
+        let edge=[];
+        if(nb.dx===1) edge=[{wx:t.wx+0.5,wy:t.wy-0.5},{wx:t.wx+0.5,wy:t.wy+0.5}];
+        else if(nb.dx===-1) edge=[{wx:t.wx-0.5,wy:t.wy+0.5},{wx:t.wx-0.5,wy:t.wy-0.5}];
+        else if(nb.dy===1) edge=[{wx:t.wx+0.5,wy:t.wy+0.5},{wx:t.wx-0.5,wy:t.wy+0.5}];
+        else edge=[{wx:t.wx-0.5,wy:t.wy-0.5},{wx:t.wx+0.5,wy:t.wy-0.5}];
+        let verts=[
+          {wx:edge[0].wx, wy:edge[0].wy, wz:nh},
+          {wx:edge[0].wx, wy:edge[0].wy, wz:topZ},
+          {wx:edge[1].wx, wy:edge[1].wy, wz:topZ},
+          {wx:edge[1].wx, wy:edge[1].wy, wz:nh},
+        ];
+        let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+        let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
+        let shade=0.88 + (nb.n.x*lightX+nb.n.y*lightY)*0.12;
+        faces.push({verts, proj, depth, type:'wall', tile:t, shade, n:nb.n});
+      }
+    }
+  }
+
+  // house
+  let h=world.house;
+  let hx=h.x, hy=h.y, hw=h.w, hd=h.d, hh=h.h, bh=h.baseH;
+  // house base walls
+  let houseWalls=[
+    {a:{wx:hx-hw/2+0.04, wy:hy-hd/2+0.04}, b:{wx:hx+hw/2-0.04, wy:hy-hd/2+0.04}, n:{x:0,y:-1}},
+    {a:{wx:hx+hw/2-0.04, wy:hy-hd/2+0.04}, b:{wx:hx+hw/2-0.04, wy:hy+hd/2-0.04}, n:{x:1,y:0}},
+    {a:{wx:hx+hw/2-0.04, wy:hy+hd/2-0.04}, b:{wx:hx-hw/2+0.04, wy:hy+hd/2-0.04}, n:{x:0,y:1}},
+    {a:{wx:hx-hw/2+0.04, wy:hy+hd/2-0.04}, b:{wx:hx-hw/2+0.04, wy:hy-hd/2+0.04}, n:{x:-1,y:0}},
+  ];
+  for(let e of houseWalls){
+    let dot=e.n.x*viewX + e.n.y*viewY;
+    if(dot<=0.015) continue;
+    let verts=[
+      {wx:e.a.wx, wy:e.a.wy, wz:bh},
+      {wx:e.a.wx, wy:e.a.wy, wz:bh+hh},
+      {wx:e.b.wx, wy:e.b.wy, wz:bh+hh},
+      {wx:e.b.wx, wy:e.b.wy, wz:bh},
+    ];
+    let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+    let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
+    let shade=0.92 + (e.n.x*lightX+e.n.y*lightY)*0.08;
+    faces.push({verts, proj, depth, type:'houseWall', house:h, shade, edge:e});
+  }
+  // roof
+  if(h.style.type==='flat'){
+    let verts=[
+      {wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh},
+      {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh},
+      {wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh},
+      {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh},
+    ];
+    let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+    let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
+    faces.push({verts, proj, depth, type:'roofFlat', house:h});
+  } else if(h.style.type==='gable'){
+    // gable roof: ridge along longer side
+    let ridgeH=hh*0.6;
+    let vertsR=[];
+    if(hw >= hd){
+      // ridge along X
+      vertsR=[
+        [{wx:hx-hw/2, wy:hy, wz:bh+hh+ridgeH}, {wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh}, {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh}, {wx:hx+hw/2, wy:hy, wz:bh+hh+ridgeH}],
+        [{wx:hx-hw/2, wy:hy, wz:bh+hh+ridgeH}, {wx:hx+hw/2, wy:hy, wz:bh+hh+ridgeH}, {wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh}, {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh}]
+      ];
+    } else {
+      vertsR=[
+        [{wx:hx, wy:hy-hd/2, wz:bh+hh+ridgeH}, {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh}, {wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh}, {wx:hx, wy:hy+hd/2, wz:bh+hh+ridgeH}],
+        [{wx:hx, wy:hy-hd/2, wz:bh+hh+ridgeH}, {wx:hx, wy:hy+hd/2, wz:bh+hh+ridgeH}, {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh}, {wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh}]
+      ];
+    }
+    for(let vr of vertsR){
+      let proj=vr.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+      let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
+      faces.push({verts:vr, proj, depth, type:'roofGable', house:h});
+    }
+    // gable triangles (side)
+    let gables=[];
+    if(hw >= hd){
+      gables=[
+        [{wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh}, {wx:hx-hw/2, wy:hy, wz:bh+hh+ridgeH}, {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh}],
+        [{wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh}, {wx:hx+hw/2, wy:hy, wz:bh+hh+ridgeH}, {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh}]
+      ];
+    } else {
+      gables=[
+        [{wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh}, {wx:hx, wy:hy-hd/2, wz:bh+hh+ridgeH}, {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh}],
+        [{wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh}, {wx:hx, wy:hy+hd/2, wz:bh+hh+ridgeH}, {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh}]
+      ];
+    }
+    for(let g of gables){
+      let proj=g.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+      let depth=proj.reduce((a,p)=>a+p.depth,0)/3;
+      // cull by normal? we'll keep both, painter will sort
+      faces.push({verts:g, proj, depth, type:'roofGableSide', house:h});
+    }
+  } else if(h.style.type==='pyramid'){
+    let apex={wx:hx, wy:hy, wz:bh+hh+0.9};
+    let base=[
+      {wx:hx-hw/2, wy:hy-hd/2, wz:bh+hh},
+      {wx:hx+hw/2, wy:hy-hd/2, wz:bh+hh},
+      {wx:hx+hw/2, wy:hy+hd/2, wz:bh+hh},
+      {wx:hx-hw/2, wy:hy+hd/2, wz:bh+hh},
+    ];
+    for(let i=0;i<4;i++){
+      let verts=[base[i], base[(i+1)%4], apex];
+      let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+      let depth=proj.reduce((a,p)=>a+p.depth,0)/3;
+      faces.push({verts, proj, depth, type:'roofGable', house:h});
+    }
+  }
+  // chimney
+  let chimX=hx+ hw*0.28, chimY=hy - hd*0.18;
+  let chimVerts=[
+    {a:{wx:chimX-0.18, wy:chimY-0.18}, b:{wx:chimX+0.18, wy:chimY-0.18}, n:{x:0,y:-1}},
+    {a:{wx:chimX+0.18, wy:chimY-0.18}, b:{wx:chimX+0.18, wy:chimY+0.18}, n:{x:1,y:0}},
+    {a:{wx:chimX+0.18, wy:chimY+0.18}, b:{wx:chimX-0.18, wy:chimY+0.18}, n:{x:0,y:1}},
+    {a:{wx:chimX-0.18, wy:chimY+0.18}, b:{wx:chimX-0.18, wy:chimY-0.18}, n:{x:-1,y:0}},
+  ];
+  for(let e of chimVerts){
+    let dot=e.n.x*viewX + e.n.y*viewY; if(dot<=0.015) continue;
+    let verts=[
+      {wx:e.a.wx, wy:e.a.wy, wz:bh+hh},
+      {wx:e.a.wx, wy:e.a.wy, wz:bh+hh+0.9},
+      {wx:e.b.wx, wy:e.b.wy, wz:bh+hh+0.9},
+      {wx:e.b.wx, wy:e.b.wy, wz:bh+hh},
+    ];
+    let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+    let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
+    faces.push({verts, proj, depth, type:'chimney', house:h});
+  }
+  // chimney top
+  {
+    let verts=[
+      {wx:chimX-0.18, wy:chimY-0.18, wz:bh+hh+0.9},
+      {wx:chimX+0.18, wy:chimY-0.18, wz:bh+hh+0.9},
+      {wx:chimX+0.18, wy:chimY+0.18, wz:bh+hh+0.9},
+      {wx:chimX-0.18, wy:chimY+0.18, wz:bh+hh+0.9},
+    ];
+    let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+    let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
+    faces.push({verts, proj, depth, type:'chimneyTop', house:h});
+  }
+
+  // decor sprites
+  for(let d of world.decor){
+    let p=worldToScreen(d.wx,d.wy,d.h);
+    spritesList.push({x:p.x, y:p.y, depth:p.depth, decor:d});
+  }
+  // puffs
+  for(let puff of puffs){
+    let p=worldToScreen(puff.wx, puff.wy, puff.wz + puff.t*0.6);
+    spritesList.push({x:p.x, y:p.y, depth:p.depth+0.01, puff, alpha:1-puff.t/puff.life});
+  }
+
+  // combine
+  let drawList=[];
+  for(let f of faces) drawList.push({depth:f.depth, kind:'face', f});
+  for(let s of spritesList) drawList.push({depth:s.depth, kind:'sprite', s});
+  drawList.sort((a,b)=> a.depth - b.depth);
 
   ctx.imageSmoothingEnabled=false;
 
-  // Build face list
-  let faces=[];
-  let spritesList=[];
-
-  // view dir for culling
-  let cos=Math.cos(camera.angle), sin=Math.sin(camera.angle);
-  let viewX = cos+sin, viewY = cos - sin;
-  let viewLen=Math.hypot(viewX,viewY); viewX/=viewLen; viewY/=viewLen;
-  // light dir (northwest)
-  let lightX=-0.7, lightY=-0.7; let lightLen=Math.hypot(lightX,lightY); lightX/=lightLen; lightY/=lightLen;
-
-  for(let x=0;x<WORLD_W;x++){
-    for(let y=0;y<WORLD_H;y++){
-      let cell=world[x][y];
-      let c = getTileCenter(x,y);
-      let baseZ=0;
-      let topZ=cell.h;
-      // tile top face
-      let topVerts = [
-        {wx:c.wx-0.5, wy:c.wy-0.5, wz:topZ},
-        {wx:c.wx+0.5, wy:c.wy-0.5, wz:topZ},
-        {wx:c.wx+0.5, wy:c.wy+0.5, wz:topZ},
-        {wx:c.wx-0.5, wy:c.wy+0.5, wz:topZ},
-      ];
-      // depth for top
-      let projTop = topVerts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-      let depthTop = (projTop.reduce((a,p)=>a+p.depth,0)/4);
-      faces.push({verts:topVerts, proj:projTop, depth:depthTop, type:'top', cell, x,y});
-
-      // walls for height difference
-      let neigh=[
-        {dx:0,dy:-1, normal:{x:0,y:-1}}, // north
-        {dx:1,dy:0, normal:{x:1,y:0}}, // east
-        {dx:0,dy:1, normal:{x:0,y:1}}, // south
-        {dx:-1,dy:0, normal:{x:-1,y:0}}, // west
-      ];
-      for(let n of neigh){
-        let nx=x+n.dx, ny=y+n.dy;
-        let nh=0;
-        if(nx>=0&&nx<WORLD_W&&ny>=0&&ny<WORLD_H) nh=world[nx][ny].h;
-        else nh=-0.5; // edge cliff to void
-        if(topZ > nh){
-          // culling: dot(normal, view) >0 visible
-          let dot = n.normal.x*viewX + n.normal.y*viewY;
-          if(dot <= 0.02) continue; // backface
-          // create wall quad
-          let edge=[];
-          if(n.dx===0 && n.dy===-1){ // north
-            edge=[{wx:c.wx-0.5,wy:c.wy-0.5},{wx:c.wx+0.5,wy:c.wy-0.5}];
-          } else if(n.dx===1 && n.dy===0){ // east
-            edge=[{wx:c.wx+0.5,wy:c.wy-0.5},{wx:c.wx+0.5,wy:c.wy+0.5}];
-          } else if(n.dx===0 && n.dy===1){ // south
-            edge=[{wx:c.wx+0.5,wy:c.wy+0.5},{wx:c.wx-0.5,wy:c.wy+0.5}];
-          } else { // west
-            edge=[{wx:c.wx-0.5,wy:c.wy+0.5},{wx:c.wx-0.5,wy:c.wy-0.5}];
-          }
-          let verts=[
-            {wx:edge[0].wx, wy:edge[0].wy, wz:nh},
-            {wx:edge[0].wx, wy:edge[0].wy, wz:topZ},
-            {wx:edge[1].wx, wy:edge[1].wy, wz:topZ},
-            {wx:edge[1].wx, wy:edge[1].wy, wz:nh},
-          ];
-          let proj=verts.map(v=>worldToScreen(v.wx,v.wy,v.wz));
-          let depth=(proj.reduce((a,p)=>a+p.depth,0)/4);
-          // shade based on light
-          let lightDot = n.normal.x*lightX + n.normal.y*lightY; // -1..1
-          let shade = 0.85 + lightDot*0.15; // 0.7..1.0
-          faces.push({verts, proj, depth, type:'wall', cell, shade, normal:n.normal});
-        }
-      }
-
-      // building
-      if(cell.building>0){
-        let bh=cell.building;
-        let bBase=topZ;
-        let bTop=bBase+bh;
-        // building top
-        let bTopVerts=[
-          {wx:c.wx-0.38, wy:c.wy-0.38, wz:bTop},
-          {wx:c.wx+0.38, wy:c.wy-0.38, wz:bTop},
-          {wx:c.wx+0.38, wy:c.wy+0.38, wz:bTop},
-          {wx:c.wx-0.38, wy:c.wy+0.38, wz:bTop},
-        ];
-        let projBT=bTopVerts.map(v=>worldToScreen(v.wx,v.wy,v.wz));
-        let depthBT=(projBT.reduce((a,p)=>a+p.depth,0)/4);
-        faces.push({verts:bTopVerts, proj:projBT, depth:depthBT, type:'roof', cell, bh});
-
-        // building walls (4 sides)
-        let bEdges=[
-          {a:{wx:c.wx-0.38,wy:c.wy-0.38}, b:{wx:c.wx+0.38,wy:c.wy-0.38}, n:{x:0,y:-1}},
-          {a:{wx:c.wx+0.38,wy:c.wy-0.38}, b:{wx:c.wx+0.38,wy:c.wy+0.38}, n:{x:1,y:0}},
-          {a:{wx:c.wx+0.38,wy:c.wy+0.38}, b:{wx:c.wx-0.38,wy:c.wy+0.38}, n:{x:0,y:1}},
-          {a:{wx:c.wx-0.38,wy:c.wy+0.38}, b:{wx:c.wx-0.38,wy:c.wy-0.38}, n:{x:-1,y:0}},
-        ];
-        for(let e of bEdges){
-          let dot=e.n.x*viewX + e.n.y*viewY;
-          if(dot<=0.02) continue;
-          let verts=[
-            {wx:e.a.wx, wy:e.a.wy, wz:bBase},
-            {wx:e.a.wx, wy:e.a.wy, wz:bTop},
-            {wx:e.b.wx, wy:e.b.wy, wz:bTop},
-            {wx:e.b.wx, wy:e.b.wy, wz:bBase},
-          ];
-          let proj=verts.map(v=>worldToScreen(v.wx,v.wy,v.wz));
-          let depth=(proj.reduce((a,p)=>a+p.depth,0)/4);
-          let lightDot=e.n.x*lightX + e.n.y*lightY;
-          let shade=0.88 + lightDot*0.12;
-          faces.push({verts, proj, depth, type:'bwall', cell, shade, normal:e.n, edge:e});
-        }
-      }
-
-      // tree as sprite (billboard)
-      if(cell.tree){
-        // tree base position
-        let tx=c.wx + (cell.decor-0.5)*0.2;
-        let ty=c.wy + (Math.sin(cell.decor*10)-0.5)*0.2;
-        let tz=topZ;
-        let sp=worldToScreen(tx,ty,tz);
-        // depth at base
-        spritesList.push({x:sp.x, y:sp.y, depth:sp.depth, type:'tree', wx:tx, wy:ty, wz:tz, cell});
-      }
-    }
-  }
-
-  // player sprite
-  let pScreen = worldToScreen(player.wx, player.wy, player.wz);
-  // choose dir
-  let camAngle = camera.angle;
-  // player world dir relative to camera: compute screen angle?
-  // For sprite selection we want which side of player faces camera.
-  // Compute vector from player to camera in world: camera - player
-  let dxc = camera.x - player.wx, dyc = camera.y - player.wy;
-  // angle from player to camera
-  let toCam = Math.atan2(dyc, dxc);
-  // player facing dir (movement dir) = player.dir
-  let rel = player.dir - toCam;
-  while(rel > Math.PI) rel-=2*Math.PI;
-  while(rel < -Math.PI) rel+=2*Math.PI;
-  // map rel to 4 dirs: 0= south (facing camera), 90= east, 180=north, -90=west
-  let pDir='south';
-  // normalize rel to 0..360 where 0 = facing camera (south)
-  // rel is facing vs toCam: if player faces same as toCam (towards camera) then dot =1 => facing camera => south sprite (front)
-  // Actually toCam points from player to camera, if player.dir == toCam => player looks at camera => front view
-  // So rel=0 => south
-  let deg = rel*180/Math.PI;
-  // deg 0 = south, 90 = west? Need test with movement.
-  // We'll test: if deg between -45..45 => south, 45..135 => east? Need to tune.
-  // Let's approximate: 0 south, 90 east, 180 north, -90 west
-  if(deg> -45 && deg<=45) pDir='south';
-  else if(deg>45 && deg<=135) pDir='east';
-  else if(deg>135 || deg<=-135) pDir='north';
-  else pDir='west';
-
-  // if not moving, keep last dir? we have pDir computed from movement dir; if not moving, player.dir remains last movement, so okay.
-
-  spritesList.push({x:pScreen.x, y:pScreen.y, depth:pScreen.depth, type:'player', dir:pDir, wx:player.wx, wy:player.wy, wz:player.wz});
-
-  // puffs sprites
-  for(let puff of puffs){
-    let s=worldToScreen(puff.wx, puff.wy, puff.wz + puff.t*1.2);
-    spritesList.push({x:s.x, y:s.y, depth:s.depth+0.01, type:'puff', alpha:1-puff.t/puff.life});
-  }
-
-  // Combine and sort: faces + sprites by depth ascending (back to front)
-  let drawList=[];
-  for(let f of faces) drawList.push({depth:f.depth, kind:'face', data:f});
-  for(let s of spritesList) drawList.push({depth:s.depth, kind:'sprite', data:s});
-  drawList.sort((a,b)=> a.depth - b.depth);
-
-  // Draw
   for(let item of drawList){
     if(item.kind==='face'){
-      let f=item.data;
+      let f=item.f;
       let proj=f.proj;
-      // frustum cull: if all points offscreen far, skip
+      // cull offscreen
       let minX=Math.min(...proj.map(p=>p.x)), maxX=Math.max(...proj.map(p=>p.x));
       let minY=Math.min(...proj.map(p=>p.y)), maxY=Math.max(...proj.map(p=>p.y));
-      if(maxX < -100 || minX > W+100 || maxY < -100 || minY > H+100) continue;
-
-      ctx.beginPath();
-      ctx.moveTo(proj[0].x, proj[0].y);
+      if(maxX < -80 || minX > W+80 || maxY < -80 || minY > H+80) continue;
+      ctx.beginPath(); ctx.moveTo(proj[0].x, proj[0].y);
       for(let i=1;i<proj.length;i++) ctx.lineTo(proj[i].x, proj[i].y);
       ctx.closePath();
 
       if(f.type==='top'){
-        // tile color
-        let col='#7bc67e';
-        let cell=f.cell;
-        if(cell.type==='water'){
-          // animated water
-          let wave = Math.sin(waterTime*2 + f.x*0.7 + f.y*0.7)*0.04;
-          col = `rgb(${60+wave*20}, ${182+wave*10}, ${246})`;
-          // water shimmer
-        } else if(cell.type==='sand') col='#f7e6a5';
-        else if(cell.type==='stone') col='#b0bec5';
-        else if(cell.type==='road') col='#3a3f5a';
-        else if(cell.type==='forest') col='#66bb6a';
-        else col='#7bc67e';
-        // night dim
-        if(isNight) col = shadeColor(col, 0.55);
-
+        let col=world.biome.top;
+        if(isNight) col=shadeColor(col,0.58);
         ctx.fillStyle=col;
         ctx.fill();
-        // pixel inner detail
-        // grass blades
-        if(cell.type==='grass' || cell.type==='forest'){
-          ctx.fillStyle= isNight ? 'rgba(40,70,40,0.5)' : 'rgba(50,120,50,0.18)';
-          // two small pixel dots inside diamond
-          let cx=(proj[0].x+proj[2].x)/2, cy=(proj[0].y+proj[2].y)/2;
-          let s=4*camera.zoom;
-          ctx.fillRect(cx-6*s, cy-2*s, 2*s,2*s);
-          ctx.fillRect(cx+4*s, cy+1*s, 2*s,2*s);
-          ctx.fillRect(cx-2*s, cy+3*s, 1.5*s,1.5*s);
-        } else if(cell.type==='road'){
-          // road markings dashed
-          ctx.strokeStyle='rgba(255,204,2,0.9)';
-          ctx.lineWidth=1*camera.zoom;
-          ctx.setLineDash([6*camera.zoom,6*camera.zoom]);
-          // line across tile center along road direction (horizontal/vertical)
-          let midX=(proj[0].x+proj[2].x)/2, midY=(proj[0].y+proj[2].y)/2;
-          // determine road orientation: if x==13 vertical else horizontal? simplified
-          ctx.beginPath();
-          ctx.moveTo(proj[0].x, proj[0].y); // will be overwritten? Actually draw diagonal dashed
-          // draw center line as short segment along tile diagonal
-          let angle = (f.x===13 || f.x===10|| f.x===16) ? Math.PI/4 : -Math.PI/4;
-          // simpler: draw dot at center
-          ctx.setLineDash([]);
-          ctx.fillStyle='#ffcc02';
-          let cx=(proj[0].x+proj[2].x)/2, cy=(proj[0].y+proj[2].y)/2;
-          ctx.fillRect(cx-1,cy-1,2,2);
-        }
-        // edge outline
-        ctx.strokeStyle= isNight ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.12)';
-        ctx.lineWidth=1;
-        ctx.stroke();
-        // highlight top edge
-        ctx.strokeStyle='rgba(255,255,255,0.18)';
-        ctx.beginPath(); ctx.moveTo(proj[0].x, proj[0].y); ctx.lineTo(proj[1].x, proj[1].y); ctx.stroke();
+        // subtle pixel tuft
+        let cx=(proj[0].x+proj[2].x)/2, cy=(proj[0].y+proj[2].y)/2;
+        ctx.fillStyle=isNight?'rgba(30,40,30,0.18)':'rgba(40,80,40,0.14)';
+        ctx.fillRect(cx-3, cy-1, 2,2); ctx.fillRect(cx+2, cy+2, 1.5,1.5);
+        ctx.strokeStyle=isNight?'rgba(0,0,0,0.18)':'rgba(0,0,0,0.08)'; ctx.lineWidth=1; ctx.stroke();
 
       } else if(f.type==='wall'){
-        let base='#6d8a6f';
-        if(f.cell.type==='sand') base='#d8c99a';
-        else if(f.cell.type==='stone') base='#8a96a0';
-        else if(f.cell.type==='road') base='#2a2e4a';
-        else if(f.cell.type==='forest') base='#4a7a4f';
-        else base='#5a8a5a';
-        // shade
-        let shaded = shadeColor(base, f.shade * (isNight?0.6:1));
-        ctx.fillStyle=shaded;
-        ctx.fill();
-        // pixel strata lines
-        ctx.strokeStyle='rgba(0,0,0,0.12)';
-        ctx.lineWidth=1;
-        ctx.stroke();
-        // horizontal strata
-        ctx.strokeStyle='rgba(0,0,0,0.08)';
-        ctx.beginPath();
-        let mx=(proj[1].x+proj[2].x)/2, my=(proj[1].y+proj[2].y)/2;
-        let mx2=(proj[0].x+proj[3].x)/2, my2=(proj[0].y+proj[3].y)/2;
-        ctx.moveTo((proj[1].x+proj[0].x)/2, (proj[1].y+proj[0].y)/2);
-        ctx.lineTo((proj[2].x+proj[3].x)/2, (proj[2].y+proj[3].y)/2);
-        ctx.stroke();
-
-      } else if(f.type==='roof'){
-        let col = ['#ef5350','#ff7043','#8d6e63','#78909c'][f.bh%4] || '#ef5350';
-        if(isNight) col=shadeColor(col,0.65);
+        let base=world.biome.side;
+        if(isNight) base=shadeColor(base,0.55);
+        let col=shadeColor(base, f.shade);
         ctx.fillStyle=col;
         ctx.fill();
-        // roof highlight
-        ctx.fillStyle='rgba(255,255,255,0.18)';
-        ctx.fillRect(proj[0].x+2, proj[0].y+2, 4*camera.zoom, 3*camera.zoom);
-        // roof pattern tiles
-        ctx.strokeStyle='rgba(0,0,0,0.15)';
-        ctx.lineWidth=1; ctx.stroke();
-        // chimney
+        // strata
+        ctx.strokeStyle='rgba(0,0,0,0.10)'; ctx.lineWidth=1; ctx.stroke();
+        // grass overhang
+        let topEdgeMidX=(proj[1].x+proj[2].x)/2, topEdgeMidY=(proj[1].y+proj[2].y)/2;
+        ctx.fillStyle=shadeColor(world.biome.top, isNight?0.48:0.85);
+        ctx.fillRect(topEdgeMidX-6, topEdgeMidY-2, 12, 3);
+
+      } else if(f.type==='houseWall'){
+        let col=f.house.style.wall;
+        if(isNight) col=shadeColor(col,0.62);
+        let c=shadeColor(col, f.shade);
+        ctx.fillStyle=c; ctx.fill();
+        ctx.strokeStyle='rgba(0,0,0,0.14)'; ctx.stroke();
+        // windows/door on front-ish walls (south and east visible most)
+        // add door on south wall (n y=1) and windows on others
+        let isSouth = f.edge && f.edge.n.y===1;
         let cx=(proj[0].x+proj[1].x+proj[2].x+proj[3].x)/4;
         let cy=(proj[0].y+proj[1].y+proj[2].y+proj[3].y)/4;
-        ctx.fillStyle=isNight?'#2a2e4a':'#3e2723';
-        ctx.fillRect(cx-3*camera.zoom, cy-6*camera.zoom, 4*camera.zoom, 6*camera.zoom);
-        ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(cx-3*camera.zoom, cy-1*camera.zoom, 4*camera.zoom,1*camera.zoom);
-
-      } else if(f.type==='bwall'){
-        let base='#d7ccc8';
-        if(f.bh===2) base='#bcaaa4';
-        if(f.bh===3) base='#a1887f';
-        let shaded=shadeColor(base, f.shade*(isNight?0.6:1));
-        ctx.fillStyle=shaded;
-        ctx.fill();
-        ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.lineWidth=1; ctx.stroke();
-
-        // windows
-        let cell=f.cell;
-        // do windows only on larger buildings and not too zoomed out
-        if(camera.zoom>0.7 && cell.building>1){
-          let proj=f.proj;
-          // compute wall center
-          let cx=(proj[0].x+proj[1].x+proj[2].x+proj[3].x)/4;
-          let cy=(proj[0].y+proj[1].y+proj[2].y+proj[3].y)/4;
-          // window size
-          let ws=6*camera.zoom, hs=8*camera.zoom;
-          // draw 1-2 windows depending on building height
-          let rows = Math.min(2, f.bh);
-          for(let r=0;r<rows;r++){
-            let wy = cy - r*10*camera.zoom;
-            ctx.fillStyle= isNight ? (Math.random()>0.3? '#ffcc02' : '#2a2e4a') : '#1a237e';
-            ctx.fillRect(cx-ws/2, wy-hs/2, ws, hs);
-            ctx.fillStyle= isNight ? 'rgba(255,204,2,0.9)' : 'rgba(180,200,255,0.5)';
-            ctx.fillRect(cx-ws/2+1, wy-hs/2+1, ws-2, 2);
-            ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.strokeRect(cx-ws/2, wy-hs/2, ws, hs);
-          }
+        if(isSouth){
+          // door
+          ctx.fillStyle=isNight?'#3e2723':'#4e342e';
+          let w=8*camera.zoom, h=12*camera.zoom;
+          ctx.fillRect(cx-w/2, cy - h/2 + 4*camera.zoom, w, h);
+          ctx.fillStyle='#2a1a0f'; ctx.fillRect(cx-w/2+1, cy - h/2+5*camera.zoom, w-2, 2);
+          // door knob
+          ctx.fillStyle='#ffcc02'; ctx.fillRect(cx+2, cy, 2,2);
+          // side window
+          ctx.fillStyle=isNight?'#ffcc02':'#1a237e';
+          ctx.fillRect(cx - 18*camera.zoom, cy - 3*camera.zoom, 7*camera.zoom, 7*camera.zoom);
+          ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.fillRect(cx - 18*camera.zoom+1, cy -2*camera.zoom, 5*camera.zoom,1);
+        } else {
+          // window
+          ctx.fillStyle=isNight?'#5a4a2a':'#1a237e';
+          let w=7*camera.zoom, h=7*camera.zoom;
+          ctx.fillRect(cx-w/2, cy - h/2, w, h);
+          ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.strokeRect(cx-w/2, cy - h/2, w, h);
+          // cross
+          ctx.beginPath(); ctx.moveTo(cx, cy - h/2); ctx.lineTo(cx, cy + h/2); ctx.moveTo(cx - w/2, cy); ctx.lineTo(cx + w/2, cy); ctx.stroke();
         }
+
+      } else if(f.type==='roofFlat'){
+        let col=f.house.style.roof2;
+        if(isNight) col=shadeColor(col,0.6);
+        ctx.fillStyle=col; ctx.fill();
+        // parapet highlight
+        ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(proj[0].x+3, proj[0].y+3, 6*camera.zoom, 3);
+        ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.stroke();
+
+      } else if(f.type==='roofGable'){
+        let col=f.house.style.roof;
+        if(isNight) col=shadeColor(col,0.58);
+        // shade by orientation via view (approx)
+        let shade = 0.94 + (Math.sin(camera.angle)*0.04);
+        ctx.fillStyle=shadeColor(col, shade);
+        ctx.fill();
+        // roof tiles pattern
+        ctx.strokeStyle='rgba(0,0,0,0.10)'; ctx.lineWidth=1; ctx.stroke();
+        // ridge line
+        ctx.strokeStyle='rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.moveTo(proj[0].x, proj[0].y); ctx.lineTo(proj[3].x, proj[3].y); ctx.stroke();
+
+      } else if(f.type==='roofGableSide'){
+        let col=shadeColor(f.house.style.roof2, 0.82);
+        if(isNight) col=shadeColor(col,0.62);
+        ctx.fillStyle=col; ctx.fill();
+        ctx.strokeStyle='rgba(0,0,0,0.12)'; ctx.stroke();
+        // window on gable if visible
+        let cx=(proj[0].x+proj[1].x+proj[2].x)/3, cy=(proj[0].y+proj[1].y+proj[2].y)/3;
+        ctx.fillStyle=isNight?'#ffcc02':'#1a237e'; ctx.beginPath(); ctx.arc(cx, cy+2*camera.zoom, 4*camera.zoom,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.stroke();
+
+      } else if(f.type==='chimney'){
+        ctx.fillStyle=isNight?'#2a2a30':'#4e342e'; ctx.fill();
+        ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.stroke();
+        // brick lines
+        ctx.strokeStyle='rgba(0,0,0,0.08)';
+        let my=(proj[1].y+proj[2].y)/2; ctx.beginPath(); ctx.moveTo(proj[1].x, my); ctx.lineTo(proj[2].x, my); ctx.stroke();
+
+      } else if(f.type==='chimneyTop'){
+        ctx.fillStyle='#3e2723'; ctx.fill();
+        ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.stroke();
+        // smoke source already via puffs
       }
-    } else { // sprite
-      let s=item.data;
-      if(s.type==='tree'){
-        let img=sprites.tree;
-        let scale=camera.zoom;
-        // calculate screen scale: trees appear larger when closer? already via projection, but sprite size should scale with zoom
-        let w=48*scale, h=60*scale;
-        // shadow ellipse on ground
-        let groundY = s.y;
-        ctx.fillStyle= isNight ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.18)';
-        ctx.beginPath(); ctx.ellipse(s.x, s.y+4*scale, 12*scale, 6*scale, 0,0,Math.PI*2); ctx.fill();
-        // sway
-        let sway = Math.sin(waterTime*0.8 + s.wx*2)*2*scale;
-        ctx.drawImage(img, s.x - w/2 + sway, s.y - h + 8*scale, w, h);
-      } else if(s.type==='player'){
-        let img=sprites['player_'+s.dir] || sprites.player_south;
-        let scale=camera.zoom * (0.9 + Math.sin(player.walkPhase)*0.03*(player.moving?1:0));
-        let w=36*scale, h=42*scale;
+
+    } else {
+      let s=item.s;
+      if(s.decor){
+        let d=s.decor;
+        let img=sprites[d.type] || sprites.tree;
+        if(!img) continue;
+        let scale=camera.zoom * d.scale;
         // shadow
-        ctx.fillStyle='rgba(0,0,0,0.25)';
-        ctx.beginPath(); ctx.ellipse(s.x, s.y+6*scale, 10*scale, 5*scale,0,0,Math.PI*2); ctx.fill();
-        // bob when walking
-        let bob = player.moving ? Math.sin(player.walkPhase)*2*scale : 0;
-        // selection ring
-        ctx.strokeStyle='rgba(255,204,2,0.6)'; ctx.lineWidth=1;
-        ctx.beginPath(); ctx.ellipse(s.x, s.y+6*scale, 9*scale, 4.5*scale,0,0,Math.PI*2); ctx.stroke();
-        ctx.drawImage(img, s.x - w/2, s.y - h + 10*scale + bob, w, h);
-        // name tag
-        ctx.fillStyle='rgba(18,20,35,0.85)';
-        ctx.fillRect(s.x-18*scale, s.y - h -4*scale + bob, 36*scale, 8*scale);
-        ctx.fillStyle='#ffcc02'; ctx.font=`${7*scale}px "Press Start 2P", monospace`; ctx.textAlign='center';
-        ctx.fillText('ИГРОК', s.x, s.y - h +2*scale + bob);
-      } else if(s.type==='puff'){
-        ctx.globalAlpha=s.alpha;
-        ctx.fillStyle='#fff';
-        ctx.beginPath(); ctx.arc(s.x, s.y, 6*camera.zoom*s.alpha,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle='#ffcc02'; ctx.beginPath(); ctx.arc(s.x, s.y, 3*camera.zoom*s.alpha,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=isNight?'rgba(0,0,0,0.28)':'rgba(0,0,0,0.16)';
+        ctx.beginPath(); ctx.ellipse(s.x, s.y+3*scale, 8*scale, 4*scale,0,0,Math.PI*2); ctx.fill();
+        let w=img.width*0.6*scale, h=img.height*0.6*scale;
+        let sway=(d.type==='tree'||d.type==='autumnTree') ? Math.sin(time*0.9 + d.wx*3)*1.2*scale : 0;
+        ctx.drawImage(img, s.x - w/2 + sway, s.y - h + 4*scale, w, h);
+      } else if(s.puff){
+        ctx.globalAlpha=s.alpha*0.8;
+        ctx.fillStyle=isNight?'#9fa8da':'#fff';
+        ctx.beginPath(); ctx.arc(s.x, s.y, 7*camera.zoom*s.alpha,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#ffcc02'; ctx.beginPath(); ctx.arc(s.x, s.y-1, 3*camera.zoom*s.alpha,0,Math.PI*2); ctx.fill();
         ctx.globalAlpha=1;
       }
     }
   }
 
+  // island shadow on void
+  let shadP=worldToScreen(0,0,-1.2);
+  ctx.fillStyle=isNight?'rgba(0,0,0,0.35)':'rgba(0,0,0,0.18)';
+  ctx.beginPath(); ctx.ellipse(shadP.x, shadP.y+10, 90*camera.zoom, 36*camera.zoom, 0,0,Math.PI*2); ctx.fill();
+
   // vignette
-  let vig=ctx.createRadialGradient(W/2,H/2, Math.min(W,H)*0.4, W/2,H/2, Math.min(W,H)*0.9);
-  vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.28)');
+  let vig=ctx.createRadialGradient(W/2,H/2, Math.min(W,H)*0.5, W/2,H/2, Math.min(W,H)*0.95);
+  vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.22)');
   ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
-
-  // crosshair at center for build hint
-  if(buildMode){
-    ctx.strokeStyle='rgba(255,204,2,0.9)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(W/2-8, H/2); ctx.lineTo(W/2+8,H/2); ctx.moveTo(W/2, H/2-8); ctx.lineTo(W/2, H/2+8); ctx.stroke();
-    ctx.fillStyle='rgba(255,204,2,0.9)'; ctx.beginPath(); ctx.arc(W/2,H/2,2,0,Math.PI*2); ctx.fill();
-  }
 }
 
-function drawPixelCloud(x,y,scale){
-  ctx.fillStyle=ctx.fillStyle; // already set
-  // pixel cloud: 3x2 blocks
-  let s=6*scale;
-  ctx.fillRect(x, y, s*3, s*2);
-  ctx.fillRect(x+s, y-s, s*2, s);
-  ctx.fillRect(x-s, y+s*0.5, s, s);
-  ctx.clearRect(x+s*1.2, y+s*0.4, s*0.6, s*0.6); // windows
-}
+// loader
+let lp=0, int=setInterval(()=>{
+  lp+=Math.random()*20;
+  if(lp>=100){ lp=100; clearInterval(int); setTimeout(()=>{ document.getElementById('loader').style.opacity='0'; setTimeout(()=> document.getElementById('loader').remove(),500); },280); }
+  document.getElementById('loadBar').style.width=lp+'%';
+},110);
 
-function shadeColor(hex, factor){
-  // hex #rrggbb
-  let r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
-  r=Math.round(r*factor); g=Math.round(g*factor); b=Math.round(b*factor);
-  r=Math.max(0,Math.min(255,r)); g=Math.max(0,Math.min(255,g)); b=Math.max(0,Math.min(255,b));
-  return `rgb(${r},${g},${b})`;
-}
-
-// Loading fake
-let loadP=0;
-let loadInt=setInterval(()=>{
-  loadP+= Math.random()*18;
-  if(loadP>=100){ loadP=100; clearInterval(loadInt); setTimeout(()=>{ document.getElementById('loader').style.opacity='0'; setTimeout(()=> document.getElementById('loader').remove(), 600); }, 300); }
-  document.getElementById('loadBar').style.width=loadP+'%';
-}, 120);
-
-// Prevent scroll
-document.body.addEventListener('touchmove', e=>{ if(e.target===canvas) e.preventDefault(); }, {passive:false});
-
-// Info tooltip on hover build
-canvas.addEventListener('mousemove', e=>{
-  let p=screenToWorld(e.clientX, e.clientY);
-  let ix=Math.floor(p.wx+WORLD_W/2), iy=Math.floor(p.wy+WORLD_H/2);
-  let tip=document.getElementById('tooltip');
-  if(ix>=0&&ix<WORLD_W&&iy>=0&&iy<WORLD_H){
-    let cell=world[ix][iy];
-    tip.style.display='block';
-    tip.style.left=(e.clientX+12)+'px';
-    tip.style.top=(e.clientY-28)+'px';
-    tip.textContent=`Клетка ${ix},${iy} • ${cell.type} • высота ${cell.h}${cell.building?' • дом '+cell.building+' эт.':''}`;
-  } else tip.style.display='none';
-});
-canvas.addEventListener('mouseleave', ()=> document.getElementById('tooltip').style.display='none');
-
-// Kickoff
-requestAnimationFrame(update);
-
-// regenerate world with R
-window.addEventListener('keydown', e=>{
-  if(e.key.toLowerCase()==='r'){ genWorld(); spawnPuff(player.wx,player.wy,2); }
-});
-
-// initial stats
-document.getElementById('btnBuildMode').classList.add('active');
+frame();
 })();
 </script>
 </body>
