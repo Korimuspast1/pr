@@ -209,24 +209,30 @@ function render(){
   let viewX=cos+sin, viewY=cos - sin; let vl=Math.hypot(viewX,viewY); viewX/=vl; viewY/=vl;
   let lightX=-0.6, lightY=-0.8; let ll=Math.hypot(lightX,lightY); lightX/=ll; lightY/=ll;
 
-  let faces=[], sprites=[];
+  let platformFaces=[], houseFaces=[];
 
-  // платформа
+  // платформа — скрываем тайлы под домом, чтобы не просвечивали
+  let hxHouse = house ? house.w/2 : 0, hyHouse = house ? house.d/2 : 0;
   for(let t of platform){
-    let topZ=0;
-    let vTop=[
-      {wx:t.wx-0.5, wy:t.wy-0.5, wz:topZ},
-      {wx:t.wx+0.5, wy:t.wy-0.5, wz:topZ},
-      {wx:t.wx+0.5, wy:t.wy+0.5, wz:topZ},
-      {wx:t.wx-0.5, wy:t.wy+0.5, wz:topZ},
-    ];
-    let pTop=vTop.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-    let dTop=pTop.reduce((a,p)=>a+p.depth,0)/4;
-    faces.push({verts:vTop, proj:pTop, depth:dTop, type:'top'});
+    // если тайл полностью под домом — не рисуем верх (дом его накрывает)
+    let underHouse = house && Math.abs(t.wx) < hxHouse + 0.45 && Math.abs(t.wy) < hyHouse + 0.45;
+    if(!underHouse){
+      let topZ=0;
+      let vTop=[
+        {wx:t.wx-0.5, wy:t.wy-0.5, wz:topZ},
+        {wx:t.wx+0.5, wy:t.wy-0.5, wz:topZ},
+        {wx:t.wx+0.5, wy:t.wy+0.5, wz:topZ},
+        {wx:t.wx-0.5, wy:t.wy+0.5, wz:topZ},
+      ];
+      let pTop=vTop.map(v=> worldToScreen(v.wx,v.wy,v.wz));
+      let dTop=pTop.reduce((a,p)=>a+p.depth,0)/4;
+      platformFaces.push({verts:vTop, proj:pTop, depth:dTop, type:'top'});
+    }
 
     // стены платформы — только по краю
     let isEdge = t.x===0||t.x===PLAT_W-1||t.y===0||t.y===PLAT_H-1;
     if(isEdge){
+      let topZ=0;
       let neighs=[
         {dx:1,dy:0,n:{x:1,y:0}, edge:[{wx:t.wx+0.5,wy:t.wy-0.5},{wx:t.wx+0.5,wy:t.wy+0.5}]},
         {dx:-1,dy:0,n:{x:-1,y:0}, edge:[{wx:t.wx-0.5,wy:t.wy+0.5},{wx:t.wx-0.5,wy:t.wy-0.5}]},
@@ -236,7 +242,7 @@ function render(){
       for(let nb of neighs){
         let nx=t.x+nb.dx, ny=t.y+nb.dy;
         let inside = nx>=0&&nx<PLAT_W&&ny>=0&&ny<PLAT_H;
-        if(inside) continue; // внутри не рисуем швы
+        if(inside) continue;
         let dot=nb.n.x*viewX + nb.n.y*viewY; if(dot<=0.01) continue;
         let verts=[
           {wx:nb.edge[0].wx, wy:nb.edge[0].wy, wz:-1.6},
@@ -247,15 +253,15 @@ function render(){
         let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
         let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
         let shadeV=0.9 + (nb.n.x*lightX+nb.n.y*lightY)*0.1;
-        faces.push({verts, proj, depth, type:'wall', shade:shadeV});
+        platformFaces.push({verts, proj, depth, type:'wall', shade:shadeV});
       }
     }
   }
 
-  // дом
+  // дом — рисуем ВСЕ 4 стены без отбраковки, чтобы не было дыр как на скрине
   if(house){
     let hx=house.w/2, hy=house.d/2, hh=house.h, bh=house.baseH;
-    // стены
+    // стены (без backface culling — иначе при 360° появляются дыры)
     let walls=[
       {a:{wx:-hx, wy:-hy}, b:{wx:hx, wy:-hy}, n:{x:0,y:-1}},
       {a:{wx:hx, wy:-hy}, b:{wx:hx, wy:hy}, n:{x:1,y:0}},
@@ -263,7 +269,6 @@ function render(){
       {a:{wx:-hx, wy:hy}, b:{wx:-hx, wy:-hy}, n:{x:-1,y:0}},
     ];
     for(let e of walls){
-      let dot=e.n.x*viewX + e.n.y*viewY; if(dot<=0.01) continue;
       let verts=[
         {wx:e.a.wx, wy:e.a.wy, wz:bh},
         {wx:e.a.wx, wy:e.a.wy, wz:bh+hh},
@@ -273,7 +278,7 @@ function render(){
       let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
       let depth=proj.reduce((a,p)=>a+p.depth,0)/4;
       let sh=0.94 + (e.n.x*lightX+e.n.y*lightY)*0.06;
-      faces.push({verts, proj, depth, type:'houseWall', wall:e, shade:sh, house});
+      houseFaces.push({verts, proj, depth, type:'houseWall', wall:e, shade:sh, house});
     }
     // крыша
     if(house.roofType==='flat'){
@@ -284,14 +289,14 @@ function render(){
         {wx:-hx, wy:hy, wz:bh+hh},
       ];
       let proj=v.map(p=> worldToScreen(p.wx,p.wy,p.wz));
-      faces.push({verts:v, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/4, type:'roofFlat', house});
+      houseFaces.push({verts:v, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/4, type:'roofFlat', house});
     } else if(house.roofType==='pyramid'){
       let apex={wx:0, wy:0, wz:bh+hh+0.9};
       let base=[{wx:-hx,wy:-hy,wz:bh+hh},{wx:hx,wy:-hy,wz:bh+hh},{wx:hx,wy:hy,wz:bh+hh},{wx:-hx,wy:hy,wz:bh+hh}];
       for(let i=0;i<4;i++){
         let v=[base[i], base[(i+1)%4], apex];
         let proj=v.map(p=> worldToScreen(p.wx,p.wy,p.wz));
-        faces.push({verts:v, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/3, type:'roofTri', house});
+        houseFaces.push({verts:v, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/3, type:'roofTri', house});
       }
     } else { // gable
       let ridgeH=0.7 + Math.min(hx,hy)*0.25;
@@ -310,7 +315,7 @@ function render(){
       }
       for(let part of roofParts){
         let proj=part.map(p=> worldToScreen(p.wx,p.wy,p.wz));
-        faces.push({verts:part, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/4, type:'roofGable', house});
+        houseFaces.push({verts:part, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/4, type:'roofGable', house});
       }
       // фронтоны
       let gables=[];
@@ -327,10 +332,10 @@ function render(){
       }
       for(let g of gables){
         let proj=g.map(p=> worldToScreen(p.wx,p.wy,p.wz));
-        faces.push({verts:g, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/3, type:'gable', house});
+        houseFaces.push({verts:g, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/3, type:'gable', house});
       }
     }
-    // труба
+    // труба — тоже без отбраковки, чтобы не исчезала
     if(house.hasChimney){
       let cx=hx*0.5, cy=-hy*0.4;
       let chim=[
@@ -340,7 +345,6 @@ function render(){
         {a:{wx:cx-0.2,wy:cy+0.2}, b:{wx:cx-0.2,wy:cy-0.2}, n:{x:-1,y:0}},
       ];
       for(let e of chim){
-        let dot=e.n.x*viewX + e.n.y*viewY; if(dot<=0.01) continue;
         let verts=[
           {wx:e.a.wx, wy:e.a.wy, wz:bh+hh},
           {wx:e.a.wx, wy:e.a.wy, wz:bh+hh+0.85},
@@ -348,21 +352,22 @@ function render(){
           {wx:e.b.wx, wy:e.b.wy, wz:bh+hh},
         ];
         let proj=verts.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-        faces.push({verts, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/4, type:'chimney'});
+        houseFaces.push({verts, proj, depth:proj.reduce((a,p)=>a+p.depth,0)/4, type:'chimney'});
       }
       let topV=[{wx:cx-0.2,wy:cy-0.2,wz:bh+hh+0.85},{wx:cx+0.2,wy:cy-0.2,wz:bh+hh+0.85},{wx:cx+0.2,wy:cy+0.2,wz:bh+hh+0.85},{wx:cx-0.2,wy:cy+0.2,wz:bh+hh+0.85}];
       let pTop=topV.map(v=> worldToScreen(v.wx,v.wy,v.wz));
-      faces.push({verts:topV, proj:pTop, depth:pTop.reduce((a,p)=>a+p.depth,0)/4, type:'chimneyTop'});
+      houseFaces.push({verts:topV, proj:pTop, depth:pTop.reduce((a,p)=>a+p.depth,0)/4, type:'chimneyTop'});
     }
   }
 
-  // сортировка
-  let list=[];
-  for(let f of faces) list.push({depth:f.depth, kind:'face', f});
-  list.sort((a,b)=> a.depth - b.depth);
+  // сортировка отдельно: платформа всегда снизу, дом сверху (фикс дыры)
+  platformFaces.sort((a,b)=> a.depth - b.depth);
+  houseFaces.sort((a,b)=> a.depth - b.depth);
+  let allFaces=[...platformFaces, ...houseFaces];
 
   ctx.imageSmoothingEnabled=false;
-  for(let it of list){
+  for(let it of allFaces){
+    let f=it;
     let f=it.f;
     let proj=f.proj;
     ctx.beginPath(); ctx.moveTo(proj[0].x, proj[0].y);
