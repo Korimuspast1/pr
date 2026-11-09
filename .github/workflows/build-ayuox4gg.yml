@@ -310,44 +310,57 @@ jobs:
       # run also records its tail in the branch itself.
       - name: Commit the log tail on failure
         if: failure()
+        continue-on-error: true
         run: |
-          set -euo pipefail
+          # This step must never be the reason a run looks broken, and it must
+          # never die on SIGPIPE: `grep ... | head` closes the pipe early.
+          set -uo pipefail
           cd "$GITHUB_WORKSPACE"
           mkdir -p ayuox4gg/diagnostics
           OUT="ayuox4gg/diagnostics/build-$(date -u +%Y%m%dT%H%M%SZ).log"
+
           {
             echo "run: $GITHUB_RUN_ID  ref: $GITHUB_REF  sha: $GITHUB_SHA"
             echo "flavor: ${{ github.event.inputs.flavor || 'arm64' }}"
-            if [[ -f "$RUNNER_TEMP/overlay.log" ]]; then
-              echo "===== overlay.log ====="
-              tail -n 80 "$RUNNER_TEMP/overlay.log"
-            fi
-            if [[ -f "$RUNNER_TEMP/gradle.log" ]]; then
-              echo "===== gradle.log: the failure section ====="
-              # The tail is usually hundreds of identical stack frames; the
-              # cause sits in the 'What went wrong' block near the end.
-              awk '/^\* What went wrong/{f=1} f' "$RUNNER_TEMP/gradle.log" | head -n 80
-              echo "===== gradle.log: errors and first failures ====="
-              grep -nE "error:|FAILED|Caused by|StackOverflow|OutOfMemory|Execution failed|Could not (resolve|find|download)|NDK|cmake|ninja: build stopped" \
-                "$RUNNER_TEMP/gradle.log" | head -n 40
-              echo "===== gradle.log: task list ====="
-              awk '/^> Task /{print}' "$RUNNER_TEMP/gradle.log" | tail -n 40
-              echo "===== gradle.log: head ====="
-              head -n 40 "$RUNNER_TEMP/gradle.log"
-            fi
-            if [[ ! -s "$RUNNER_TEMP/gradle.log" ]]; then
-              echo "===== no gradle.log; gradle reports ====="
-              find "$AYU_TREE/TMessagesProj/build/reports" -name '*.txt' 2>/dev/null \
-                | head -5 | while read -r r; do echo "--- $r"; tail -n 120 "$r"; done
-            fi
           } > "$OUT"
+
+          if [[ -f "$RUNNER_TEMP/overlay.log" ]]; then
+            { echo "===== overlay.log (tail) ====="; tail -n 60 "$RUNNER_TEMP/overlay.log"; } >> "$OUT" 2>&1
+          fi
+
+          if [[ -f "$RUNNER_TEMP/gradle.log" ]]; then
+            # The unwrapped tail is hundreds of identical stack frames; the
+            # cause is in the 'What went wrong' block.
+            { echo "===== gradle: What went wrong ====="
+              sed -n '/^\* What went wrong/,/^\* Try:/p' "$RUNNER_TEMP/gradle.log" | head -c 20000
+              echo
+              echo "===== gradle: signals ====="
+              grep -aE "error:|FAILED|Caused by|StackOverflow|OutOfMemory|Execution failed|Could not (resolve|find|download)|ninja: build stopped|NDK|cmake" \
+                "$RUNNER_TEMP/gradle.log" | head -n 200
+              echo
+              echo "===== gradle: tasks ====="
+              grep -aE "^> Task " "$RUNNER_TEMP/gradle.log" | tail -n 60
+              echo
+              echo "===== gradle: head ====="
+              head -n 60 "$RUNNER_TEMP/gradle.log"
+              echo
+              echo "===== gradle: tail ====="
+              tail -n 60 "$RUNNER_TEMP/gradle.log"
+            } >> "$OUT" 2>&1
+          fi
+
+          if [[ ! -s "$RUNNER_TEMP/gradle.log" ]]; then
+            { echo "===== no gradle.log; reports ====="
+              find "$AYU_TREE/TMessagesProj/build/reports" -name '*.txt' 2>/dev/null | head -5 \
+                | while read -r r; do echo "--- $r"; tail -n 120 "$r"; done
+            } >> "$OUT" 2>&1
+          fi
+
+          wc -l "$OUT"
           git config user.name "ayuox4gg-bot"
           git config user.email "ayuox4gg@users.noreply.github.com"
           # `git add -A` would sweep up API_KEYS and the rewritten tree; be exact.
           git add -- "$OUT"
-          if git diff --cached --quiet; then
-            echo "nothing to publish"
-            exit 0
-          fi
+          if git diff --cached --quiet; then echo "nothing to publish"; exit 0; fi
           git commit -q -m "ci: build log for run $GITHUB_RUN_ID [skip ci]" -- "$OUT"
-          git push || echo "::warning::could not push the log (branch protection?)"
+          git push || echo "::warning::could not push the log"
