@@ -214,18 +214,22 @@ jobs:
           CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
           CCACHE_NOHASHDIR: "true"
           CCACHE_MAXSIZE: "2G"
+          GRADLE_OPTS: "-Xmx6g -Xss16m -Dfile.encoding=UTF-8"
         run: |
           set -euo pipefail
           chmod +x ./gradlew
           CAP="$(echo "${FLAVOR:0:1}" | tr '[:lower:]' '[:upper:]')${FLAVOR:1}"
           echo "task: assemble${CAP}Release"
           set -o pipefail
-          # gradle.properties turns on org.gradle.unsafe.configuration-cache,
-          # which is experimental in Gradle 7.5 and dies with a StackOverflowError
-          # in the execution-plan finalizer on a graph this size (AGP 7.4.2).
-          ./gradlew --no-daemon --no-configuration-cache \
-            -Dorg.gradle.jvmargs=-Xmx6g \
-            "assemble${CAP}Release" --stacktrace \
+          # Two known landmines in this 2023 toolchain:
+          #  * org.gradle.unsafe.configuration-cache (set in gradle.properties)
+          #    is experimental in Gradle 7.5 and dies with a StackOverflowError
+          #    in the execution-plan finalizer on a task graph this size;
+          #  * javac over Telegram's sources overflows the default 1 MB stack.
+          #    The native part (CMake/NDK) completed fine without this.
+          ./gradlew --no-configuration-cache \
+            -Dorg.gradle.jvmargs="-Xmx6g -Xss16m -XX:MaxMetaspaceSize=1g" \
+            "assemble${CAP}Release" --stacktrace --console=plain \
             2>&1 | tee "$RUNNER_TEMP/gradle.log"
 
       - name: Collect APK
@@ -337,6 +341,10 @@ jobs:
               echo "===== gradle: signals ====="
               grep -aE "error:|FAILED|Caused by|StackOverflow|OutOfMemory|Execution failed|Could not (resolve|find|download)|ninja: build stopped|NDK|cmake" \
                 "$RUNNER_TEMP/gradle.log" | head -n 200
+              echo
+              echo "===== javac diagnostics ====="
+              grep -aE "\\w+\\.java:[0-9]+: (error|warning)|cannot find symbol|package .* does not exist|incompatible types" \
+                "$RUNNER_TEMP/gradle.log" | head -n 40
               echo
               echo "===== gradle: tasks ====="
               grep -aE "^> Task " "$RUNNER_TEMP/gradle.log" | tail -n 60
