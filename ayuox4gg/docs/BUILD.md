@@ -9,7 +9,7 @@
 | Java/Python tooling (`ayuox4gg/tools/*`) | ✅ working, 22 tests | standard library only |
 | Security patches applied to upstream sources | ✅ verified with `git apply` | real tree cloned from GitHub |
 | Patched Java files parse | ✅ `javalang` (Java grammar) | no JDK/Android classpath available |
-| **AyuGram4A APK** | ❌ **not possible here** | needs Android SDK, NDK, Gradle and ~2 GB of downloads from hosts this sandbox cannot reach |
+| **AyuGram4A APK** | ⚠️ **built on GitHub Actions, not here** | needs Android SDK, NDK, Gradle and ~2 GB from hosts this sandbox cannot reach — `.github/workflows/build-ayuox4gg.yml` does it on a runner |
 
 Test it:
 
@@ -21,6 +21,63 @@ python3 ayuox4gg/tools/javaparse.py ayuox4gg/features/*.java
 git clone --depth 1 -b rewrite https://github.com/AyuGram/AyuGram4A.git /tmp/ayu
 cd /tmp/ayu && git apply --check /path/to/ayuox4gg/security/patches/*.patch
 ```
+
+## The real build: `Build ayuox4gg APK`
+
+`.github/workflows/build-ayuox4gg.yml` produces an installable APK from upstream
+sources with this overlay applied. It runs on a stock `ubuntu-latest` runner:
+
+| Step | What it does |
+| --- | --- |
+| Fetch | downloads `AyuGram/AyuGram4A` at the pinned commit `701314567` (2023-07-28) as a tarball — 87 MB instead of a 536 MB clone, and it skips the private submodule |
+| Overlay | `scripts/bootstrap-ayu.sh`: `API_KEYS` (mode 600), stand-ins for `proprietary/`, patches `0001`–`0003` |
+| Signing | replaces `TMessagesProj/config/extera.jks` with our own key (finding X1: the upstream one is public and its password is in the repo) |
+| Build | `assembleArm64Release` (or `assembleAfatRelease` via the `flavor` input) with NDK 21.4.7075529 / CMake 3.10.2 |
+| Verify | `tools/forensics.py` + `apksigner verify --print-certs`; the SHA-256 goes into the run summary |
+| Publish | artifact `ayuox4gg-arm64-apk` (APK + `.sha256`), plus `ayuox4gg-signing-key` when the key was generated for this run |
+
+### Trigger it
+
+```bash
+# the run is expensive (~40-70 min of native compilation), so it has a marker
+echo "rebuild $(date -u)" > ayuox4gg/REBUILD
+git add ayuox4gg/REBUILD && git commit -m "ci: rebuild" && git push
+```
+
+`workflow_dispatch` with a `flavor` choice (`arm64` / `afat`) works too, but from
+an account whose token has the `workflow` scope.
+
+### Signing: read this before publishing an update
+
+*If no keystore secret is configured*, the workflow generates a throw-away
+4096-bit RSA key, signs the APK with it, and uploads both the keystore and its
+password as the `ayuox4gg-signing-key` artifact. That APK installs fine — but the
+**next** build gets a different key, and Android refuses to update an installed
+app across signing identities. Pick the key once, then pin it:
+
+```bash
+# 1. download the ayuox4gg-signing-key artifact and unpack it
+base64 -w0 release.jks > key.b64
+
+# 2. store it as repository secrets (needs admin rights on the repo)
+gh secret set AYUOX4GG_KEYSTORE_B64      < key.b64
+gh secret set AYUOX4GG_KEYSTORE_PASSWORD < password.txt
+gh secret set AYUOX4GG_KEY_ALIAS         --body ayuox4gg
+rm key.b64                      # do not leave the key lying around
+```
+
+Optional, to send Telegram your own credentials instead of the public pair the
+official builds use: `AYUOX4GG_APP_ID`, `AYUOX4GG_APP_HASH`.
+
+### Verify a build yourself
+
+```bash
+python3 ayuox4gg/tools/forensics.py ayu.apk --expect-cert <SHA-256 of the cert>
+python3 ayuox4gg/tools/forensics.py ayu.apk --expect-sha256 <digest from the run summary>
+```
+
+The certificate digest of the generated key is printed in the run log
+(`SHA256:` line) and in `apksigner verify --print-certs`.
 
 ## Why the APK cannot be produced here
 

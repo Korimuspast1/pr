@@ -22,8 +22,20 @@ Android/Telegram changes, plus a 2023 dependency stack"*).
 | [`scripts/bootstrap-ayu.sh`](scripts/bootstrap-ayu.sh) | One command: API keys → stand-ins → 3 security patches → checks |
 | [`tools/setup_keys.py`](tools/setup_keys.py) | Writes the git-ignored `API_KEYS` (mode 600, refuses unsafe paths) |
 | [`tools/keystore.py`](tools/keystore.py) | Generates a fork-owned release keystore outside the tree, prints the cert hash users verify |
-| [`tests/`](tests/) | 27 unit tests for all of the above |
+| [`.github/workflows/build-ayuox4gg.yml`](../.github/workflows/build-ayuox4gg.yml) | The actual APK build: upstream tarball → overlay → own key → `assembleArm64Release` → `apksigner` verification → artifact |
+| [`tests/`](tests/) | 35 unit tests for all of the above |
 | [`docs/BUILD.md`](docs/BUILD.md) | What can/cannot be compiled here, and the `API_KEYS` / my.telegram.org answer |
+
+## Get an APK
+
+```bash
+echo "rebuild $(date -u)" > ayuox4gg/REBUILD
+git add ayuox4gg/REBUILD && git commit -m "ci: rebuild" && git push
+```
+
+The `Build ayuox4gg APK` workflow then runs for ~40-70 minutes and leaves an
+installable APK plus its SHA-256 in the run artifacts. Signing and the
+update/keystore caveat are covered in [`docs/BUILD.md`](docs/BUILD.md).
 
 ## Measured effect
 
