@@ -14,6 +14,10 @@
 #   # or let it prompt (nothing is echoed):
 #   ./ayuox4gg/scripts/bootstrap-ayu.sh --tree /path/to/AyuGram4A --ask
 #
+#   # also point the build at your own release keystore (see FINDINGS.md X1)
+#   ./ayuox4gg/scripts/bootstrap-ayu.sh --tree /path/to/AyuGram4A \
+#       --sign-password <pw> --sign-alias ayuox4gg
+#
 #   # check only, change nothing
 #   ./ayuox4gg/scripts/bootstrap-ayu.sh --tree /path/to/AyuGram4A --dry-run
 #
@@ -26,17 +30,21 @@ OVERLAY="$(cd "$HERE/.." && pwd)"
 TREE=""
 APP_ID="${APP_ID:-}"
 APP_HASH="${APP_HASH:-}"
+SIGN_PASSWORD="${SIGN_PASSWORD:-}"
+SIGN_ALIAS="${SIGN_ALIAS:-}"
 ASK=0
 DRY_RUN=0
 SKIP_PATCHES=0
 
-usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --tree) TREE="$2"; shift 2 ;;
     --app-id) APP_ID="$2"; shift 2 ;;
     --app-hash) APP_HASH="$2"; shift 2 ;;
+    --sign-password) SIGN_PASSWORD="$2"; shift 2 ;;
+    --sign-alias) SIGN_ALIAS="$2"; shift 2 ;;
     --ask) ASK=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     --skip-patches) SKIP_PATCHES=1; shift ;;
@@ -70,7 +78,9 @@ if [[ -n "$APP_ID" || -n "$APP_HASH" ]]; then
     say "would write $TREE/API_KEYS (mode 600, git-ignored)"
   else
     python3 "$OVERLAY/tools/setup_keys.py" \
-      --app-id "$APP_ID" --app-hash "$APP_HASH" --output "$TREE/API_KEYS"
+      --app-id "$APP_ID" --app-hash "$APP_HASH" \
+      --sign-password "$SIGN_PASSWORD" --sign-alias "$SIGN_ALIAS" \
+      --output "$TREE/API_KEYS"
   fi
 elif [[ -f "$TREE/API_KEYS" ]]; then
   say "API_KEYS already present, keeping it"

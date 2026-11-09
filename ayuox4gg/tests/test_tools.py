@@ -299,8 +299,34 @@ class SetupKeysTests(unittest.TestCase):
         self.assertEqual(code, 0)
         text = self.path.read_text()
         self.assertIn("APP_ID = 1234567", text)
-        self.assertIn('APP_HASH = "0123456789abcdef0123456789abcdef"', text)
+        self.assertIn("APP_HASH = 0123456789abcdef0123456789abcdef", text)
         self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
+
+    def test_values_are_unquoted_for_java_properties(self):
+        # Gradle reads API_KEYS with java.util.Properties.load(), which keeps
+        # quotes verbatim: `SIGNING_KEY_ALIAS = "ayuox4gg"` makes the build look
+        # for an alias literally named `"ayuox4gg"` and fail while signing.
+        code = setup_keys.main(["--app-id", "1234567",
+                                "--app-hash", "0123456789abcdef0123456789abcdef",
+                                "--sign-password", "s3cret-Pass",
+                                "--sign-alias", "ayuox4gg",
+                                "--output", str(self.path), "--force"])
+        self.assertEqual(code, 0)
+        values = setup_keys.parse_existing(self.path)
+        self.assertEqual(values["SIGNING_KEY_ALIAS"], "ayuox4gg")
+        self.assertEqual(values["SIGNING_KEY_PASSWORD"], "s3cret-Pass")
+        self.assertEqual(values["SIGNING_KEY_STORE_PASSWORD"], "s3cret-Pass")
+        self.assertEqual(values["APP_HASH"], "0123456789abcdef0123456789abcdef")
+        for value in values.values():
+            self.assertNotIn('"', value)
+
+    def test_rejects_backslash_in_signing_values(self):
+        # Properties would treat `\\` as an escape and silently corrupt the value.
+        with self.assertRaises(ValueError):
+            setup_keys.write_file(self.path, "1234567",
+                                  "0123456789abcdef0123456789abcdef",
+                                  sign_password="back\\slash",
+                                  sign_alias="ayuox4gg")
 
     def test_rejects_bad_hash_and_id(self):
         self.assertEqual(setup_keys.main(["--app-id", "abc", "--app-hash", "00" * 16, "--output", str(self.path)]), 1)

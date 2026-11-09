@@ -1,0 +1,294 @@
+name: Build ayuox4gg APK
+
+# Builds a real, installable APK out of the upstream AyuGram4A sources with the
+# ayuox4gg overlay applied (stand-ins for the private `proprietary` submodule,
+# security patches 0001-0003, our own signing key instead of the leaked
+# upstream `config/extera.jks`).
+#
+# Why a CI build: the overlay repo does not vendor the ~500 MB Telegram tree,
+# and the sandbox that authors the overlay has no Android SDK/NDK. This job is
+# the only honest way to produce "a working APK, not a promise of one".
+#
+# Signing (see ayuox4gg/security/FINDINGS.md, finding X1):
+#   * preferred: repository secrets AYUOX4GG_KEYSTORE_B64 / AYUOX4GG_KEYSTORE_PASSWORD
+#     / AYUOX4GG_KEY_ALIAS — the same key then signs every release;
+#   * otherwise: a throw-away 4096-bit key is generated for this run, the APK is
+#     signed with it, and the keystore + its password are uploaded as the
+#     `ayuox4gg-signing-key` artifact. Download it, add it to the secrets above,
+#     and later builds will be signed with the same identity. Without that step
+#     an update cannot be installed over the previous build.
+#
+# Triggers: `workflow_dispatch` (button in the Actions tab) and a push that
+# touches `ayuox4gg/REBUILD`. A full native build costs ~40-70 min, so it is
+# deliberately not run on every commit.
+
+on:
+  workflow_dispatch:
+    inputs:
+      flavor:
+        description: "Gradle flavor to assemble"
+        type: choice
+        default: arm64
+        options: [arm64, afat]
+  push:
+    branches:
+      - "arena/**"
+      - "main"
+    paths:
+      - "ayuox4gg/REBUILD"
+      - ".github/workflows/build-ayuox4gg.yml"
+
+concurrency:
+  group: ayuox4gg-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  AYU_REPO: AyuGram/AyuGram4A
+  # Pinned: the last upstream commit (2023-07-28). The tree is not reproducible
+  # across branches, so the overlay is validated against exactly this revision.
+  AYU_REF: 7013145676d36d82ee13c02a89f72097b7490dcd
+  # 6 / eb06d4ab... is the public pair AyuGram itself ships in its CI recipe
+  # (api.telegram.org "Desktop" credentials). It is what the official builds use
+  # and it is *not* a secret. Override both with secrets to use your own pair.
+  FALLBACK_APP_ID: "6"
+  FALLBACK_APP_HASH: "eb06d4abfb49dc3eeb1aeb98ae0f581e"
+
+jobs:
+  build:
+    name: assemble ${{ github.event.inputs.flavor || 'arm64' }} release
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+
+    steps:
+      - name: Checkout overlay
+        uses: actions/checkout@v4
+
+      # The Telegram tree alone is ~500 MB and the NDK another ~1.5 GB; the
+      # stock runner has ~14 GB free, which is not enough once Gradle and the
+      # native objects land. Reclaim what the job does not use.
+      - name: Reclaim disk space
+        run: |
+          set -euo pipefail
+          df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet /usr/share/swift /usr/local/graalvm \
+                      /usr/local/.ghcup /usr/local/share/powershell \
+                      /usr/local/share/chromium /usr/local/lib/node_modules \
+                      /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          sudo rm -rf "$ANDROID_HOME/ndk" || true
+          sudo apt-get clean
+          df -h / | tail -1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ayuox4gg-${{ env.AYU_REF }}
+          max-size: 2G
+
+      - name: Install Android SDK packages
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER" || SDKMANAGER="$(command -v sdkmanager)"
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+
+          "$SDKMANAGER" --install \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.1" \
+            "ndk;21.4.7075529" >/dev/null
+
+          # The build pins `cmake version '3.10.2'`, but the SDK repository names
+          # that package `cmake;3.10.2.4899658`. Ask the repository what it
+          # actually offers instead of guessing; if nothing matches, AGP still
+          # has `android.builder.sdkDownload` to fetch it itself.
+          CMAKE_PKG="$("$SDKMANAGER" --list 2>/dev/null \
+            | grep -oE 'cmake;3\.10\.[0-9]+(\.[0-9]+)?' | sort -uV | tail -n 1 || true)"
+          if [[ -n "$CMAKE_PKG" ]]; then
+            echo "installing $CMAKE_PKG"
+            "$SDKMANAGER" --install "$CMAKE_PKG" >/dev/null || true
+          else
+            echo "no 3.10.x cmake package advertised; letting AGP download it"
+          fi
+
+          echo "--- toolchain ---"
+          echo "ANDROID_HOME = $ANDROID_HOME"
+          echo "ANDROID_NDK  = $ANDROID_HOME/ndk/21.4.7075529"
+          ls "$ANDROID_HOME/ndk/21.4.7075529" | head -5
+          ls "$ANDROID_HOME/cmake" 2>/dev/null || true
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/21.4.7075529" >> "$GITHUB_ENV"
+
+      - name: Fetch AyuGram4A @ ${{ env.AYU_REF }}
+        run: |
+          set -euo pipefail
+          TREE="$RUNNER_TEMP/ayu"
+          mkdir -p "$TREE"
+          echo "AYU_TREE=$TREE" >> "$GITHUB_ENV"
+          # codeload tarball: no submodules (the only one is private), no .git
+          # history -- a fraction of the 536 MB `git clone --depth 1`.
+          curl -fsSL --retry 3 --retry-delay 5 \
+            "https://codeload.github.com/${AYU_REPO}/tar.gz/${AYU_REF}" \
+            -o "$RUNNER_TEMP/ayu.tar.gz"
+          tar -xzf "$RUNNER_TEMP/ayu.tar.gz" -C "$TREE" --strip-components=1
+          rm -f "$RUNNER_TEMP/ayu.tar.gz"
+          # `bootstrap-ayu.sh` drives `git apply`; give the extracted tree an
+          # index so patches, `check-ignore` and `ls-files` behave normally.
+          git -C "$TREE" init -q
+          du -sh "$TREE"
+          test -f "$TREE/TMessagesProj/build.gradle"
+
+      # 1. credentials (never on disk in the overlay repo, mode 600, CI-local)
+      # 2. stand-ins for the private `proprietary` submodule + drop its gitlink
+      # 3. security patches 0001-0003
+      - name: Apply ayuox4gg overlay
+        env:
+          APP_ID: ${{ secrets.AYUOX4GG_APP_ID }}
+          APP_HASH: ${{ secrets.AYUOX4GG_APP_HASH }}
+          SIGN_PASSWORD: ${{ secrets.AYUOX4GG_KEYSTORE_PASSWORD }}
+          SIGN_ALIAS: ${{ secrets.AYUOX4GG_KEY_ALIAS }}
+          KEYSTORE_B64: ${{ secrets.AYUOX4GG_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          APP_ID="${APP_ID:-$FALLBACK_APP_ID}"
+          APP_HASH="${APP_HASH:-$FALLBACK_APP_HASH}"
+
+          if [[ -n "${KEYSTORE_B64:-}" ]]; then
+            echo "signing: repository secret AYUOX4GG_KEYSTORE_B64"
+            mkdir -p "$RUNNER_TEMP/sign"
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/sign/release.jks"
+            SIGN_PASSWORD="${SIGN_PASSWORD:?AYUOX4GG_KEYSTORE_PASSWORD must be set together with the keystore}"
+            SIGN_ALIAS="${SIGN_ALIAS:-ayuox4gg}"
+            echo "EPHEMERAL_KEY=0" >> "$GITHUB_ENV"
+          else
+            echo "signing: no keystore secret -> generating a per-run key"
+            mkdir -p "$RUNNER_TEMP/sign"
+            SIGN_ALIAS="ayuox4gg"
+            SIGN_PASSWORD="$(python3 -c 'import secrets,string; a=string.ascii_letters+string.digits; print("".join(secrets.choice(a) for _ in range(32)))')"
+            keytool -genkeypair -keystore "$RUNNER_TEMP/sign/release.jks" \
+              -storetype PKCS12 -storepass "$SIGN_PASSWORD" \
+              -alias "$SIGN_ALIAS" -keypass "$SIGN_PASSWORD" \
+              -keyalg RSA -keysize 4096 -validity 10950 \
+              -dname "CN=ayuox4gg, OU=Release, O=ayuox4gg, C=PL" >/dev/null 2>&1
+            echo "EPHEMERAL_KEY=1" >> "$GITHUB_ENV"
+            printf '%s' "$SIGN_PASSWORD" > "$RUNNER_TEMP/sign/password.txt"
+            # Public information: lets users pin the certificate out of band.
+            keytool -list -v -keystore "$RUNNER_TEMP/sign/release.jks" \
+              -storepass "$SIGN_PASSWORD" 2>/dev/null \
+              | grep -E "SHA256:|Owner:|Valid from" | sed 's/^/   /'
+          fi
+          # The password is only needed inside this step (bootstrap writes it
+          # into API_KEYS); it is deliberately not exported to later steps.
+          echo "KEYSTORE=$RUNNER_TEMP/sign/release.jks" >> "$GITHUB_ENV"
+
+          bash "$GITHUB_WORKSPACE/ayuox4gg/scripts/bootstrap-ayu.sh" \
+            --tree "$AYU_TREE" \
+            --app-id "$APP_ID" --app-hash "$APP_HASH" \
+            --sign-password "$SIGN_PASSWORD" --sign-alias "$SIGN_ALIAS"
+
+          # The upstream build hard-codes `config/extera.jks` (finding X1: that
+          # keystore is public and its password is in the repo). Overwrite the
+          # path with our own key rather than signing with a burned identity.
+          cp "$KEYSTORE" "$AYU_TREE/TMessagesProj/config/extera.jks"
+          echo "--- API_KEYS (redacted) ---"
+          python3 "$GITHUB_WORKSPACE/ayuox4gg/tools/setup_keys.py" --check "$AYU_TREE/API_KEYS"
+
+      - name: Build release APK
+        working-directory: ${{ env.AYU_TREE }}
+        env:
+          FLAVOR: ${{ github.event.inputs.flavor || 'arm64' }}
+          CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+          CCACHE_NOHASHDIR: "true"
+          CCACHE_MAXSIZE: "2G"
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          CAP="$(echo "${FLAVOR:0:1}" | tr '[:lower:]' '[:upper:]')${FLAVOR:1}"
+          echo "task: assemble${CAP}Release"
+          ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx6g \
+            "assemble${CAP}Release" --stacktrace
+
+      - name: Collect APK
+        run: |
+          set -euo pipefail
+          FLAVOR="${{ github.event.inputs.flavor || 'arm64' }}"
+          OUT="$AYU_TREE/TMessagesProj/build/outputs/apk/$FLAVOR/release"
+          ls -l "$OUT" || true
+          APK="$(find "$OUT" -name '*.apk' -type f | head -n 1)"
+          test -n "$APK" || { echo "::error::no APK produced"; exit 1; }
+          mkdir -p "$GITHUB_WORKSPACE/ayuox4gg-out"
+          cp "$APK" "$GITHUB_WORKSPACE/ayuox4gg-out/"
+          echo "APK=$GITHUB_WORKSPACE/ayuox4gg-out/$(basename "$APK")" >> "$GITHUB_ENV"
+          df -h / | tail -1
+          du -h "$APK"
+
+      - name: Verify the artefact
+        run: |
+          set -euo pipefail
+          python3 "$GITHUB_WORKSPACE/ayuox4gg/tools/forensics.py" "$APK" || true
+          echo "--- apksigner ---"
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)"
+          if "$BT/apksigner" verify --print-certs "$APK" 2>&1 | tee /tmp/sig.txt; then
+            echo "signature verified against the Android scheme"
+          else
+            echo "::error::apksigner rejected the APK"; exit 1
+          fi
+          grep -E "SHA-256 digest|Signer #1 certificate DN" /tmp/sig.txt \
+            | sed 's/^/   /' | tee -a "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### ayuox4gg build"
+            echo ""
+            echo "| item | value |"
+            echo "|---|---|"
+            echo "| upstream | \`${AYU_REPO}@${AYU_REF}\` |"
+            echo "| flavor | \`${{ github.event.inputs.flavor || 'arm64' }}\` |"
+            echo "| apk | \`$(basename "$APK")\` |"
+            echo "| size | $(du -h "$APK" | cut -f1) |"
+            echo "| sha256 | \`$(sha256sum "$APK" | cut -d' ' -f1)\` |"
+            echo "| ephemeral key | \`${EPHEMERAL_KEY:-0}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          sha256sum "$APK" > "$APK.sha256"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ayuox4gg-${{ github.event.inputs.flavor || 'arm64' }}-apk
+          path: |
+            ayuox4gg-out/*.apk
+            ayuox4gg-out/*.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      # Only exists when the build generated its own key. Grab it now: the
+      # password is not recoverable afterwards, and without a stable key an
+      # update cannot be installed over this APK.
+      - name: Upload the throw-away signing key
+        if: env.EPHEMERAL_KEY == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ayuox4gg-signing-key
+          path: |
+            ${{ runner.temp }}/sign/release.jks
+            ${{ runner.temp }}/sign/password.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Keep the build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ayuox4gg-build-log
+          path: |
+            ${{ env.AYU_TREE }}/**/build/reports/**
+          if-no-files-found: ignore
+          retention-days: 7
