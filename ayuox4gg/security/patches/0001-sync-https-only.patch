@@ -1,0 +1,203 @@
+diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuInterceptor.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuInterceptor.java
+index 50732e22..fa4035c6 100644
+--- a/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuInterceptor.java
++++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuInterceptor.java
+@@ -15,17 +15,31 @@ import okhttp3.Response;
+ import org.jetbrains.annotations.NotNull;
+ 
+ import java.io.IOException;
++import java.util.Locale;
+ 
+ public class AyuInterceptor implements Interceptor {
++    private static String stripPort(String host) {
++        int colon = host.lastIndexOf(':');
++        return colon > 0 ? host.substring(0, colon) : host;
++    }
++
+     @NotNull
+     @Override
+     public Response intercept(@NotNull Chain chain) throws IOException {
+-        var req = chain.request()
+-                .newBuilder()
+-                .addHeader("X-APP-PACKAGE", AyuUtils.getPackageName())
+-                .addHeader("Authorization", AyuSyncConfig.getToken())
+-                .build();
++        var request = chain.request();
++        var builder = request.newBuilder()
++                .addHeader("X-APP-PACKAGE", AyuUtils.getPackageName());
++
++        // Only authenticate requests aimed at the configured sync host. OkHttp
++        // follows redirects, so an unconditional header could leak the token to
++        // whatever host the first 302 points at.
++        String syncHost = stripPort(AyuSyncConfig.getServerHost());
++        String requestHost = request.url().host();
++        if (requestHost != null && !syncHost.isEmpty()
++                && requestHost.toLowerCase(Locale.ROOT).equals(syncHost)) {
++            builder.addHeader("Authorization", AyuSyncConfig.getToken());
++        }
+ 
+-        return chain.proceed(req);
++        return chain.proceed(builder.build());
+     }
+ }
+diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncConfig.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncConfig.java
+index b2c6875f..06387899 100644
+--- a/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncConfig.java
++++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncConfig.java
+@@ -11,36 +11,106 @@ package com.radolyn.ayugram.sync;
+ 
+ import com.radolyn.ayugram.AyuConfig;
+ 
++import java.util.HashMap;
++import java.util.Locale;
++import java.util.Map;
++
+ public class AyuSyncConfig {
++    private static final String[] LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "[::1]", "10.0.2.2"};
++
++    /**
++     * True when the configured server is a development host that may legally be
++     * reached without TLS. Everything else must use https/wss: the sync token
++     * is a long-lived credential and the channel carries message history.
++     */
++    private static boolean isLoopbackHost(String server) {
++        if (server == null) {
++            return false;
++        }
++        String host = stripPort(server.trim().toLowerCase(Locale.ROOT));
++        for (String allowed : LOOPBACK_HOSTS) {
++            if (host.equals(allowed)) {
++                return true;
++            }
++        }
++        return false;
++    }
++
++    private static String stripPort(String host) {
++        int colon = host.lastIndexOf(':');
++        if (colon > 0 && host.indexOf(']') < colon) {
++            return host.substring(0, colon);
++        }
++        return host;
++    }
++
++    /** Sanitised host[:port] of the sync server, without any scheme or path. */
++    public static String getServerHost() {
++        String server = AyuConfig.getSyncServerURL();
++        if (server == null) {
++            return "";
++        }
++        server = server.trim();
++        int schemeEnd = server.indexOf("://");
++        if (schemeEnd >= 0) {
++            server = server.substring(schemeEnd + 3);
++        }
++        int slash = server.indexOf('/');
++        if (slash >= 0) {
++            server = server.substring(0, slash);
++        }
++        return server.toLowerCase(Locale.ROOT);
++    }
++
+     private static String getWebSocketProtocol() {
+-        return AyuConfig.useSecureConnection ? "wss://" : "ws://";
++        return isLoopbackHost(getServerHost()) ? "ws://" : "wss://";
+     }
+ 
+     private static String getHTTPProtocol() {
+-        return AyuConfig.useSecureConnection ? "https://" : "http://";
++        return isLoopbackHost(getServerHost()) ? "http://" : "https://";
+     }
+ 
+     public static String getWebSocketURL() {
+-        return getWebSocketProtocol() + AyuConfig.getSyncServerURL() + "/sync/ws/v1";
++        return getWebSocketProtocol() + getServerHost() + "/sync/ws/v1";
+     }
+ 
+     public static String getUserDataURL() {
+-        return getHTTPProtocol() + AyuConfig.getSyncServerURL() + "/user/v1";
++        return getHTTPProtocol() + getServerHost() + "/user/v1";
+     }
+ 
+     public static String getRegisterDeviceURL() {
+-        return getHTTPProtocol() + AyuConfig.getSyncServerURL() + "/sync/register/v1";
++        return getHTTPProtocol() + getServerHost() + "/sync/register/v1";
+     }
+ 
+     public static String getForceSyncURL() {
+-        return getHTTPProtocol() + AyuConfig.getSyncServerURL() + "/sync/force/v1";
++        return getHTTPProtocol() + getServerHost() + "/sync/force/v1";
+     }
+ 
+     public static String getToken() {
+         return AyuConfig.getSyncServerToken();
+     }
+ 
++    /**
++     * Profile page URL. The token is no longer part of the query string: it
++     * would leak into history, proxy logs and Referer headers. Open the page
++     * with getProfileHeaders() instead.
++     */
+     public static String getProfileURL() {
+-        return getHTTPProtocol() + AyuConfig.getSyncServerURL() + "/ui/profile?token=" + AyuConfig.getSyncServerToken();
++        return getHTTPProtocol() + getServerHost() + "/ui/profile";
++    }
++
++    /** Optional headers for the profile page (currently unused by Browser). */
++    public static Map<String, String> getProfileHeaders() {
++        HashMap<String, String> headers = new HashMap<>();
++        String token = getToken();
++        if (token != null && !token.isEmpty()) {
++            headers.put("Authorization", token);
++        }
++        return headers;
++    }
++
++    /** True when the user asked for a non-TLS transport to a non-loopback host. */
++    public static boolean isInsecureConfiguration() {
++        return !isLoopbackHost(getServerHost()) && !AyuConfig.useSecureConnection;
+     }
+ }
+diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuSyncPreferencesActivity.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuSyncPreferencesActivity.java
+index f1768669..86a28fe1 100644
+--- a/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuSyncPreferencesActivity.java
++++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuSyncPreferencesActivity.java
+@@ -172,6 +172,12 @@ public class AyuSyncPreferencesActivity extends BasePreferencesActivity implemen
+             AyuConfig.editor.putBoolean("useSecureConnection", AyuConfig.useSecureConnection ^= true).apply();
+             ((TextCheckCell) view).setChecked(AyuConfig.useSecureConnection);
+ 
++            if (AyuSyncConfig.isInsecureConfiguration()) {
++                BulletinFactory.of(this)
++                        .createErrorBulletin(LocaleController.getString(R.string.AyuSyncInsecureWarning))
++                        .show();
++            }
++
+             AyuSyncController.nullifyInstance();
+             AyuSyncController.create();
+         }
+@@ -250,7 +256,14 @@ public class AyuSyncPreferencesActivity extends BasePreferencesActivity implemen
+                     if (position == syncEnabledRow) {
+                         textCheckCell.setTextAndCheck(LocaleController.getString(R.string.AyuSyncEnable), AyuConfig.syncEnabled, false);
+                     } else if (position == useSecureConnectionRow) {
+-                        textCheckCell.setTextAndCheck(LocaleController.getString(R.string.AyuSyncUseSecureConnection), AyuConfig.useSecureConnection, false);
++                        String secureTitle = LocaleController.getString(R.string.AyuSyncUseSecureConnection);
++                        if (AyuSyncConfig.isInsecureConfiguration()) {
++                            textCheckCell.setTextAndValueAndCheck(secureTitle,
++                                    LocaleController.getString(R.string.AyuSyncInsecureWarning),
++                                    AyuConfig.useSecureConnection, true, false);
++                        } else {
++                            textCheckCell.setTextAndCheck(secureTitle, AyuConfig.useSecureConnection, false);
++                        }
+                     }
+                     break;
+             }
+diff --git a/TMessagesProj/src/main/res/values/ayu.xml b/TMessagesProj/src/main/res/values/ayu.xml
+index 7fa87ad9..57cc8e8e 100644
+--- a/TMessagesProj/src/main/res/values/ayu.xml
++++ b/TMessagesProj/src/main/res/values/ayu.xml
+@@ -103,4 +103,5 @@
+   <string name="SecretMessageTecno">Tecno phones are the best.</string>
+   <string name="SecretMessageXiaomiSuccess">You\'re using a good phone.</string>
+   <string name="SecretMessageXiaomiFailure">Install custom ROM.</string>
++  <string name="AyuSyncInsecureWarning">Plaintext sync is insecure: use a localhost server or enable HTTPS &amp; WSS</string>
+ </resources>

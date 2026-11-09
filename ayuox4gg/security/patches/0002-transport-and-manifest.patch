@@ -1,0 +1,78 @@
+diff --git a/TMessagesProj/src/main/AndroidManifest.xml b/TMessagesProj/src/main/AndroidManifest.xml
+index 19b41e5e..5f0173ff 100644
+--- a/TMessagesProj/src/main/AndroidManifest.xml
++++ b/TMessagesProj/src/main/AndroidManifest.xml
+@@ -61,7 +61,8 @@
+     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+     <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
+     <uses-permission android:name="android.permission.VIBRATE" />
+-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
++    <!-- ayuox4gg: SYSTEM_ALERT_WINDOW was never requested by UI code; the PiP
++         and EmbedBottomSheet paths only *check* canDrawOverlays(). -->
+     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+@@ -77,7 +78,10 @@
+         android:maxSdkVersion="30" />
+     <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
++    <!-- ayuox4gg: only the in-app updater needs this. -->
++    <uses-permission
++        android:name="android.permission.REQUEST_INSTALL_PACKAGES"
++        tools:node="merge" />
+     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+ 
+     <uses-permission android:name="com.sec.android.provider.badge.permission.READ" />
+@@ -115,11 +119,10 @@
+ 
+     <uses-sdk tools:overrideLibrary="androidx.camera.view, androidx.camera.extensions, androidx.camera.lifecycle, androidx.camera.camera2, androidx.camera.core" />
+ 
+-    <!-- AyuGram: remove for release `usesCleartextTraffic` -->
+     <application
+         android:name=".ApplicationLoader"
+         android:allowAudioPlaybackCapture="true"
+-        android:allowBackup="true"
++        android:allowBackup="false"
+         android:backupAgent=".BackupAgent"
+         android:exported="true"
+         android:hardwareAccelerated="@bool/useHardwareAcceleration"
+@@ -128,10 +131,10 @@
+         android:manageSpaceActivity="org.telegram.ui.ExternalActionActivity"
+         android:preserveLegacyExternalStorage="true"
+         android:requestLegacyExternalStorage="true"
+-        android:restoreAnyVersion="true"
++        android:restoreAnyVersion="false"
+         android:supportsRtl="false"
+         android:theme="@style/Theme.TMessages.Start"
+-        android:usesCleartextTraffic="true"
++        android:networkSecurityConfig="@xml/network_security_config"
+         tools:replace="android:supportsRtl">
+         <meta-data
+             android:name="com.google.android.maps.v2.API_KEY"
+diff --git a/TMessagesProj/src/main/res/xml/network_security_config.xml b/TMessagesProj/src/main/res/xml/network_security_config.xml
+new file mode 100644
+index 00000000..d6f399a3
+--- /dev/null
++++ b/TMessagesProj/src/main/res/xml/network_security_config.xml
+@@ -0,0 +1,20 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++  ayuox4gg: replaces android:usesCleartextTraffic="true".
++
++  Release traffic must be TLS. Cleartext stays available for local development
++  servers only (loopback and the Android emulator's host alias).
++-->
++<network-security-config>
++    <base-config cleartextTrafficPermitted="false">
++        <trust-anchors>
++            <certificates src="system" />
++        </trust-anchors>
++    </base-config>
++
++    <domain-config cleartextTrafficPermitted="true">
++        <domain includeSubdomains="false">localhost</domain>
++        <domain includeSubdomains="false">127.0.0.1</domain>
++        <domain includeSubdomains="false">10.0.2.2</domain>
++    </domain-config>
++</network-security-config>

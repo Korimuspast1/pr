@@ -1,0 +1,42 @@
+diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncWebSocketClient.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncWebSocketClient.java
+index 56f264a0..a095f4dd 100644
+--- a/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncWebSocketClient.java
++++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncWebSocketClient.java
+@@ -81,6 +81,9 @@ public class AyuSyncWebSocketClient extends WebSocketClient {
+     }
+ 
+     @Override
++    /** Hard cap on a single inbound frame: the sync protocol is small JSON. */
++    private static final int MAX_FRAME_BYTES = 1024 * 1024;
++
+     public void send(String message) {
+         try {
+             super.send(message);
+@@ -102,8 +105,27 @@ public class AyuSyncWebSocketClient extends WebSocketClient {
+     public void onTextReceived(String message) {
+         AyuSyncState.setLastReceived((int) (System.currentTimeMillis() / 1000));
+ 
++        // A sync server is a remote peer: cap the frame size before parsing so
++        // a hostile or broken server cannot exhaust the heap, and require the
++        // discriminator field the dispatcher relies on.
++        if (message == null) {
++            return;
++        }
++        if (message.length() > MAX_FRAME_BYTES) {
++            // Dropped instead of parsed. We deliberately do not force-close the
++            // socket here: the close() overloads differ between builds of the
++            // bundled websocket client, and the read timeout already recovers
++            // from a stalled peer.
++            Log.w("AyuSync", "Dropping oversized frame: " + message.length() + " chars");
++            return;
++        }
++
+         try {
+             var response = new Gson().fromJson(message, JsonObject.class);
++            if (response == null || !response.has("type") || response.get("type").isJsonNull()) {
++                Log.w("AyuSync", "Frame without a type discriminator");
++                return;
++            }
+             AyuSyncController.getInstance().invokeHandler(response);
+         } catch (Exception e) {
+             Log.e("AyuSync", "Error while invoking handler", e);
