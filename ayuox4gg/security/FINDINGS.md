@@ -73,6 +73,48 @@ previews, in-app browser, updater, sync) can be downgraded by a network attacker
 `allowBackup`/`restoreAnyVersion` (see M1) and drops the unused
 `SYSTEM_ALERT_WINDOW` permission (see M4).
 
+### X1. (критично) Release-подпись приложена к публичному репозиторию
+
+`TMessagesProj/config/extera.jks` — это **не пример и не debug-хранилище**:
+`build.gradle` использует его как `signingConfigs.release.storeFile` для **обоих**
+типов сборки (`debug` и `release`, строки 141 / 154 / 168). Пароль к хранилищу
+подбирается за секунды (он словарный), после чего любой человек может выпустить
+APK, который Android примет за официальный апдейт AyuGram:
+
+```
+Alias   : ayugram
+Owner   : C=ru, O=Radolyn Labs, CN=ZavaruKitsu
+Valid   : 2023-05-08 .. 2048-05-01
+SHA-256 : C3:F8:91:E8:...:5B:70:FB
+```
+
+То есть у каждого пользователя публичных сборок этого репозитория фактически
+нет гарантии, что обновление пришло от автора. Это важнее всех остальных
+находок вместе.
+
+**Что делать (для своего форка — обязательно):**
+
+1. **Сгенерировать свой keystore** и подписывать только им:
+   ```bash
+   keytool -genkeypair -v -keystore my-release.jks -alias mykey \
+           -keyalg RSA -keysize 4096 -validity 10000 \
+           -dname "CN=MyFork, O=Me"
+   ```
+2. Хранить его **вне репозитория** (локально или в GitHub Actions secrets как
+   base64), а не в `TMessagesProj/config/`.
+3. В `build.gradle` заменить `storeFile file("config/extera.jks")` на путь из
+   переменной окружения/`API_KEYS`, а сам файл — удалить из git:
+   ```bash
+   git rm --cached TMessagesProj/config/extera.jks
+   ```
+4. Пользователям — сверять сертификат перед установкой:
+   `python3 ayuox4gg/tools/forensics.py app.apk --expect-cert <sha256>`.
+
+> Примечание: это не «баг, который мы правим патчем» — сменив подпись, ты
+> ломаешь обновление поверх старой установки (Android требует тот же
+> сертификат). Поэтому шаг 1–3 делается один раз при создании своего форка, до
+> первой публикации. В оверлее добавлен только чек-лист и инструмент проверки.
+
 ---
 
 ## Medium

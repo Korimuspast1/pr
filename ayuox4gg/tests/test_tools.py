@@ -27,6 +27,7 @@ import forensics  # noqa: E402
 import security_audit  # noqa: E402
 import javaparse  # noqa: E402
 import setup_keys  # noqa: E402
+import keystore  # noqa: E402
 
 PATCHES = ROOT / "security" / "patches"
 
@@ -240,6 +241,48 @@ class PatchHygieneTests(unittest.TestCase):
             findings = security_audit.audit_diff(patch.read_text(encoding="utf-8"))
             high = [f for f in findings if f.severity == "high"]
             self.assertEqual(high, [], "{} adds high-risk code: {}".format(patch.name, high))
+
+
+class KeystoreTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_refuses_to_write_inside_a_git_tree(self):
+        repo = Path(self.tmp.name) / "repo"
+        repo.mkdir()
+        if subprocess.run(["git", "init", "-q", str(repo)], capture_output=True).returncode != 0:
+            self.skipTest("git is not available")
+        with self.assertRaises(SystemExit):
+            keystore.confirm_safe_path(repo / "release.jks")
+
+    def test_allows_paths_outside_a_git_tree(self):
+        outside = Path(self.tmp.name) / "keys" / "release.jks"
+        keystore.confirm_safe_path(outside)  # must not raise
+
+    def test_parses_keytool_fingerprint(self):
+        output = (
+            "Owner: CN=Test\n"
+            "\t SHA256: C3:F8:91:E8:4B:58:36:85\n"
+        )
+        self.assertEqual(keystore.parse_fingerprint(output), "c3f891e84b583685")
+
+    def test_no_fingerprint(self):
+        self.assertIsNone(keystore.parse_fingerprint("nothing here"))
+
+    def test_env_output_never_contains_a_password(self):
+        path = Path(self.tmp.name) / "k.jks"
+        path.write_bytes(b"x")
+        args = type("A", (), {"keystore": str(path), "alias": "ayuox4gg"})()
+        import io
+        import contextlib
+
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            self.assertEqual(keystore.env(args), 0)
+        printed = buffer.getvalue()
+        self.assertIn("SIGNING_KEY_STORE_FILE =", printed)
+        self.assertIn("<your password>", printed)
 
 
 class SetupKeysTests(unittest.TestCase):

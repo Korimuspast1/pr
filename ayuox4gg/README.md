@@ -9,7 +9,7 @@ Android/Telegram changes, plus a 2023 dependency stack"*).
 
 | Path | What it is |
 | --- | --- |
-| [`security/FINDINGS.md`](security/FINDINGS.md) | Security review of the real `rewrite` sources: 4 high/medium + 5 hardening findings, each with file and code |
+| [`security/FINDINGS.md`](security/FINDINGS.md) | Security review: **X1 — the release signing key is committed to a public repo** (critical), 3 high, 1 medium, 5 hardening findings |
 | [`security/patches/`](security/patches/) | Three `git apply`-able patches fixing them; verified against a fresh clone |
 | [`security/PIPELINE-NOTES.md`](security/PIPELINE-NOTES.md) | Hardening the release CI (secrets in the workspace, unpinned actions) |
 | [`compat/MODERNIZATION.md`](compat/MODERNIZATION.md) | AGP 8.7 / Gradle 8.9 / JDK 17 / SDK 35 / NDK 26 migration plan with diffs and a dead-line |
@@ -21,6 +21,7 @@ Android/Telegram changes, plus a 2023 dependency stack"*).
 | [`proprietary-stubs/`](proprietary-stubs/) | Public stand-ins for the **closed** `proprietary/` submodule (404 on GitHub) — makes the tree compile |
 | [`scripts/bootstrap-ayu.sh`](scripts/bootstrap-ayu.sh) | One command: API keys → stand-ins → 3 security patches → checks |
 | [`tools/setup_keys.py`](tools/setup_keys.py) | Writes the git-ignored `API_KEYS` (mode 600, refuses unsafe paths) |
+| [`tools/keystore.py`](tools/keystore.py) | Generates a fork-owned release keystore outside the tree, prints the cert hash users verify |
 | [`tests/`](tests/) | 27 unit tests for all of the above |
 | [`docs/BUILD.md`](docs/BUILD.md) | What can/cannot be compiled here, and the `API_KEYS` / my.telegram.org answer |
 

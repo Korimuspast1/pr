@@ -98,6 +98,7 @@ TMessagesProj/src/main/java/com/radolyn/ayugram/proprietary
 | **M4** лишние `SYSTEM_ALERT_WINDOW`, `REQUEST_INSTALL_PACKAGES` | права «на всякий случай» | убраны/сужены |
 | **L1** `Authorization` уходил на любой хост при редиректе | утечка токена | заголовок только для своего хоста |
 | **L4** обновление проверялось по MD5 | MD5 сломан | `AyuUpdateVerifier.java`: SHA-256 + сверка сертификата подписи |
+| **X1** ⚠️ **в публичном репозитории лежит release-keystore** (`TMessagesProj/config/extera.jks`), которым подписываются сборки | любой, кто открыл файл, может выпустить «официальный» APK | для своего форка: `tools/keystore.py` создаёт **свой** ключ вне репозитория, сборка подписывается им |
 
 Проверка «до/после» на настоящем дереве:
 
@@ -134,6 +135,30 @@ python3 ayuox4gg/tools/forensics.py app.apk --expect-cert <sha256 сертифи
 * **Страница «Об ограничениях»** и панель пресетов в настройках.
 * Сборка воспроизводимая (одинаковый sha256 у одинаковых исходников) + публикуемый
   `custom-profile.elyx.sha256`.
+
+### X1 — самое важное, что я нашёл
+
+`TMessagesProj/config/extera.jks` в **публичном** репозитории — это не пример:
+`build.gradle` использует его как `signingConfigs.release` для `debug` **и**
+`release`. Пароль к нему словарный (подобрался), сертификат:
+
+```
+Owner : C=ru, O=Radolyn Labs, CN=ZavaruKitsu
+SHA256: C3:F8:91:E8:4B:58:36:85:BD:09:FE:FE:7E:4F:8E:60:11:53:B6:76:D0:34:91:43:8E:59:FE:EE:4E:5B:70:FB
+```
+
+Значит, любой человек может подписать APK, который Android примет как
+обновление AyuGram. Для **своего** форка это лечится один раз, до первой
+публикации:
+
+```bash
+python3 ayuox4gg/tools/keystore.py create --keystore ~/keys/ayuox4gg.jks
+# → положить в API_KEYS строки SIGNING_KEY_* (файл в .gitignore)
+# → удалить чужой ключ из своего git: git rm --cached TMessagesProj/config/extera.jks
+```
+
+Пользователи потом проверяют установщик так:
+`python3 ayuox4gg/tools/forensics.py app.apk --expect-cert <sha256>`.
 
 ## 5. Ветка `ayuox4gg`
 
