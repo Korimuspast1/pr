@@ -54,6 +54,53 @@ From `AyuGram4A/README.md`:
 5. Fill `API_KEYS`.
 6. `./gradlew assembleAfatRelease`.
 
+### The closed `proprietary/` submodule
+
+`TMessagesProj/src/main/java/com/radolyn/ayugram/proprietary` is a **git
+submodule** pointing at `https://github.com/AyuGram/AyuGram4A_proprietary.git`,
+which returns **404 — it is private**. Three public files call 8 methods from it,
+so an unmodified clone cannot compile:
+
+| Call site | Methods used |
+| --- | --- |
+| `com/radolyn/ayugram/messages/AyuMessagesController.java` | `AyuMessageUtils.map(...)`, `.mapMedia(...)` (×4) |
+| `com/radolyn/ayugram/ui/AyuMessageHistory.java` | `AyuMessageUtils.map(...)`, `.mapMedia(...)` (×2) |
+| `org/telegram/ui/ChatActivity.java` | `AyuHistoryHook.getMinAndMaxIds(...)`, `.doHook(...)` (×2) |
+
+`ayuox4gg/proprietary-stubs/` contains **public stand-ins with those exact
+signatures**, so the tree compiles:
+
+* text, links, reply/forward metadata, flags, topics and dates are stored and
+  rendered properly — deleted/edited **text** history works;
+* media graphs are not re-materialised (no file copying, no TL document
+  serialisation), so media messages are recorded without their attachment;
+* the in-chat splice of deleted messages (`AyuHistoryHook.doHook`) is a no-op —
+  the separate history screen still works.
+
+Copy them in with the bootstrap script (below), or manually:
+
+```bash
+mkdir -p TMessagesProj/src/main/java/com/radolyn/ayugram/proprietary
+cp ayuox4gg/proprietary-stubs/*.java TMessagesProj/src/main/java/com/radolyn/ayugram/proprietary/
+git rm --cached TMessagesProj/src/main/java/com/radolyn/ayugram/proprietary   # drop the gitlink
+```
+
+Replacing these two files with the real proprietary classes restores full
+behaviour without touching anything else.
+
+### One-command bootstrap
+
+```bash
+./ayuox4gg/scripts/bootstrap-ayu.sh --tree /path/to/AyuGram4A \
+    --app-id <your id> --app-hash <your 32-hex hash>
+```
+
+It writes `API_KEYS` (mode 600, refuses to write anywhere git would not ignore
+it), installs the stand-ins, drops the private submodule entry, applies the three
+security patches and runs the checks. Verified end-to-end against a fresh
+`rewrite` clone: `API_KEYS` ignored, gitlink dropped, 3/3 patches applied,
+stand-ins parse.
+
 Add the overlay's patches on top:
 
 ```bash

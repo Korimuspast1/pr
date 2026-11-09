@@ -18,7 +18,10 @@ Android/Telegram changes, plus a 2023 dependency stack"*).
 | [`tools/security_audit.py`](tools/security_audit.py) | 12-rule scanner for the fork-specific mistakes (cleartext sync, token in prefs, unguarded auth headers, …) |
 | [`tools/forensics.py`](tools/forensics.py) | Offline APK forensics: hashes, v1/v2/v3 signer certificate, dangerous permissions |
 | [`tools/javaparse.py`](tools/javaparse.py) | Java syntax check without a JDK |
-| [`tests/`](tests/) | 22 unit tests for all of the above |
+| [`proprietary-stubs/`](proprietary-stubs/) | Public stand-ins for the **closed** `proprietary/` submodule (404 on GitHub) — makes the tree compile |
+| [`scripts/bootstrap-ayu.sh`](scripts/bootstrap-ayu.sh) | One command: API keys → stand-ins → 3 security patches → checks |
+| [`tools/setup_keys.py`](tools/setup_keys.py) | Writes the git-ignored `API_KEYS` (mode 600, refuses unsafe paths) |
+| [`tests/`](tests/) | 27 unit tests for all of the above |
 | [`docs/BUILD.md`](docs/BUILD.md) | What can/cannot be compiled here, and the `API_KEYS` / my.telegram.org answer |
 
 ## Measured effect
@@ -49,12 +52,17 @@ normal build machine; see [`docs/BUILD.md`](docs/BUILD.md).
 ## Quick start on a build machine
 
 ```bash
-git clone --depth 1 -b rewrite https://github.com/AyuGram/AyuGram4A.git ayu && cd ayu
-git apply /path/to/ayuox4gg/security/patches/*.patch
-python3 /path/to/ayuox4gg/tools/javaparse.py TMessagesProj/src/main/java/com/radolyn/ayugram/sync/*.java
-./gradlew assembleAfatRelease          # see docs/BUILD.md for API_KEYS and the missing classes
+git clone --depth 1 -b rewrite https://github.com/AyuGram/AyuGram4A.git ayu
+./ayuox4gg/scripts/bootstrap-ayu.sh --tree ayu --app-id <id> --app-hash <hash>
+cd ayu
+./gradlew assembleAfatRelease
 python3 /path/to/ayuox4gg/tools/forensics.py TMessagesProj/build/outputs/apk/afat/release/*.apk
 ```
+
+**The `proprietary/` blocker.** Upstream points that directory at a private
+repository (HTTP 404). This overlay ships public stand-ins with the exact
+signatures the public code calls, so the tree compiles; text history works,
+media/in-chat splicing is degraded. Details: [`docs/BUILD.md`](docs/BUILD.md).
 
 ## Branch note
 

@@ -26,6 +26,7 @@ sys.path.insert(0, str(TOOLS))
 import forensics  # noqa: E402
 import security_audit  # noqa: E402
 import javaparse  # noqa: E402
+import setup_keys  # noqa: E402
 
 PATCHES = ROOT / "security" / "patches"
 
@@ -241,6 +242,56 @@ class PatchHygieneTests(unittest.TestCase):
             self.assertEqual(high, [], "{} adds high-risk code: {}".format(patch.name, high))
 
 
+class SetupKeysTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.path = Path(self.tmp.name) / "API_KEYS"
+
+    def test_writes_valid_file_with_strict_permissions(self):
+        # Obviously fake values: tests must never contain a real API pair.
+        code = setup_keys.main(["--app-id", "1234567",
+                                "--app-hash", "0123456789abcdef0123456789abcdef",
+                                "--output", str(self.path), "--force"])
+        self.assertEqual(code, 0)
+        text = self.path.read_text()
+        self.assertIn("APP_ID = 1234567", text)
+        self.assertIn('APP_HASH = "0123456789abcdef0123456789abcdef"', text)
+        self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
+
+    def test_rejects_bad_hash_and_id(self):
+        self.assertEqual(setup_keys.main(["--app-id", "abc", "--app-hash", "00" * 16, "--output", str(self.path)]), 1)
+        self.assertEqual(setup_keys.main(["--app-id", "123", "--app-hash", "xyz", "--output", str(self.path)]), 1)
+        self.assertFalse(self.path.exists())
+
+    def test_check_redacts_the_hash(self):
+        setup_keys.main(["--app-id", "123456", "--app-hash", "a" * 32, "--output", str(self.path)])
+        code = setup_keys.main(["--check", str(self.path)])
+        self.assertEqual(code, 0)
+        # The redacted summary must not contain the full value.
+        self.assertIn("123456", self.path.read_text())
+
+    def test_check_missing_file(self):
+        self.assertEqual(setup_keys.main(["--check", str(self.path)]), 2)
+
+    def test_refuses_to_write_into_unignored_git_tree(self):
+        repo = Path(self.tmp.name) / "repo"
+        repo.mkdir(parents=True)
+        init = subprocess.run(["git", "init", "-q", str(repo)], capture_output=True)
+        if init.returncode != 0:
+            self.skipTest("git is not available")
+        (repo / ".gitignore").write_text("build/\n", encoding="utf-8")
+        target = repo / "API_KEYS"
+        code = setup_keys.main(["--app-id", "123", "--app-hash", "b" * 32, "--output", str(target)])
+        self.assertEqual(code, 1, "should refuse: file is not git-ignored")
+        self.assertFalse(target.exists())
+        # With the file listed in .gitignore it is allowed.
+        (repo / ".gitignore").write_text("build/\nAPI_KEYS\n", encoding="utf-8")
+        self.assertTrue(setup_keys.is_git_ignored(target))
+        self.assertEqual(setup_keys.main(["--app-id", "123", "--app-hash", "b" * 32,
+                                          "--output", str(target)]), 0)
+
+
 class JavaParseTests(unittest.TestCase):
     def test_parses_valid_java(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -293,6 +344,29 @@ class RepositoryStateTests(unittest.TestCase):
                          "zipfile"},
                         "{} imports {}".format(path.name, module),
                     )
+
+    def test_proprietary_standins_match_call_sites(self):
+        """The stand-ins must expose exactly what the public code calls."""
+        import re
+
+        stubs = (ROOT / "proprietary-stubs")
+        message_utils = (stubs / "AyuMessageUtils.java").read_text(encoding="utf-8")
+        history_hook = (stubs / "AyuHistoryHook.java").read_text(encoding="utf-8")
+
+        # Signatures verified against the three call sites in upstream rewrite.
+        self.assertRegex(message_utils, r"public static void map\(AyuSavePreferences")
+        self.assertRegex(message_utils, r"public static void mapMedia\(AyuSavePreferences")
+        self.assertRegex(message_utils, r"public static void map\(EditedMessage")
+        self.assertRegex(message_utils, r"public static void mapMedia\(EditedMessage")
+        self.assertRegex(history_hook, r"public static Pair<Integer, Integer> getMinAndMaxIds\(")
+        self.assertRegex(history_hook, r"public static void doHook\(")
+        # Every argument the caller passes must appear in doHook's signature.
+        for argument in ("currentAccount", "messages", "messagesDict", "startId", "endId",
+                         "dialogId", "limit", "topicId", "isSecretChat"):
+            self.assertIn(argument, history_hook, "doHook is missing " + argument)
+        # They live in the package upstream imports.
+        for text in (message_utils, history_hook):
+            self.assertIn("package com.radolyn.ayugram.proprietary;", text)
 
     def test_docs_reference_existing_files(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

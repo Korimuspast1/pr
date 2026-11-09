@@ -6,3 +6,8 @@ __pycache__/
 ayuox4gg/**/__pycache__/
 custom-profile/**/__pycache__/
 *.pyc
+
+# ayuox4gg: никогда не коммитить ключи Telegram / подписи
+API_KEYS
+*.jks
+*.keystore
