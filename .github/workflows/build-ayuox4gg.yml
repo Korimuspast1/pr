@@ -220,7 +220,11 @@ jobs:
           CAP="$(echo "${FLAVOR:0:1}" | tr '[:lower:]' '[:upper:]')${FLAVOR:1}"
           echo "task: assemble${CAP}Release"
           set -o pipefail
-          ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx6g \
+          # gradle.properties turns on org.gradle.unsafe.configuration-cache,
+          # which is experimental in Gradle 7.5 and dies with a StackOverflowError
+          # in the execution-plan finalizer on a graph this size (AGP 7.4.2).
+          ./gradlew --no-daemon --no-configuration-cache \
+            -Dorg.gradle.jvmargs=-Xmx6g \
             "assemble${CAP}Release" --stacktrace \
             2>&1 | tee "$RUNNER_TEMP/gradle.log"
 
@@ -314,11 +318,23 @@ jobs:
           {
             echo "run: $GITHUB_RUN_ID  ref: $GITHUB_REF  sha: $GITHUB_SHA"
             echo "flavor: ${{ github.event.inputs.flavor || 'arm64' }}"
-            for f in "$RUNNER_TEMP/overlay.log" "$RUNNER_TEMP/gradle.log"; do
-              [[ -f "$f" ]] || continue
-              echo "===== $(basename "$f") (last 600 lines) ====="
-              tail -n 600 "$f"
-            done
+            if [[ -f "$RUNNER_TEMP/overlay.log" ]]; then
+              echo "===== overlay.log ====="
+              tail -n 80 "$RUNNER_TEMP/overlay.log"
+            fi
+            if [[ -f "$RUNNER_TEMP/gradle.log" ]]; then
+              echo "===== gradle.log: the failure section ====="
+              # The tail is usually hundreds of identical stack frames; the
+              # cause sits in the 'What went wrong' block near the end.
+              awk '/^\* What went wrong/{f=1} f' "$RUNNER_TEMP/gradle.log" | head -n 80
+              echo "===== gradle.log: errors and first failures ====="
+              grep -nE "error:|FAILED|Caused by|StackOverflow|OutOfMemory|Execution failed|Could not (resolve|find|download)|NDK|cmake|ninja: build stopped" \
+                "$RUNNER_TEMP/gradle.log" | head -n 40
+              echo "===== gradle.log: task list ====="
+              awk '/^> Task /{print}' "$RUNNER_TEMP/gradle.log" | tail -n 40
+              echo "===== gradle.log: head ====="
+              head -n 40 "$RUNNER_TEMP/gradle.log"
+            fi
             if [[ ! -s "$RUNNER_TEMP/gradle.log" ]]; then
               echo "===== no gradle.log; gradle reports ====="
               find "$AYU_TREE/TMessagesProj/build/reports" -name '*.txt' 2>/dev/null \
