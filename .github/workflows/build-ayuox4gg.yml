@@ -188,9 +188,11 @@ jobs:
               | { grep -E "SHA256:|Owner:|Valid from" || echo "   (fingerprint unreadable)"; } \
               | sed 's/^/   /'
           fi
+          # Everything below runs in this same step, where $GITHUB_ENV values
+          # are NOT yet visible; keep a plain shell variable for that.
+          KEYSTORE="$RUNNER_TEMP/sign/release.jks"
           # The password is only needed inside this step (bootstrap writes it
           # into API_KEYS); it is deliberately not exported to later steps.
-          echo "KEYSTORE=$RUNNER_TEMP/sign/release.jks" >> "$GITHUB_ENV"
 
           bash "$GITHUB_WORKSPACE/ayuox4gg/scripts/bootstrap-ayu.sh" \
             --tree "$AYU_TREE" \
