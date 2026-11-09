@@ -43,7 +43,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write   # only used to publish a build log when the job fails
 
 env:
   AYU_REPO: AyuGram/AyuGram4A
@@ -185,7 +185,8 @@ jobs:
             # Public information: lets users pin the certificate out of band.
             keytool -list -v -keystore "$RUNNER_TEMP/sign/release.jks" \
               -storepass "$SIGN_PASSWORD" 2>/dev/null \
-              | grep -E "SHA256:|Owner:|Valid from" | sed 's/^/   /'
+              | { grep -E "SHA256:|Owner:|Valid from" || echo "   (fingerprint unreadable)"; } \
+              | sed 's/^/   /'
           fi
           # The password is only needed inside this step (bootstrap writes it
           # into API_KEYS); it is deliberately not exported to later steps.
@@ -194,7 +195,8 @@ jobs:
           bash "$GITHUB_WORKSPACE/ayuox4gg/scripts/bootstrap-ayu.sh" \
             --tree "$AYU_TREE" \
             --app-id "$APP_ID" --app-hash "$APP_HASH" \
-            --sign-password "$SIGN_PASSWORD" --sign-alias "$SIGN_ALIAS"
+            --sign-password "$SIGN_PASSWORD" --sign-alias "$SIGN_ALIAS" \
+            2>&1 | tee "$RUNNER_TEMP/overlay.log"
 
           # The upstream build hard-codes `config/extera.jks` (finding X1: that
           # keystore is public and its password is in the repo). Overwrite the
@@ -215,8 +217,10 @@ jobs:
           chmod +x ./gradlew
           CAP="$(echo "${FLAVOR:0:1}" | tr '[:lower:]' '[:upper:]')${FLAVOR:1}"
           echo "task: assemble${CAP}Release"
+          set -o pipefail
           ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx6g \
-            "assemble${CAP}Release" --stacktrace
+            "assemble${CAP}Release" --stacktrace \
+            2>&1 | tee "$RUNNER_TEMP/gradle.log"
 
       - name: Collect APK
         run: |
@@ -289,6 +293,33 @@ jobs:
         with:
           name: ayuox4gg-build-log
           path: |
+            ${{ runner.temp }}/overlay.log
+            ${{ runner.temp }}/gradle.log
             ${{ env.AYU_TREE }}/**/build/reports/**
           if-no-files-found: ignore
           retention-days: 7
+
+      # Workflow logs live in a blob store that is not reachable from every
+      # network (including the sandbox that maintains this overlay), so a failed
+      # run also records its tail in the branch itself.
+      - name: Commit the log tail on failure
+        if: failure()
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p ayuox4gg/diagnostics
+          OUT="ayuox4gg/diagnostics/build-$(date -u +%Y%m%dT%H%M%SZ).log"
+          {
+            echo "run: $GITHUB_RUN_ID  ref: $GITHUB_REF  sha: $GITHUB_SHA"
+            echo "flavor: ${{ github.event.inputs.flavor || 'arm64' }}"
+            for f in "$RUNNER_TEMP/overlay.log" "$RUNNER_TEMP/gradle.log"; do
+              [[ -f "$f" ]] || continue
+              echo "===== $(basename "$f") (last 400 lines) ====="
+              tail -n 400 "$f"
+            done
+          } > "$OUT"
+          git config user.name "ayuox4gg-bot"
+          git config user.email "ayuox4gg@users.noreply.github.com"
+          git add "$OUT"
+          git commit -q -m "ci: build log for run $GITHUB_RUN_ID [skip ci]"
+          git push
