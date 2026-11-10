@@ -1,0 +1,72 @@
+name: Build RootDB Pro APK
+
+on:
+  push:
+    branches: [arena/70c231a7-pr]
+    paths:
+      - 'rootdb-editor/**'
+      - '.github/workflows/build-rootdb.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          sdkmanager --licenses || true
+
+      - name: Build debug APK
+        working-directory: rootdb-editor
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - name: Verify APK signature and manifest
+        run: |
+          APK=$(find rootdb-editor/app/build/outputs/apk/debug -name '*.apk' | head -n1)
+          echo "APK: $APK"
+          ls -lh "$APK"
+          apksigner verify --verbose "$APK"
+          aapt dump badging "$APK" | head -n 20
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RootDB-Pro
+          path: rootdb-editor/app/build/outputs/apk/debug/*.apk
+          retention-days: 90
+
+      - name: Publish GitHub Release (manual runs only)
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: RootDB Pro v1.0.0
+          body: |
+            RootDB Pro — root-редактор локальных баз (Material Expressive).
+
+            - Список всех приложений, сканирование SQLite/SQLCipher-баз через root
+            - Просмотр и правки таблиц, SQL-консоль, глобальный поиск
+            - Расшифровка SQLCipher в обычную SQLite, AES-декодер значений
+            - SharedPreferences и файлы через root, бэкапы
+            - Guardian: фоновая защита правок от отката
+
+            Установите APK, выдайте Root (Magisk/KernelSU) и разрешите уведомления для Guardian.
+          files: rootdb-editor/app/build/outputs/apk/debug/*.apk
+          fail_on_unmatched_files: true
