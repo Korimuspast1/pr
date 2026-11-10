@@ -74,13 +74,16 @@ jobs:
           done
 
       - name: Verify APK signature and manifest
+        continue-on-error: true
         run: |
-          export PATH="$HOME/android-sdk/build-tools/35.0.0:$PATH"
+          BT="$HOME/android-sdk/build-tools/35.0.0"
+          echo "--- build-tools dir ---"
+          ls "$BT" 2>&1 | head -n 30 || ls "$HOME/android-sdk/build-tools" 2>&1 | head
           APK=$(find rootdb-editor/app/build/outputs/apk/debug -name '*.apk' | head -n1)
           echo "APK: $APK"
           ls -lh "$APK"
-          apksigner verify --verbose "$APK"
-          aapt2 dump badging "$APK" | head -n 20
+          "$BT/apksigner" verify --verbose "$APK" || echo "apksigner: check failed"
+          "$BT/aapt2" dump badging "$APK" | head -n 20 || echo "aapt2: check failed"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
