@@ -164,9 +164,9 @@ fun AppDetailScreen(
                                         Text(db.path, style = MaterialTheme.typography.bodySmall)
                                     }
                                 },
-                                leadingContent = { Icon(Icons.Filled.Database, null, tint = MaterialTheme.colorScheme.primary) },
+                                leadingContent = { Icon(Icons.Filled.Storage, null, tint = MaterialTheme.colorScheme.primary) },
                                 trailingContent = {
-                                    Column(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                         when {
                                             db.isWal -> Badge("WAL", MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurfaceVariant)
                                             db.isShm -> Badge("SHM", MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.colorScheme.onSurfaceVariant)

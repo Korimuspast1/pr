@@ -272,8 +272,8 @@ object DbManager {
     fun updateCell(db: DbHandle, table: String, column: String, row: RowData, newValue: Any?) {
         val (where, args) = rowWhere(db, table, row)
         val bind = mutableListOf<Any?>()
-        bind += newValue
-        bind += args
+        bind.add(newValue)
+        bind.addAll(args)
         db.execSQL("UPDATE \"$table\" SET \"$column\" = ? WHERE $where", bind.toTypedArray())
     }
 

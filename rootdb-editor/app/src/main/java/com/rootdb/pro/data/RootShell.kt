@@ -37,7 +37,7 @@ object RootShell {
     /** Есть ли root (Magisk / KernelSU / SuperSU) */
     fun isRooted(): Boolean = try {
         Shell.getShell()
-        Shell.isAppGrantedRoot()
+        Shell.isAppGrantedRoot() == true
     } catch (_: Throwable) {
         false
     }
