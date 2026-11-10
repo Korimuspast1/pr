@@ -304,6 +304,7 @@ jobs:
       # reassembled with one command.
       - name: Publish the build into the repository
         if: success()
+        continue-on-error: true
         run: |
           set -uo pipefail
           cd "$GITHUB_WORKSPACE"
@@ -378,20 +379,6 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -q -m "artifacts: $TAG [skip ci]" -- "ayuox4gg/artifacts/$TAG"
           git push || echo "::warning::could not push the build (branch protection?)"
-
-      - name: Commit the artifact record
-        if: success()
-        continue-on-error: true
-        run: |
-          set -uo pipefail
-          cd "$GITHUB_WORKSPACE"
-          [[ -n "${TAG:-}" ]] || exit 0
-          git config user.name "ayuox4gg-bot"
-          git config user.email "ayuox4gg@users.noreply.github.com"
-          git add -- "ayuox4gg/artifacts/$TAG.txt"
-          git diff --cached --quiet && exit 0
-          git commit -q -m "artifacts: $TAG [skip ci]" -- "ayuox4gg/artifacts/$TAG.txt"
-          git push || echo "::warning::could not push the artifact record"
 
       - name: Keep the build log on failure
         if: failure()
