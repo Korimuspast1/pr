@@ -75,11 +75,12 @@ jobs:
 
       - name: Verify APK signature and manifest
         run: |
+          export PATH="$HOME/android-sdk/build-tools/35.0.0:$PATH"
           APK=$(find rootdb-editor/app/build/outputs/apk/debug -name '*.apk' | head -n1)
           echo "APK: $APK"
           ls -lh "$APK"
           apksigner verify --verbose "$APK"
-          aapt dump badging "$APK" | head -n 20
+          aapt2 dump badging "$APK" | head -n 20
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
