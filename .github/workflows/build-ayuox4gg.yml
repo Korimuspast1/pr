@@ -362,6 +362,12 @@ jobs:
             fi
           } > "$OUT/README.md"
 
+          # The manifest is what lets unpack_apk.py prove the result; a build
+          # without it is unverifiable, so fail here rather than hand out an
+          # APK nobody can check.
+          test -s "$OUT/README.md" || { echo "::error::manifest not written"; exit 1; }
+          grep -q "^| sha256" "$OUT/README.md" || { echo "::error::no digest in manifest"; exit 1; }
+
           ls -la "$OUT"
           du -sh "$OUT"
 

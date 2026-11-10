@@ -100,6 +100,15 @@ if [[ $DRY_RUN -eq 1 ]]; then
 else
   mkdir -p "$PROP"
   cp -f "$OVERLAY"/proprietary-stubs/*.java "$PROP"/
+
+  # Features that are drop-in (no call-site changes required) go into the tree
+  # so they end up in the APK instead of gathering dust next to it.
+  SEC="$TREE/TMessagesProj/src/main/java/com/radolyn/ayugram/security"
+  if [[ -d "$OVERLAY/features" ]]; then
+    mkdir -p "$SEC"
+    cp -f "$OVERLAY"/features/*.java "$SEC"/
+    say "   features: $(ls "$OVERLAY/features" | tr '\n' ' ')-> ayugram/security/"
+  fi
   # The submodule entry makes a fresh clone fail; it is useless without access
   # to the private repository. Drop it and unstage the gitlink.
   if [[ -f "$GITMODULES" ]]; then
