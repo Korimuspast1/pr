@@ -64,8 +64,8 @@ object DbManager {
         }
     }
 
-    fun workDir(context: Context, pkg: String, dbName: String): File {
-        val dir = File(context.cacheDir, "dbs/$pkg/$dbName")
+    fun workDir(context: Context, pkg: String, dbName: String, tag: String = "main"): File {
+        val dir = File(context.cacheDir, "dbs/$pkg/$dbName/$tag")
         dir.mkdirs()
         return dir
     }

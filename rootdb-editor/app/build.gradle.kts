@@ -65,6 +65,8 @@ dependencies {
     implementation("com.github.topjohnwu.libsu:core:5.0.4")
     // SQLCipher — расшифровка зашифрованных баз (группа net.zetetic на Maven Central)
     implementation("net.zetetic:android-database-sqlcipher:4.5.4")
+    // SupportSQLiteDatabase (супертип SQLCipher-базы) нужен на compile-класспути
+    implementation("androidx.sqlite:sqlite-db:2.4.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
