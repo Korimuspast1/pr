@@ -13,6 +13,8 @@ data class ExecResult(val code: Int, val out: String, val err: String) {
 /**
  * Обёртка над libsu: все root-операции с файлами чужих приложений.
  * ВАЖНО: методы блокирующие — вызывать только с Dispatchers.IO.
+ * Shell инициализируется лениво (при первом root-вызове), чтобы не
+ * закэшировать non-root shell до выдачи root в Magisk/KernelSU.
  */
 object RootShell {
 
@@ -20,13 +22,6 @@ object RootShell {
 
     fun init(context: Context) {
         appContext = context.applicationContext
-        // Предварительная инициализация shell в фоне, чтобы первый вызов не тормозил UI
-        Thread {
-            try {
-                Shell.getShell()
-            } catch (_: Throwable) {
-            }
-        }.start()
     }
 
     private fun cacheDir(): File {
@@ -53,20 +48,57 @@ object RootShell {
     /** Экранирование пути для shell (одинарные кавычки) */
     fun q(path: String): String = "'" + path.replace("'", "'\\''") + "'"
 
-    /** stat файла: размер, время, права, владелец */
+    /** stat файла: размер, время, права, владелец. Запасной вариант — ls -ln. */
     fun stat(path: String): FileStat? {
         val r = exec("stat -c '%s|%Y|%a|%u|%g|%F' -- ${q(path)}")
-        if (!r.ok) return null
-        val p = r.out.trim().split("|")
-        if (p.size < 6) return null
-        return FileStat(
-            size = p[0].toLongOrNull() ?: 0,
-            mtimeSec = p[1].toLongOrNull() ?: 0,
-            mode = p[2].toIntOrNull() ?: 0,
-            uid = p[3].toIntOrNull() ?: 0,
-            gid = p[4].toIntOrNull() ?: 0,
-            type = p[5]
-        )
+        if (r.ok) {
+            val p = r.out.trim().split("|")
+            if (p.size >= 6) {
+                return FileStat(
+                    size = p[0].toLongOrNull() ?: 0,
+                    mtimeSec = p[1].toLongOrNull() ?: 0,
+                    mode = p[2].toIntOrNull() ?: 0,
+                    uid = p[3].toIntOrNull() ?: 0,
+                    gid = p[4].toIntOrNull() ?: 0,
+                    type = p[5]
+                )
+            }
+        }
+        // Запасной вариант: ls -ln (числовые uid/gid, права текстом)
+        val r2 = exec("ls -ln -- ${q(path)}")
+        if (r2.ok) {
+            val parts = r2.out.trim().split(Regex("\\s+"))
+            if (parts.size >= 5) {
+                val perms = parts[0]
+                return FileStat(
+                    size = parts[4].toLongOrNull() ?: 0,
+                    mtimeSec = 0,
+                    mode = permsToOctal(perms),
+                    uid = parts[2].toIntOrNull() ?: 0,
+                    gid = parts[3].toIntOrNull() ?: 0,
+                    type = if (perms.startsWith("d")) "directory" else "regular file"
+                )
+            }
+        }
+        return null
+    }
+
+    /** "-rwxrwx---" -> 0o770 (упрощённо, без suid/sgid/sticky) */
+    private fun permsToOctal(perms: String): Int {
+        if (perms.length < 10) return 0
+        var mode = 0
+        val marks = charArrayOf('r', 'w', 'x')
+        for (i in 0..2) {
+            var bits = 0
+            for (j in 0..2) {
+                val c = perms[1 + i * 3 + j]
+                if (c == marks[j] || c == 's' || c == 'S' || c == 't' || c == 'T') {
+                    bits = bits or (1 shl (2 - j))
+                }
+            }
+            mode = mode or (bits shl (6 - i * 3))
+        }
+        return mode
     }
 
     /** Список имён в каталоге (по одному на строку) */
@@ -76,24 +108,30 @@ object RootShell {
         return r.out.split("\n").map { it.trimEnd('\r') }.filter { it.isNotEmpty() }
     }
 
-    /** Подробный список каталога (имя, тип, размер, время) */
+    /**
+     * Подробный список каталога. Сначала пробуем батч-stat,
+     * при неудаче — пофайловые stat/ls (надёжность важнее скорости).
+     */
     fun listDir(dir: String): List<DirEntry> {
         val names = listNames(dir)
         if (names.isEmpty()) return emptyList()
         val out = mutableListOf<DirEntry>()
-        // stat батчами, чтобы не плодить процессы
-        names.chunked(200).forEach { batch ->
+        var batchFailed = false
+        names.chunked(100).forEach { batch ->
+            if (batchFailed) return@forEach
             val paths = batch.map { "$dir/$it" }
             val cmd = "stat -c '%n|%s|%Y|%F' -- " + paths.joinToString(" ") { q(it) }
             val r = exec(cmd)
-            if (!r.ok) return@forEach
+            if (!r.ok) {
+                batchFailed = true
+                return@forEach
+            }
             r.out.lines().forEach { line ->
                 val p = line.split("|")
                 if (p.size < 4) return@forEach
                 val full = p[0]
-                val name = full.substringAfterLast("/")
                 out += DirEntry(
-                    name = name,
+                    name = full.substringAfterLast("/"),
                     path = full,
                     isDir = p[3].contains("directory", ignoreCase = true),
                     size = p[1].toLongOrNull() ?: 0,
@@ -101,10 +139,31 @@ object RootShell {
                 )
             }
         }
+        if (batchFailed || out.size != names.size) {
+            out.clear()
+            names.forEach { name ->
+                val path = "$dir/$name"
+                val st = stat(path)
+                out += DirEntry(
+                    name = name,
+                    path = path,
+                    isDir = st?.type?.contains("directory", ignoreCase = true) == true,
+                    size = st?.size ?: 0,
+                    modifiedSec = st?.mtimeSec ?: 0
+                )
+            }
+        }
         return out.sortedWith(compareBy<DirEntry> { !it.isDir }.thenBy { it.name.lowercase() })
     }
 
-    /** Первые N байт файла (для проверки заголовка SQLite) — через dd во временный файл */
+    /** Рекурсивный поиск файлов через find (для сканирования files/ и cache/) */
+    fun findFiles(dir: String, maxDepth: Int = 3, maxFiles: Int = 300): List<String> {
+        val r = exec("find ${q(dir)} -maxdepth $maxDepth -type f 2>/dev/null")
+        if (!r.ok) return emptyList()
+        return r.out.split("\n").map { it.trimEnd('\r') }.filter { it.isNotEmpty() }.take(maxFiles)
+    }
+
+    /** Первые N байт файла (для hex-просмотра) — через dd во временный файл */
     fun headBytes(path: String, n: Int): ByteArray? {
         val tmp = File(cacheDir(), "head_${System.nanoTime()}.bin")
         val r = exec("dd if=${q(path)} of=${q(tmp.absolutePath)} bs=1 count=$n 2>/dev/null")

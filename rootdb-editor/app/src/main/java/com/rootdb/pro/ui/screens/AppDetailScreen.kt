@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.rootdb.pro.data.AppInfo
 import com.rootdb.pro.data.AppScanner
 import com.rootdb.pro.data.DbFileInfo
+import com.rootdb.pro.data.RootShell
 import com.rootdb.pro.data.formatDateTime
 import com.rootdb.pro.data.formatSize
 import com.rootdb.pro.ui.components.AppIcon
@@ -149,7 +150,12 @@ fun AppDetailScreen(
                 }
                 item { SectionTitle("Базы данных (${dbs.size})") }
                 if (dbs.isEmpty()) {
-                    item { EmptyBox("Базы не найдены. Попробуйте обновить.") }
+                    item {
+                        EmptyBox(
+                            if (rooted == false) "Root не выдан — без root чужие базы не видны. Выдайте root на главной и нажмите обновить."
+                            else "Базы не найдены. У приложения может не быть локальных баз, либо они в нестандартном месте. Нажмите обновить."
+                        )
+                    }
                 } else {
                     items(dbs, key = { it.path }) { db ->
                         Card(

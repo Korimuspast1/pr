@@ -38,11 +38,10 @@ object AppScanner {
         }.sortedBy { it.label.lowercase() }
     }
 
-    /** Заголовок файла — SQLite? */
+    /** Заголовок файла — SQLite? (быстрая проверка первых 15 байт) */
     fun isSqliteFile(path: String): Boolean {
-        val head = RootShell.headBytes(path, 16) ?: return false
-        if (head.size < 16) return false
-        return head.copyOfRange(0, 15).contentEquals(SQLITE_HEADER)
+        val r = RootShell.exec("head -c 15 -- ${RootShell.q(path)} 2>/dev/null")
+        return r.ok && r.out.startsWith("SQLite format 3")
     }
 
     /** Похоже на зашифрованную базу (SQLCipher): не SQLite-заголовок, но файл непустой */
