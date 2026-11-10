@@ -101,11 +101,24 @@ object RootShell {
         return mode
     }
 
-    /** Список имён в каталоге (по одному на строку) */
+    /** Список имён в каталоге. Пробуем от самого совместимого варианта ls. */
     fun listNames(dir: String): List<String> {
-        val r = exec("ls -1A -- ${q(dir)}")
-        if (!r.ok) return emptyList()
-        return r.out.split("\n").map { it.trimEnd('\r') }.filter { it.isNotEmpty() }
+        val variants = listOf(
+            "ls ${q(dir)}",
+            "ls -1 ${q(dir)}",
+            "ls -1A ${q(dir)}",
+            "ls -1A -- ${q(dir)}"
+        )
+        for (cmd in variants) {
+            val r = exec(cmd)
+            if (r.ok) {
+                val names = r.out.split("\n")
+                    .map { it.trimEnd('\r') }
+                    .filter { it.isNotEmpty() && it != "." && it != ".." }
+                if (names.isNotEmpty()) return names
+            }
+        }
+        return emptyList()
     }
 
     /**

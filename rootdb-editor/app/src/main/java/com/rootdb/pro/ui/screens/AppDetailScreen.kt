@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -39,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rootdb.pro.data.AppInfo
@@ -74,6 +76,7 @@ fun AppDetailScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var rooted by remember { mutableStateOf<Boolean?>(null) }
+    var diag by remember { mutableStateOf<String?>(null) }
 
     suspend fun scan() {
         loading = true
@@ -147,6 +150,38 @@ fun AppDetailScreen(
                                 Spacer(Modifier.padding(horizontal = 4.dp))
                                 Text("Файлы")
                             }
+                            OutlinedButton(onClick = {
+                                scope.launch {
+                                    diag = withContext(Dispatchers.IO) {
+                                        val cmds = listOf(
+                                            "id",
+                                            "ls /data/data/$pkg/databases",
+                                            "ls /data/data/$pkg",
+                                            "ls /data/data/$pkg/files"
+                                        )
+                                        cmds.joinToString("\n\n") { c ->
+                                            val r = RootShell.exec(c)
+                                            "=== $c ===\n" + (if (r.ok) r.out else "ERR(${r.code}): ${r.err}")
+                                        }
+                                    }
+                                }
+                            }) {
+                                Icon(Icons.Filled.Info, null)
+                                Spacer(Modifier.padding(horizontal = 4.dp))
+                                Text("Диагностика")
+                            }
+                        }
+                    }
+                }
+                diag?.let { d ->
+                    item {
+                        Card(shape = MaterialTheme.shapes.large) {
+                            Text(
+                                d,
+                                fontFamily = FontFamily.Monospace,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(12.dp)
+                            )
                         }
                     }
                 }
