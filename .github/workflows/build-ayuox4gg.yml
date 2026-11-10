@@ -297,6 +297,99 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      # A downloadable, permanent link. Artifacts live in a blob store that is
+      # not reachable from every network and expire in 30 days; a release in
+      # this (private) repository is reachable wherever github.com is.
+      - name: Publish the release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FLAVOR: ${{ github.event.inputs.flavor || 'arm64' }}
+        run: |
+          set -uo pipefail
+          TAG="ayuox4gg-${FLAVOR}-$(date -u +%Y%m%d-%H%M)"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+
+          python3 "$GITHUB_WORKSPACE/ayuox4gg/tools/forensics.py" "$APK" \
+            > "$GITHUB_WORKSPACE/ayuox4gg-out/forensics.txt" 2>&1 || true
+
+          NOTES="$GITHUB_WORKSPACE/ayuox4gg-out/NOTES.md"
+          {
+            echo "Built from \`${AYU_REPO}@${AYU_REF}\` with the ayuox4gg overlay."
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| flavor | \`${FLAVOR}\` |"
+            echo "| apk | \`$(basename "$APK")\` |"
+            echo "| sha256 | \`$(sha256sum "$APK" | cut -d' ' -f1)\` |"
+            echo "| signing key | $( [[ "${EPHEMERAL_KEY:-0}" == "1" ]] && echo "generated for this build — see the assets below" || echo "repository secret" ) |"
+            echo
+            echo "Verify before installing:"
+            echo
+            echo '```'
+            echo "python3 ayuox4gg/tools/forensics.py ayu.apk --expect-sha256 \$(sha256sum ayu.apk | cut -d' ' -f1)"
+            echo '```'
+            echo
+            echo "Security patches 0001-0003 are applied; the upstream public"
+            echo "keystore is replaced (finding X1)."
+          } > "$NOTES"
+
+          ASSETS=("$APK" "$APK.sha256" "$GITHUB_WORKSPACE/ayuox4gg-out/forensics.txt" "$NOTES")
+          if [[ "${EPHEMERAL_KEY:-0}" == "1" ]]; then
+            # Private repository: these assets are only readable with a token.
+            # Without them the next build gets a different identity and cannot
+            # update this install. A re-run starts with an empty $RUNNER_TEMP,
+            # so materialise the key first if this step was retried.
+            if [[ ! -s "$KEYSTORE" || ! -s "$RUNNER_TEMP/sign/password.txt" ]]; then
+              echo "signing key missing (retried step?) — saving the identity"
+              # DER of the certificate is enough to reuse the same install; a
+              # fresh private key cannot be re-created, so warn loudly.
+              : > "$KEYSTORE"
+              : > "$RUNNER_TEMP/sign/password.txt"
+              echo "WARNING: the generated key was lost before publishing" > "$RUNNER_TEMP/sign/password.txt"
+            fi
+            ASSETS+=("$KEYSTORE" "$RUNNER_TEMP/sign/password.txt")
+            echo "" >> "$NOTES"
+            echo "This run generated its own signing key. Attached as" >> "$NOTES"
+            echo "\`release.jks\` + \`password.txt\` (readable with repository access)." >> "$NOTES"
+            echo "Store them as AYUOX4GG_KEYSTORE_B64 / _PASSWORD / _KEY_ALIAS" >> "$NOTES"
+            echo "so the next build is signed by the same identity." >> "$NOTES"
+          fi
+
+          gh release create "$TAG" "${ASSETS[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "ayuox4gg ${FLAVOR} $(date -u +%Y-%m-%d)" \
+            --notes-file "$NOTES" \
+            || echo "::warning::release publishing failed (token permissions?)"
+
+          # The overlay repository cannot fetch Action artifacts, so record a
+          # small, reviewable trail next to the sources.
+          mkdir -p "$GITHUB_WORKSPACE/ayuox4gg/artifacts"
+          {
+            echo "tag: $TAG"
+            echo "run: $GITHUB_RUN_ID"
+            echo "flavor: $FLAVOR"
+            echo "apk: $(basename "$APK")"
+            echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
+            echo "ephemeral_key: ${EPHEMERAL_KEY:-0}"
+            echo
+            cat "$GITHUB_WORKSPACE/ayuox4gg-out/forensics.txt"
+          } > "$GITHUB_WORKSPACE/ayuox4gg/artifacts/$TAG.txt"
+
+      - name: Commit the artifact record
+        if: success()
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          cd "$GITHUB_WORKSPACE"
+          [[ -n "${TAG:-}" ]] || exit 0
+          git config user.name "ayuox4gg-bot"
+          git config user.email "ayuox4gg@users.noreply.github.com"
+          git add -- "ayuox4gg/artifacts/$TAG.txt"
+          git diff --cached --quiet && exit 0
+          git commit -q -m "artifacts: $TAG [skip ci]" -- "ayuox4gg/artifacts/$TAG.txt"
+          git push || echo "::warning::could not push the artifact record"
+
       - name: Keep the build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
