@@ -1,0 +1,17 @@
+file        : /home/runner/work/pr/pr/ayuox4gg-out/ayuGram-arm64-v8a-10112026.apk
+size        : 43,345,883 bytes
+sha256      : ae60b8165028e66082f2cd804c5af5524fb3ad2002e723792482318f1dd1650f
+sha512      : abb485d801fb292148d445eef404da3e552ff77c21a7f4fbaa5443dca14fb34214b12c8b148e07bd091d1911c3ccbcece07acf964ee23a6af6c763ef69706550
+entries     : 10594
+abis        : arm64-v8a
+signatures  : v1
+cert sha256 : 53b092509e2cbcbe3fd2108137b94ccfac4baf6e2deb30c430134d6b3b4a51c8
+debug signed: no
+cleartext   : restricted by networkSecurityConfig
+permissions :
+   - android.permission.REQUEST_INSTALL_PACKAGES             install APKs (self-updater)
+   - android.permission.ACCESS_FINE_LOCATION                 precise location
+   - android.permission.ACCESS_BACKGROUND_LOCATION           background location
+   - android.permission.RECORD_AUDIO                         microphone
+   - android.permission.CAMERA                               camera
+   - android.permission.READ_CONTACTS                        contacts
