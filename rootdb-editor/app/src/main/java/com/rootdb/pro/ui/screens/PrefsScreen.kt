@@ -89,29 +89,6 @@ fun PrefsScreen(pkg: String, onBack: () -> Unit) {
 
     LaunchedEffect(pkg) { loadFiles() }
 
-    suspend fun openFile(entry: DirEntry) {
-        loading = true
-        try {
-            val dir = File(context.cacheDir, "prefs/$pkg").apply { mkdirs() }
-            val copy = File(dir, entry.name)
-            if (!withContext(Dispatchers.IO) { RootShell.copyToAppDir(entry.path, copy) }) {
-                throw Exception("Не удалось скопировать через root")
-            }
-            origStat = withContext(Dispatchers.IO) { RootShell.stat(entry.path) }
-            val parsed = withContext(Dispatchers.IO) {
-                val factory = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = false }
-                factory.newDocumentBuilder().parse(copy)
-            }
-            doc = parsed
-            entries = parseEntries(parsed)
-            selected = entry
-            dirty = false
-        } catch (e: Exception) {
-            snackbar.showSnackbar("Ошибка: ${e.message}")
-        }
-        loading = false
-    }
-
     fun parseEntries(d: Document): List<PrefEntry> {
         val out = mutableListOf<PrefEntry>()
         val map = d.documentElement ?: return out
@@ -136,6 +113,29 @@ fun PrefsScreen(pkg: String, onBack: () -> Unit) {
             out += PrefEntry(key, type, value)
         }
         return out.sortedBy { it.key }
+    }
+
+    suspend fun openFile(entry: DirEntry) {
+        loading = true
+        try {
+            val dir = File(context.cacheDir, "prefs/$pkg").apply { mkdirs() }
+            val copy = File(dir, entry.name)
+            if (!withContext(Dispatchers.IO) { RootShell.copyToAppDir(entry.path, copy) }) {
+                throw Exception("Не удалось скопировать через root")
+            }
+            origStat = withContext(Dispatchers.IO) { RootShell.stat(entry.path) }
+            val parsed = withContext(Dispatchers.IO) {
+                val factory = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = false }
+                factory.newDocumentBuilder().parse(copy)
+            }
+            doc = parsed
+            entries = parseEntries(parsed)
+            selected = entry
+            dirty = false
+        } catch (e: Exception) {
+            snackbar.showSnackbar("Ошибка: ${e.message}")
+        }
+        loading = false
     }
 
     fun applyEdit(entry: PrefEntry, newValue: String, newBool: Boolean) {
