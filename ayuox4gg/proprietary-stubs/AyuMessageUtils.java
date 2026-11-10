@@ -266,13 +266,13 @@ public final class AyuMessageUtils {
         }
         SerializedData data = new SerializedData(bytes);
         try {
-            int count = data.readInt32();
+            int count = data.readInt32(false);
             if (count <= 0 || count > 10_000) {
                 return null;
             }
             java.util.ArrayList<TLRPC.MessageEntity> entities = new java.util.ArrayList<>(count);
             for (int i = 0; i < count; i++) {
-                TLRPC.MessageEntity entity = TLRPC.MessageEntity.TLdeserialize(data, data.readInt32(), false);
+                TLRPC.MessageEntity entity = TLRPC.MessageEntity.TLdeserialize(data, data.readInt32(false), false);
                 if (entity == null) {
                     return null;
                 }

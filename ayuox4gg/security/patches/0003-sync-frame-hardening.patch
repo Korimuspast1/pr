@@ -1,18 +1,21 @@
 diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncWebSocketClient.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncWebSocketClient.java
-index 56f264a0..a095f4dd 100644
+index 56f264a..f49544c 100644
 --- a/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncWebSocketClient.java
 +++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/sync/AyuSyncWebSocketClient.java
-@@ -81,6 +81,9 @@ public class AyuSyncWebSocketClient extends WebSocketClient {
-     }
+@@ -22,6 +22,12 @@ import java.net.URISyntaxException;
  
-     @Override
-+    /** Hard cap on a single inbound frame: the sync protocol is small JSON. */
+ public class AyuSyncWebSocketClient extends WebSocketClient {
+ 
++    /**
++     * ayuox4gg: hard cap on a single inbound frame. The sync protocol is small
++     * JSON; anything larger is a hostile or broken peer.
++     */
 +    private static final int MAX_FRAME_BYTES = 1024 * 1024;
 +
-     public void send(String message) {
-         try {
-             super.send(message);
-@@ -102,8 +105,27 @@ public class AyuSyncWebSocketClient extends WebSocketClient {
+     private static AyuSyncWebSocketClient instance;
+ 
+     private AyuSyncWebSocketClient(URI uri) {
+@@ -102,8 +108,27 @@ public class AyuSyncWebSocketClient extends WebSocketClient {
      public void onTextReceived(String message) {
          AyuSyncState.setLastReceived((int) (System.currentTimeMillis() / 1000));
  

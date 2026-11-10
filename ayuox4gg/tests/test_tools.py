@@ -299,34 +299,50 @@ class SetupKeysTests(unittest.TestCase):
         self.assertEqual(code, 0)
         text = self.path.read_text()
         self.assertIn("APP_ID = 1234567", text)
-        self.assertIn("APP_HASH = 0123456789abcdef0123456789abcdef", text)
         self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
 
-    def test_values_are_unquoted_for_java_properties(self):
-        # Gradle reads API_KEYS with java.util.Properties.load(), which keeps
-        # quotes verbatim: `SIGNING_KEY_ALIAS = "ayuox4gg"` makes the build look
-        # for an alias literally named `"ayuox4gg"` and fail while signing.
+    def test_quoting_matches_each_consumer(self):
+        """APP_HASH is a Java literal; SIGNING_* are raw property values.
+
+        The two consumers read API_KEYS differently: `buildConfigField` splices
+        APP_HASH into generated Java, where an unquoted value is a syntax error
+        ("cannot find symbol" at the BuildConfig call site), while keytool gets
+        SIGNING_KEY_ALIAS through Properties.getProperty(), which keeps quotes
+        and would look for an alias literally named `"ayuox4gg"`. Getting either
+        one backwards breaks the release build, so both directions are pinned.
+        """
         code = setup_keys.main(["--app-id", "1234567",
                                 "--app-hash", "0123456789abcdef0123456789abcdef",
                                 "--sign-password", "s3cret-Pass",
                                 "--sign-alias", "ayuox4gg",
                                 "--output", str(self.path), "--force"])
         self.assertEqual(code, 0)
+        text = self.path.read_text()
+
+        # Java literals keep their quotes.
+        self.assertIn('APP_HASH = "0123456789abcdef0123456789abcdef"', text)
+        self.assertIn('MAPS_V2_API = ""', text)
+
+        # Raw values have none.
+        self.assertIn("SIGNING_KEY_ALIAS = ayuox4gg", text)
+        self.assertIn("SIGNING_KEY_PASSWORD = s3cret-Pass", text)
+        self.assertIn("SIGNING_KEY_STORE_PASSWORD = s3cret-Pass", text)
+
         values = setup_keys.parse_existing(self.path)
         self.assertEqual(values["SIGNING_KEY_ALIAS"], "ayuox4gg")
         self.assertEqual(values["SIGNING_KEY_PASSWORD"], "s3cret-Pass")
-        self.assertEqual(values["SIGNING_KEY_STORE_PASSWORD"], "s3cret-Pass")
-        self.assertEqual(values["APP_HASH"], "0123456789abcdef0123456789abcdef")
-        for value in values.values():
-            self.assertNotIn('"', value)
 
-    def test_rejects_backslash_in_signing_values(self):
-        # Properties would treat `\\` as an escape and silently corrupt the value.
+    def test_rejects_backslash_and_newlines(self):
+        # Properties would treat a backslash as an escape and silently corrupt
+        # the value; a newline would inject extra keys.
         with self.assertRaises(ValueError):
             setup_keys.write_file(self.path, "1234567",
                                   "0123456789abcdef0123456789abcdef",
-                                  sign_password="back\\slash",
-                                  sign_alias="ayuox4gg")
+                                  sign_password="back\\slash")
+        with self.assertRaises(ValueError):
+            setup_keys.write_file(self.path, "1234567",
+                                  "0123456789abcdef0123456789abcdef",
+                                  sign_alias="a\nb")
 
     def test_rejects_bad_hash_and_id(self):
         self.assertEqual(setup_keys.main(["--app-id", "abc", "--app-hash", "00" * 16, "--output", str(self.path)]), 1)
@@ -436,6 +452,42 @@ class RepositoryStateTests(unittest.TestCase):
         # They live in the package upstream imports.
         for text in (message_utils, history_hook):
             self.assertIn("package com.radolyn.ayugram.proprietary;", text)
+
+    def test_signatures_that_javac_caught_are_pinned(self):
+        """Regression for the first CI build: four javac errors, all in our code.
+
+        Each assertion below corresponds to a real compiler error, so the same
+        mistake cannot come back silently.
+        """
+        stubs = (ROOT / "proprietary-stubs")
+        history_hook = (stubs / "AyuHistoryHook.java").read_text(encoding="utf-8")
+        message_utils = (stubs / "AyuMessageUtils.java").read_text(encoding="utf-8")
+        patch = (ROOT / "security/patches/0003-sync-frame-hardening.patch").read_text(encoding="utf-8")
+
+        # 1. ChatActivity declares `SparseArray<MessageObject>[] messagesDict`;
+        #    a HashMap parameter does not compile at the call site.
+        self.assertIn("SparseArray<MessageObject>[] messagesDict", history_hook)
+        self.assertNotIn("HashMap<Integer, MessageObject> messagesDict", history_hook)
+
+        # 2. SerializedData in this tree only has readInt32(boolean).
+        self.assertNotRegex(message_utils, r"readInt32\(\)")
+        self.assertIn("readInt32(false)", message_utils)
+
+        # 3. A field must not sit between @Override and the method it annotates.
+        self.assertNotIn("@Override\n    /**", patch)
+        self.assertIn("private static final int MAX_FRAME_BYTES", patch)
+
+        # 4. API_KEYS quoting: APP_HASH is a Java literal, SIGNING_* are raw.
+        values = {"app_id": "1234567", "app_hash": "0" * 32,
+                  "sign_password": "pw", "sign_alias": "ayuox4gg"}
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "API_KEYS"
+            setup_keys.write_file(out, values["app_id"], values["app_hash"],
+                                  sign_password=values["sign_password"],
+                                  sign_alias=values["sign_alias"])
+            text = out.read_text(encoding="utf-8")
+        self.assertIn('APP_HASH = "' + values["app_hash"] + '"', text)
+        self.assertIn("SIGNING_KEY_ALIAS = ayuox4gg", text)
 
     def test_docs_reference_existing_files(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

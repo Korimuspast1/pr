@@ -10,12 +10,12 @@
 package com.radolyn.ayugram.proprietary;
 
 import android.util.Pair;
+import android.util.SparseArray;
 
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.MessageObject;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 /**
  * ayuox4gg — public stand-in for the private {@code AyuHistoryHook} from the
@@ -87,7 +87,7 @@ public final class AyuHistoryHook {
     public static void doHook(
             int currentAccount,
             ArrayList<MessageObject> messages,
-            HashMap<Integer, MessageObject> messagesDict,
+            SparseArray<MessageObject>[] messagesDict,
             int startId,
             int endId,
             long dialogId,
