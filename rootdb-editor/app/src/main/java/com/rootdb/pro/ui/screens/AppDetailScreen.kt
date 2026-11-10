@@ -73,11 +73,13 @@ fun AppDetailScreen(
     var dataSize by remember { mutableStateOf(0L) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var rooted by remember { mutableStateOf<Boolean?>(null) }
 
     suspend fun scan() {
         loading = true
         error = null
         try {
+            rooted = withContext(Dispatchers.IO) { RootShell.isRooted() }
             val info = withContext(Dispatchers.IO) {
                 AppScanner.listApps(context).firstOrNull { it.pkg == pkg }
             }
