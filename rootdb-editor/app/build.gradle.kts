@@ -63,8 +63,8 @@ dependencies {
 
     // Root-доступ (libsu)
     implementation("com.github.topjohnwu.libsu:core:5.0.4")
-    // SQLCipher — расшифровка зашифрованных баз
-    implementation("net.sqlcipher:android-database-sqlcipher:4.5.4")
+    // SQLCipher — расшифровка зашифрованных баз (группа net.zetetic на Maven Central)
+    implementation("net.zetetic:android-database-sqlcipher:4.5.4")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
