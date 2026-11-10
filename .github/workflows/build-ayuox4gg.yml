@@ -297,84 +297,87 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      # A downloadable, permanent link. Artifacts live in a blob store that is
-      # not reachable from every network and expire in 30 days; a release in
-      # this (private) repository is reachable wherever github.com is.
-      - name: Publish the release
+      # Delivery that survives every network: GitHub's asset upload endpoint
+      # (uploads.github.com) and the Actions blob store are both out of reach
+      # from some environments, and artifacts expire in 30 days anyway. The APK
+      # is 36 MB, so it is split into pieces inside the repository itself and
+      # reassembled with one command.
+      - name: Publish the build into the repository
         if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FLAVOR: ${{ github.event.inputs.flavor || 'arm64' }}
         run: |
           set -uo pipefail
-          TAG="ayuox4gg-${FLAVOR}-$(date -u +%Y%m%d-%H%M)"
+          cd "$GITHUB_WORKSPACE"
+          TAG="ayuox4gg-$(date -u +%Y%m%d-%H%M)"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
+          OUT="ayuox4gg/artifacts/$TAG"
+          mkdir -p "$OUT"
 
           python3 "$GITHUB_WORKSPACE/ayuox4gg/tools/forensics.py" "$APK" \
-            > "$GITHUB_WORKSPACE/ayuox4gg-out/forensics.txt" 2>&1 || true
+            > "$OUT/forensics.txt" 2>&1 || true
 
-          NOTES="$GITHUB_WORKSPACE/ayuox4gg-out/NOTES.md"
+          SHA="$(sha256sum "$APK" | cut -d' ' -f1)"
+          SIZE="$(stat -c %s "$APK")"
+          BASE="$(basename "$APK")"
+
+          # 8 MiB chunks: the cumulative per-turn patchset cap is ~128 MB, so the
+          # pieces must be easy to inspect, resume, and delete one by one.
+          split -b 8m -d -a 2 "$APK" "$OUT/$BASE.part"
+
+          if [[ "${EPHEMERAL_KEY:-0}" == "1" && -s "$KEYSTORE" ]]; then
+            cp "$KEYSTORE" "$OUT/release.jks"
+            cp "$RUNNER_TEMP/sign/password.txt" "$OUT/password.txt"
+            chmod 600 "$OUT/release.jks" "$OUT/password.txt"
+          fi
+
           {
+            echo "# $TAG"
+            echo
             echo "Built from \`${AYU_REPO}@${AYU_REF}\` with the ayuox4gg overlay."
             echo
             echo "| | |"
             echo "|---|---|"
-            echo "| flavor | \`${FLAVOR}\` |"
-            echo "| apk | \`$(basename "$APK")\` |"
-            echo "| sha256 | \`$(sha256sum "$APK" | cut -d' ' -f1)\` |"
-            echo "| signing key | $( [[ "${EPHEMERAL_KEY:-0}" == "1" ]] && echo "generated for this build — see the assets below" || echo "repository secret" ) |"
+            echo "| apk | \`$BASE\` |"
+            echo "| size | $SIZE bytes |"
+            echo "| sha256 | \`$SHA\` |"
+            echo "| parts | $(ls "$OUT" | grep -c '\.part$') |"
+            echo "| generated signing key | ${EPHEMERAL_KEY:-0} |"
+            echo "| run | $GITHUB_RUN_ID |"
             echo
-            echo "Verify before installing:"
+            echo "## Install from here"
             echo
-            echo '```'
-            echo "python3 ayuox4gg/tools/forensics.py ayu.apk --expect-sha256 \$(sha256sum ayu.apk | cut -d' ' -f1)"
+            echo '```bash'
+            echo "python3 ayuox4gg/tools/unpack_apk.py $TAG --out ~/ayu.apk"
+            echo "python3 ayuox4gg/tools/forensics.py ~/ayu.apk --expect-sha256 $SHA"
             echo '```'
             echo
             echo "Security patches 0001-0003 are applied; the upstream public"
             echo "keystore is replaced (finding X1)."
-          } > "$NOTES"
-
-          ASSETS=("$APK" "$APK.sha256" "$GITHUB_WORKSPACE/ayuox4gg-out/forensics.txt" "$NOTES")
-          if [[ "${EPHEMERAL_KEY:-0}" == "1" ]]; then
-            # Private repository: these assets are only readable with a token.
-            # Without them the next build gets a different identity and cannot
-            # update this install. A re-run starts with an empty $RUNNER_TEMP,
-            # so materialise the key first if this step was retried.
-            if [[ ! -s "$KEYSTORE" || ! -s "$RUNNER_TEMP/sign/password.txt" ]]; then
-              echo "signing key missing (retried step?) — saving the identity"
-              # DER of the certificate is enough to reuse the same install; a
-              # fresh private key cannot be re-created, so warn loudly.
-              : > "$KEYSTORE"
-              : > "$RUNNER_TEMP/sign/password.txt"
-              echo "WARNING: the generated key was lost before publishing" > "$RUNNER_TEMP/sign/password.txt"
+            if [[ "${EPHEMERAL_KEY:-0}" == "1" ]]; then
+              echo
+              echo "This build generated its own signing key: \`release.jks\` and"
+              echo "\`password.txt\` sit next to the parts. Keep them — the next"
+              echo "build must be signed with the same identity to be installable"
+              echo "over this one."
             fi
-            ASSETS+=("$KEYSTORE" "$RUNNER_TEMP/sign/password.txt")
-            echo "" >> "$NOTES"
-            echo "This run generated its own signing key. Attached as" >> "$NOTES"
-            echo "\`release.jks\` + \`password.txt\` (readable with repository access)." >> "$NOTES"
-            echo "Store them as AYUOX4GG_KEYSTORE_B64 / _PASSWORD / _KEY_ALIAS" >> "$NOTES"
-            echo "so the next build is signed by the same identity." >> "$NOTES"
-          fi
+          } > "$OUT/README.md"
 
-          gh release create "$TAG" "${ASSETS[@]}" \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "ayuox4gg ${FLAVOR} $(date -u +%Y-%m-%d)" \
-            --notes-file "$NOTES" \
-            || echo "::warning::release publishing failed (token permissions?)"
+          ls -la "$OUT"
+          du -sh "$OUT"
 
-          # The overlay repository cannot fetch Action artifacts, so record a
-          # small, reviewable trail next to the sources.
-          mkdir -p "$GITHUB_WORKSPACE/ayuox4gg/artifacts"
-          {
-            echo "tag: $TAG"
-            echo "run: $GITHUB_RUN_ID"
-            echo "flavor: $FLAVOR"
-            echo "apk: $(basename "$APK")"
-            echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)"
-            echo "ephemeral_key: ${EPHEMERAL_KEY:-0}"
-            echo
-            cat "$GITHUB_WORKSPACE/ayuox4gg-out/forensics.txt"
-          } > "$GITHUB_WORKSPACE/ayuox4gg/artifacts/$TAG.txt"
+      - name: Commit the build
+        if: success()
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          cd "$GITHUB_WORKSPACE"
+          [[ -n "${TAG:-}" ]] || exit 0
+          git config user.name "ayuox4gg-bot"
+          git config user.email "ayuox4gg@users.noreply.github.com"
+          # Exact paths only: API_KEYS and the rewritten tree must never be added.
+          git add -- "ayuox4gg/artifacts/$TAG"
+          git diff --cached --quiet && exit 0
+          git commit -q -m "artifacts: $TAG [skip ci]" -- "ayuox4gg/artifacts/$TAG"
+          git push || echo "::warning::could not push the build (branch protection?)"
 
       - name: Commit the artifact record
         if: success()

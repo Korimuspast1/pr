@@ -28,6 +28,7 @@ import security_audit  # noqa: E402
 import javaparse  # noqa: E402
 import setup_keys  # noqa: E402
 import keystore  # noqa: E402
+import unpack_apk  # noqa: E402
 
 PATCHES = ROOT / "security" / "patches"
 
@@ -375,6 +376,53 @@ class SetupKeysTests(unittest.TestCase):
         self.assertTrue(setup_keys.is_git_ignored(target))
         self.assertEqual(setup_keys.main(["--app-id", "123", "--app-hash", "b" * 32,
                                           "--output", str(target)]), 0)
+
+
+    def test_unpack_reassembles_and_verifies(self):
+        """The APK ships as .part00/.part01/... inside the repo; rebuilding it
+        must reproduce the recorded digest and refuse a corrupted chunk."""
+        import hashlib
+        import io
+        import contextlib
+
+        build = Path(self.tmp.name) / "artifacts" / "ayuox4gg-test"
+        build.mkdir(parents=True)
+        blob = bytes(range(256)) * 40
+        chunk = 1024
+        for index, offset in enumerate(range(0, len(blob), chunk)):
+            (build / ("app.apk.part{:02d}".format(index))).write_bytes(
+                blob[offset: offset + chunk])
+        digest = hashlib.sha256(blob).hexdigest()
+        (build / "README.md").write_text(
+            "| | |\n|---|---|\n| sha256 | `{}` |\n".format(digest), encoding="utf-8")
+
+        original = unpack_apk.ARTIFACTS
+        unpack_apk.ARTIFACTS = Path(self.tmp.name) / "artifacts"
+        self.addCleanup(setattr, unpack_apk, "ARTIFACTS", original)
+
+        out = Path(self.tmp.name) / "out.apk"
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(unpack_apk.main(["ayuox4gg-test", "--out", str(out)]), 0)
+        self.assertEqual(hashlib.sha256(out.read_bytes()).hexdigest(), digest)
+
+        # A modified chunk must be reported, not silently accepted.
+        part = build / "app.apk.part01"
+        part.write_bytes(b"corrupted")
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(unpack_apk.main(["ayuox4gg-test", "--verify-only"]), 1)
+
+    def test_unpack_reports_an_unknown_build(self):
+        import io
+        import contextlib
+
+        original = unpack_apk.ARTIFACTS
+        unpack_apk.ARTIFACTS = Path(self.tmp.name) / "artifacts"
+        self.addCleanup(setattr, unpack_apk, "ARTIFACTS", original)
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                unpack_apk.main(["nope", "--verify-only"])
 
 
 class JavaParseTests(unittest.TestCase):
