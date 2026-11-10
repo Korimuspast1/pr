@@ -128,8 +128,16 @@ public final class AyuUpdateVerifier {
         }
 
         // Signer certificates must match the installed build.
-        Set<String> expected_signer = signerDigests(
-                packageManager.getPackageInfo(ownPackage, PackageManager.GET_SIGNING_CERTIFICATES));
+        // getPackageInfo() throws NameNotFoundException; without this try the
+        // whole method fails to compile. The package always exists here (we are
+        // running in it), but a hidden/disabled state can still throw.
+        Set<String> expected_signer;
+        try {
+            expected_signer = signerDigests(
+                    packageManager.getPackageInfo(ownPackage, PackageManager.GET_SIGNING_CERTIFICATES));
+        } catch (PackageManager.NameNotFoundException e) {
+            return new Result(false, "could not read our own signing certificate", actual);
+        }
         Set<String> actual_signer = signerDigests(archive);
         if (expected_signer.isEmpty() || !expected_signer.equals(actual_signer)) {
             return new Result(false, "signing certificate mismatch", actual);
