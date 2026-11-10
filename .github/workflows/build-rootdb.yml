@@ -92,8 +92,17 @@ jobs:
           path: rootdb-editor/app/build/outputs/apk/debug/*.apk
           retention-days: 90
 
-      - name: Publish GitHub Release (manual runs only)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Commit APK to release/
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p release
+          cp rootdb-editor/app/build/outputs/apk/debug/*.apk release/RootDB-Pro.apk
+          git add release/RootDB-Pro.apk
+          git commit -m "release: RootDB Pro APK (auto)" || echo "nothing to commit"
+          git push origin HEAD:${{ github.ref_name }} || echo "push skipped"
+
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0
