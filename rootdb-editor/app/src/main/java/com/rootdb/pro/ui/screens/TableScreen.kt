@@ -314,9 +314,9 @@ private fun RowEditDialog(
 ) {
     var fields by remember(table, initial) {
         mutableStateOf(
-            columns.associateWith { col ->
+            columns.associate { col ->
                 val v = initial[col.name]
-                (if (v == null) "" else displayValue(v)) to (v == null)
+                col.name to ((if (v == null) "" else displayValue(v)) to (v == null))
             }
         )
     }

@@ -47,7 +47,16 @@ jobs:
 
       - name: Build debug APK
         working-directory: rootdb-editor
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        run: |
+          ./gradlew assembleDebug --stacktrace --no-daemon > build.log 2>&1 || { echo "===== BUILD FAILED, last 150 lines ====="; tail -n 150 build.log; exit 1; }
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: rootdb-editor/build.log
+          retention-days: 7
 
       - name: Verify APK signature and manifest
         run: |
