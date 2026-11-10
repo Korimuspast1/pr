@@ -58,6 +58,20 @@ jobs:
           path: rootdb-editor/build.log
           retention-days: 7
 
+      - name: Publish build errors as annotations
+        if: failure()
+        run: |
+          echo "===== ERRORS (annotations) ====="
+          grep -E "^e: |error:|FAILED|What went wrong|Could not|Execution failed|Unresolved reference|Type mismatch|None of the following|incompatible|manifest merger|Resource compilation|Android resource linking" rootdb-editor/build.log | head -n 80 | while IFS= read -r line; do
+            clean=$(echo "$line" | tr -d '\r' | sed 's/%/%25/g')
+            echo "::error::$clean"
+          done
+          echo "===== TAIL ====="
+          tail -n 60 rootdb-editor/build.log | while IFS= read -r line; do
+            clean=$(echo "$line" | tr -d '\r' | sed 's/%/%25/g')
+            echo "::error::$clean"
+          done
+
       - name: Verify APK signature and manifest
         run: |
           APK=$(find rootdb-editor/app/build/outputs/apk/debug -name '*.apk' | head -n1)
