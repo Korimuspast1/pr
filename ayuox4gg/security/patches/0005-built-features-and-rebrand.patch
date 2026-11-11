@@ -30,6 +30,43 @@ diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/AyuConfig.java b/TM
              regexFiltersEnabled = preferences.getBoolean("regexFiltersEnabled", false);
              regexFiltersInChats = preferences.getBoolean("regexFiltersInChats", false);
              regexFiltersCaseInsensitive = preferences.getBoolean("regexFiltersCaseInsensitive", true);
+@@ -186,35 +201,9 @@
+     }
+ 
+     public static String getSyncServerToken() {
+-        // ayuox4gg: prefer the encrypted copy. The plaintext key is still read
+-        // as a fallback so an existing login is not lost on upgrade, and it is
+-        // re-encrypted on first use.
+-        try {
+-            String encrypted = com.radolyn.ayugram.security.AyuSecrets.getString(
+-                    org.telegram.messenger.ApplicationLoader.applicationContext,
+-                    SYNC_TOKEN_SECRET, null);
+-            if (encrypted != null) {
+-                return encrypted;
+-            }
+-        } catch (Throwable ignored) {
+-            // Keystore unavailable: fall through to the old plaintext value.
+-        }
+-        String legacy = preferences.getString("syncServerToken", "");
+-        if (legacy != null && !legacy.isEmpty()) {
+-            try {
+-                com.radolyn.ayugram.security.AyuSecrets.putString(
+-                        org.telegram.messenger.ApplicationLoader.applicationContext,
+-                        SYNC_TOKEN_SECRET, legacy);
+-                preferences.edit().remove("syncServerToken").apply();
+-            } catch (Throwable ignored) {
+-                // Keep the plaintext copy rather than losing the login.
+-            }
+-        }
+-        return legacy == null ? "" : legacy;
++        return preferences.getString("syncServerToken", "");
+     }
+ 
+-    private static final String SYNC_TOKEN_SECRET = "syncServerToken";
+-
+     public static ArrayList<String> getRegexFilters() {
+         var str = preferences.getString("regexFilters", "[]");
+         var arr = new Gson().fromJson(str, String[].class);
 diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuGramPreferencesActivity.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuGramPreferencesActivity.java
 --- a/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuGramPreferencesActivity.java
 +++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuGramPreferencesActivity.java
@@ -242,7 +279,7 @@ diff --git a/TMessagesProj/src/main/res/values/ayu.xml b/TMessagesProj/src/main/
    <string name="EraseLocalDatabase">Erase Local Database</string>
    <string name="BetaFeatures">Beta features</string>
    <string name="StickerConfirmation">Confirmation when sending stickers</string>
-@@ -98,9 +98,22 @@
+@@ -98,10 +98,22 @@
    <string name="ContextCopyID">Copy ID</string>
    <string name="IDCopiedToast">ID copied to clipboard.</string>
    <string name="ContextHideMessage">Hide</string>
@@ -252,6 +289,7 @@ diff --git a/TMessagesProj/src/main/res/values/ayu.xml b/TMessagesProj/src/main/
    <string name="SecretMessageTecno">Tecno phones are the best.</string>
    <string name="SecretMessageXiaomiSuccess">You\'re using a good phone.</string>
    <string name="SecretMessageXiaomiFailure">Install custom ROM.</string>
+-  <string name="AyuSyncInsecureWarning">Plaintext sync is insecure: use a localhost server or enable HTTPS &amp; WSS</string>
 +  <!-- ayuox4gg: cosmetic, device-local badges -->
 +  <string name="AyuLocalVerified">Local verified badge</string>
 +  <string name="AyuLocalPremiumBadge">Local premium star</string>

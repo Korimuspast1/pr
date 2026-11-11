@@ -466,11 +466,24 @@ class RepositoryStateTests(unittest.TestCase):
             if tree is None:
                 self.skipTest("set AYUGRAM_TREE=/path/to/AyuGram4A (no network fallback available)")
             self.addCleanup(shutil.rmtree, tree, True)
+        # Apply them one by one, in order, the way bootstrap-ayu.sh does.
+        # Checking each patch against the *pristine* tree is not enough: 0005
+        # is generated against a tree that already has 0001-0004, and applying
+        # it to the original files fails on ayu.xml, which 0001 edits too. That
+        # mismatch shipped a build with the patch silently skipped, so the
+        # sequence is now what gets tested.
+        applied = []
         for patch in sorted(PATCHES.glob("*.patch")):
             result = subprocess.run(
-                ["git", "apply", "--check", str(patch)], cwd=tree, capture_output=True, text=True
+                ["git", "apply", str(patch)], cwd=tree, capture_output=True, text=True
             )
-            self.assertEqual(result.returncode, 0, "{}: {}".format(patch.name, result.stderr))
+            self.assertEqual(
+                result.returncode, 0,
+                "{}: {} (after {})".format(
+                    patch.name, result.stderr, ", ".join(applied) or "nothing"),
+            )
+            applied.append(patch.name)
+        self.assertTrue(applied, "no patches were applied")
 
     def test_tools_have_no_third_party_imports_at_module_level(self):
         allowed = {"javalang"}
