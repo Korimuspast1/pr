@@ -155,12 +155,9 @@ public final class GlassRender {
 
         int margin = Math.max(1, (int) Math.ceil(dp(params.lens) * 1.6f + dp(params.blur) * 1.5f));
 
-        // ---- outer shadow (own node: Paint shadow layers do not render shapes here)
-        float shadowRadius = params.shadowRadius + shadowDp;
-        if (shadowRadius > 0f && params.shadowAlpha > 0f && EFFECT_SUPPORTED) {
-            drawShadowNode(canvas, 0f, 0f, w, h, radii, Math.max(dp(shadowRadius), 1f),
-                    (int) (255 * Math.min(1f, params.shadowAlpha) * 0.5f));
-        }
+        // Note: a dropped shadow is intentionally not painted. A View clips its children
+        // to their bounds, so anything outside the silhouette turns into a hard edge —
+        // depth is communicated by the rim shading inside the material instead.
 
         boolean shaderPath = SHADER_SUPPORTED && shader != null && EFFECT_SUPPORTED
                 && backdrop.isRecorded();

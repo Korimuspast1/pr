@@ -144,7 +144,6 @@ public final class LabView extends FrameLayout {
 
         setBackgroundColor(0xFF000000);
         applyVisibility();
-        installGlassBounds();
     }
 
     // ------------------------------------------------------------------ setup
@@ -366,22 +365,6 @@ public final class LabView extends FrameLayout {
         setVisible(tabBar, chromeVisible);
         setVisible(searchBubble, chromeVisible);
         setVisible(menu, menuOpen && chromeVisible);
-    }
-
-    /**
-     * Every glass element renders a margin around itself (refraction + blur sampling +
-     * drop shadow). Children are normally clipped to their own bounds, which would cut
-     * that margin into a hard straight edge, so each element gets an inflated
-     * drawing rect and an offset that maps its content back onto its bounds.
-     */
-    private void installGlassBounds() {
-        int pad = Math.round(40 * getResources().getDisplayMetrics().density);
-        for (int i = 0; i < getChildCount(); i++) {
-            View child = getChildAt(i);
-            child.setClipBounds(new android.graphics.Rect(-pad, -pad, pad, pad));
-            child.setTranslationX(-pad);
-            child.setTranslationY(-pad);
-        }
     }
 
     private static void setVisible(View v, boolean visible) {
