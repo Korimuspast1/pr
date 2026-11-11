@@ -1,5 +1,49 @@
-INFO         | Android emulator version 37.2.13.0 (build_id 16740729) (CL:N/A)
-INFO         | Graphics backend: gfxstream
-ERROR        | Unknown AVD name [lab], use -list-avds to see valid list.
-ERROR        | HOME is defined but there is no file lab.ini in $HOME/.android/avd
-ERROR        | (Note: Directories are searched in the order $ANDROID_AVD_HOME, $ANDROID_SDK_HOME/avd and $HOME/.android/avd)
+dNlsgD9DG+AviYX2i79qFm+aFC9LAEAAQA= runner@unknown]
+INFO         | Userspace boot properties:
+INFO         |   androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:06.0
+INFO         |   androidboot.dalvik.vm.heapsize=576m
+INFO         |   androidboot.debug.hwui.renderer=skiagl
+INFO         |   androidboot.debug.sf.nobootanimation=1
+INFO         |   androidboot.hardware=ranchu
+INFO         |   androidboot.hardware.gltransport=pipe
+INFO         |   androidboot.hardware.vulkan=ranchu
+INFO         |   androidboot.logcat=*:V
+INFO         |   androidboot.opengles.version=196608
+INFO         |   androidboot.qemu=1
+INFO         |   androidboot.qemu.adb.pubkey=QAAAANulYPytMSOyN0dVhe2s857WhMzYsxFV6uUM3m7T0nHxP41mRiGdHtBGv7xws3DhkGNaz8n7MyDRPvr3QqN2x7u8sE18bvGIZJMkOtpB/2AUxVZJJJgnbIe1Nioq/kvjb7iVzthXrrPp+jJSjEhlcIUWaKqToLRcIKU4Oa7a8YteOW7KBGsHzB1iATX4XJUHPTgqfElQmB8iXfiJGezVeKF578qzq3AHdInQ0p1sk1+OC1yNUVm3FAF62J6RH0+RAXKQ0rA3pCxtiNGVvAbsckD9nFiuW/LjnhyMliFC3/T2inLQ8vDy6A/+QROnWMy7KIIh+poXZ75GhlccEj+YicM0O/vc5AOKE8zGPGyjMVDDuI2pC3eQz1WKhNfiE3ee+N2sHs5hGgKBtVo5ViEZFnYAadppvMwLIK9LWlu2gDWXh2f/sc6splFqV/rmPYVb/2RWnSYtavWNR10LeHZpE1uoX3DB+9z3CGm9arGqIXhFEBnrzxTHXPigHX/xgw6ldrVakhNozDCxyW4ObZxB+Mmqj8/JY1r1DmsxwT/aDZwN+MuwA/MahU5AOj9F+kjMMzTL3BTikMtL7+JEB60u2nsvdzPT/lw9sdxisH67WE9xJLdMrBdMf+m4M/Ub+rRXZnoatqYK0DYhNdlRFBNuUdNlsgD9DG+AviYX2i79qFm+aFC9LAEAAQA= runner@unknown
+INFO         |   androidboot.qemu.avd_name=lab
+INFO         |   androidboot.qemu.camera_hq_edge_processing=0
+INFO         |   androidboot.qemu.camera_protocol_ver=1
+INFO         |   androidboot.qemu.cpuvulkan.version=4206592
+INFO         |   androidboot.qemu.gltransport.drawFlushInterval=800
+INFO         |   androidboot.qemu.gltransport.name=pipe
+INFO         |   androidboot.qemu.hwcodec.avcdec=2
+INFO         |   androidboot.qemu.hwcodec.hevcdec=2
+INFO         |   androidboot.qemu.hwcodec.vpxdec=2
+INFO         |   androidboot.qemu.settings.system.screen_off_timeout=2147483647
+INFO         |   androidboot.qemu.skin=1080x2400
+INFO         |   androidboot.qemu.virtiowifi=1
+INFO         |   androidboot.qemu.vsync=60
+INFO         |   androidboot.serialno=EMULATOR37X2X13X0
+INFO         |   androidboot.vbmeta.digest=451e57ed688ff746d2c636d52169ade253e2bc5bb30a5c3ff23679ca15d3bcd3
+INFO         |   androidboot.vbmeta.hash_alg=sha256
+INFO         |   androidboot.vbmeta.size=6656
+INFO         |   androidboot.veritymode=enforcing
+WARNING: cannnot unmap ptr 0x7f6e63201000 as it is in the protected range from 0x7f6dc3200000 to 0x7f6e63400000
+INFO         | Monitoring duration of emulator setup.
+WARNING      | The emulator now requires a signed jwt token for gRPC access! Use the -grpc flag if you really want an open unprotected grpc port
+INFO         | Using security allow list from: /usr/local/lib/android/sdk/emulator/lib/emulator_access.json
+INFO         | The active JSON Web Key Sets can be found here: /run/user/1001/avd/running/2459/jwks/98df2abe-3624-4bfc-8085-876478eca4db/active.jwk
+INFO         | Scanning /run/user/1001/avd/running/2459/jwks/98df2abe-3624-4bfc-8085-876478eca4db for jwk keys.
+INFO         | Started GRPC server at 127.0.0.1:8554, security: Local, auth: +token
+INFO         | Advertising in: /run/user/1001/avd/running/pid_2459.ini
+INFO         | Activated packet streamer for bluetooth emulation
+INFO         | Successfully initialized netsim WiFi
+INFO         | Setting display: 0 configuration to: 1080x2400, dpi: 420x420 
+INFO         | setDisplayActiveConfig: id:0, 1080x2400
+INFO         | emulatorSetupEnvironment: Environment scene is not required
+USER_INFO    | Emulator is performing a full startup. This may take upto two minutes, or more.
+WARNING      | Failed to process .ini file /home/runner/.android/emu-update-last-check.ini for reading.
+WARNING      | Failed to process .ini file /home/runner/.android/emu-update-last-check.ini for reading.
+INFO         | Boot completed in 54234 ms
+INFO         | Increasing screen off timeout, logcat buffer size to 2M.
