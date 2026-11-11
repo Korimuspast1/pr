@@ -86,6 +86,10 @@ jobs:
             sleep 5
           done
           echo "boot_completed=$BOOT after ${i} polls"
+          # a software-rendered emulator ANRs its own System UI; those dialogs steal
+          # every tap, so both the dialog and the watchdog report are disabled
+          "$SDK/platform-tools/adb" shell settings put global hide_error_dialogs 1 || true
+          "$SDK/platform-tools/adb" shell settings put secure anr_show_background 0 || true
           "$SDK/platform-tools/adb" shell settings put global window_animation_scale 0 || true
           "$SDK/platform-tools/adb" shell settings put global transition_animation_scale 0 || true
           "$SDK/platform-tools/adb" shell settings put global animator_duration_scale 0 || true
@@ -101,9 +105,9 @@ jobs:
           # the emulator's System UI can ANR under software rendering; make sure the
           # dialog never covers the app in the captures
           dismiss_anr() {
-            for t in "Wait" "Close app"; do
-              "$SDK/platform-tools/adb" shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
-            done
+            # if a dialog still slipped through, tap its "Wait" button (or back)
+            "$SDK/platform-tools/adb" shell input tap $(( W / 3 )) $(( H * 37 / 100 )) >/dev/null 2>&1 || true
+            "$SDK/platform-tools/adb" shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
             sleep 1
           }
           # tab bar: 4 tabs inside a capsule inset by 16dp at the bottom
