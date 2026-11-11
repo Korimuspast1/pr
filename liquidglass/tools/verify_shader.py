@@ -27,7 +27,7 @@ RENDER_JAVA = os.path.join(ROOT, "app", "src", "main", "java", "dev", "arena",
 
 REQUIRED = [
     "margin", "viewSize", "radii", "bevel", "refractPx", "falloff", "dispersion",
-    "lightDir", "specStrength", "rimBandMax", "tintColor", "adaptiveTint", "dimAmount",
+    "lightDir", "specStrength", "rimBandMax", "tintColor", "glassTint", "adaptiveTint", "dimAmount",
     "press", "touchPos", "touchAmp",
 ]
 

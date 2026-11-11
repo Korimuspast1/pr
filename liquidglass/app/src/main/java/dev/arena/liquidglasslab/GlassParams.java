@@ -47,7 +47,7 @@ public final class GlassParams {
     /** Body colour of the glass (straight alpha, a = 0 disables). */
     public int glassTint = 0;
     /** Clear-mode dim layer (HIG: 35 % over bright content). */
-    public float clearDim = 0.35f;
+    public float clearDim = 0.30f;
     /** Regular mode: per-pixel adaptive tinting instead of a flat tint. */
     public boolean adaptiveTint = true;
 

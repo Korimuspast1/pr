@@ -76,6 +76,7 @@ public final class Scene {
                 canvas.drawColor(0xFF06060A);
                 mesh(canvas, fw, fh, new int[]{0xFF2A1460, 0xFF0B3F63, 0xFF7A1240, 0xFFE0701A},
                         new float[]{0.25f, 0.90f, 0.45f, 0.22f});
+                feed(canvas, fw, fh);
                 break;
             case GRID:
                 canvas.drawColor(0xFF0E1118);
@@ -144,7 +145,63 @@ public final class Scene {
                 canvas.drawColor(0xFF07070C);
                 mesh(canvas, fw, fh, new int[]{0xFF2D6BFF, 0xFF8B2BE2, 0xFFE24B7A, 0xFFFFA32B,
                         0xFF12C2C2}, new float[]{0.22f, 0.70f, 0.50f, 0.35f, 0.30f});
+                feed(canvas, fw, fh);
                 break;
+        }
+    }
+
+
+    /**
+     * A media feed: album art, a track card and a list of rows. This is the content
+     * under the glass — without edges and text behind it, refraction has nothing to
+     * bend and the material looks like a plain tinted plate.
+     */
+    private void feed(Canvas c, float w, float h) {
+        float d = w / 1080f;
+        // hero album art
+        RectF art = new RectF(60f * d, 220f * d, w - 60f * d, 760f * d);
+        paint.setShader(new LinearGradient(art.left, art.top, art.right, art.bottom,
+                0xFFE2573F, 0xFF2B2E8C, Shader.TileMode.CLAMP));
+        c.drawRoundRect(art, 40f * d, 40f * d, paint);
+        paint.setShader(null);
+
+        // track card
+        RectF card = new RectF(60f * d, 800f * d, w - 60f * d, 1010f * d);
+        paint.setColor(0x1FFFFFFF);
+        c.drawRoundRect(card, 32f * d, 32f * d, paint);
+        text.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        text.setColor(0xFFFFFFFF);
+        text.setTextSize(34f * d);
+        c.drawText("Liquid Glass Sessions", card.left + 32f * d, card.top + 78f * d, text);
+        text.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        text.setTextSize(26f * d);
+        text.setColor(0xCCFFFFFF);
+        c.drawText("Biffy Clyro · Nao · Selena", card.left + 32f * d, card.top + 122f * d, text);
+        paint.setColor(0xFFFFFFFF);
+        c.drawCircle(card.right - 70f * d, card.centerY(), 34f * d, paint);
+        paint.setColor(0xFF16181D);
+        android.graphics.Path tri = new android.graphics.Path();
+        tri.moveTo(card.right - 80f * d, card.centerY() - 18f * d);
+        tri.lineTo(card.right - 52f * d, card.centerY());
+        tri.lineTo(card.right - 80f * d, card.centerY() + 18f * d);
+        tri.close();
+        c.drawPath(tri, paint);
+
+        // list rows: these are what the tab bar and the buttons will refract
+        String[] names = {"Трек 1 — Refraction", "Трек 2 — Dispersion", "Трек 3 — Bevel",
+                "Трек 4 — Specular", "Трек 5 — Adaptivity", "Трек 6 — Clear",
+                "Трек 7 — Regular"};
+        text.setTextSize(27f * d);
+        float y = 1060f * d;
+        for (int i = 0; i < names.length && y + 100f * d < h - 40f * d; i++) {
+            RectF row = new RectF(60f * d, y, w - 60f * d, y + 88f * d);
+            paint.setColor(0x1AFFFFFF);
+            c.drawRoundRect(row, 24f * d, 24f * d, paint);
+            paint.setColor(0x40FFFFFF);
+            c.drawCircle(row.left + 46f * d, row.centerY(), 22f * d, paint);
+            text.setColor(0xE6FFFFFF);
+            c.drawText(names[i], row.left + 86f * d, row.centerY() + 10f * d, text);
+            y += 100f * d;
         }
     }
 

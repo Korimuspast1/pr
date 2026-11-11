@@ -33,6 +33,7 @@ uniform float2 lightDir;      // direction towards the light, screen space (y do
 uniform float  specStrength;  // rim intensity
 uniform float  rimBandMax;    // cap for the glow band width, px
 uniform float4 tintColor;     // Clear-mode tint (rgb + alpha)
+uniform float4 glassTint;     // body colour of the glass (straight alpha, a = 0 off)
 uniform float  adaptiveTint;  // 1 = per-pixel adaptive tint (Regular)
 uniform float  dimAmount;     // Clear-mode dim layer
 uniform float  press;         // 0..1 press progress
@@ -129,8 +130,22 @@ half4 main(float2 coord) {
         col = mix(col, float3(1.0 - e), 0.14 + 0.08 * e);
     } else {
         col = mix(col, tintColor.rgb, clamp(tintColor.a, 0.0, 1.0));
+        // Clear mode must stay see-through: never lift dark content towards white
+        if (tintColor.a < 0.02) {
+            col = min(col, float3(0.55));
+        }
     }
-    col = col * (1.0 - clamp(dimAmount, 0.0, 1.0));
+    col = col * (1.0 - 0.55 * clamp(dimAmount, 0.0, 1.0));
+
+    // ---- body colour of a prominent (tinted) glass button -------------------
+    // modelled as a coloured medium: absorption keeps the refraction detail, a
+    // little scattering keeps the hue visible over a dark backdrop
+    if (glassTint.a > 0.002) {
+        float lumT = dot(col, float3(0.2126, 0.7152, 0.0722));
+        float3 absorbed = col * mix(float3(1.0), glassTint.rgb, 0.85);
+        float3 scattered = glassTint.rgb * (0.38 * (1.0 - lumT));
+        col = mix(col, clamp(absorbed + scattered, float3(0.0), float3(1.0)), glassTint.a);
+    }
 
     // ---- rim: hairline + glow, driven by the same normal field --------------
     // two symmetric lobes: the lit side and the inner reflection on the far side
@@ -143,9 +158,20 @@ half4 main(float2 coord) {
     float glowIn = clamp((-d - 1.0) / 2.0, 0.0, 1.0);
     float glow = glowIn * pow(clamp(1.0 - (-d - 3.0) / bandW, 0.0, 1.0), 1.5) * cov;
     float hair = clamp(1.0 - abs(d + 1.0) / 2.0, 0.0, 1.0) * cov;
-    float spec = (hair * 0.70 * (lobeF + lobeB) + glow * 0.10 * lobeF)
+    float spec = (hair * 1.05 * (lobeF + lobeB) + glow * 0.22 * lobeF)
                  * specStrength * (1.0 - 0.35 * press);
     col += float3(spec);
+
+    // shadow side: a whisper of dark right at the silhouette, so the edge reads as
+    // a physical rim and not as a soft fade into the backdrop
+    float rimDark = clamp(1.0 - (-d) / 1.6, 0.0, 1.0) * cov
+                    * pow(max(dot(n, -lightDir), 0.0), 1.5);
+    col *= 1.0 - 0.22 * rimDark;
+
+    // light entering the material: a soft gradient just inside the top edge
+    float topGlow = smoothstep(0.55, 0.0, t) * smoothstep(0.45, 0.0,
+                    clamp((p.y) / max(bevel * 2.2, 1.0), 0.0, 1.0));
+    col += float3(0.05 * topGlow * specStrength);
 
     col = clamp(col, float3(0.0), float3(1.0));
     return half4(half3(col * cov), half(cov));

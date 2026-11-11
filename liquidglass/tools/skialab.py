@@ -139,6 +139,7 @@ DEFAULTS = dict(
     spec=1.0,
     rim_band=6.0,
     tint=(1.0, 1.0, 1.0, 0.0),
+    glass_tint=(0.0, 0.0, 0.0, 0.0),
     adaptive=1.0,
     dim=0.0,
     press=0.0,
@@ -178,13 +179,12 @@ class Scene:
         margin = int(round(max(p["lens"] * 1.6, p["blur"] * 1.5, 8)))
 
         content = self.content(p["blur"], p["saturation"])
-        # Node-local coords -> backdrop coords. The node is drawn at (x - margin), so a
-        # node-local point q must sample the backdrop at q + (x - margin); Skia applies
-        # the shader's local matrix in the local -> shader direction, hence the +.
+        # The child image shader is evaluated in node-local space and Skia composes it
+        # with the canvas transform, so an identity local matrix is correct: the canvas
+        # translate below already puts the node at (x - margin, y - margin).
         content_shader = content.makeShader(
             skia.TileMode.kClamp, skia.TileMode.kClamp,
             skia.SamplingOptions(skia.FilterMode.kLinear),
-            skia.Matrix.Translate(x - margin, y - margin),
         )
 
         b = skia.RuntimeShaderBuilder(self.effect)
@@ -200,6 +200,7 @@ class Scene:
         b.setUniform("specStrength", float(p["spec"]))
         b.setUniform("rimBandMax", float(p["rim_band"]))
         b.setUniform("tintColor", skia.V4(*[float(c) for c in p["tint"]]))
+        b.setUniform("glassTint", skia.V4(*[float(c) for c in p["glass_tint"]]))
         b.setUniform("adaptiveTint", float(p["adaptive"]))
         b.setUniform("dimAmount", float(p["dim"]))
         b.setUniform("press", float(p["press"]))
@@ -283,8 +284,8 @@ def card_variants(effect, out):
     W, H = 1080, 1320
     sc = Scene(backdrop_night(W, H), effect)
     sc.glass(60, 80, 960, 340, 56)                                     # regular
-    sc.glass(60, 480, 960, 340, 56, adaptive=0.0, tint=(1, 1, 1, 0.02))  # clear
-    sc.glass(60, 880, 960, 340, 56, adaptive=0.0, tint=(1, 1, 1, 0.02), dim=0.35)  # clear + dim
+    sc.glass(60, 480, 960, 340, 56, adaptive=0.0, tint=(1, 1, 1, 0.0))   # clear
+    sc.glass(60, 880, 960, 340, 56, adaptive=0.0, tint=(1, 1, 1, 0.0), dim=0.30)  # clear + dim
     sc.save(os.path.join(out, "variants-regular-clear.png"))
 
 

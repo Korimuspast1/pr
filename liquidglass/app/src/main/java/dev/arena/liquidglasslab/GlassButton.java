@@ -22,6 +22,7 @@ public class GlassButton extends GlassSurfaceView {
     private GlassButton.Glyph glyph = Glyph.none;
     private int contentColor = 0;
     private boolean tinted;
+    private int bodyColor;
 
     public enum Glyph { none, plus, play, pause, chevron, chevronDown, search, sliders, sparkle,
         grid, check, close, photo, tune, dots }
@@ -46,10 +47,20 @@ public class GlassButton extends GlassSurfaceView {
         return this;
     }
 
-    /** Use the system accent as the glass tint (the iOS "prominent" glass button). */
+    /**
+     * The iOS "prominent" glass button: the material itself takes the accent colour
+     * (body tint), instead of a flat overlay on top of the refraction.
+     */
     public GlassButton tinted() {
         tinted = true;
-        tint = 0xFF0A84FF;
+        bodyColor = 0xFF0A84FF;
+        invalidate();
+        return this;
+    }
+
+    /** Any other prominent colour. */
+    public GlassButton bodyColor(int argb) {
+        bodyColor = argb;
         invalidate();
         return this;
     }
@@ -62,7 +73,17 @@ public class GlassButton extends GlassSurfaceView {
     }
 
     protected int ink() {
-        return contentColor != 0 ? contentColor : params.ink();
+        if (contentColor != 0) return contentColor;
+        // on a prominent (accent-coloured) button the label is always white
+        return bodyColor != 0 ? 0xFFFFFFFF : params.ink();
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        int saved = params.glassTint;
+        params.glassTint = bodyColor;
+        super.onDraw(canvas);
+        params.glassTint = saved;
     }
 
     @Override

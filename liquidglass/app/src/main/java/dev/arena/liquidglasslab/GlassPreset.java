@@ -65,7 +65,7 @@ public final class GlassPreset {
         clear.adaptiveTint = false;
         clear.blur = 3f;
         clear.highlight = 1.3f;
-        clear.clearDim = 0.35f;
+        clear.clearDim = 0.30f;
         list.add(new GlassPreset("clear", "Clear",
                 "Без адаптации, почти прозрачное + слой затемнения 35 %",
                 0xFF32D74B, clear));

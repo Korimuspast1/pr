@@ -208,7 +208,7 @@ public final class GlassRender {
                     dp(p.bevel), -dp(p.lens), p.falloff,
                     p.variant == GlassParams.Variant.CLEAR ? p.chroma * 0.6f : p.chroma,
                     lx, ly, p.effectiveHighlight(), dp(p.highlightWidth) * 0.6f,
-                    tint, p.adaptiveTintFlag(), p.effectiveDim(), press, px
+                    tint, p.adaptiveTintFlag(), p.effectiveDim(), press, px, p.glassTint
             };
             boolean changed = !valid || now.length != last.length;
             if (!changed) {
@@ -234,10 +234,13 @@ public final class GlassRender {
             sh.setFloatUniform("specStrength", p.effectiveHighlight());
             sh.setFloatUniform("rimBandMax", Math.max(dp(p.highlightWidth), 2f));
             int t = tint != 0 ? tint : p.tintColor;
+            int body = p.glassTint;
+            sh.setFloatUniform("glassTint", Color.red(body) / 255f, Color.green(body) / 255f,
+                    Color.blue(body) / 255f, Color.alpha(body) / 255f);
             sh.setFloatUniform("tintColor", Color.red(t) / 255f, Color.green(t) / 255f,
                     Color.blue(t) / 255f, tint != 0 ? Color.alpha(t) / 255f
                             : (p.variant == GlassParams.Variant.CLEAR ? 0.10f : 0f));
-            sh.setFloatUniform("adaptiveTint", p.adaptiveTintFlag());
+            sh.setFloatUniform("adaptiveTint", body != 0 ? 0f : p.adaptiveTintFlag());
             sh.setFloatUniform("dimAmount", p.effectiveDim());
             sh.setFloatUniform("press", press);
             sh.setFloatUniform("touchPos", px, py);

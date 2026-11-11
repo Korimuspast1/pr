@@ -284,9 +284,9 @@ public final class LabView extends FrameLayout {
         int barH = Math.round(62 * d);
         int barBottom = h - insetBottom() - Math.round(10 * d);
         int barTop = barBottom - barH;
-        tabBar.layout(pad, barTop, w - pad, barBottom);
-
         int bubbleSize = barH;
+        int gap = Math.round(10 * d);
+        tabBar.layout(pad, barTop, w - pad - bubbleSize - gap, barBottom);
         searchBubble.layout(w - pad - bubbleSize, barTop, w - pad, barTop + bubbleSize);
 
         int contentBottom = barTop - Math.round(16 * d);
@@ -296,7 +296,7 @@ public final class LabView extends FrameLayout {
         int menuW = Math.min(Math.round(300 * d), w - pad * 2);
         menu.layout(pad, contentTop, pad + menuW, contentTop + menuH);
 
-        int buttonsTop = contentBottom - rowH * 2 - rowGap;
+        int buttonsTop = contentBottom - rowH - rowGap;
         int bw = (w - pad * 2 - colGap) / 2;
         primary.layout(pad, buttonsTop, pad + bw, buttonsTop + rowH);
         secondary.layout(pad + bw + colGap, buttonsTop, w - pad, buttonsTop + rowH);
@@ -337,6 +337,11 @@ public final class LabView extends FrameLayout {
 
     private void say(String message) {
         status = message;
+        invalidate();
+    }
+
+    /** Repaint the status line after any state change (cheap, one text draw). */
+    private void refreshChrome() {
         invalidate();
     }
 
