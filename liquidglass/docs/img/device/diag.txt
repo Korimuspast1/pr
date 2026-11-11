@@ -17,15 +17,15 @@ Loading local repository...                                                     
 Auto-selecting single ABI x86_64
 + ls -la /home/runner/.android/avd
 total 16
-drwxr-xr-x 3 runner runner 4096 Nov 11 08:03 .
-drwxr-xr-x 3 runner runner 4096 Nov 11 08:03 ..
-drwxr-xr-x 2 runner runner 4096 Nov 11 08:03 lab.avd
--rw-r--r-- 1 runner runner   80 Nov 11 08:03 lab.ini
+drwxr-xr-x 3 runner runner 4096 Nov 11 08:07 .
+drwxr-xr-x 3 runner runner 4096 Nov 11 08:07 ..
+drwxr-xr-x 2 runner runner 4096 Nov 11 08:08 lab.avd
+-rw-r--r-- 1 runner runner   80 Nov 11 08:07 lab.ini
 + /usr/local/lib/android/sdk/emulator/emulator -list-avds
 lab
-+ EMU=2520
-+ /usr/local/lib/android/sdk/emulator/emulator -avd lab -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel auto -memory 2048 -no-metrics
++ EMU=2434
 + /usr/local/lib/android/sdk/platform-tools/adb start-server
++ /usr/local/lib/android/sdk/emulator/emulator -avd lab -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel auto -memory 2048 -no-metrics
 * daemon not running; starting now at tcp:5037
 * daemon started successfully
 + timeout 600 /usr/local/lib/android/sdk/platform-tools/adb wait-for-device
@@ -75,23 +75,11 @@ lab
 + for i in $(seq 1 120)
 ++ /usr/local/lib/android/sdk/platform-tools/adb shell getprop sys.boot_completed
 ++ tr -d '\r'
-+ BOOT=
-+ '[' '' = 1 ']'
-+ sleep 5
-+ for i in $(seq 1 120)
-++ /usr/local/lib/android/sdk/platform-tools/adb shell getprop sys.boot_completed
-++ tr -d '\r'
-+ BOOT=
-+ '[' '' = 1 ']'
-+ sleep 5
-+ for i in $(seq 1 120)
-++ /usr/local/lib/android/sdk/platform-tools/adb shell getprop sys.boot_completed
-++ tr -d '\r'
 + BOOT=1
 + '[' 1 = 1 ']'
 + break
-+ echo 'boot_completed=1 after 10 polls'
-boot_completed=1 after 10 polls
++ echo 'boot_completed=1 after 8 polls'
+boot_completed=1 after 8 polls
 + /usr/local/lib/android/sdk/platform-tools/adb shell settings put global window_animation_scale 0
 + /usr/local/lib/android/sdk/platform-tools/adb shell settings put global transition_animation_scale 0
 + /usr/local/lib/android/sdk/platform-tools/adb shell settings put global animator_duration_scale 0
@@ -100,19 +88,19 @@ Serving...
 All files should be loaded. Notifying the device.
 Performing Incremental Install
 Success
-Install command complete in 5479 ms
+Install command complete in 2518 ms
 + timeout 180 /usr/local/lib/android/sdk/platform-tools/adb shell am start -W -n dev.arena.liquidglasslab/.MainActivity
 Starting: Intent { cmp=dev.arena.liquidglasslab/.MainActivity }
 Status: ok
 LaunchState: COLD
 Activity: dev.arena.liquidglasslab/.MainActivity
-TotalTime: 3849
-WaitTime: 3901
+TotalTime: 4581
+WaitTime: 4614
 Complete
 + sleep 12
 ++ /usr/local/lib/android/sdk/platform-tools/adb shell wm size
-++ sed 's/.*: //'
 ++ tail -1
+++ sed 's/.*: //'
 + SIZE=1080x2400
 + W=1080
 + H=2400
@@ -121,32 +109,32 @@ screen=1080 x 2400
 + shot 01-home
 + /usr/local/lib/android/sdk/platform-tools/adb exec-out screencap -p
 ++ stat -c%s /home/runner/work/pr/pr/shots/01-home.png
-+ echo 'shot 01-home 798768'
-shot 01-home 798768
++ echo 'shot 01-home 798434'
+shot 01-home 798434
 + tap_tab 1
 + /usr/local/lib/android/sdk/platform-tools/adb shell input tap 405 2290
 + sleep 4
 + shot 02-presets
 + /usr/local/lib/android/sdk/platform-tools/adb exec-out screencap -p
 ++ stat -c%s /home/runner/work/pr/pr/shots/02-presets.png
-+ echo 'shot 02-presets 803006'
-shot 02-presets 803006
++ echo 'shot 02-presets 802590'
+shot 02-presets 802590
 + tap_tab 2
 + /usr/local/lib/android/sdk/platform-tools/adb shell input tap 675 2290
 + sleep 4
 + shot 03-scene
 + /usr/local/lib/android/sdk/platform-tools/adb exec-out screencap -p
 ++ stat -c%s /home/runner/work/pr/pr/shots/03-scene.png
-+ echo 'shot 03-scene 803009'
-shot 03-scene 803009
++ echo 'shot 03-scene 802590'
+shot 03-scene 802590
 + tap_tab 3
 + /usr/local/lib/android/sdk/platform-tools/adb shell input tap 945 2290
 + sleep 4
 + shot 04-tuning
 + /usr/local/lib/android/sdk/platform-tools/adb exec-out screencap -p
 ++ stat -c%s /home/runner/work/pr/pr/shots/04-tuning.png
-+ echo 'shot 04-tuning 803009'
-shot 04-tuning 803009
++ echo 'shot 04-tuning 804864'
+shot 04-tuning 804864
 + tap_tab 0
 + /usr/local/lib/android/sdk/platform-tools/adb shell input tap 135 2290
 + sleep 4
@@ -156,64 +144,59 @@ shot 04-tuning 803009
 + shot 05-menu
 + /usr/local/lib/android/sdk/platform-tools/adb exec-out screencap -p
 ++ stat -c%s /home/runner/work/pr/pr/shots/05-menu.png
-+ echo 'shot 05-menu 805078'
-shot 05-menu 805078
++ echo 'shot 05-menu 804864'
+shot 05-menu 804864
 + /usr/local/lib/android/sdk/platform-tools/adb shell input keyevent KEYCODE_BACK
 + sleep 1
 + /usr/local/lib/android/sdk/platform-tools/adb logcat -d
 + grep -iE 'liquidglasslab|FATAL|AndroidRuntime' /home/runner/work/pr/pr/shots/logcat.txt
 + tail -n 120
-11-11 08:03:43.854   325   325 D AndroidRuntime: >>>>>> START com.android.internal.os.ZygoteInit uid 0 <<<<<<
-11-11 08:03:43.863   325   325 I AndroidRuntime: Using default boot image
-11-11 08:03:43.863   325   325 I AndroidRuntime: Leaving lock profiling enabled
-11-11 08:04:23.790   918   918 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
-11-11 08:04:37.240   800   867 D nativeloader: Configuring clns-7 for other apk . target_sdk_version=37, uses_libraries=, library_path=/data/app/~~ScYpVvekpfjtCpyVgOo6Hw==/dev.arena.liquidglasslab-C07rUegiEwnrfO9TU95DOw==/lib/x86_64, permitted_path=/data:/mnt/expand
-11-11 08:04:37.318   509  1827 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=dev.arena.liquidglasslab/.MainActivity} with LAUNCH_MULTIPLE from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
-11-11 08:04:37.924   509   539 I ActivityManager: Start proc 2058:dev.arena.liquidglasslab/u0a192 for next-top-activity {dev.arena.liquidglasslab/dev.arena.liquidglasslab.MainActivity}
-11-11 08:04:38.302   509  1195 D CoreBackPreview: Window{9173121 u0 Splash Screen dev.arena.liquidglasslab}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@81b52da, mPriority=0, mIsAnimationCallback=false}
-11-11 08:04:38.664  2058  2058 I .liquidglasslab: Using CollectorTypeCC GC.
-11-11 08:04:38.666  2058  2058 W .liquidglasslab: Unexpected CPU variant for x86: x86_64.
-11-11 08:04:38.666  2058  2058 W .liquidglasslab: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, tremont, kabylake, default
-11-11 08:04:38.689  2058  2058 E .liquidglasslab: Not starting debugger since process cannot load the jdwp agent.
-11-11 08:04:38.808  2058  2058 W ziparchive: Unable to open '/data/app/~~ScYpVvekpfjtCpyVgOo6Hw==/dev.arena.liquidglasslab-C07rUegiEwnrfO9TU95DOw==/base.dm': No such file or directory
-11-11 08:04:38.808  2058  2058 W ziparchive: Unable to open '/data/app/~~ScYpVvekpfjtCpyVgOo6Hw==/dev.arena.liquidglasslab-C07rUegiEwnrfO9TU95DOw==/base.dm': No such file or directory
-11-11 08:04:38.809  2058  2058 D nativeloader: Configuring clns-6 for other apk /data/app/~~ScYpVvekpfjtCpyVgOo6Hw==/dev.arena.liquidglasslab-C07rUegiEwnrfO9TU95DOw==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~ScYpVvekpfjtCpyVgOo6Hw==/dev.arena.liquidglasslab-C07rUegiEwnrfO9TU95DOw==/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/dev.arena.liquidglasslab
-11-11 08:04:38.816  2058  2058 V GraphicsEnvironment: ANGLE GameManagerService for dev.arena.liquidglasslab: false
-11-11 08:04:38.816  2058  2058 V GraphicsEnvironment: dev.arena.liquidglasslab is not listed in per-application setting
-11-11 08:04:38.999   509   528 V WindowManager:     info={id=7 t=CHANGE f=0x0 trk=1 r=[0@Point(0, 0)] c=[{WCT{RemoteToken{723ddb9 Task{947aa08 #7 type=standard A=10192:dev.arena.liquidglasslab}}} m=TO_FRONT f=NONE leash=Surface(name=Task=7)/@0xfb13803 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0},{WCT{RemoteToken{de9f5fe Task{fb0a3c2 #1 type=home}}} m=TO_BACK f=NONE leash=Surface(name=Task=1)/@0x9bd15a8 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0},{WCT{RemoteToken{605515f Display{#0 state=ON size=1080x2400 ROTATION_0}}} m=CHANGE f=IS_DISPLAY leash=Surface(name=WindowedMagnification:0:31)/@0xd642203 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0}]}
-11-11 08:04:39.458   509   523 D CoreBackPreview: Window{32e7a62 u0 dev.arena.liquidglasslab/dev.arena.liquidglasslab.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@57ddaae, mPriority=0, mIsAnimationCallback=false}
-11-11 08:04:41.034   509   528 W ziparchive: Unable to open '/data/app/~~ScYpVvekpfjtCpyVgOo6Hw==/dev.arena.liquidglasslab-C07rUegiEwnrfO9TU95DOw==/base.dm': No such file or directory
-11-11 08:04:41.054   509   528 I ActivityTaskManager: Displayed dev.arena.liquidglasslab/.MainActivity for user 0: +3s849ms
-11-11 08:04:41.068   509  1827 W InputManager-JNI: Input channel object '9173121 Splash Screen dev.arena.liquidglasslab (client)' was disposed without first being removed with the input manager!
-11-11 08:04:41.071   509  1820 D CoreBackPreview: Window{9173121 u0 Splash Screen dev.arena.liquidglasslab EXITING}: Setting back callback null
-11-11 08:04:43.825   509   610 I InputDispatcher: 32e7a62 dev.arena.liquidglasslab/dev.arena.liquidglasslab.MainActivity (server) spent 2795ms processing FocusEvent(hasFocus=true)
-11-11 08:04:43.831   509  1839 I ImeTracker: dev.arena.liquidglasslab:760560ee: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
-11-11 08:04:43.837   509  1839 I ImeTracker: dev.arena.liquidglasslab:760560ee: onCancelled at PHASE_SERVER_SHOULD_HIDE
-11-11 08:04:43.935  1439  1439 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=dev.arena.liquidglasslab fieldId=0 fieldName=null extras=null}, false)
-11-11 08:04:47.446   509   537 E AppHibernationService: Package dev.arena.liquidglasslab is not installed for user 0
-11-11 08:04:47.446   509   537 E AppHibernationService: Package dev.arena.liquidglasslab is not installed for any user
-11-11 08:04:47.446   509   537 E AppHibernationService: Package dev.arena.liquidglasslab is not installed for user 0
-11-11 08:04:47.446   509   537 E AppHibernationService: Package dev.arena.liquidglasslab is not installed for any user
-11-11 08:04:50.433   509   770 I SdkSandboxManager: No SDKs used. Skipping SDK data reconcilation for CallingInfo{mUid=10192, mPackageName='dev.arena.liquidglasslab, mAppProcessToken='null'}
-11-11 08:04:51.061  1009  1009 D CarrierSvcBindHelper: onPackageAdded: dev.arena.liquidglasslab
-11-11 08:04:51.063  1009  1242 D ImsResolver: maybeAddedImsService, packageName: dev.arena.liquidglasslab
-11-11 08:04:51.469  1439  1439 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=dev.arena.liquidglasslab fieldId=0 fieldName=null extras=null}, true)
-11-11 08:04:52.464   812   812 I SafetyLabelChangedBroadcastReceiver: received broadcast packageName: dev.arena.liquidglasslab, current user: UserHandle{0}, packageChangeEvent: NEW_INSTALL, intent user: UserHandle{0}
-11-11 08:05:24.843   800   833 V WindowManagerShell: Transition requested: android.os.BinderProxy@6eeeede TransitionRequestInfo { type = CLOSE, triggerTask = TaskInfo{userId=0 taskId=7 displayId=0 isRunning=false baseIntent=Intent { flg=0x10000000 cmp=dev.arena.liquidglasslab/.MainActivity } baseActivity=null topActivity=null origActivity=null realActivity=ComponentInfo{dev.arena.liquidglasslab/dev.arena.liquidglasslab.MainActivity} numActivities=0 lastActiveTime=66215 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@e3788bf} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=null launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=true isVisible=true isVisibleRequested=true isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
-11-11 08:05:25.438   509  1763 D ActivityTaskManager: Skipping, user setup not complete: Task{947aa08 #7 type=standard A=10192:dev.arena.liquidglasslab}
+11-11 08:08:39.852   902   902 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+11-11 08:08:50.640   508   561 V BackupManagerService: [UserID:0] restoreAtInstall pkg=dev.arena.liquidglasslab token=1 restoreSet=0
+11-11 08:08:52.392   508  1622 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=dev.arena.liquidglasslab/.MainActivity} with LAUNCH_MULTIPLE from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+11-11 08:08:52.591   508   524 D CoreBackPreview: Window{6f4e11 u0 Splash Screen dev.arena.liquidglasslab}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@2c53061, mPriority=0, mIsAnimationCallback=false}
+11-11 08:08:52.920   508   530 E ActivityTaskManager: setVisibility=true while transition is not collecting or finishing ActivityRecord{b49d263 u0 dev.arena.liquidglasslab/.MainActivity t8} caller=com.android.server.wm.ActivityRecord.setVisibility:5287 com.android.server.wm.EnsureActivitiesVisibleHelper.makeVisibleAndRestartIfNeeded:259 com.android.server.wm.EnsureActivitiesVisibleHelper.setActivityVisibilityState:196 com.android.server.wm.EnsureActivitiesVisibleHelper.process:144 com.android.server.wm.TaskFragment.updateActivityVisibilities:1157 com.android.server.wm.Task.lambda$ensureActivitiesVisible$20:4878 com.android.server.wm.Task.$r8$lambda$glAS06h6u0gde7lZWW7SuxTbP1w:0 com.android.server.wm.Task$$ExternalSyntheticLambda16.accept:0 
+11-11 08:08:53.143   508   538 I ActivityManager: Start proc 2156:dev.arena.liquidglasslab/u0a192 for next-top-activity {dev.arena.liquidglasslab/dev.arena.liquidglasslab.MainActivity}
+11-11 08:08:53.973  2156  2156 I .liquidglasslab: Using CollectorTypeCC GC.
+11-11 08:08:53.973  2156  2156 W .liquidglasslab: Unexpected CPU variant for x86: x86_64.
+11-11 08:08:53.973  2156  2156 W .liquidglasslab: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, tremont, kabylake, default
+11-11 08:08:53.975  2156  2156 E .liquidglasslab: Not starting debugger since process cannot load the jdwp agent.
+11-11 08:08:54.506  2156  2156 W ziparchive: Unable to open '/data/app/~~QfJlvoFOJ4-apBMI7e38wA==/dev.arena.liquidglasslab-Gb2GJAVgb2mNzFYzKz30fg==/base.dm': No such file or directory
+11-11 08:08:54.506  2156  2156 W ziparchive: Unable to open '/data/app/~~QfJlvoFOJ4-apBMI7e38wA==/dev.arena.liquidglasslab-Gb2GJAVgb2mNzFYzKz30fg==/base.dm': No such file or directory
+11-11 08:08:54.507  2156  2156 D nativeloader: Configuring clns-6 for other apk /data/app/~~QfJlvoFOJ4-apBMI7e38wA==/dev.arena.liquidglasslab-Gb2GJAVgb2mNzFYzKz30fg==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~QfJlvoFOJ4-apBMI7e38wA==/dev.arena.liquidglasslab-Gb2GJAVgb2mNzFYzKz30fg==/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/dev.arena.liquidglasslab
+11-11 08:08:54.993  2156  2156 V GraphicsEnvironment: ANGLE GameManagerService for dev.arena.liquidglasslab: false
+11-11 08:08:54.993  2156  2156 V GraphicsEnvironment: dev.arena.liquidglasslab is not listed in per-application setting
+11-11 08:08:55.208   508  1837 D CoreBackPreview: Window{1534f4e u0 dev.arena.liquidglasslab/dev.arena.liquidglasslab.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@6674667, mPriority=0, mIsAnimationCallback=false}
+11-11 08:08:55.547   508   768 I SdkSandboxManager: No SDKs used. Skipping SDK data reconcilation for CallingInfo{mUid=10192, mPackageName='dev.arena.liquidglasslab, mAppProcessToken='null'}
+11-11 08:08:56.274   799   799 I SafetyLabelChangedBroadcastReceiver: received broadcast packageName: dev.arena.liquidglasslab, current user: UserHandle{0}, packageChangeEvent: NEW_INSTALL, intent user: UserHandle{0}
+11-11 08:08:56.438   508  1622 D CoreBackPreview: Window{6f4e11 u0 Splash Screen dev.arena.liquidglasslab EXITING}: Setting back callback null
+11-11 08:08:56.438   508  1759 W InputManager-JNI: Input channel object '6f4e11 Splash Screen dev.arena.liquidglasslab (client)' was disposed without first being removed with the input manager!
+11-11 08:08:56.909   508   527 W ziparchive: Unable to open '/data/app/~~QfJlvoFOJ4-apBMI7e38wA==/dev.arena.liquidglasslab-Gb2GJAVgb2mNzFYzKz30fg==/base.dm': No such file or directory
+11-11 08:08:56.911   508   527 I ActivityTaskManager: Displayed dev.arena.liquidglasslab/.MainActivity for user 0: +4s581ms
+11-11 08:08:57.749   996   996 D CarrierSvcBindHelper: onPackageAdded: dev.arena.liquidglasslab
+11-11 08:08:57.964   996  1253 D ImsResolver: maybeAddedImsService, packageName: dev.arena.liquidglasslab
+11-11 08:08:58.576   508   610 I InputDispatcher: 1534f4e dev.arena.liquidglasslab/dev.arena.liquidglasslab.MainActivity (server) spent 2163ms processing FocusEvent(hasFocus=true)
+11-11 08:08:58.596   508  1807 I ImeTracker: dev.arena.liquidglasslab:a41ae15d: onRequestHide at ORIGIN_SERVER_HIDE_INPUT reason HIDE_UNSPECIFIED_WINDOW
+11-11 08:08:58.596   508  1807 I ImeTracker: dev.arena.liquidglasslab:a41ae15d: onCancelled at PHASE_SERVER_SHOULD_HIDE
+11-11 08:08:58.824  1518  1518 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=dev.arena.liquidglasslab fieldId=0 fieldName=null extras=null}, false)
+11-11 08:09:04.168  1518  1518 I GoogleInputMethodService: GoogleInputMethodService.onStartInput():1877 onStartInput(EditorInfo{inputType=0x0(NULL) imeOptions=0x0 privateImeOptions=null actionName=UNSPECIFIED actionLabel=null actionId=0 initialSelStart=-1 initialSelEnd=-1 initialCapsMode=0x0 hintText=null label=null packageName=dev.arena.liquidglasslab fieldId=0 fieldName=null extras=null}, true)
+11-11 08:09:16.446  1037  1088 I Launcher.IconCache: Database bulk icon loading failed, using fallback bulk icon loading for: ComponentInfo{dev.arena.liquidglasslab/dev.arena.liquidglasslab.MainActivity}
+11-11 08:09:29.501  1353  4178 I FontLog : Package dev.arena.liquidglasslab has no metadata [CONTEXT service_id=132 ]
+11-11 08:09:29.622  1450  2373 I BlockstoreStorage: Clearing Blockstore Data for package dev.arena.liquidglasslab [CONTEXT service_id=258 ]
+11-11 08:09:36.343   796   829 V WindowManagerShell: Transition requested: android.os.BinderProxy@3c7a1eb TransitionRequestInfo { type = CLOSE, triggerTask = TaskInfo{userId=0 taskId=8 displayId=0 isRunning=false baseIntent=Intent { flg=0x10000000 cmp=dev.arena.liquidglasslab/.MainActivity } baseActivity=null topActivity=null origActivity=null realActivity=ComponentInfo{dev.arena.liquidglasslab/dev.arena.liquidglasslab.MainActivity} numActivities=0 lastActiveTime=52536 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@617bb48} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=null launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=true isVisibleRequested=true isSleeping=false topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= false topActivityLetterboxed= false isFromDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 locusId=null displayAreaFeatureId=1 cameraCompatControlState=hidden}, remoteTransition = null, displayChange = null }
 + /usr/local/lib/android/sdk/platform-tools/adb shell pidof dev.arena.liquidglasslab
-2058
+2156
 + echo 'APP ALIVE'
 APP ALIVE
 + ls -la /home/runner/work/pr/pr/shots
-total 8884
-drwxr-xr-x 2 runner runner    4096 Nov 11 08:05 .
-drwxr-xr-x 8 runner runner    4096 Nov 11 08:02 ..
--rw-r--r-- 1 runner runner  798768 Nov 11 08:04 01-home.png
--rw-r--r-- 1 runner runner  803006 Nov 11 08:05 02-presets.png
--rw-r--r-- 1 runner runner  803009 Nov 11 08:05 03-scene.png
--rw-r--r-- 1 runner runner  803009 Nov 11 08:05 04-tuning.png
--rw-r--r-- 1 runner runner  805078 Nov 11 08:05 05-menu.png
--rw-r--r-- 1 runner runner   15309 Nov 11 08:05 diag.txt
--rw-r--r-- 1 runner runner    8997 Nov 11 08:04 emulator.txt
--rw-r--r-- 1 runner runner 5026097 Nov 11 08:05 logcat.txt
+total 8916
+drwxr-xr-x 2 runner runner    4096 Nov 11 08:09 .
+drwxr-xr-x 8 runner runner    4096 Nov 11 08:06 ..
+-rw-r--r-- 1 runner runner  798434 Nov 11 08:09 01-home.png
+-rw-r--r-- 1 runner runner  802590 Nov 11 08:09 02-presets.png
+-rw-r--r-- 1 runner runner  802590 Nov 11 08:09 03-scene.png
+-rw-r--r-- 1 runner runner  804864 Nov 11 08:09 04-tuning.png
+-rw-r--r-- 1 runner runner  804864 Nov 11 08:09 05-menu.png
+-rw-r--r-- 1 runner runner   14491 Nov 11 08:09 diag.txt
+-rw-r--r-- 1 runner runner    8997 Nov 11 08:08 emulator.txt
+-rw-r--r-- 1 runner runner 5074063 Nov 11 08:09 logcat.txt
