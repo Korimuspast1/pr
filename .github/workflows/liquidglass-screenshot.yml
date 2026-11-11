@@ -114,7 +114,11 @@ jobs:
               "$SDK/platform-tools/adb" shell am start -S \
                 -n dev.arena.liquidglasslab/.MainActivity --es tab "$1" >/dev/null 2>&1
             fi
-            sleep 6
+            # cold start of a software-rendered emulator: wait for the window, then
+            # discard one frame so the screenshot never catches a black window
+            sleep 10
+            "$SDK/platform-tools/adb" exec-out screencap -p > /dev/null 2>&1 || true
+            sleep 3
           }
           open_tab home; shot 01-home
           open_tab presets; shot 02-presets
