@@ -485,6 +485,31 @@ class RepositoryStateTests(unittest.TestCase):
             applied.append(patch.name)
         self.assertTrue(applied, "no patches were applied")
 
+    def test_0005_does_not_undo_the_security_patches(self):
+        """A later patch must only add, never roll back an earlier fix.
+
+        0005 was once generated against the pristine upstream tree, so its diff
+        of AyuConfig.java replaced the 0004-hardened code with the original
+        plaintext-token version. Applying it silently reverted the security
+        work while every patch still "applied cleanly".
+        """
+        patch = PATCHES / "0005-built-features-and-rebrand.patch"
+        if not patch.is_file():
+            self.skipTest("patch 0005 not present")
+        text = patch.read_text(encoding="utf-8", errors="replace")
+        for marker in ("AyuSecrets", "AyuUpdateVerifier", "AyuSyncInsecureWarning"):
+            # Any removed line mentioning these is a rollback, whatever the
+            # amount of leading whitespace: a hunk that drops the hardened code
+            # is exactly how the regression got in.
+            removed = [
+                line for line in text.splitlines()
+                if line.startswith("-") and not line.startswith("---")
+                and marker in line
+            ]
+            self.assertEqual(
+                removed, [],
+                "0005 removes {} -- that is a rollback of 0001/0004".format(marker))
+
     def test_rebrand_changes_text_but_never_resource_identifiers(self):
         """The rebrand must not rename `<string name=...>` ids.
 
