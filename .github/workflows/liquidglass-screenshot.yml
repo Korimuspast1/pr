@@ -52,7 +52,7 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          ls -l /dev/kvm || true
+          ls -l /dev/kvm || echo "NO /dev/kvm"
 
       - name: Boot emulator, install and capture
         run: |
@@ -69,7 +69,7 @@ jobs:
           echo no | "$SDK/cmdline-tools/latest/bin/avdmanager" create avd -n lab \
             -k "$IMAGE" -d pixel_6 --force
           "$SDK/emulator/emulator" -avd lab -no-window -no-audio -no-boot-anim \
-            -no-snapshot -gpu swiftshader_indirect -accel on -memory 2048 \
+            -no-snapshot -gpu swiftshader_indirect -accel auto -memory 2048 \
             -no-metrics > "$OUT/emulator.txt" 2>&1 &
           EMU=$!
           "$SDK/platform-tools/adb" start-server
@@ -125,6 +125,7 @@ jobs:
           mkdir -p liquidglass/docs/img/device
           cp shots/*.png liquidglass/docs/img/device/ 2>/dev/null || true
           cp shots/diag.txt liquidglass/docs/img/device/ 2>/dev/null || true
+          tail -c 4000 shots/emulator.txt > liquidglass/docs/img/device/emulator.txt 2>/dev/null || true
           grep -iE "liquidglasslab|FATAL|AndroidRuntime" shots/logcat.txt \
             > liquidglass/docs/img/device/logcat.txt 2>/dev/null || true
           git config user.name "github-actions[bot]"
