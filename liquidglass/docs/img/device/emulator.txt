@@ -1,4 +1,4 @@
-dNlsgD9DG+AviYX2i79qFm+aFC9LAEAAQA= runner@unknown]
+b1RxfLJKSsHzN1S9yBp+tWoGzw1BwEAAQA= runner@unknown]
 INFO         | Userspace boot properties:
 INFO         |   androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:06.0
 INFO         |   androidboot.dalvik.vm.heapsize=576m
@@ -10,7 +10,7 @@ INFO         |   androidboot.hardware.vulkan=ranchu
 INFO         |   androidboot.logcat=*:V
 INFO         |   androidboot.opengles.version=196608
 INFO         |   androidboot.qemu=1
-INFO         |   androidboot.qemu.adb.pubkey=QAAAANulYPytMSOyN0dVhe2s857WhMzYsxFV6uUM3m7T0nHxP41mRiGdHtBGv7xws3DhkGNaz8n7MyDRPvr3QqN2x7u8sE18bvGIZJMkOtpB/2AUxVZJJJgnbIe1Nioq/kvjb7iVzthXrrPp+jJSjEhlcIUWaKqToLRcIKU4Oa7a8YteOW7KBGsHzB1iATX4XJUHPTgqfElQmB8iXfiJGezVeKF578qzq3AHdInQ0p1sk1+OC1yNUVm3FAF62J6RH0+RAXKQ0rA3pCxtiNGVvAbsckD9nFiuW/LjnhyMliFC3/T2inLQ8vDy6A/+QROnWMy7KIIh+poXZ75GhlccEj+YicM0O/vc5AOKE8zGPGyjMVDDuI2pC3eQz1WKhNfiE3ee+N2sHs5hGgKBtVo5ViEZFnYAadppvMwLIK9LWlu2gDWXh2f/sc6splFqV/rmPYVb/2RWnSYtavWNR10LeHZpE1uoX3DB+9z3CGm9arGqIXhFEBnrzxTHXPigHX/xgw6ldrVakhNozDCxyW4ObZxB+Mmqj8/JY1r1DmsxwT/aDZwN+MuwA/MahU5AOj9F+kjMMzTL3BTikMtL7+JEB60u2nsvdzPT/lw9sdxisH67WE9xJLdMrBdMf+m4M/Ub+rRXZnoatqYK0DYhNdlRFBNuUdNlsgD9DG+AviYX2i79qFm+aFC9LAEAAQA= runner@unknown
+INFO         |   androidboot.qemu.adb.pubkey=QAAAANvqDXyt/qlDzUD41veySZ5KscZipkRJxN60Z9TAKctbJ+8SpNmQWVpzQAQGfxuxRjSk/nIxjFxnhP9qY0Ne0T24snSmsO95fE+R19L8iA3HU2mLE34g+4kFqB332i95Oq5+BYB2bKC/LRr9VsdFKH55Ce/ibJ1y1kTYc9cjAmJx1PY4NVi8IfAko0eeQPGdxy9HSy/0D9oJHQM8ynLrqkYqzXCpjAs7YthYC57TVqkVfsDVzsZs0Qtd0C1Gxi2tPLkrHlnsQUpkBgKwdbOnkmDNOB4KbtQKmri4dxqh+hwQPEriNXiUlN/4EORP2IAjEh9C4e0qod91Xes7BHlmYXO2ygO6NrmvvDfX2MrCkJJFxyuZgWmFJwb2Fgh7eK/Bv04QbiZbwV52zZujsTgyAbtqHEq6f/rQO0L35TjEoNdV+lK0+CJZdZ+2/uhUsIUFASl5da3Ei3Sg95Oo9nX0V7ZXvgDcJJQeliVggDJkYVfhh0eyQOtcDeL/xIDdHeQottAJ5gzg+fnAgn2esCzxuKOjaymur3AWKIyFoxRh+0L7NpXauiCpBF2nvB2NRnMolGJ3l8L0/2cioXM3drrVacihQSY8+6wBPFmqM9za5ffyLT2DPx7sT6NOhDbTbFT6mVv6DuNbTSswwiDQLnIehb1RxfLJKSsHzN1S9yBp+tWoGzw1BwEAAQA= runner@unknown
 INFO         |   androidboot.qemu.avd_name=lab
 INFO         |   androidboot.qemu.camera_hq_edge_processing=0
 INFO         |   androidboot.qemu.camera_protocol_ver=1
@@ -29,14 +29,14 @@ INFO         |   androidboot.vbmeta.digest=451e57ed688ff746d2c636d52169ade253e2b
 INFO         |   androidboot.vbmeta.hash_alg=sha256
 INFO         |   androidboot.vbmeta.size=6656
 INFO         |   androidboot.veritymode=enforcing
-WARNING: cannnot unmap ptr 0x7f6e63201000 as it is in the protected range from 0x7f6dc3200000 to 0x7f6e63400000
+WARNING: cannnot unmap ptr 0x7fde4ee01000 as it is in the protected range from 0x7fddaee00000 to 0x7fde4f000000
 INFO         | Monitoring duration of emulator setup.
 WARNING      | The emulator now requires a signed jwt token for gRPC access! Use the -grpc flag if you really want an open unprotected grpc port
 INFO         | Using security allow list from: /usr/local/lib/android/sdk/emulator/lib/emulator_access.json
-INFO         | The active JSON Web Key Sets can be found here: /run/user/1001/avd/running/2459/jwks/98df2abe-3624-4bfc-8085-876478eca4db/active.jwk
-INFO         | Scanning /run/user/1001/avd/running/2459/jwks/98df2abe-3624-4bfc-8085-876478eca4db for jwk keys.
+INFO         | The active JSON Web Key Sets can be found here: /run/user/1001/avd/running/2593/jwks/fae3365a-e264-4584-9e4a-df85a06c8c08/active.jwk
+INFO         | Scanning /run/user/1001/avd/running/2593/jwks/fae3365a-e264-4584-9e4a-df85a06c8c08 for jwk keys.
 INFO         | Started GRPC server at 127.0.0.1:8554, security: Local, auth: +token
-INFO         | Advertising in: /run/user/1001/avd/running/pid_2459.ini
+INFO         | Advertising in: /run/user/1001/avd/running/pid_2593.ini
 INFO         | Activated packet streamer for bluetooth emulation
 INFO         | Successfully initialized netsim WiFi
 INFO         | Setting display: 0 configuration to: 1080x2400, dpi: 420x420 
@@ -45,5 +45,5 @@ INFO         | emulatorSetupEnvironment: Environment scene is not required
 USER_INFO    | Emulator is performing a full startup. This may take upto two minutes, or more.
 WARNING      | Failed to process .ini file /home/runner/.android/emu-update-last-check.ini for reading.
 WARNING      | Failed to process .ini file /home/runner/.android/emu-update-last-check.ini for reading.
-INFO         | Boot completed in 54234 ms
+INFO         | Boot completed in 65995 ms
 INFO         | Increasing screen off timeout, logcat buffer size to 2M.
