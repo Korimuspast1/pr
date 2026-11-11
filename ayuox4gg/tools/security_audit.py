@@ -129,8 +129,13 @@ def audit_java(text: str, display_name: str) -> List[Finding]:
         if re.search(r'return\s+[^;]*\?\s*"wss://"\s*:\s*"ws://"|"wss://"\s*:\s*"ws://"', line):
             add("S1", "high", "TLS scheme selected by a runtime flag — an insecure toggle downgrades traffic", index)
 
-        # S2 — secrets persisted in plain SharedPreferences
-        if "putString" in line and SECRET_WORDS.search(line):
+        # S2 — secrets persisted in plain SharedPreferences.
+        # A bare `putString(` is not enough: `AyuSecrets.putString(...)` is the
+        # encrypted path, and a constant *named* SYNC_TOKEN_SECRET is not a
+        # secret either (that false positive fired on patch 0004). Require an
+        # actual SharedPreferences receiver.
+        if re.search(r"\b(preferences|prefs|sharedPreferences|editor)\s*\.\s*putString\s*\(", line) \
+                and SECRET_WORDS.search(line):
             if "KeyStore" not in text and "EncryptedSharedPreferences" not in text:
                 add("S2", "high", "credential written through SharedPreferences (plaintext at rest)", index)
 

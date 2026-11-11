@@ -36,6 +36,9 @@ PATCHES = ROOT / "security" / "patches"
 UPSTREAM = "https://github.com/AyuGram/AyuGram4A.git"
 SPARSE_PATHS = (
     "/TMessagesProj/src/main/java/com/radolyn/*",
+    # patch 0004 also touches the updater; without this path the check fails
+    # with "No such file or directory" instead of testing the patch.
+    "/TMessagesProj/src/main/java/com/exteragram/messenger/utils/UpdaterUtils.java",
     "/TMessagesProj/src/main/AndroidManifest.xml",
     "/TMessagesProj/src/main/res/values/ayu.xml",
     "/TMessagesProj/src/main/res/xml/*",

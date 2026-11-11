@@ -380,10 +380,48 @@ jobs:
           [[ -n "${TAG:-}" ]] || exit 0
           git config user.name "ayuox4gg-bot"
           git config user.email "ayuox4gg@users.noreply.github.com"
+
+          OUT="ayuox4gg/artifacts/$TAG"
+          # Belt and braces: forensics.txt has always made it into the commit,
+          # so if the manifest is somehow absent, rebuild it from that. A build
+          # without a recorded digest cannot be verified by unpack_apk.py.
+          if [[ ! -s "$OUT/README.md" && -s "$OUT/forensics.txt" ]]; then
+            echo "manifest missing in $OUT — rebuilding it from forensics.txt"
+            SIZE="$(sed -n 's/^size *: *//p' "$OUT/forensics.txt" | tr -d ', ' | sed 's/bytes$//' | tr -d ' ' | head -1)"
+            SHA="$(sed -n 's/^sha256 *: *//p' "$OUT/forensics.txt" | head -1)"
+            APK="$(ls "$OUT" | grep '\.part00$' | sed 's/\.part00$//' | head -1)"
+            PARTS="$(ls "$OUT" | grep -c '\.part[0-9]\+$' || true)"
+            {
+              echo "# $TAG"
+              echo
+              echo "Built from \`${AYU_REPO}@${AYU_REF}\` with the ayuox4gg overlay."
+              echo
+              echo "| | |"
+              echo "|---|---|"
+              echo "| apk | \`$APK\` |"
+              echo "| size | $SIZE bytes |"
+              echo "| sha256 | \`$SHA\` |"
+              echo "| parts | $PARTS |"
+              echo
+              echo "## Install"
+              echo
+              echo '```bash'
+              echo "python3 ayuox4gg/tools/unpack_apk.py $TAG --out ~/ayu.apk"
+              echo "python3 ayuox4gg/tools/forensics.py ~/ayu.apk --expect-sha256 $SHA"
+              echo '```'
+            } > "$OUT/README.md"
+          fi
+
           # Exact paths only: API_KEYS and the rewritten tree must never be added.
-          git add -- "ayuox4gg/artifacts/$TAG"
+          git add -f -- "$OUT"
           git diff --cached --quiet && exit 0
-          git commit -q -m "artifacts: $TAG [skip ci]" -- "ayuox4gg/artifacts/$TAG"
+          git commit -q -m "artifacts: $TAG [skip ci]"
+
+          echo "--- committed ---"
+          git ls-tree --name-only HEAD "$OUT"/
+          git ls-tree --name-only HEAD "$OUT"/ | grep -q 'README.md' \
+            || echo "::warning::the build has no manifest"
+
           git push || echo "::warning::could not push the build (branch protection?)"
 
       - name: Keep the build log on failure
