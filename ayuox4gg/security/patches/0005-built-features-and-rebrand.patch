@@ -1704,7 +1704,7 @@ diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/export/AyuChatExpor
 new file mode 100644
 --- /dev/null
 +++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/export/AyuChatExporter.java
-@@ -0,0 +1,288 @@
+@@ -0,0 +1,376 @@
 +/*
 + * ayuox4gg — chat export.
 + *
@@ -1715,14 +1715,19 @@ new file mode 100644
 + * Deliberately excluded: secret chats. Their messages are not kept in
 + * `messages_v2`, and their whole point is that they never leave the device.
 + * Nothing is uploaded anywhere — the result is a plain file the user chooses.
++ *
++ * The database here is not Android's SQLite: Telegram ships its own thin
++ * wrapper around the C API with no locking of its own, and MessagesStorage
++ * only ever touches it from the storage queue. Every query here goes through
++ * that same queue, so the export cannot race the client's own reads.
 + */
 +
 +package com.radolyn.ayugram.export;
 +
 +import android.content.Context;
-+import android.database.Cursor;
-+import android.database.sqlite.SQLiteDatabase;
 +
++import org.telegram.SQLite.SQLiteCursor;
++import org.telegram.SQLite.SQLiteDatabase;
 +import org.telegram.messenger.ApplicationLoader;
 +import org.telegram.messenger.FileLog;
 +import org.telegram.messenger.MessagesController;
@@ -1743,11 +1748,20 @@ new file mode 100644
 +import java.util.Date;
 +import java.util.List;
 +import java.util.Locale;
++import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.TimeUnit;
 +
 +public final class AyuChatExporter {
 +
 +    /** Page size while walking `messages_v2`; keeps peak memory small. */
 +    private static final int PAGE = 500;
++
++    /**
++     * The storage queue is shared with message loading, so a huge history must
++     * not hold it forever; a chat that cannot finish in this budget is reported
++     * as a failure instead of freezing incoming messages.
++     */
++    private static final long BUDGET_SECONDS = 120;
 +
 +    private AyuChatExporter() {
 +    }
@@ -1770,52 +1784,114 @@ new file mode 100644
 +        }
 +    }
 +
-+    private static SQLiteDatabase database() {
++    private static MessagesStorage storage() {
 +        try {
-+            return MessagesStorage.getInstance(0).getDatabase();
++            return MessagesStorage.getInstance(UserConfig.selectedAccount);
 +        } catch (Throwable t) {
-+            FileLog.e("ayuox4gg: no database for export", t);
++            FileLog.e("ayuox4gg: no storage for export", t);
 +            return null;
 +        }
 +    }
 +
-+    /** Chats with at least one stored message, newest first. */
-+    public static List<DialogInfo> dialogs() {
-+        ArrayList<DialogInfo> out = new ArrayList<>();
-+        SQLiteDatabase db = database();
-+        if (db == null) {
-+            return out;
++    /**
++     * Run `body` on the storage queue and wait for it.
++     *
++     * Telegram's SQLite wrapper is bound to that thread; touching it from
++     * anywhere else is a crash waiting to happen. Returns null on timeout or
++     * when the body throws.
++     */
++    private static <T> T onStorageQueue(Result<T> body) {
++        final MessagesStorage store = storage();
++        if (store == null) {
++            return null;
 +        }
-+        Cursor cursor = null;
++        final Object[] result = new Object[1];
++        final Throwable[] error = new Throwable[1];
++        final CountDownLatch latch = new CountDownLatch(1);
++        store.getStorageQueue().postRunnable(() -> {
++            try {
++                result[0] = body.run();
++            } catch (Throwable t) {
++                error[0] = t;
++            } finally {
++                latch.countDown();
++            }
++        });
 +        try {
-+            cursor = db.rawQuery(
-+                    "SELECT d.did, d.data, "
-+                            + "(SELECT COUNT(*) FROM messages_v2 m WHERE m.uid = d.did) AS cnt "
-+                            + "FROM dialogs d WHERE cnt > 0 ORDER BY d.date DESC", null);
-+            while (cursor.moveToNext()) {
-+                long did = cursor.getLong(0);
-+                out.add(new DialogInfo(did, titleOf(cursor.isNull(1) ? null : cursor.getBlob(1), did),
-+                        cursor.getInt(2)));
++            if (!latch.await(BUDGET_SECONDS, TimeUnit.SECONDS)) {
++                FileLog.e("ayuox4gg: export timed out on the storage queue");
++                return null;
 +            }
-+        } catch (Throwable t) {
-+            FileLog.e("ayuox4gg: could not list chats for export", t);
-+        } finally {
-+            if (cursor != null) {
-+                cursor.close();
-+            }
++        } catch (InterruptedException e) {
++            Thread.currentThread().interrupt();
++            return null;
 +        }
-+        return out;
++        if (error[0] != null) {
++            FileLog.e("ayuox4gg: export failed", error[0]);
++            return null;
++        }
++        //noinspection unchecked
++        return (T) result[0];
 +    }
 +
-+    private static String titleOf(byte[] data, long did) {
++    private interface Result<T> {
++        T run() throws Exception;
++    }
++
++    private static SQLiteDatabase database() {
++        MessagesStorage store = storage();
++        return store == null ? null : store.getDatabase();
++    }
++
++    /** Chats with at least one stored message, newest first. */
++    public static List<DialogInfo> dialogs() {
++        List<DialogInfo> out = onStorageQueue(() -> {
++            ArrayList<DialogInfo> found = new ArrayList<>();
++            SQLiteDatabase db = database();
++            if (db == null) {
++                return found;
++            }
++            SQLiteCursor cursor = null;
++            try {
++                cursor = db.queryFinalized(
++                        "SELECT d.did, d.data, "
++                                + "(SELECT COUNT(*) FROM messages_v2 m WHERE m.uid = d.did) AS cnt "
++                                + "FROM dialogs d WHERE cnt > 0 ORDER BY d.date DESC", new Object[0]);
++                while (cursor.next()) {
++                    long did = cursor.longValue(0);
++                    NativeByteBuffer data = cursor.isNull(1) ? null : cursor.byteBufferValue(1);
++                    try {
++                        found.add(new DialogInfo(did, titleOf(data, did), cursor.intValue(2)));
++                    } finally {
++                        if (data != null) {
++                            data.reuse();
++                        }
++                    }
++                }
++            } finally {
++                if (cursor != null) {
++                    cursor.dispose();
++                }
++            }
++            return found;
++        });
++        return out == null ? new ArrayList<>() : out;
++    }
++
++    private static String titleOf(NativeByteBuffer data, long did) {
 +        if (data != null) {
 +            SerializedData stream = null;
 +            try {
-+                stream = new SerializedData(data);
++                int size = data.limit();
++                byte[] blob = new byte[size];
++                data.position(0);
++                data.readBytes(blob, 0, size, false);
++                stream = new SerializedData(blob);
 +                TLRPC.Dialog dialog = TLRPC.Dialog.TLdeserialize(stream, stream.readInt32(false), false);
 +                if (dialog != null && dialog.peer != null) {
 +                    if (dialog.peer instanceof TLRPC.TL_peerUser) {
-+                        TLRPC.User user = MessagesController.getInstance(0).getUser(dialog.peer.user_id);
++                        TLRPC.User user = MessagesController.getInstance(UserConfig.selectedAccount)
++                                .getUser(dialog.peer.user_id);
 +                        if (user != null) {
 +                            String name = ((user.first_name == null ? "" : user.first_name) + " "
 +                                    + (user.last_name == null ? "" : user.last_name)).trim();
@@ -1826,7 +1902,8 @@ new file mode 100644
 +                    } else {
 +                        long chatId = dialog.peer instanceof TLRPC.TL_peerChat
 +                                ? dialog.peer.chat_id : dialog.peer.channel_id;
-+                        TLRPC.Chat chat = MessagesController.getInstance(0).getChat(chatId);
++                        TLRPC.Chat chat = MessagesController.getInstance(UserConfig.selectedAccount)
++                                .getChat(chatId);
 +                        if (chat != null && chat.title != null && !chat.title.isEmpty()) {
 +                            return chat.title;
 +                        }
@@ -1874,22 +1951,26 @@ new file mode 100644
 +     * @return the written file, or null if nothing could be written
 +     */
 +    public static File export(long did, File target) {
-+        SQLiteDatabase db = database();
-+        if (db == null) {
-+            return null;
-+        }
 +        File dir = target.getParentFile();
 +        if (dir != null && !dir.exists() && !dir.mkdirs()) {
++            return null;
++        }
++        File done = onStorageQueue(() -> write(did, target));
++        return done;
++    }
++
++    private static File write(long did, File target) throws Exception {
++        SQLiteDatabase db = database();
++        if (db == null) {
 +            return null;
 +        }
 +
 +        SimpleDateFormat stamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
 +        SimpleDateFormat day = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
-+        long selfId = UserConfig.getInstance(0).getClientUserId();
 +        long written = 0;
 +        String lastDay = null;
 +
-+        Cursor cursor = null;
++        SQLiteCursor cursor = null;
 +        Writer writer = null;
 +        try {
 +            writer = new OutputStreamWriter(new FileOutputStream(target), StandardCharsets.UTF_8);
@@ -1899,31 +1980,42 @@ new file mode 100644
 +            writer.write("# secret chats are never included\n\n");
 +
 +            long maxId = Long.MAX_VALUE;
-+            ArrayList<long[]> ids = new ArrayList<>();
-+            ArrayList<byte[]> blobs = new ArrayList<>();
 +            while (true) {
-+                ids.clear();
-+                blobs.clear();
-+                cursor = db.rawQuery(
++                ArrayList<long[]> rows = new ArrayList<>();
++                ArrayList<byte[]> bodies = new ArrayList<>();
++                cursor = db.queryFinalized(
 +                        "SELECT mid, date, out, data FROM messages_v2 "
 +                                + "WHERE uid = ? AND mid < ? ORDER BY mid DESC LIMIT " + PAGE,
-+                        new String[]{String.valueOf(did), String.valueOf(maxId)});
-+                while (cursor.moveToNext()) {
-+                    ids.add(new long[]{cursor.getLong(0), cursor.getLong(1), cursor.getLong(2)});
-+                    blobs.add(cursor.isNull(3) ? null : cursor.getBlob(3));
++                        did, maxId);
++                while (cursor.next()) {
++                    rows.add(new long[]{cursor.longValue(0), cursor.longValue(1), cursor.longValue(2)});
++                    NativeByteBuffer data = cursor.isNull(3) ? null : cursor.byteBufferValue(3);
++                    if (data == null) {
++                        bodies.add(null);
++                        continue;
++                    }
++                    try {
++                        int size = data.limit();
++                        byte[] blob = new byte[size];
++                        data.position(0);
++                        data.readBytes(blob, 0, size, false);
++                        bodies.add(blob);
++                    } finally {
++                        data.reuse();
++                    }
 +                }
-+                cursor.close();
++                cursor.dispose();
 +                cursor = null;
-+                if (ids.isEmpty()) {
++                if (rows.isEmpty()) {
 +                    break;
 +                }
-+                maxId = ids.get(ids.size() - 1)[0];
++                maxId = rows.get(rows.size() - 1)[0];
 +
 +                // Pages arrive newest-first; emit each one reversed so the file
 +                // reads chronologically without buffering the whole history.
-+                for (int i = ids.size() - 1; i >= 0; i--) {
-+                    long[] row = ids.get(i);
-+                    int date = (int) row[1];
++                for (int i = rows.size() - 1; i >= 0; i--) {
++                    long[] row = rows.get(i);
++                    long date = row[1];
 +                    boolean outgoing = row[2] == 1;
 +
 +                    String currentDay = day.format(new Date(date * 1000L));
@@ -1933,8 +2025,7 @@ new file mode 100644
 +                    }
 +                    writer.write(stamp.format(new Date(date * 1000L)));
 +                    writer.write(outgoing ? "  me: " : "  they: ");
-+                    String body = bodyOf(blobs.get(i), selfId);
-+                    writer.write(body);
++                    writer.write(bodyOf(bodies.get(i)));
 +                    writer.write("\n");
 +                    written++;
 +                }
@@ -1942,12 +2033,9 @@ new file mode 100644
 +
 +            writer.write("\n# messages: " + written + "\n");
 +            return target;
-+        } catch (Throwable t) {
-+            FileLog.e("ayuox4gg: chat export failed for " + did, t);
-+            return null;
 +        } finally {
 +            if (cursor != null) {
-+                cursor.close();
++                cursor.dispose();
 +            }
 +            if (writer != null) {
 +                try {
@@ -1964,7 +2052,7 @@ new file mode 100644
 +     * cannot be parsed becomes a placeholder so one bad message cannot abort a
 +     * whole export.
 +     */
-+    private static String bodyOf(byte[] blob, long selfId) {
++    private static String bodyOf(byte[] blob) {
 +        if (blob == null || blob.length == 0) {
 +            return "[no data]";
 +        }
@@ -1997,7 +2085,7 @@ diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuC
 new file mode 100644
 --- /dev/null
 +++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuChatExportActivity.java
-@@ -0,0 +1,126 @@
+@@ -0,0 +1,138 @@
 +/*
 + * ayuox4gg — pick a chat and write it to a .txt file.
 + *
@@ -2016,8 +2104,10 @@ new file mode 100644
 +import com.exteragram.messenger.preferences.BasePreferencesActivity;
 +import com.radolyn.ayugram.export.AyuChatExporter;
 +
++import org.telegram.messenger.AndroidUtilities;
 +import org.telegram.messenger.FileLog;
 +import org.telegram.messenger.LocaleController;
++import org.telegram.messenger.Utilities;
 +import org.telegram.messenger.R;
 +import org.telegram.ui.ActionBar.AlertDialog;
 +import org.telegram.ui.Cells.HeaderCell;
@@ -2069,9 +2159,19 @@ new file mode 100644
 +    }
 +
 +    private void export(AyuChatExporter.DialogInfo dialog) {
-+        File target = new File(AyuChatExporter.exportDir(), AyuChatExporter.fileName(dialog));
-+        File written = AyuChatExporter.export(dialog.did, target);
++        // A long history takes a while to walk; run it off the UI thread and
++        // report back on it, instead of freezing the list under the finger.
++        final File target = new File(AyuChatExporter.exportDir(), AyuChatExporter.fileName(dialog));
++        Utilities.globalQueue.postRunnable(() -> {
++            final File written = AyuChatExporter.export(dialog.did, target);
++            AndroidUtilities.runOnUIThread(() -> report(written));
++        });
++    }
 +
++    private void report(File written) {
++        if (getParentActivity() == null) {
++            return;
++        }
 +        String message = written != null
 +                ? LocaleController.formatString(R.string.AyuExportDone, written.getAbsolutePath())
 +                : LocaleController.getString(R.string.AyuExportFailed);
