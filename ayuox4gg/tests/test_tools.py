@@ -41,6 +41,14 @@ SPARSE_PATHS = (
     "/TMessagesProj/src/main/java/com/exteragram/messenger/utils/UpdaterUtils.java",
     "/TMessagesProj/src/main/AndroidManifest.xml",
     "/TMessagesProj/src/main/res/values/ayu.xml",
+    # patch 0005 rebrands the app name and touches two files outside the
+    # radolyn/ subtree, plus the export UI lives under radolyn/ui/preferences.
+    "/TMessagesProj/src/main/res/values/strings.xml",
+    "/TMessagesProj/src/main/res/values/extera.xml",
+    "/TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java",
+    "/TMessagesProj/src/main/java/org/telegram/ui/ProfileActivity.java",
+    "/TMessagesProj/src/main/java/org/telegram/messenger/NotificationsService.java",
+    "/TMessagesProj/src/main/java/com/exteragram/messenger/utils/LocaleUtils.java",
     "/TMessagesProj/src/main/res/xml/*",
 )
 

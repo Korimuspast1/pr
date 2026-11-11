@@ -1,0 +1,2145 @@
+diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/AyuConfig.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/AyuConfig.java
+--- a/TMessagesProj/src/main/java/com/radolyn/ayugram/AyuConfig.java
++++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/AyuConfig.java
+@@ -45,6 +45,16 @@
+     public static boolean keepAliveService;
+     public static boolean disableAds;
+     public static boolean localPremium;
++
++    /**
++     * ayuox4gg: cosmetic badges that exist only on this device. Nothing is sent
++     * to Telegram — the flags are applied when the UI draws an avatar or a name,
++     * so no server, no other client and no chat partner can see them.
++     */
++    public static boolean localVerified;
++    public static boolean localPremiumBadge;
++    public static boolean localScam;
++    public static boolean localFake;
+     public static boolean regexFiltersEnabled;
+     public static boolean regexFiltersInChats;
+     public static boolean regexFiltersCaseInsensitive;
+@@ -98,6 +108,11 @@
+             keepAliveService = preferences.getBoolean("keepAliveService", true);
+             disableAds = preferences.getBoolean("disableAds", true);
+             localPremium = preferences.getBoolean("localPremium", false);
++
++            localVerified = preferences.getBoolean("localVerified", false);
++            localPremiumBadge = preferences.getBoolean("localPremiumBadge", false);
++            localScam = preferences.getBoolean("localScam", false);
++            localFake = preferences.getBoolean("localFake", false);
+             regexFiltersEnabled = preferences.getBoolean("regexFiltersEnabled", false);
+             regexFiltersInChats = preferences.getBoolean("regexFiltersInChats", false);
+             regexFiltersCaseInsensitive = preferences.getBoolean("regexFiltersCaseInsensitive", true);
+diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuGramPreferencesActivity.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuGramPreferencesActivity.java
+--- a/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuGramPreferencesActivity.java
++++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuGramPreferencesActivity.java
+@@ -55,7 +55,12 @@
+     private int keepAliveServiceRow;
+     private int disableAdsRow;
+     private int localPremiumRow;
++    private int localVerifiedRow;
++    private int localPremiumBadgeRow;
++    private int localScamRow;
++    private int localFakeRow;
+     private int filtersRow;
++    private int exportChatRow;
+     private int qolDividerRow;
+ 
+     private int customizationHeaderRow;
+@@ -109,7 +114,12 @@
+         keepAliveServiceRow = newRow();
+         disableAdsRow = newRow();
+         localPremiumRow = newRow();
++        localVerifiedRow = newRow();
++        localPremiumBadgeRow = newRow();
++        localScamRow = newRow();
++        localFakeRow = newRow();
+         filtersRow = newRow();
++        exportChatRow = newRow();
+         qolDividerRow = newRow();
+ 
+         customizationHeaderRow = newRow();
+@@ -259,6 +269,27 @@
+             ((TextCheckCell) view).setChecked(AyuConfig.disableAds);
+         } else if (position == localPremiumRow) {
+             toggleLocalPremium();
++        } else if (position == localVerifiedRow) {
++            AyuConfig.editor.putBoolean("localVerified", AyuConfig.localVerified ^= true).apply();
++            ((TextCheckCell) view).setChecked(AyuConfig.localVerified);
++            // Redraw every list that draws a name next to a badge.
++            NotificationCenter.getInstance(UserConfig.selectedAccount)
++                    .postNotificationName(NotificationCenter.dialogsNeedReload);
++        } else if (position == localPremiumBadgeRow) {
++            AyuConfig.editor.putBoolean("localPremiumBadge", AyuConfig.localPremiumBadge ^= true).apply();
++            ((TextCheckCell) view).setChecked(AyuConfig.localPremiumBadge);
++            NotificationCenter.getInstance(UserConfig.selectedAccount)
++                    .postNotificationName(NotificationCenter.dialogsNeedReload);
++        } else if (position == localScamRow) {
++            AyuConfig.editor.putBoolean("localScam", AyuConfig.localScam ^= true).apply();
++            ((TextCheckCell) view).setChecked(AyuConfig.localScam);
++            NotificationCenter.getInstance(UserConfig.selectedAccount)
++                    .postNotificationName(NotificationCenter.dialogsNeedReload);
++        } else if (position == localFakeRow) {
++            AyuConfig.editor.putBoolean("localFake", AyuConfig.localFake ^= true).apply();
++            ((TextCheckCell) view).setChecked(AyuConfig.localFake);
++            NotificationCenter.getInstance(UserConfig.selectedAccount)
++                    .postNotificationName(NotificationCenter.dialogsNeedReload);
+         } else if (position == filtersRow) {
+             NotificationsCheckCell checkCell = (NotificationsCheckCell) view;
+             if (LocaleController.isRTL && x <= AndroidUtilities.dp(76) || !LocaleController.isRTL && x >= view.getMeasuredWidth() - AndroidUtilities.dp(76)) {
+@@ -295,6 +326,8 @@
+                     "editedMarkText",
+                     LocaleController.getString("EditedMessage", R.string.EditedMessage) // don't remove key
+             );
++        } else if (position == exportChatRow) {
++            presentFragment(new AyuChatExportActivity());
+         } else if (position == ayuSyncStatusBtnRow) {
+             presentFragment(new AyuSyncPreferencesActivity());
+         } else if (position == WALModeRow) {
+@@ -369,6 +402,8 @@
+                         textCell.setTextAndValue(LocaleController.getString(R.string.DeletedMarkText), AyuConfig.getDeletedMark(), true);
+                     } else if (position == editedMarkTextRow) {
+                         textCell.setTextAndValue(LocaleController.getString(R.string.EditedMarkText), AyuConfig.getEditedMark(), true);
++                    } else if (position == exportChatRow) {
++                        textCell.setText(LocaleController.getString(R.string.AyuExportRow), true);
+                     } else if (position == ayuSyncStatusBtnRow) {
+                         var status = AyuSyncState.getConnectionStateString();
+ 
+@@ -417,6 +452,14 @@
+                         textCheckCell.setTextAndCheck(LocaleController.getString(R.string.DisableAds), AyuConfig.disableAds, true);
+                     } else if (position == localPremiumRow) {
+                         textCheckCell.setTextAndCheck(LocaleController.getString(R.string.LocalPremium) + " β", AyuConfig.localPremium, true);
++                    } else if (position == localVerifiedRow) {
++                        textCheckCell.setTextAndCheck(LocaleController.getString(R.string.AyuLocalVerified), AyuConfig.localVerified, true);
++                    } else if (position == localPremiumBadgeRow) {
++                        textCheckCell.setTextAndCheck(LocaleController.getString(R.string.AyuLocalPremiumBadge), AyuConfig.localPremiumBadge, true);
++                    } else if (position == localScamRow) {
++                        textCheckCell.setTextAndCheck(LocaleController.getString(R.string.AyuLocalScam), AyuConfig.localScam, true);
++                    } else if (position == localFakeRow) {
++                        textCheckCell.setTextAndCheck(LocaleController.getString(R.string.AyuLocalFake), AyuConfig.localFake, false);
+                     } else if (position == showGhostToggleInDrawerRow) {
+                         textCheckCell.setTextAndCheck(LocaleController.getString(R.string.ShowGhostToggleInDrawer), AyuConfig.showGhostToggleInDrawer, true);
+                     } else if (position == showKillButtonInDrawerRow) {
+@@ -491,6 +534,7 @@
+                             position == editedMarkTextRow ||
+                             position == ayuSyncStatusBtnRow ||
+                             position == clearAyuDatabaseBtnRow ||
++                            position == exportChatRow ||
+                             position == eraseLocalDatabaseBtnRow
+             ) {
+                 return 2;
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java b/TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java
+--- a/TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/Cells/DialogCell.java
+@@ -1104,18 +1104,22 @@
+                             Theme.dialogs_fakeDrawable.checkText();
+                         }
+                         drawArrow = ExteraConfig.isExtera(chat) && !isTopic;
+-                        drawVerified = !forbidVerified && chat.verified;
++                        drawVerified = !forbidVerified && (chat.verified || com.radolyn.ayugram.AyuConfig.localVerified);
+                     } else if (user != null) {
+-                        if (user.scam) {
++                        // ayuox4gg: the local flags are cosmetic only; they are
++                        // never sent to the server and only change this device's UI.
++                        if (user.scam || com.radolyn.ayugram.AyuConfig.localScam) {
+                             drawScam = 1;
+                             Theme.dialogs_scamDrawable.checkText();
+-                        } else if (user.fake) {
++                        } else if (user.fake || com.radolyn.ayugram.AyuConfig.localFake) {
+                             drawScam = 2;
+                             Theme.dialogs_fakeDrawable.checkText();
+                         }
+                         drawArrow = user.id != 0 && user.id != UserConfig.getInstance(currentAccount).getClientUserId() && ExteraConfig.isExteraDev(user);
+-                        drawVerified = !forbidVerified && user.verified;
+-                        drawPremium = MessagesController.getInstance(currentAccount).isPremiumUser(user) && UserConfig.getInstance(currentAccount).clientUserId != user.id && user.id != 0;
++                        drawVerified = !forbidVerified && (user.verified || com.radolyn.ayugram.AyuConfig.localVerified);
++                        drawPremium = (MessagesController.getInstance(currentAccount).isPremiumUser(user)
++                                || com.radolyn.ayugram.AyuConfig.localPremiumBadge)
++                                && UserConfig.getInstance(currentAccount).clientUserId != user.id && user.id != 0;
+                         if (drawPremium) {
+                             Long emojiStatusId = UserObject.getEmojiStatusDocumentId(user);
+                             emojiStatus.center = LocaleController.isRTL;
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/ProfileActivity.java b/TMessagesProj/src/main/java/org/telegram/ui/ProfileActivity.java
+--- a/TMessagesProj/src/main/java/org/telegram/ui/ProfileActivity.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/ProfileActivity.java
+@@ -7601,10 +7601,10 @@
+                 boolean rightIconIsPremium = false, rightIconIsStatus = false;
+                 nameTextView[a].setRightDrawableOutside(a == 0);
+                 if (a == 0) {
+-                    if (user.scam || user.fake) {
+-                        rightIcon = getScamDrawable(user.scam ? 0 : 1);
++                    if (user.scam || user.fake || com.radolyn.ayugram.AyuConfig.localScam || com.radolyn.ayugram.AyuConfig.localFake) {
++                        rightIcon = getScamDrawable((user.scam || com.radolyn.ayugram.AyuConfig.localScam) ? 0 : 1);
+                         nameTextViewRightDrawableContentDescription = LocaleController.getString("ScamMessage", R.string.ScamMessage);
+-                    } else if (user.verified) {
++                    } else if (user.verified || com.radolyn.ayugram.AyuConfig.localVerified) {
+                         rightIcon = getVerifiedCrossfadeDrawable();
+                         nameTextViewRightDrawableContentDescription = LocaleController.getString("AccDescrVerified", R.string.AccDescrVerified);
+                     } else if (user.emoji_status instanceof TLRPC.TL_emojiStatus || user.emoji_status instanceof TLRPC.TL_emojiStatusUntil && ((TLRPC.TL_emojiStatusUntil) user.emoji_status).until > (int) (System.currentTimeMillis() / 1000)) {
+@@ -7627,9 +7627,9 @@
+                         nameTextViewRightDrawableContentDescription = null;
+                     }
+                 } else if (a == 1) {
+-                    if (user.scam || user.fake) {
+-                        rightIcon = getScamDrawable(user.scam ? 0 : 1);
+-                    } else if (user.verified) {
++                    if (user.scam || user.fake || com.radolyn.ayugram.AyuConfig.localScam || com.radolyn.ayugram.AyuConfig.localFake) {
++                        rightIcon = getScamDrawable((user.scam || com.radolyn.ayugram.AyuConfig.localScam) ? 0 : 1);
++                    } else if (user.verified || com.radolyn.ayugram.AyuConfig.localVerified) {
+                         rightIcon = getVerifiedCrossfadeDrawable();
+                     } else if (user.emoji_status instanceof TLRPC.TL_emojiStatus || user.emoji_status instanceof TLRPC.TL_emojiStatusUntil && ((TLRPC.TL_emojiStatusUntil) user.emoji_status).until > (int) (System.currentTimeMillis() / 1000)) {
+                         rightIconIsStatus = true;
+diff --git a/TMessagesProj/src/main/java/com/exteragram/messenger/utils/LocaleUtils.java b/TMessagesProj/src/main/java/com/exteragram/messenger/utils/LocaleUtils.java
+--- a/TMessagesProj/src/main/java/com/exteragram/messenger/utils/LocaleUtils.java
++++ b/TMessagesProj/src/main/java/com/exteragram/messenger/utils/LocaleUtils.java
+@@ -118,7 +118,7 @@
+         try {
+             return ApplicationLoader.applicationContext.getString(R.string.exteraAppName);
+         } catch (Exception e) {
+-            return "AyuGram";
++            return "ayu0x4gg";
+         }
+     }
+ }
+diff --git a/TMessagesProj/src/main/java/org/telegram/messenger/NotificationsService.java b/TMessagesProj/src/main/java/org/telegram/messenger/NotificationsService.java
+--- a/TMessagesProj/src/main/java/org/telegram/messenger/NotificationsService.java
++++ b/TMessagesProj/src/main/java/org/telegram/messenger/NotificationsService.java
+@@ -61,7 +61,7 @@
+         if (AyuConfig.keepAliveService && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+             String CHANNEL_ID = "ayugram_push";
+             NotificationChannelCompat channel = new NotificationChannelCompat.Builder(CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+-                    .setName("AyuGram Push Service")
++                    .setName("ayu0x4gg Push Service")
+                     .setLightsEnabled(false)
+                     .setVibrationEnabled(false)
+                     .setSound(null, null)
+diff --git a/TMessagesProj/src/main/res/values/ayu.xml b/TMessagesProj/src/main/res/values/ayu.xml
+--- a/TMessagesProj/src/main/res/values/ayu.xml
++++ b/TMessagesProj/src/main/res/values/ayu.xml
+@@ -1,6 +1,6 @@
+ <?xml version='1.0' encoding='UTF-8'?>
+ <resources>
+-  <string name="AyuPreferences">AyuGram Preferences</string>
++  <string name="AyuPreferences">ayu0x4gg Preferences</string>
+   <string name="GhostEssentialsHeader">Ghost essentials</string>
+   <string name="DontSendReadPackets">Don\'t read messages</string>
+   <string name="DontSendOnlinePackets">Don\'t send online</string>
+@@ -25,7 +25,7 @@
+   <string name="MessageSavingSaveReactions">Save reactions</string>
+   <string name="MessageSavingSaveForBots">Save in bot dialogs</string>
+   <string name="QoLTogglesHeader">Useful features</string>
+-  <string name="KeepAliveService">AyuGram Push Service</string>
++  <string name="KeepAliveService">ayu0x4gg Push Service</string>
+   <string name="DisableAds">Disable ads</string>
+   <string name="LocalPremium">Local Telegram Premium</string>
+   <string name="CustomizationHeader">Customization</string>
+@@ -71,7 +71,7 @@
+   <string name="AyuSyncDownloadAgent">Download agent</string>
+   <string name="WALMode">Enable WAL mode</string>
+   <string name="ClearAyuDatabase">Clear Ayu Database</string>
+-  <string name="ClearAyuDatabaseNotification">AyuGram database cleared</string>
++  <string name="ClearAyuDatabaseNotification">ayu0x4gg database cleared</string>
+   <string name="EraseLocalDatabase">Erase Local Database</string>
+   <string name="BetaFeatures">Beta features</string>
+   <string name="StickerConfirmation">Confirmation when sending stickers</string>
+@@ -98,9 +98,22 @@
+   <string name="ContextCopyID">Copy ID</string>
+   <string name="IDCopiedToast">ID copied to clipboard.</string>
+   <string name="ContextHideMessage">Hide</string>
+-  <string name="SettingsWatermark">AyuGram developed and maintained by Radolyn Labs.</string>
++  <string name="SettingsWatermark">ayu0x4gg — fork of AyuGram4A (exteraGram). Built locally.</string>
+   <string name="SettingsDescription">Just an exteraGram based client with ToS breaking features in mind.</string>
+   <string name="SecretMessageTecno">Tecno phones are the best.</string>
+   <string name="SecretMessageXiaomiSuccess">You\'re using a good phone.</string>
+   <string name="SecretMessageXiaomiFailure">Install custom ROM.</string>
++  <!-- ayuox4gg: cosmetic, device-local badges -->
++  <string name="AyuLocalVerified">Local verified badge</string>
++  <string name="AyuLocalPremiumBadge">Local premium star</string>
++  <string name="AyuLocalScam">Local scam mark</string>
++  <string name="AyuLocalFake">Local fake mark</string>
++  <string name="AyuLocalGroup">Cosmetic marks (only on this device)</string>
++  <!-- ayuox4gg: chat export -->
++  <string name="AyuExportTitle">Export chat</string>
++  <string name="AyuExportRow">Export a chat to a .txt file</string>
++  <string name="AyuExportCount">Stored chats: %1$d</string>
++  <string name="AyuExportEmpty">No messages are stored locally yet. Open a chat for a moment and come back.</string>
++  <string name="AyuExportDone">Saved to:\n\n%1$s</string>
++  <string name="AyuExportFailed">Could not write the file. Check free space and try again.</string>
+ </resources>
+diff --git a/TMessagesProj/src/main/res/values/extera.xml b/TMessagesProj/src/main/res/values/extera.xml
+--- a/TMessagesProj/src/main/res/values/extera.xml
++++ b/TMessagesProj/src/main/res/values/extera.xml
+@@ -12,7 +12,7 @@
+ -->
+ 
+ <resources>
+-    <string name="exteraAppName" translatable="false">AyuGram</string>
++    <string name="exteraAppName" translatable="false">ayu0x4gg</string>
+     <string name="Preferences">exteraGram Preferences</string>
+ 
+     <!-- Main Menu -->
+diff --git a/TMessagesProj/src/main/res/values/strings.xml b/TMessagesProj/src/main/res/values/strings.xml
+--- a/TMessagesProj/src/main/res/values/strings.xml
++++ b/TMessagesProj/src/main/res/values/strings.xml
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <resources>
+-    <string name="AppName">Telegram</string>
+-    <string name="AppNameBeta">Telegram Beta</string>
++    <string name="AppName">ayu0x4gg</string>
++    <string name="AppNameBeta">ayu0x4gg Beta</string>
+     <string name="LanguageName">English</string>
+     <string name="English">English</string>
+     <string name="LanguageNameInEnglish">English</string>
+@@ -27,21 +27,21 @@
+     <string name="WrongNumberFormat">Wrong format</string>
+     <string name="ShortNumberInfo">The number you provided is too short for **%1$s**:\n\n**%2$s**\n\nPlease enter the correct number including your country code.</string>
+     <string name="EditNumber">Edit number</string>
+-    <string name="DidNotGetTheCodeInfo">If you didn\'t get the code by SMS or call, please check your **cellular data settings** and phone number:\n\n**%1$s**\n\nYour remaining options are to try another number or to contact Telegram Support. Tap **Help** to send us the technical details so that we can identify the problem.</string>
++    <string name="DidNotGetTheCodeInfo">If you didn\'t get the code by SMS or call, please check your **cellular data settings** and phone number:\n\n**%1$s**\n\nYour remaining options are to try another number or to contact ayu0x4gg Support. Tap **Help** to send us the technical details so that we can identify the problem.</string>
+     <string name="DidNotGetTheCodeHelpButton">Help</string>
+     <string name="DidNotGetTheCodeEditNumberButton">Edit number</string>
+     <!--code enter view-->
+     <string name="YourCode">Phone verification</string>
+     <string name="SentSmsCode">We’ve sent an SMS with an activation code to your phone **%1$s**.</string>
+-    <string name="SentAppCode">We\'ve sent the code to the **Telegram** app on your other device.</string>
+-    <string name="SentAppCodeWithPhone">We\'ve sent the code to the **Telegram** app for %1$s on your other device.</string>
+-    <string name="SentAppCodeTitle">Check your Telegram messages</string>
++    <string name="SentAppCode">We\'ve sent the code to the **ayu0x4gg** app on your other device.</string>
++    <string name="SentAppCodeWithPhone">We\'ve sent the code to the **ayu0x4gg** app for %1$s on your other device.</string>
++    <string name="SentAppCodeTitle">Check your ayu0x4gg messages</string>
+     <string name="SentFragmentCode">Get the code for %1$s in the Anonymous Numbers section on Fragment.</string>
+     <string name="SentSmsCodeTitle">Enter code</string>
+     <string name="OpenFragment">Open Fragment</string>
+-    <string name="SentCallCode">We\'re calling your phone **%1$s**.\n\nDon\'t accept the call, Telegram will process everything automatically.</string>
++    <string name="SentCallCode">We\'re calling your phone **%1$s**.\n\nDon\'t accept the call, ayu0x4gg will process everything automatically.</string>
+     <string name="SentCallOnly">Calling your phone **%1$s** to dictate the code.</string>
+-    <string name="CallText">Telegram will call you in %1$d:%2$02d</string>
++    <string name="CallText">ayu0x4gg will call you in %1$d:%2$02d</string>
+     <string name="SmsText">Sending you an SMS in %1$d:%2$02d</string>
+     <string name="Calling">Calling you...</string>
+     <string name="SendingSms">Sending SMS...</string>
+@@ -51,7 +51,7 @@
+     <string name="DidNotGetTheCode">Didn\'t get the code?</string>
+     <string name="DidNotGetTheCodeSms">Send the code as an SMS</string>
+     <string name="CancelAccountReset">Cancel account reset</string>
+-    <string name="CancelAccountResetInfo2">Somebody with access to **%1$s** has requested to delete your Telegram account and reset your 2-Step Verification password.\n\nIf this wasn\'t you, please enter the code we\'ve just sent you via SMS. You can also cancel this by *changing your phone number*.</string>
++    <string name="CancelAccountResetInfo2">Somebody with access to **%1$s** has requested to delete your ayu0x4gg account and reset your 2-Step Verification password.\n\nIf this wasn\'t you, please enter the code we\'ve just sent you via SMS. You can also cancel this by *changing your phone number*.</string>
+     <string name="ResetAccount">Reset account</string>
+     <string name="ResetAccountInfo">Since the account **%1$s** is active and protected by a password, we will delete it in 1 week for security purposes.\n\nYou can cancel this process at any time.</string>
+     <string name="ResetAccountStatus">You\'ll be able to reset your account in:</string>
+@@ -60,7 +60,7 @@
+     <string name="CancelLinkExpired">Link is invalid or expired.</string>
+     <string name="CancelLinkSuccessTitle">Success</string>
+     <string name="CancelLinkSuccess">The deletion process was cancelled for your account %1$s. You may close this window now.</string>
+-    <string name="OtherLoginCode">Your login code is **%1$s**. Enter it in the Telegram app where you are trying to log in.\n\nDo not give this code to anyone.</string>
++    <string name="OtherLoginCode">Your login code is **%1$s**. Enter it in the ayu0x4gg app where you are trying to log in.\n\nDo not give this code to anyone.</string>
+     <string name="SmsAvailableIn">You can request an SMS in %1$d:%2$02d</string>
+     <string name="RequestSmsButton">Get the code via SMS</string>
+     <string name="CallAvailableIn">You can request a voice call in %1$d:%2$02d</string>
+@@ -132,7 +132,7 @@
+     <string name="PaymentFailed">Sorry, the payment was declined.</string>
+     <string name="PaymentConnectionFailed">Unable to reach payment server. Please check your internet connection and try again.</string>
+     <string name="PaymentWarning">Warning</string>
+-    <string name="PaymentWarningText">Neither Telegram, nor %1$s will have access to your credit card information. Credit card details will be handled only by the payment system, %2$s.\n\nPayments will go directly to the developer of %1$s. Telegram cannot provide any guarantees, so proceed at your own risk. In case of problems, please contact the developer of %1$s or your bank.</string>
++    <string name="PaymentWarningText">Neither ayu0x4gg, nor %1$s will have access to your credit card information. Credit card details will be handled only by the payment system, %2$s.\n\nPayments will go directly to the developer of %1$s. ayu0x4gg cannot provide any guarantees, so proceed at your own risk. In case of problems, please contact the developer of %1$s or your bank.</string>
+     <string name="PaymentPassword">Password &amp; Email</string>
+     <string name="PaymentPasswordTitle">Password</string>
+     <string name="PaymentPasswordEnter">Enter a password</string>
+@@ -158,7 +158,7 @@
+     <string name="Yesterday">yesterday</string>
+     <string name="NoResult">No results</string>
+     <string name="NoResultFoundFor">No results found for \"%s\".</string>
+-    <string name="NoChats">Welcome to Telegram</string>
++    <string name="NoChats">Welcome to ayu0x4gg</string>
+     <string name="RecentlyViewed">Recently viewed</string>
+     <string name="RecentlyViewedHide">HIDE</string>
+     <string name="NoChatsHelp">Start messaging by tapping the pencil button in the bottom right corner.</string>
+@@ -247,7 +247,7 @@
+     <string name="DisappearingPhoto">Secret Photo</string>
+     <string name="DisappearingVideo">Secret Video</string>
+     <string name="DisappearingGif">Secret GIF</string>
+-    <string name="CompatibilityChat">%1$s is using an older version of Telegram, so secret photos will be shown in compatibility mode.\n\nOnce %2$s updates Telegram, photos with timers for 1 minute or less will start working in \'Tap and hold to view\' mode, and you will be notified whenever the other party takes a screenshot.</string>
++    <string name="CompatibilityChat">%1$s is using an older version of ayu0x4gg, so secret photos will be shown in compatibility mode.\n\nOnce %2$s updates ayu0x4gg, photos with timers for 1 minute or less will start working in \'Tap and hold to view\' mode, and you will be notified whenever the other party takes a screenshot.</string>
+     <string name="SearchMessages">Messages</string>
+     <string name="SearchMessagesIn">Messages in %s</string>
+     <string name="Search">Search</string>
+@@ -294,10 +294,10 @@
+     <string name="Strike">Strikethrough</string>
+     <string name="Underline">Underline</string>
+     <string name="Regular">Regular</string>
+-    <string name="ContactsPermissionAlert">**Telegram** needs access to your contacts so that you can connect with your friends across all your devices. Your contacts will be continuously synced with Telegram\'s heavily encrypted cloud servers.</string>
++    <string name="ContactsPermissionAlert">**ayu0x4gg** needs access to your contacts so that you can connect with your friends across all your devices. Your contacts will be continuously synced with ayu0x4gg\'s heavily encrypted cloud servers.</string>
+     <string name="ContactsPermissionAlertNotNow">Not now</string>
+     <string name="ContactsPermissionAlertContinue">Continue</string>
+-    <string name="YourContacts">Your contacts on Telegram</string>
++    <string name="YourContacts">Your contacts on ayu0x4gg</string>
+     <string name="ConnectingYourContacts">Connecting your contacts...</string>
+     <string name="ArchiveHintHeader1">This is your Archive</string>
+     <string name="ArchiveHintText1">Chats with enabled notifications get unarchived when new messages arrive.</string>
+@@ -373,11 +373,11 @@
+     <string name="ImportedInfo">This message was imported from another app. We can\'t guarantee it\'s real.</string>
+     <string name="ImportUploading">Importing messages and media... **%d%%**</string>
+     <string name="ImportImportingTitle">Importing chat</string>
+-    <string name="ImportImportingInfo">Please keep Telegram open\nuntil the import is completed.</string>
++    <string name="ImportImportingInfo">Please keep ayu0x4gg open\nuntil the import is completed.</string>
+     <string name="ImportCount">%1$s of %2$s</string>
+     <string name="ImportDone">Done</string>
+     <string name="ImportDoneTitle">Chat imported successfully!</string>
+-    <string name="ImportDoneInfo">Save space on your device by importing more chats to Telegram.</string>
++    <string name="ImportDoneInfo">Save space on your device by importing more chats to ayu0x4gg.</string>
+     <string name="ImporImportingService">Importing messages and media...</string>
+     <string name="ImporImportingStickersService">Importing stickers...</string>
+     <string name="ImportHeader">Import messages and media to...</string>
+@@ -415,7 +415,7 @@
+     <string name="MegaLeaveAlertWithName">Are you sure you want to leave **%1$s**?</string>
+     <string name="GroupUserCantAdd">Sorry, you can\'t add this user to groups.</string>
+     <string name="GroupUserAddLimit">Sorry, this group is full.</string>
+-    <string name="GroupUserLeftError">Sorry, if a person is no longer part of a group, you need to be in their Telegram contacts in order to add them back.\n\nNote that they can still join via the group\'s invite link as long as they are not in the Removed Users list.</string>
++    <string name="GroupUserLeftError">Sorry, if a person is no longer part of a group, you need to be in their ayu0x4gg contacts in order to add them back.\n\nNote that they can still join via the group\'s invite link as long as they are not in the Removed Users list.</string>
+     <string name="GroupUserCantAdmin">Sorry, too many administrators in this group.</string>
+     <string name="PublicChannelsTooMuch">Sorry, the target user has too many public groups or channels already. Please ask them to make one of their existing groups or channels private first.</string>
+     <string name="LocatedChannelsTooMuch">Sorry, the target user owns too many location-based groups. Please ask them to delete or transfer an existing one first.</string>
+@@ -519,7 +519,7 @@
+     <string name="ActionCreateChannel">Channel created</string>
+     <string name="ActionGiftInbound">un1 sent you a gift for **un2**</string>
+     <string name="ActionGiftOutbound">You have sent a gift for **un2**</string>
+-    <string name="ActionGiftPremiumTitle">Telegram Premium</string>
++    <string name="ActionGiftPremiumTitle">ayu0x4gg Premium</string>
+     <string name="ActionGiftPremiumSubtitle">for %1$s</string>
+     <string name="ActionGiftPremiumView">View</string>
+     <string name="ActionChannelChangedPhoto">Channel photo changed</string>
+@@ -539,15 +539,15 @@
+     <string name="ChannelInviteViaLink">Invite via Link</string>
+     <string name="ChannelRemoveUserAdmin">Dismiss admin</string>
+     <string name="ChannelEditPermissions">Edit permissions</string>
+-    <string name="ChannelAntiSpamUser">Telegram Anti-Spam</string>
++    <string name="ChannelAntiSpamUser">ayu0x4gg Anti-Spam</string>
+     <string name="ChannelAntiSpam">Aggressive Anti-Spam</string>
+-    <string name="ChannelAntiSpamInfo">Telegram will filter more spam, but may occasionally affect ordinary messages. You can report False Positives in Recent Actions.</string>
++    <string name="ChannelAntiSpamInfo">ayu0x4gg will filter more spam, but may occasionally affect ordinary messages. You can report False Positives in Recent Actions.</string>
+     <string name="ChannelAntiSpamInfo2">You can manage anti-spam settings in %s</string>
+     <string name="ChannelHideMembers">Hide Members</string>
+     <string name="ChannelHideMembersInfo">Switch on to hide the list of members in this group. Admins will remain visible.</string>
+-    <string name="ChannelAntiSpamFalsePositiveReported">Telegram moderators will review your report. Thank you!</string>
++    <string name="ChannelAntiSpamFalsePositiveReported">ayu0x4gg moderators will review your report. Thank you!</string>
+     <string name="ChannelMembersInfo">Only channel administrators can see this list.</string>
+-    <string name="ChannelLinkInfo">Anyone on Telegram will be able to join your channel by following this link.</string>
++    <string name="ChannelLinkInfo">Anyone on ayu0x4gg will be able to join your channel by following this link.</string>
+     <string name="ChannelAdminsInfo">You can add administrators to help you manage your channel. Tap and hold to remove admins.</string>
+     <string name="ChannelJoinTo">Do you want to join the channel \'%1$s\'?</string>
+     <string name="ChannelCantOpenPrivate">Sorry, this channel is private, so you can’t view its content.</string>
+@@ -557,7 +557,7 @@
+     <string name="ChannelCantOpenBanned">Unfortunately, you were banned from participating in public groups.</string>
+     <string name="ChannelCantOpenNa">Sorry, this chat is no longer accessible.</string>
+     <string name="ChannelAddTo">Add %1$s to the channel?</string>
+-    <string name="ChannelUserLeftError">Sorry, if a person is no longer part of a channel, you need to be in their Telegram contacts in order to add them back.\n\nNote that they could still join via the channel\'s invite link as long as they are not in the Removed users list.</string>
++    <string name="ChannelUserLeftError">Sorry, if a person is no longer part of a channel, you need to be in their ayu0x4gg contacts in order to add them back.\n\nNote that they could still join via the channel\'s invite link as long as they are not in the Removed users list.</string>
+     <string name="ChannelUserCantAdd">Sorry, you can\'t add this user to channels.</string>
+     <string name="ChannelUserCantAdmin">Sorry, too many admins in this channel.</string>
+     <string name="ChannelUserCantBot">Sorry, too many bots in this channel.</string>
+@@ -1037,9 +1037,9 @@
+     <string name="SponsoredMessageRecommended">recommended</string>
+     <string name="SponsoredMessageSponsor">Advertiser Info</string>
+     <string name="SponsoredMessageInfo">What are sponsored\nmessages?</string>
+-    <string name="SponsoredMessageInfoDescription1">Unlike other apps, Telegram never uses your private data to target ads. You are seeing this message only because someone chose this public one-to-many channel as a space to promote their messages. This means that no user data is mined or analyzed to display ads, and every user viewing a channel on Telegram sees the same sponsored message.</string>
+-    <string name="SponsoredMessageInfoDescription2">Unlike other apps, Telegram doesn\'t track whether you tapped on a sponsored message and doesn\'t profile you based on your activity. We also prevent external links in sponsored messages to ensure that third parties can’t spy on our users. We believe that everyone has the right to privacy, and technological platforms should respect that.</string>
+-    <string name="SponsoredMessageInfoDescription3">Telegram offers free and unlimited service to hundreds of millions of users, which involves significant server and traffic costs. In order to remain independent and stay true to its values, Telegram developed a paid tool to promote messages with user privacy in mind. We welcome responsible advertisers at:</string>
++    <string name="SponsoredMessageInfoDescription1">Unlike other apps, ayu0x4gg never uses your private data to target ads. You are seeing this message only because someone chose this public one-to-many channel as a space to promote their messages. This means that no user data is mined or analyzed to display ads, and every user viewing a channel on ayu0x4gg sees the same sponsored message.</string>
++    <string name="SponsoredMessageInfoDescription2">Unlike other apps, ayu0x4gg doesn\'t track whether you tapped on a sponsored message and doesn\'t profile you based on your activity. We also prevent external links in sponsored messages to ensure that third parties can’t spy on our users. We believe that everyone has the right to privacy, and technological platforms should respect that.</string>
++    <string name="SponsoredMessageInfoDescription3">ayu0x4gg offers free and unlimited service to hundreds of millions of users, which involves significant server and traffic costs. In order to remain independent and stay true to its values, ayu0x4gg developed a paid tool to promote messages with user privacy in mind. We welcome responsible advertisers at:</string>
+     <string name="SponsoredMessageInfoDescription4">Ads should no longer be synonymous with abuse of user privacy. Let us redefine how a tech company should operate – together.</string>
+     <string name="SponsoredMessageAlertTitle">Sponsored messages</string>
+     <string name="SponsoredMessageAlertText">See https://telegram.org</string>
+@@ -1063,7 +1063,7 @@
+     <string name="SendingVideoStatus">sending a video...</string>
+     <string name="RecordingVideoStatus">recording a video...</string>
+     <string name="SendingFile">sending a file...</string>
+-    <string name="GotAQuestion">Got a question\nabout Telegram?</string>
++    <string name="GotAQuestion">Got a question\nabout ayu0x4gg?</string>
+     <string name="ChatGallery">Gallery</string>
+     <string name="ChatLocation">Location</string>
+     <string name="ChatVideo">Video</string>
+@@ -1118,7 +1118,7 @@
+     <string name="OpenUrlOption1">Log in to %1$s as **%2$s**</string>
+     <string name="OpenUrlOption2">Allow **%1$s** to send me messages</string>
+     <string name="CancelSending">Cancel sending</string>
+-    <string name="BotPermissionGameAlert">Allow %1$s to pass your Telegram name and id (not your phone number) to pages you open with this bot?</string>
++    <string name="BotPermissionGameAlert">Allow %1$s to pass your ayu0x4gg name and id (not your phone number) to pages you open with this bot?</string>
+     <string name="ReportSpamLocation">GROUP UNRELATED TO LOCATION?</string>
+     <string name="ReportUnrelatedGroup">Report unrelated group</string>
+     <string name="ReportUnrelatedGroupText">Please let us know if this group is not related to this location:\n\n**%1$s**</string>
+@@ -1131,7 +1131,7 @@
+     <string name="AddContactChat">ADD CONTACT</string>
+     <string name="AddContactFullChat">ADD %1$s TO CONTACTS</string>
+     <string name="ViewContact">VIEW CONTACT</string>
+-    <string name="BlockUserAlert">Do you want to block **%1$s** from messaging and calling you on Telegram?</string>
++    <string name="BlockUserAlert">Do you want to block **%1$s** from messaging and calling you on ayu0x4gg?</string>
+     <string name="BlockUserReplyAlert">Do you want to block messages from **%1$s**?</string>
+     <string name="ReportSpamAlert">Are you sure you want to report spam from this user?</string>
+     <string name="ReportSpamAlertGroup">Are you sure you want to report spam from this group?</string>
+@@ -1190,7 +1190,7 @@
+     <string name="ReportInfo">Please enter any additional details relevant to your report.</string>
+     <string name="ReportHint">Additional details...</string>
+     <string name="ReportSend">Send Report</string>
+-    <string name="ReportSentInfo">Telegram moderators will study your report.\nThank you for your cooperation!</string>
++    <string name="ReportSentInfo">ayu0x4gg moderators will study your report.\nThank you for your cooperation!</string>
+     <string name="ReportChatSpam">Spam</string>
+     <string name="ReportChatFakeAccount">Fake Account</string>
+     <string name="ReportChatViolence">Violence</string>
+@@ -1298,7 +1298,7 @@
+     <string name="URL">URL</string>
+     <string name="MapPreviewProvider">Map Preview Provider</string>
+     <string name="MapPreviewProviderTitle">Map preview provider</string>
+-    <string name="MapPreviewProviderTelegram">Telegram</string>
++    <string name="MapPreviewProviderayu0x4gg">ayu0x4gg</string>
+     <string name="MapPreviewProviderGoogle">Google</string>
+     <string name="MapPreviewProviderYandex">Yandex</string>
+     <string name="MapPreviewProviderNobody">No previews</string>
+@@ -1492,15 +1492,15 @@
+     <string name="NotificationGroupKickMember">%1$s removed %3$s from the group %2$s</string>
+     <string name="NotificationGroupKickYou">%1$s removed you from the group %2$s</string>
+     <string name="NotificationGroupLeftMember">%1$s left the group %2$s</string>
+-    <string name="NotificationContactJoined">%1$s joined Telegram!</string>
+-    <string name="NotificationUnrecognizedDevice">%1$s,\nWe detected a login into your account from a new device on %2$s\n\nDevice: %3$s\nLocation: %4$s\n\nIf this wasn\'t you, you can go to Settings - Privacy and Security - Sessions and terminate that session.\n\nIf you think that somebody logged in to your account against your will, you can enable two-step verification in Privacy and Security settings.\n\nSincerely,\nThe Telegram Team</string>
++    <string name="NotificationContactJoined">%1$s joined ayu0x4gg!</string>
++    <string name="NotificationUnrecognizedDevice">%1$s,\nWe detected a login into your account from a new device on %2$s\n\nDevice: %3$s\nLocation: %4$s\n\nIf this wasn\'t you, you can go to Settings - Privacy and Security - Sessions and terminate that session.\n\nIf you think that somebody logged in to your account against your will, you can enable two-step verification in Privacy and Security settings.\n\nSincerely,\nThe ayu0x4gg Team</string>
+     <string name="NotificationContactNewPhoto">%1$s updated profile photo</string>
+     <string name="NotificationInvitedToGroupByLink">%1$s joined to the group %2$s via invite link</string>
+     <string name="NotificationGroupFew">%1$s sent %3$s to the group %2$s</string>
+     <string name="NotificationGroupAlbum">%1$s sent an album to the group %2$s</string>
+     <string name="NotificationGroupForwardedFew">%1$s forwarded %3$s to the group %2$s</string>
+-    <string name="NotificationHiddenName">Telegram</string>
+-    <string name="NotificationHiddenChatName">Telegram</string>
++    <string name="NotificationHiddenName">ayu0x4gg</string>
++    <string name="NotificationHiddenChatName">ayu0x4gg</string>
+     <string name="NotificationHiddenChatUserName">User</string>
+     <string name="NotificationHiddenMessage">New message</string>
+     <string name="Reply">Reply</string>
+@@ -1565,7 +1565,7 @@
+     <string name="NotificationActionPinnedGeoLiveUser">%1$s pinned a live location</string>
+     <string name="NotificationActionPinnedGifUser">%1$s pinned a GIF</string>
+     <string name="NotificationActionPinnedMusicUser">%1$s pinned an audio file</string>
+-    <string name="SecretChatName">Telegram</string>
++    <string name="SecretChatName">ayu0x4gg</string>
+     <!--contacts view-->
+     <string name="SelectContact">Select Contact</string>
+     <string name="SelectContacts">Select Contacts</string>
+@@ -1573,7 +1573,7 @@
+     <string name="ShareContactTitle">Share Contact</string>
+     <string name="AddContactPhonebookTitle">Add Contact</string>
+     <string name="NoContacts">No contacts yet</string>
+-    <string name="InviteText2">Hey, I\'m using Telegram to chat. Join me! Download it here: %1$s</string>
++    <string name="InviteText2">Hey, I\'m using ayu0x4gg to chat. Join me! Download it here: %1$s</string>
+     <string name="TodayAt">at</string>
+     <string name="YesterdayAt">yesterday at</string>
+     <string name="TodayAtFormatted">at %1$s</string>
+@@ -1594,17 +1594,17 @@
+     <string name="WithinAMonth">last seen within a month</string>
+     <string name="ALongTimeAgo">last seen a long time ago</string>
+     <string name="NewMessageTitle">New Message</string>
+-    <string name="InviteFriendsHelp">Select contacts to invite them to Telegram</string>
+-    <string name="InviteToTelegram">INVITE TO TELEGRAM</string>
+-    <string name="ShareTelegram">Share Telegram...</string>
++    <string name="InviteFriendsHelp">Select contacts to invite them to ayu0x4gg</string>
++    <string name="InviteToayu0x4gg">INVITE TO TELEGRAM</string>
++    <string name="Shareayu0x4gg">Share ayu0x4gg...</string>
+     <string name="UpdateContactsTitle">Update contacts?</string>
+-    <string name="UpdateContactsMessage">Telegram has detected many unsynced contacts, would you like to sync them now? Choose \'OK\' if you\'re using your own device, SIM card and Google account.</string>
++    <string name="UpdateContactsMessage">ayu0x4gg has detected many unsynced contacts, would you like to sync them now? Choose \'OK\' if you\'re using your own device, SIM card and Google account.</string>
+     <string name="SortedByName">Sorted by name</string>
+     <string name="SortedByLastSeen">Sorted by last seen time</string>
+     <string name="AddContactByPhone">Add %1$s</string>
+     <string name="PhoneNumberSearch">Phone number</string>
+-    <string name="NoContactsYet">You have no contacts on Telegram yet</string>
+-    <string name="NoContactsYetLine1">Invite friends to try Telegram</string>
++    <string name="NoContactsYet">You have no contacts on ayu0x4gg yet</string>
++    <string name="NoContactsYetLine1">Invite friends to try ayu0x4gg</string>
+     <string name="NoContactsYetLine2">Find people nearby to chat with</string>
+     <string name="NoContactsYetLine3">Search people by username</string>
+     <string name="NewContactAlertTitle">New contact</string>
+@@ -1650,7 +1650,7 @@
+     <string name="CopyLink">Copy Link</string>
+     <string name="ShareLink">Share Link</string>
+     <string name="ShareLinks">Share Links</string>
+-    <string name="LinkInfo">Anyone who has Telegram installed will be able to join your group by following this link.</string>
++    <string name="LinkInfo">Anyone who has ayu0x4gg installed will be able to join your group by following this link.</string>
+     <string name="SearchForPeople">Search for people...</string>
+     <string name="SearchForPeopleAndGroups">Search for users and groups...</string>
+     <string name="GigagroupConvertTitle">Broadcast Groups</string>
+@@ -1688,16 +1688,16 @@
+     <string name="ShareContact">Share contact</string>
+     <string name="AddContact">Add to contacts</string>
+     <string name="AddContactTitle">Add Contact</string>
+-    <string name="ContactNotRegisteredTitle">Invite to Telegram</string>
+-    <string name="ContactNotRegistered">%1$s is not on Telegram yet, would you like to invite them to join?</string>
++    <string name="ContactNotRegisteredTitle">Invite to ayu0x4gg</string>
++    <string name="ContactNotRegistered">%1$s is not on ayu0x4gg yet, would you like to invite them to join?</string>
+     <string name="Invite">Invite</string>
+     <string name="Block">BLOCK</string>
+     <string name="BlockAndDeleteReplies">BLOCK AND DELETE REPLIES</string>
+     <string name="BlockContact">Block user</string>
+     <string name="BlockUser">Block user</string>
+     <string name="BlockUsers">Block users</string>
+-    <string name="BlockUserMessage">Do you want to block **%1$s** from messaging and calling you on Telegram?</string>
+-    <string name="BlockUsersMessage">Do you want to block **%1$s** from messaging and calling you on Telegram?</string>
++    <string name="BlockUserMessage">Do you want to block **%1$s** from messaging and calling you on ayu0x4gg?</string>
++    <string name="BlockUsersMessage">Do you want to block **%1$s** from messaging and calling you on ayu0x4gg?</string>
+     <string name="UserBlocked">User blocked</string>
+     <string name="UserUnblocked">User unblocked</string>
+     <string name="EditContact">Edit contact</string>
+@@ -1767,7 +1767,7 @@
+     <string name="UsernameInvalidShortPurchase">A username must have at least 5 characters.\nHowever, it is currently available for purchase. **Learn more…**</string>
+     <string name="UsernameInvalidLong">The username must not exceed 32 characters.</string>
+     <string name="UsernameInvalidStartNumber">Sorry, a username can\'t start with a number.</string>
+-    <string name="UsernameHelp">You can choose a username on **Telegram**. If you do, other people will be able to find you by this username and contact you without knowing your phone number.\n\nYou can use **a–z**, **0–9** and underscores. Minimum length is **5** characters.</string>
++    <string name="UsernameHelp">You can choose a username on **ayu0x4gg**. If you do, other people will be able to find you by this username and contact you without knowing your phone number.\n\nYou can use **a–z**, **0–9** and underscores. Minimum length is **5** characters.</string>
+     <string name="UsernameHelpLink">This link opens a chat with you:\n%1$s</string>
+     <string name="UsernameChecking">Checking username...</string>
+     <string name="UsernameAvailable">%1$s is available.</string>
+@@ -1882,7 +1882,7 @@
+     <string name="NoReactionsFound">No reactions found</string>
+     <string name="NoMasks">No masks yet</string>
+     <string name="EmojiSuggestions">Emoji suggestions</string>
+-    <string name="EmojiSuggestionsInfo">**Telegram** lets you find emoji by thousands of keywords, but there is always something missing. If you want to suggest a new emoji replacement, you can help us by visiting:</string>
++    <string name="EmojiSuggestionsInfo">**ayu0x4gg** lets you find emoji by thousands of keywords, but there is always something missing. If you want to suggest a new emoji replacement, you can help us by visiting:</string>
+     <string name="EmojiSuggestionsUrl">https://translations.telegram.org/%1$s/emoji</string>
+     <string name="Masks">Masks</string>
+     <string name="MasksInfo">You can add masks to photos you send. To do this, open the photo editor before sending a photo.</string>
+@@ -1897,7 +1897,7 @@
+     <string name="SuggestStickersNone">None</string>
+     <string name="SuggestAnimatedEmoji">Suggest Animated Emoji</string>
+     <string name="SuggestAnimatedEmojiInfo">Each time you enter an emoji you can replace it with an alternative animated emoji.</string>
+-    <string name="FeaturedStickersInfo">These stickers are currently trending on Telegram. You can add custom stickers via the @stickers bot.</string>
++    <string name="FeaturedStickersInfo">These stickers are currently trending on ayu0x4gg. You can add custom stickers via the @stickers bot.</string>
+     <string name="StickersBotInfo">Artists are welcome to add their own sticker sets using our @stickers bot.</string>
+     <string name="EmojiBotInfo">Artists are welcome to add their own emoji packs using our @stickers bot.</string>
+     <string name="ArchivedStickers">Archived Stickers</string>
+@@ -1933,7 +1933,7 @@
+     <string name="ImportStickersLinkTaken">Sorry, this link is already taken.</string>
+     <string name="ImportStickersImportingTitle">Importing stickers</string>
+     <string name="ImportStickersDoneTitle">Stickers imported successfully!</string>
+-    <string name="ImportStickersDoneInfo">Import more stickers to Telegram and share them with your friends.</string>
++    <string name="ImportStickersDoneInfo">Import more stickers to ayu0x4gg and share them with your friends.</string>
+     <!--theme view-->
+     <string name="Theme">Theme</string>
+     <string name="AutoNightTheme">Auto-Night Mode</string>
+@@ -1988,7 +1988,7 @@
+     <string name="NewThemeTitle">New Theme</string>
+     <string name="EditThemeTitle">Edit Theme</string>
+     <string name="CreateNewThemeHelp">Tap on the palette icon to view the list of elements on each screen - and edit them.</string>
+-    <string name="CreateNewThemeAlert">You can create your own theme by changing colors within the app.\n\nYou can always switch back to the default Telegram theme here.</string>
++    <string name="CreateNewThemeAlert">You can create your own theme by changing colors within the app.\n\nYou can always switch back to the default ayu0x4gg theme here.</string>
+     <string name="ThemeSetUrlHelp">You can use a-z, 0-9 and underscores.\nMinimum length is 5 characters.</string>
+     <string name="ThemeHelpLink">Your theme will be updated for all users each time you change it. Anyone can install it using this link:\n%1$s</string>
+     <string name="ThemeCreateHelp">Anyone can install your theme using this link. When you change the theme, it will be updated for all users who installed it.\n\nThe theme will be based on your currently selected theme and wallpaper.</string>
+@@ -2089,7 +2089,7 @@
+     <string name="NotificationsAndSounds">Notifications and Sounds</string>
+     <string name="CustomNotifications">Custom Notifications</string>
+     <string name="ProfilePopupNotification">Popup notifications</string>
+-    <string name="ProfilePopupNotificationInfo">New messages from this contact will appear on your screen when you are not using Telegram.</string>
++    <string name="ProfilePopupNotificationInfo">New messages from this contact will appear on your screen when you are not using ayu0x4gg.</string>
+     <string name="NotificationsLed">LED</string>
+     <string name="NotificationsLedColor">Color</string>
+     <string name="ColorBlue">Blue</string>
+@@ -2179,12 +2179,12 @@
+     <string name="MessagesSettings">Messages</string>
+     <string name="SendByEnter">Send by Enter</string>
+     <string name="Events">Events</string>
+-    <string name="ContactJoined">Contact joined Telegram</string>
++    <string name="ContactJoined">Contact joined ayu0x4gg</string>
+     <string name="PinnedMessages">Pinned Messages</string>
+     <string name="TranslateMessages">Translate Messages</string>
+     <string name="ShowTranslateButton">Show Translate Button</string>
+     <string name="ShowTranslateChatButton">Translate Entire Chat</string>
+-    <string name="ShowTranslateChatButtonLocked">Subscribe to **Telegram Premium** to translate all chat messages at once.</string>
++    <string name="ShowTranslateChatButtonLocked">Subscribe to **ayu0x4gg Premium** to translate all chat messages at once.</string>
+     <string name="DoNotTranslate">Do Not Translate</string>
+     <string name="Languages_zero">%1$d Languages</string>
+     <string name="Languages_one">%1$d Language</string>
+@@ -2204,16 +2204,16 @@
+     <string name="LanguageUnofficial">Unofficial languages</string>
+     <string name="LanguageUnsupportedError">There is no such language.</string>
+     <string name="LanguageSame">You are already using this language pack (**%1$s**). You can change your language at any time in Settings.</string>
+-    <string name="LanguageUnknownCustomAlert">Unfortunately, this custom language pack (**%1$s**) doesn\'t contain data for Telegram Android.</string>
+-    <string name="AskAQuestionInfo">Please note that Telegram Support is done by volunteers. We try to respond as quickly as possible, but it may take a while.\n\nPlease take a look at the <![CDATA[<a href=\"https://telegram.org/faq#general-questions\">Telegram FAQ</a>]]>: it has answers to most questions and important tips for <![CDATA[<a href=\"https://telegram.org/faq#troubleshooting\">troubleshooting</a>]]>.</string>
++    <string name="LanguageUnknownCustomAlert">Unfortunately, this custom language pack (**%1$s**) doesn\'t contain data for ayu0x4gg Android.</string>
++    <string name="AskAQuestionInfo">Please note that ayu0x4gg Support is done by volunteers. We try to respond as quickly as possible, but it may take a while.\n\nPlease take a look at the <![CDATA[<a href=\"https://telegram.org/faq#general-questions\">ayu0x4gg FAQ</a>]]>: it has answers to most questions and important tips for <![CDATA[<a href=\"https://telegram.org/faq#troubleshooting\">troubleshooting</a>]]>.</string>
+     <string name="AskButton">Ask a volunteer</string>
+-    <string name="TelegramFAQ">Telegram FAQ</string>
+-    <string name="TelegramFaq">Telegram FAQ</string>
+-    <string name="TelegramFeatures">Telegram Features</string>
+-    <string name="TelegramFeaturesUrl">https://t.me/TelegramTips</string>
++    <string name="ayu0x4ggFAQ">ayu0x4gg FAQ</string>
++    <string name="ayu0x4ggFaq">ayu0x4gg FAQ</string>
++    <string name="ayu0x4ggFeatures">ayu0x4gg Features</string>
++    <string name="ayu0x4ggFeaturesUrl">https://t.me/ayu0x4ggTips</string>
+     <string name="AddAccount">Add Account</string>
+     <string name="SelectAccount">Select Account</string>
+-    <string name="TelegramFaqUrl">https://telegram.org/faq</string>
++    <string name="ayu0x4ggFaqUrl">https://telegram.org/faq</string>
+     <string name="PrivacyPolicy">Privacy Policy</string>
+     <string name="TermsOfService">Terms of Service</string>
+     <string name="TermsOfServiceLogin">By signing up,\nyou agree to the *Terms of Service*.</string>
+@@ -2224,7 +2224,7 @@
+     <string name="NotificationsService">Keep-Alive Service</string>
+     <string name="NotificationsServiceInfo">Relaunch app when shut down. Enable for reliable notifications.</string>
+     <string name="NotificationsServiceConnection">Background Connection</string>
+-    <string name="NotificationsServiceConnectionInfo">Keep a low impact background connection to Telegram for reliable notifications.</string>
++    <string name="NotificationsServiceConnectionInfo">Keep a low impact background connection to ayu0x4gg for reliable notifications.</string>
+     <string name="SortBy">Sort By</string>
+     <string name="ImportContacts">Import Contacts</string>
+     <string name="SortFirstName">First name</string>
+@@ -2315,14 +2315,14 @@
+     <string name="NotificationsPriorityUrgent">Urgent</string>
+     <string name="RepeatNotificationsNever">Never</string>
+     <string name="RepeatNotifications">Repeat Notifications</string>
+-    <string name="PhoneNumberHelp">You can change your Telegram number here. Your account and all your cloud data — messages, media, contacts, etc. will be moved to the new number.</string>
++    <string name="PhoneNumberHelp">You can change your ayu0x4gg number here. Your account and all your cloud data — messages, media, contacts, etc. will be moved to the new number.</string>
+     <string name="PhoneNumberAlert">Users will see your new number if they have it in their address book or your privacy settings allow them to see it. You can modify this in Settings &gt; Privacy and Security &gt; Phone number.</string>
+     <string name="PhoneNumberChange2">Change Number</string>
+     <string name="PhoneNumberChangeTitle">Change number</string>
+     <string name="PhoneNumberKeepButton">Keep %1$s</string>
+     <string name="ChangePhoneNewNumber">New Number</string>
+     <string name="ChangePhoneHelp">We will send an SMS with a confirmation code to your new number.</string>
+-    <string name="ChangePhoneNumberOccupied">The number %1$s is already connected to a Telegram account. Please delete that account before migrating to the new number.</string>
++    <string name="ChangePhoneNumberOccupied">The number %1$s is already connected to a ayu0x4gg account. Please delete that account before migrating to the new number.</string>
+     <string name="NotificationsOther">Other</string>
+     <string name="VibrationDisabled">Disabled</string>
+     <string name="PopupEnabled">Enabled</string>
+@@ -2350,7 +2350,7 @@
+     <string name="SmartNotificationsAlert">Sound Alert Frequency</string>
+     <string name="SmartNotificationsDetail">%1$s within %2$s</string>
+     <string name="SecretWebPage">Link Previews</string>
+-    <string name="SecretWebPageInfo">Link previews will be generated on Telegram servers. We do not store data about the links you send.</string>
++    <string name="SecretWebPageInfo">Link previews will be generated on ayu0x4gg servers. We do not store data about the links you send.</string>
+     <string name="SecretChat">Secret chats</string>
+     <string name="ChromeCustomTabs">In-App Browser</string>
+     <string name="ChromeCustomTabsInfo">Open external links within the app</string>
+@@ -2359,7 +2359,7 @@
+     <string name="Emoji">Emoji</string>
+     <string name="LargeEmoji">Large Emoji</string>
+     <string name="EmojiUseDefault">Use system default emoji</string>
+-    <string name="TelegramVersion">Telegram for Android %1$s</string>
++    <string name="ayu0x4ggVersion">ayu0x4gg for Android %1$s</string>
+     <string name="DebugMenu">Debug Menu</string>
+     <string name="DebugMenuLongPress">Long press again for debug menu</string>
+     <string name="DebugSendLogs">Send Logs</string>
+@@ -2407,18 +2407,18 @@
+     <string name="UseProxySecret">Secret</string>
+     <string name="UseProxyUsername">Username</string>
+     <string name="UseProxySocks5">SOCKS5 Proxy</string>
+-    <string name="UseProxyTelegram">MTProto Proxy</string>
+-    <string name="UseProxyTelegramError">The proxy you are using is not configured correctly and will be disabled. Please find another one.</string>
++    <string name="UseProxyayu0x4gg">MTProto Proxy</string>
++    <string name="UseProxyayu0x4ggError">The proxy you are using is not configured correctly and will be disabled. Please find another one.</string>
+     <string name="UseProxySponsor">Proxy sponsor</string>
+-    <string name="UseProxySponsorInfo">This channel is shown by your proxy server. To remove this channel from your chat list, disable the proxy in Telegram Settings.</string>
++    <string name="UseProxySponsorInfo">This channel is shown by your proxy server. To remove this channel from your chat list, disable the proxy in ayu0x4gg Settings.</string>
+     <string name="UseProxyInfo">SOCKS5 proxy settings.</string>
+-    <string name="UseProxyTelegramInfo">MTProto proxy settings.</string>
+-    <string name="UseProxyTelegramInfo2">This proxy may display a sponsored channel in your chat list. This doesn\'t reveal any of your Telegram traffic.</string>
++    <string name="UseProxyayu0x4ggInfo">MTProto proxy settings.</string>
++    <string name="UseProxyayu0x4ggInfo2">This proxy may display a sponsored channel in your chat list. This doesn\'t reveal any of your ayu0x4gg traffic.</string>
+     <string name="UseProxyForCalls">Use proxy for calls</string>
+     <string name="UseProxyForCallsInfo">Proxy servers may degrade the quality of your calls.</string>
+     <string name="ConnectingToProxyEnable">Enable</string>
+     <string name="LowDiskSpaceTitle">Attention</string>
+-    <string name="LowDiskSpaceMessage">Your device is almost out of disk space. To free some space, you can set up Telegram to cache only recent media.</string>
++    <string name="LowDiskSpaceMessage">Your device is almost out of disk space. To free some space, you can set up ayu0x4gg to cache only recent media.</string>
+     <string name="LowDiskSpaceMessage2">Your device is almost out of disk space. You can use cache settings to remove unnecessary media — and re-download files if you need them again.</string>
+     <string name="LowDiskSpaceButton">Manage Cache</string>
+     <string name="LowDiskSpaceTitle2">Remove media after</string>
+@@ -2431,7 +2431,7 @@
+     <string name="AutodownloadSizeLimitUpTo">up to %1$s</string>
+     <string name="Streaming">Streaming</string>
+     <string name="EnableStreaming">Stream Videos and Audio Files</string>
+-    <string name="EnableAllStreamingInfo">Some videos can\'t be streamed – e.g., all videos that were sent from Android using Telegram 4.7 and earlier versions.\n</string>
++    <string name="EnableAllStreamingInfo">Some videos can\'t be streamed – e.g., all videos that were sent from Android using ayu0x4gg 4.7 and earlier versions.\n</string>
+     <string name="TapToChangePhone">Tap to change phone number</string>
+     <string name="Appearance">Appearance</string>
+     <string name="StickersAndMasks">Stickers and Masks</string>
+@@ -2452,14 +2452,14 @@
+     <string name="TapToChange">Tap to change</string>
+     <string name="AlternativeOptions">Alternative options</string>
+     <string name="AddAnotherAccount">Add another account</string>
+-    <string name="AddAnotherAccountInfo">Connect other Telegram accounts and easily switch between them.</string>
++    <string name="AddAnotherAccountInfo">Connect other ayu0x4gg accounts and easily switch between them.</string>
+     <string name="SetPasscode">Set a Passcode</string>
+     <string name="SetPasscodeInfo">Lock the app with a passcode so that others can\'t open it.</string>
+     <string name="ClearCache">Clear Cache</string>
+     <string name="ClearSelectedCache">Clear Selected</string>
+     <string name="ClearCacheInfo">Free up disk space on your device; your media will stay in the cloud.</string>
+     <string name="ClearingCache">Clearing cache…</string>
+-    <string name="ClearingCacheDescription">Please keep this window open while Telegram is clearing your cache.</string>
++    <string name="ClearingCacheDescription">Please keep this window open while ayu0x4gg is clearing your cache.</string>
+     <string name="ChangePhoneNumber">Change Phone Number</string>
+     <string name="ChangePhoneNumberInfo">Move your account, chats and media to a new number.</string>
+     <string name="ChangePhoneNumberSuccessWithPhone">Your phone number has been successfully changed to %1$s.</string>
+@@ -2485,14 +2485,14 @@
+     <string name="AuthAnotherClientOk">Auth successfull</string>
+     <string name="AuthAnotherClientDownloadClientUrl">https://getdesktop.telegram.org/</string>
+     <string name="AuthAnotherWebClientUrl">https://web.telegram.org/</string>
+-    <string name="AuthAnotherClientInfo1">Download Telegram on your computer from *getdesktop.telegram.org*.</string>
+-    <string name="AuthAnotherClientInfo2">Run Telegram Desktop to get the QR code.</string>
++    <string name="AuthAnotherClientInfo1">Download ayu0x4gg on your computer from *getdesktop.telegram.org*.</string>
++    <string name="AuthAnotherClientInfo2">Run ayu0x4gg Desktop to get the QR code.</string>
+     <string name="AuthAnotherClientInfo3">Scan the QR code to connect your account.</string>
+-    <string name="AuthAnotherClientUrl">This code can be used to allow someone to log in to your Telegram account.\n\nTo confirm Telegram login, please go to Settings &gt; Devices &gt; Scan QR and scan the code.</string>
+-    <string name="QRCodePermissionNoCameraWithHint">**Telegram** needs camera access so that you can scan QR codes. Tap Settings -> Permissions, and turn **Camera** on.</string>
++    <string name="AuthAnotherClientUrl">This code can be used to allow someone to log in to your ayu0x4gg account.\n\nTo confirm ayu0x4gg login, please go to Settings &gt; Devices &gt; Scan QR and scan the code.</string>
++    <string name="QRCodePermissionNoCameraWithHint">**ayu0x4gg** needs camera access so that you can scan QR codes. Tap Settings -> Permissions, and turn **Camera** on.</string>
+     <string name="SetProfilePhoto">Set Profile Photo</string>
+     <string name="SetProfileVideo">Set Profile Video</string>
+-    <string name="AppUpdate">Update Telegram</string>
++    <string name="AppUpdate">Update ayu0x4gg</string>
+     <string name="AppUpdateVersionAndSize">Version %1$s • %2$s</string>
+     <string name="AppUpdateDownloading">Downloading %1$d%%...</string>
+     <string name="AppUpdateNow">Update Now</string>
+@@ -2529,7 +2529,7 @@
+     <string name="ChannelTitleChanged">Channel title updated.</string>
+     <string name="ChannelDescriptionChanged">Channel description updated.</string>
+     <string name="CheckPhoneNumber">Is %1$s still your number?</string>
+-    <string name="CheckPhoneNumberInfo">Keep your number up to date to ensure you can always log into Telegram. **Learn more**</string>
++    <string name="CheckPhoneNumberInfo">Keep your number up to date to ensure you can always log into ayu0x4gg. **Learn more**</string>
+     <string name="CheckPhoneNumberLearnMoreUrl">https://telegram.org/faq#q-i-have-a-new-phone-number-what-do-i-do</string>
+     <string name="CheckPhoneNumberYes">Yes</string>
+     <string name="CheckPhoneNumberNo">No</string>
+@@ -2538,7 +2538,7 @@
+     <string name="LocalDatabaseClearTextTitle">Clear local database</string>
+     <string name="LocalDatabaseClearText">Are you sure you want to clear cached text messages?</string>
+     <string name="LocalDatabaseClearText2">This operation can take a few minutes to complete.\n\nLocal database size: **%s**</string>
+-    <string name="LocalDatabaseInfo">Clearing the local database will delete the texts of cached messages and compress the database to save internal disk space. Telegram needs some data to work, so database size will not reach zero.\n\nThis operation can take a few minutes to complete.</string>
++    <string name="LocalDatabaseInfo">Clearing the local database will delete the texts of cached messages and compress the database to save internal disk space. ayu0x4gg needs some data to work, so database size will not reach zero.\n\nThis operation can take a few minutes to complete.</string>
+     <string name="ClearMediaCache">Clear Cache</string>
+     <string name="CacheClear">Clear</string>
+     <string name="CalculatingSize">Calculating...</string>
+@@ -2561,17 +2561,17 @@
+     <string name="AudioAutodownload">Voice messages</string>
+     <string name="VideoMessagesAutodownload">Video messages</string>
+     <!--passport view-->
+-    <string name="TelegramPassport">Telegram Passport</string>
++    <string name="ayu0x4ggPassport">ayu0x4gg Passport</string>
+     <string name="PassportRequestedInformation">Requested Information</string>
+     <string name="PassportProvidedInformation">Provided Information</string>
+-    <string name="PassportInfoTitle">What is Telegram Passport?</string>
+-    <string name="PassportInfo2">With Telegram Passport you can easily sign up for websites and services that require identity verification.\n\nYour information, personal data, and documents are protected by end-to-end encryption. Nobody, including Telegram, can access them without your permission.\n\nYou can visit our *FAQ* to learn more.</string>
++    <string name="PassportInfoTitle">What is ayu0x4gg Passport?</string>
++    <string name="PassportInfo2">With ayu0x4gg Passport you can easily sign up for websites and services that require identity verification.\n\nYour information, personal data, and documents are protected by end-to-end encryption. Nobody, including ayu0x4gg, can access them without your permission.\n\nYou can visit our *FAQ* to learn more.</string>
+     <string name="PassportInfoUrl">https://telegram.org/faq#passport</string>
+-    <string name="TelegramPassportCreatePasswordInfo">Please create a password to secure your personal data with end-to-end encryption.\n\nThis password will also be required whenever you log in to Telegram on a new device.</string>
+-    <string name="TelegramPassportCreatePassword">CREATE A PASSWORD</string>
+-    <string name="TelegramPassportDelete">Delete Telegram Passport</string>
+-    <string name="TelegramPassportDeleteTitle">Delete Telegram passport</string>
+-    <string name="TelegramPassportDeleteAlert">Are you sure you want to delete your Telegram Passport?</string>
++    <string name="ayu0x4ggPassportCreatePasswordInfo">Please create a password to secure your personal data with end-to-end encryption.\n\nThis password will also be required whenever you log in to ayu0x4gg on a new device.</string>
++    <string name="ayu0x4ggPassportCreatePassword">CREATE A PASSWORD</string>
++    <string name="ayu0x4ggPassportDelete">Delete ayu0x4gg Passport</string>
++    <string name="ayu0x4ggPassportDeleteTitle">Delete ayu0x4gg passport</string>
++    <string name="ayu0x4ggPassportDeleteAlert">Are you sure you want to delete your ayu0x4gg Passport?</string>
+     <string name="PassportUseLatinOnly">Please use latin characters only.</string>
+     <string name="PassportAddPassportInfo">Upload scans of a certified English translation of your passport.</string>
+     <string name="PassportAddInternalPassportInfo">Upload scans of a certified English translation of your internal passport.</string>
+@@ -2607,8 +2607,8 @@
+     <string name="PassportDeletePhoneAlert">Delete phone number?</string>
+     <string name="PassportPhoneInfo">Enter your phone number</string>
+     <string name="PassportPhoneUseSame">Use %1$s</string>
+-    <string name="PassportPhoneUseSameInfo">Use the same phone number as on Telegram.</string>
+-    <string name="PassportPhoneUseSameEmailInfo">Use the same email as on Telegram.</string>
++    <string name="PassportPhoneUseSameInfo">Use the same phone number as on ayu0x4gg.</string>
++    <string name="PassportPhoneUseSameEmailInfo">Use the same email as on ayu0x4gg.</string>
+     <string name="PassportPhoneUseOther">Or enter a new phone number</string>
+     <string name="PassportPhoneUploadInfo">Note: You will receive a confirmation code on the phone number you provide.</string>
+     <string name="PassportEmail">Email</string>
+@@ -2619,7 +2619,7 @@
+     <string name="PassportEmailVerifyInfo">Please enter the confirmation code we\'ve just sent to %1$s.</string>
+     <string name="PassportSelfRequest">Please enter your password to access your personal data.</string>
+     <string name="PassportRequest">**%1$s** requests access to your personal data to sign you up for their services.</string>
+-    <string name="PassportRequestPasswordInfo">Please enter your Telegram Password to decrypt your data.</string>
++    <string name="PassportRequestPasswordInfo">Please enter your ayu0x4gg Password to decrypt your data.</string>
+     <string name="PassportPolicy">You accept the *%1$s Privacy Policy* and allow their @%2$s to send you messages.</string>
+     <string name="PassportNoPolicy">You are sending your documents directly to %1$s and allowing their @%2$s to send you messages.</string>
+     <string name="PassportAuthorize">AUTHORIZE</string>
+@@ -2751,7 +2751,7 @@
+     <string name="SessionsTitle">Active Sessions</string>
+     <string name="CurrentSession">Current session</string>
+     <string name="NoOtherSessions">No other active sessions</string>
+-    <string name="NoOtherSessionsInfo">You can log in to Telegram from other mobile, tablet and desktop devices, using the same phone number. All your data will be instantly synchronized.</string>
++    <string name="NoOtherSessionsInfo">You can log in to ayu0x4gg from other mobile, tablet and desktop devices, using the same phone number. All your data will be instantly synchronized.</string>
+     <string name="OtherSessions">Active sessions</string>
+     <string name="SessionsInfo">Control your sessions on other devices.</string>
+     <string name="TerminateSessionQuestion">Terminate this session?</string>
+@@ -2764,18 +2764,18 @@
+     <string name="TerminateAllSessions">Terminate All Other Sessions</string>
+     <string name="UnofficialApp">unofficial app</string>
+     <string name="NoOtherWebSessions">No active logins.</string>
+-    <string name="NoOtherWebSessionsInfo">You can log in on websites that support signing in with Telegram.</string>
++    <string name="NoOtherWebSessionsInfo">You can log in on websites that support signing in with ayu0x4gg.</string>
+     <string name="OtherWebSessions">Connected websites</string>
+-    <string name="WebSessionsTitle">Logged in with Telegram</string>
+-    <string name="TerminateWebSessionInfo">Tap to disconnect from your Telegram account.</string>
++    <string name="WebSessionsTitle">Logged in with ayu0x4gg</string>
++    <string name="TerminateWebSessionInfo">Tap to disconnect from your ayu0x4gg account.</string>
+     <string name="TerminateWebSessionText">Are you sure you want to disconnect %1$s?</string>
+     <string name="TerminateWebSessionTitle">Disconnect website</string>
+     <string name="TerminateWebSessionsTitle">Disconnect websites</string>
+     <string name="Disconnect">Disconnect</string>
+     <string name="TerminateWebSessionStop">Block %1$s</string>
+     <string name="TerminateAllWebSessions">Disconnect All Websites</string>
+-    <string name="AreYouSureWebSessions">Are you sure you want to disconnect all websites where you used Telegram to log in?</string>
+-    <string name="ClearOtherWebSessionsHelp">You can log in on websites that support signing in with Telegram.</string>
++    <string name="AreYouSureWebSessions">Are you sure you want to disconnect all websites where you used ayu0x4gg to log in?</string>
++    <string name="ClearOtherWebSessionsHelp">You can log in on websites that support signing in with ayu0x4gg.</string>
+     <string name="LoginAttempts">Incomplete login attempts</string>
+     <string name="LoginAttemptsInfo">The devices above have no access to your messages. The code was entered correctly, but no correct password was given.</string>
+     <!--filters-->
+@@ -2869,7 +2869,7 @@
+     <!--passcode view-->
+     <string name="Passcode">Passcode Lock</string>
+     <string name="ChangePasscode">Change Passcode</string>
+-    <string name="ChangePasscodeInfo">When you set up an additional passcode, a lock icon will appear on the chats page. Tap it to lock and unlock your Telegram app.\n\nNote: if you forget the passcode, you\'ll need to delete and reinstall the app. All secret chats will be lost.</string>
++    <string name="ChangePasscodeInfo">When you set up an additional passcode, a lock icon will appear on the chats page. Tap it to lock and unlock your ayu0x4gg app.\n\nNote: if you forget the passcode, you\'ll need to delete and reinstall the app. All secret chats will be lost.</string>
+     <string name="ChangePasscodeInfoShort">When you set up a passcode, a lock icon will apear on the chats page. Tap it to lock and unlock the app.</string>
+     <string name="EnablePasscode">Enable passcode</string>
+     <string name="ConfirmCreatePasscode">Re-enter your passcode</string>
+@@ -2878,7 +2878,7 @@
+     <string name="PasscodeSwitchToPIN">Switch to PIN</string>
+     <string name="PasscodesDoNotMatchTryAgain">Passcodes don\'t match. Please try again.</string>
+     <string name="EnterYourPasscode">Enter your passcode</string>
+-    <string name="EnterYourPasscodeInfo">Please enter your current Telegram passcode to manage this option.</string>
++    <string name="EnterYourPasscodeInfo">Please enter your current ayu0x4gg passcode to manage this option.</string>
+     <string name="ForgotPasscode">Forgot passcode?</string>
+     <string name="ForgotPasscodeInfo">If you forgot your passcode, you\'ll need to delete and reinstall the app.\n\nAll secret chats will be lost.</string>
+     <string name="PasscodeScreenHint">Tap a lock icon on the chats page to lock and unlock the app.</string>
+@@ -2890,7 +2890,7 @@
+     <string name="EnterCurrentPasscode">Enter your current passcode</string>
+     <string name="EnterNewFirstPasscode">Enter a passcode</string>
+     <string name="EnterNewPasscode">Enter your new passcode</string>
+-    <string name="EnterYourTelegramPasscode">Enter your Telegram passcode</string>
++    <string name="EnterYourayu0x4ggPasscode">Enter your ayu0x4gg passcode</string>
+     <string name="ReEnterYourPasscode">Re-enter your new passcode</string>
+     <string name="PasscodeDoNotMatch">Passcodes do not match</string>
+     <string name="AutoLock">Auto-lock</string>
+@@ -2905,7 +2905,7 @@
+     <string name="ScreenCaptureHeader">App Content in Task Switcher</string>
+     <string name="ScreenCaptureShowContent">Show Content</string>
+     <string name="ScreenCaptureInfo">If disabled, you won\'t be able to take screenshots in the app but chat content will be hidden in the task switcher.</string>
+-    <string name="ScreenCaptureAlert">This will hide the contents of your chats or chat list from the task switcher, but you will not be able to take screenshots on Telegram.\n\nYou may need to restart the app for this to take effect.</string>
++    <string name="ScreenCaptureAlert">This will hide the contents of your chats or chat list from the task switcher, but you will not be able to take screenshots on ayu0x4gg.\n\nYou may need to restart the app for this to take effect.</string>
+     <string name="TooManyTries">Too many tries.\nPlease try again in %1$s.</string>
+     <!--media view-->
+     <string name="January">January</string>
+@@ -3244,7 +3244,7 @@
+     <string name="YourEmailInfo">Please add your valid email. It is the only way to recover a forgotten password.</string>
+     <string name="YourEmailSkip">Skip</string>
+     <string name="YourEmailSkipWarning">Warning</string>
+-    <string name="YourEmailSkipWarningText">No, seriously.\n\nIf you forget your password, you will lose access to your Telegram account. There will be no way to restore it.</string>
++    <string name="YourEmailSkipWarningText">No, seriously.\n\nIf you forget your password, you will lose access to your ayu0x4gg account. There will be no way to restore it.</string>
+     <string name="YourEmailAlmostThere">Almost there!</string>
+     <string name="YourEmailAlmostThereText">Please check your email (don\'t forget the spam folder) to complete Two-Step Verification setup.</string>
+     <string name="YourPasswordSuccess">Success!</string>
+@@ -3265,7 +3265,7 @@
+     <string name="CancelPasswordResetNo">NO</string>
+     <string name="CancelReset">Cancel reset</string>
+     <string name="CancelEmailQuestionTitle">Abort setup</string>
+-    <string name="TurnPasswordOffPassport">Warning! All data saved in your Telegram Passport will be lost!</string>
++    <string name="TurnPasswordOffPassport">Warning! All data saved in your ayu0x4gg Passport will be lost!</string>
+     <string name="PasswordHint">Password Hint</string>
+     <string name="PasswordHintDescription">You can create an optional hint for your password.</string>
+     <string name="PasswordHintPlaceholder">Hint</string>
+@@ -3316,7 +3316,7 @@
+     <string name="VerificationCode">Verification code</string>
+     <string name="EnterCode">Enter code</string>
+     <string name="ResendCodeInfo">The verification code was sent to your email.</string>
+-    <string name="EnabledPasswordText">You have enabled Two-Step verification.\nYou\'ll need the password you set up here to log in to your Telegram account.</string>
++    <string name="EnabledPasswordText">You have enabled Two-Step verification.\nYou\'ll need the password you set up here to log in to your ayu0x4gg account.</string>
+     <string name="AddEmailTitle">Add Email</string>
+     <string name="AddEmailSubtitle">Please enter your valid email address to protect your account.</string>
+     <string name="EnterNewEmail">Enter New Email</string>
+@@ -3332,10 +3332,10 @@
+     <string name="StorageUsage">Storage Usage</string>
+     <string name="StorageCleared">Storage Cleared</string>
+     <string name="StorageUsageCalculating">Calculating cache size...</string>
+-    <string name="StorageUsageTelegram">Telegram uses %s of your device storage.</string>
+-    <string name="StorageUsageTelegramLess">Telegram uses %s of your device storage.</string>
+-    <string name="StorageCleared2">All media can be re-downloaded from the Telegram cloud if you need it again.</string>
+-    <string name="StorageUsageInfo">All media will stay in the Telegram cloud and can be re-downloaded if you need it again.</string>
++    <string name="StorageUsageayu0x4gg">ayu0x4gg uses %s of your device storage.</string>
++    <string name="StorageUsageayu0x4ggLess">ayu0x4gg uses %s of your device storage.</string>
++    <string name="StorageCleared2">All media can be re-downloaded from the ayu0x4gg cloud if you need it again.</string>
++    <string name="StorageUsageInfo">All media will stay in the ayu0x4gg cloud and can be re-downloaded if you need it again.</string>
+     <string name="NetworkUsage">Data Usage</string>
+     <string name="StoragePath">Storage Path</string>
+     <string name="NetworkUsageAllTab">All</string>
+@@ -3395,7 +3395,7 @@
+     <string name="PrivacyVoiceMessagesTitle">Who can send me voice messages?</string>
+     <string name="PrivacyVoiceMessagesInfo">You can restrict who can send you voice messages with granular precision.</string>
+     <string name="PrivacyVoiceMessagesInfo2">You can add users or entire groups as exceptions that will override the settings above.</string>
+-    <string name="PrivacyVoiceMessagesPremiumOnly">Only subscribers of *Telegram Premium* can restrict receiving voice messages.</string>
++    <string name="PrivacyVoiceMessagesPremiumOnly">Only subscribers of *ayu0x4gg Premium* can restrict receiving voice messages.</string>
+     <string name="PrivacyProfilePhoto">Profile Photo</string>
+     <string name="PrivacyProfilePhotoTitle">Who can see my profile photo?</string>
+     <string name="PrivacyProfilePhotoInfo">You can restrict who can see your profile photo with granular precision.</string>
+@@ -3405,8 +3405,8 @@
+     <string name="PrivacyPhone">Phone Number</string>
+     <string name="PrivacyPhoneTitle">Who can see my phone number?</string>
+     <string name="PrivacyPhoneTitle2">Who can find me by my number?</string>
+-    <string name="PrivacyPhoneInfo">Users who have your number saved in their contacts will also see it on Telegram.</string>
+-    <string name="PrivacyPhoneInfo3">Users who add your number to their contacts will see it on Telegram only if they are your contacts.</string>
++    <string name="PrivacyPhoneInfo">Users who have your number saved in their contacts will also see it on ayu0x4gg.</string>
++    <string name="PrivacyPhoneInfo3">Users who add your number to their contacts will see it on ayu0x4gg only if they are your contacts.</string>
+     <string name="PrivacyPhoneInfo2">You can add users or entire groups as exceptions that will override the settings above.</string>
+     <string name="PrivacyForwards">Forwarded Messages</string>
+     <string name="PrivacyForwardsEverybody">Link to your account</string>
+@@ -3423,11 +3423,11 @@
+     <string name="PrivacyPaymentsClear">Clear Payment and Shipping Info</string>
+     <string name="PrivacyPaymentsClearAlertTitle">Clear payment info</string>
+     <string name="PrivacyPaymentsClearAlertText">Are you sure you want to clear your payment and shipping info?</string>
+-    <string name="PrivacyPaymentsClearAlert">Delete your shipping info and instruct all payment providers to remove your saved credit cards? Note that Telegram never stores your credit card data.</string>
++    <string name="PrivacyPaymentsClearAlert">Delete your shipping info and instruct all payment providers to remove your saved credit cards? Note that ayu0x4gg never stores your credit card data.</string>
+     <string name="PrivacyPaymentsPaymentInfoCleared">Payment info cleared.</string>
+     <string name="PrivacyPaymentsShippingInfoCleared">Shipping info cleared.</string>
+     <string name="PrivacyPaymentsPaymentShippingCleared">Payment and shipping info cleared.</string>
+-    <string name="PrivacyBotsInfo">Websites where you used Telegram to log in.</string>
++    <string name="PrivacyBotsInfo">Websites where you used ayu0x4gg to log in.</string>
+     <string name="PrivacyClearShipping">Shipping info</string>
+     <string name="PrivacyClearPayment">Payment info</string>
+     <string name="PrivacyDeleteCloudDrafts">Delete All Cloud Drafts</string>
+@@ -3486,7 +3486,7 @@
+     <string name="InviteToGroupErrorMessageMultipleSome">Sorry, you can\'t add some of these users to groups because of their privacy settings.</string>
+     <string name="InviteToGroupErrorMessageMultipleAll">Sorry, you can\'t add these users to groups because of their privacy settings.</string>
+     <string name="CreateGroupError">Sorry, you can\'t create a group with these users because of their privacy settings.</string>
+-    <string name="PrivacyCallsP2PHelp">Disabling peer-to-peer will relay all calls through Telegram servers to avoid revealing your IP address, but may slightly decrease audio quality.</string>
++    <string name="PrivacyCallsP2PHelp">Disabling peer-to-peer will relay all calls through ayu0x4gg servers to avoid revealing your IP address, but may slightly decrease audio quality.</string>
+     <string name="SyncContactsDelete">Delete Synced Contacts</string>
+     <string name="SuggestContacts">Suggest Frequent Contacts</string>
+     <string name="SuggestContactsInfo">Display people you message frequently at the top of the search section for quick access.</string>
+@@ -3496,7 +3496,7 @@
+     <string name="PrivacyExceptions">Exceptions</string>
+     <string name="BlockedEmpty">None</string>
+     <string name="SyncContactsDeleteTitle">Delete contacts</string>
+-    <string name="SyncContactsDeleteText">This will remove your contacts from the Telegram servers.\n\nIf \'**Sync Contacts**\' is enabled, contacts will be re-synced.</string>
++    <string name="SyncContactsDeleteText">This will remove your contacts from the ayu0x4gg servers.\n\nIf \'**Sync Contacts**\' is enabled, contacts will be re-synced.</string>
+     <!--edit video view-->
+     <string name="SendingVideo">Sending video...</string>
+     <string name="SendingGif">Sending GIF...</string>
+@@ -3648,7 +3648,7 @@
+     <string name="ActionBotDocumentRentalAgreement">Rental Agreement</string>
+     <string name="ActionBotDocumentPhone">Phone Number</string>
+     <string name="ActionBotDocumentEmail">Email Address</string>
+-    <string name="UnsupportedMedia">This message is not supported on your version of Telegram. Update the app to view: https://telegram.org/update</string>
++    <string name="UnsupportedMedia">This message is not supported on your version of ayu0x4gg. Update the app to view: https://telegram.org/update</string>
+     <string name="AttachPhoto">Photo</string>
+     <string name="AttachVideo">Video</string>
+     <string name="AttachDestructingPhoto">Self-Destructing Photo</string>
+@@ -3687,10 +3687,10 @@
+     <string name="DeleteAll">Delete All</string>
+     <string name="StopLoadingTitle">Stop loading?</string>
+     <string name="StopLoading">Do you want to cancel loading?</string>
+-    <string name="UpdateTelegram">Update Telegram</string>
+-    <string name="UpdateAppAlert">Sorry, your Telegram app is out of date and can\'t handle this request. Please update Telegram.</string>
++    <string name="Updateayu0x4gg">Update ayu0x4gg</string>
++    <string name="UpdateAppAlert">Sorry, your ayu0x4gg app is out of date and can\'t handle this request. Please update ayu0x4gg.</string>
+     <string name="InvalidPhoneNumber">Invalid phone number. Please check the number and try again.</string>
+-    <string name="PleaseLoginPassport">Please log in to your Telegram account to use Telegram Passport.</string>
++    <string name="PleaseLoginPassport">Please log in to your ayu0x4gg account to use ayu0x4gg Passport.</string>
+     <string name="BannedPhoneNumber">This phone number is banned.</string>
+     <string name="CodeExpired">Code expired, please retry login.</string>
+     <string name="WrongCodeTitle">Wrong code</string>
+@@ -3699,7 +3699,7 @@
+     <string name="EmailTokenInvalid">Invalid email token.</string>
+     <string name="EmailAddressInvalid">Invalid email address.</string>
+     <string name="EmailLogin">Email Login</string>
+-    <string name="EmailLoginChangeMessage">This email address will be used every time you log in to your Telegram account from a new device.</string>
++    <string name="EmailLoginChangeMessage">This email address will be used every time you log in to your ayu0x4gg account from a new device.</string>
+     <string name="ChangeEmail">Change Email</string>
+     <string name="FloodWait">Too many attempts, please try again later</string>
+     <string name="FloodWaitTime">Too many attempts, please try again in %1$s</string>
+@@ -3711,7 +3711,7 @@
+     <string name="NoPlayerInstalled">You don\'t have a video player, please install one to continue</string>
+     <string name="NoMailInstalled">Please send an email describing your problem to sms@telegram.org</string>
+     <string name="NoHandleAppInstalled">You don\'t have applications that can handle the file type \'%1$s\', please install one to continue</string>
+-    <string name="InviteUser">This user does not have Telegram yet, send an invitation?</string>
++    <string name="InviteUser">This user does not have ayu0x4gg yet, send an invitation?</string>
+     <string name="AreYouSure">Are you sure?</string>
+     <string name="AddToTheGroupAlertTitle">Add bot</string>
+     <string name="AddToTheGroupAlertText">Do you want to add **%1$s** to the group **%2$s**?</string>
+@@ -3735,7 +3735,7 @@
+     <string name="SendMessagesToText">Do you want to send this message to **%1$s**?</string>
+     <string name="SendGameToText">Do you want to share this game to **%1$s**?</string>
+     <string name="SendContactToText">Do you want to send this contact to **%1$s**?</string>
+-    <string name="AreYouSureLogout">Are you sure you want to log out?\n\nNote that you can seamlessly use Telegram on all your devices at once.\n\nRemember, logging out kills all your Secret Chats.</string>
++    <string name="AreYouSureLogout">Are you sure you want to log out?\n\nNote that you can seamlessly use ayu0x4gg on all your devices at once.\n\nRemember, logging out kills all your Secret Chats.</string>
+     <string name="DeleteFewChatsTitle">Delete %1$s</string>
+     <string name="ClearFewChatsTitle">Clear %1$s</string>
+     <string name="ClearCacheFewChatsTitle">Empty cache for %1$s</string>
+@@ -3793,17 +3793,17 @@
+     <string name="SendMessagesToGroupText">Do you want to send this message to **%1$s**?</string>
+     <string name="SendGameToGroupText">Do you want to share this game to **%1$s**?</string>
+     <string name="SendContactToGroupText">Do you want to send this contact to **%1$s**?</string>
+-    <string name="NoUsernameFound">There is no Telegram account with this username.</string>
+-    <string name="NoPhoneFound">There is no Telegram account with this phone number.</string>
++    <string name="NoUsernameFound">There is no ayu0x4gg account with this username.</string>
++    <string name="NoPhoneFound">There is no ayu0x4gg account with this phone number.</string>
+     <string name="NoFolderFound">No chat list found.</string>
+     <string name="BotCantJoinGroups">This bot can\'t join groups.</string>
+-    <string name="SecretLinkPreviewAlert">Would you like to enable extended link previews in Secret Chats? Note that link previews are generated on Telegram servers.</string>
++    <string name="SecretLinkPreviewAlert">Would you like to enable extended link previews in Secret Chats? Note that link previews are generated on ayu0x4gg servers.</string>
+     <string name="SecretChatContextBotAlert">Please note that inline bots are provided by third-party developers. For the bot to work, the symbols you type after the bot\'s username are sent to the respective developer.</string>
+     <string name="EditMessageError">Sorry, you can\'t edit this message.</string>
+-    <string name="AllowReadCall">Please allow Telegram to receive calls so that we can automatically enter your code for you.</string>
+-    <string name="AllowReadCallAndLog">Please allow Telegram to receive calls and read the call log so that we can automatically enter your code for you.</string>
+-    <string name="AllowReadCallLog">Please allow Telegram to read the call log so that we can automatically enter your code for you.</string>
+-    <string name="AllowFillNumber">Please allow Telegram to receive calls so that we can automatically confirm your phone number.</string>
++    <string name="AllowReadCall">Please allow ayu0x4gg to receive calls so that we can automatically enter your code for you.</string>
++    <string name="AllowReadCallAndLog">Please allow ayu0x4gg to receive calls and read the call log so that we can automatically enter your code for you.</string>
++    <string name="AllowReadCallLog">Please allow ayu0x4gg to read the call log so that we can automatically enter your code for you.</string>
++    <string name="AllowFillNumber">Please allow ayu0x4gg to receive calls so that we can automatically confirm your phone number.</string>
+     <string name="UserRestricted">Sorry, you are not allowed to do this.</string>
+     <string name="YouBlockedUser">Sorry, you can\'t add this user or bot to groups because you\'ve blocked them. Please unblock to proceed.</string>
+     <string name="JoinGroup">JOIN GROUP</string>
+@@ -3832,31 +3832,31 @@
+     <string name="ErrorSendRestrictedPrivacyVoiceMessages">Sorry, you can\'t send voice messages to this user because of their privacy settings.</string>
+     <string name="ErrorSendRestrictedPrivacyVideoMessages">Sorry, you can\'t send video messages to this user because of their privacy settings.</string>
+     <string name="UnableForward">Unable to forward</string>
+-    <string name="TosDecline">We\'re very sorry, but this means you can\'t sign up for Telegram.\n\nUnlike others, we don\'t use your data for ad targeting or other commercial purposes. Telegram only stores the information it needs to function as a feature-rich cloud service. You can adjust how we use your data (e.g., delete synced contacts) in Privacy &amp; Security settings.\n\nBut if you\'re generally not OK with Telegram\'s modest requirements, it won\'t be possible for us to provide you with this service.</string>
++    <string name="TosDecline">We\'re very sorry, but this means you can\'t sign up for ayu0x4gg.\n\nUnlike others, we don\'t use your data for ad targeting or other commercial purposes. ayu0x4gg only stores the information it needs to function as a feature-rich cloud service. You can adjust how we use your data (e.g., delete synced contacts) in Privacy &amp; Security settings.\n\nBut if you\'re generally not OK with ayu0x4gg\'s modest requirements, it won\'t be possible for us to provide you with this service.</string>
+     <string name="TosAgeTitle">Age Verification</string>
+     <string name="PrivacyPolicyAndTerms">Privacy Policy and Terms of Service</string>
+     <string name="TosAgeText">Tap Agree to confirm that you are %1$s or over.</string>
+-    <string name="TosUpdateDecline">We\'re very sorry, but this means we must part ways here. Unlike others, we don\'t use your data for ad targeting or other commercial purposes. Telegram only stores the information it needs to function as a feature-rich cloud service. You can adjust how we use your data (e.g., delete synced contacts) in Privacy &amp; Security settings.\n\nBut if you\'re generally not OK with Telegram\'s modest needs, it won\'t be possible for us to provide this service. You can deactivate your account now — or look around some more and deactivate it later if you feel you\'re not happy with the way we use your data.</string>
+-    <string name="TosDeclineDeleteAccount">Warning, this will irreversibly delete your Telegram account along with all the data you store in the Telegram cloud.\n\nImportant: You can Cancel now and export your data before deleting your account instead of losing it all. (To do this, open the latest version of Telegram Desktop and go to Settings &gt; Export Telegram Data.)</string>
++    <string name="TosUpdateDecline">We\'re very sorry, but this means we must part ways here. Unlike others, we don\'t use your data for ad targeting or other commercial purposes. ayu0x4gg only stores the information it needs to function as a feature-rich cloud service. You can adjust how we use your data (e.g., delete synced contacts) in Privacy &amp; Security settings.\n\nBut if you\'re generally not OK with ayu0x4gg\'s modest needs, it won\'t be possible for us to provide this service. You can deactivate your account now — or look around some more and deactivate it later if you feel you\'re not happy with the way we use your data.</string>
++    <string name="TosDeclineDeleteAccount">Warning, this will irreversibly delete your ayu0x4gg account along with all the data you store in the ayu0x4gg cloud.\n\nImportant: You can Cancel now and export your data before deleting your account instead of losing it all. (To do this, open the latest version of ayu0x4gg Desktop and go to Settings &gt; Export ayu0x4gg Data.)</string>
+     <!--permissions-->
+-    <string name="PermissionContacts">To let you connect with friends across all your devices, your contacts will be continuously synced with Telegram\'s heavily encrypted cloud servers.</string>
+-    <string name="PermissionStorageWithHint">**Telegram** needs storage access so you can send and save photos, videos, music and other media. Tap Settings -> Permissions, and turn **Files and media** on.</string>
+-    <string name="PermissionNoAudioWithHint">**Telegram** needs microphone access so that you can send voice messages. Tap Settings -> Permissions, and turn **Microphone** on.</string>
+-    <string name="PermissionNoAudioVideoWithHint">**Telegram** needs microphone access so that you can send voice messages. Tap Settings -> Permissions, and turn **Microphone** on. </string>
+-    <string name="PermissionNoCameraWithHint">**Telegram** needs camera access so that you can take photos and videos. Tap Settings -> Permissions, and turn **Camera** on.</string>
+-    <string name="PermissionNoCameraMicVideo">**Telegram** needs camera and microphone access so that you can send video messages. Tap Settings -> Permissions, and turn **Microphone** and **Camera** on.</string>
+-    <string name="PermissionNoLocation">Telegram needs access to your location so that you can share it with your friends.</string>
+-    <string name="PermissionNoLocationPosition">Telegram needs access to your location.</string>
+-    <string name="PermissionNoLocationFriends">**Telegram** needs access to location so that you can share it with your friends. Tap Settings -> Permissions, and turn **Location** on.</string>
+-    <string name="PermissionNoLocationPeopleNearby">**Telegram** needs access to location so that you can find people nearby. Tap Settings -> Permissions, and turn **Location** on.</string>
+-    <string name="PermissionNoLocationNavigation">**Telegram** needs access to location so that you can get directions. Tap Settings -> Permissions, and turn **Location** on.</string>
+-    <string name="PermissionNoContactsSharing">**Telegram** needs access to contacts so that you can share them with your friends. Tap Settings -> Permissions, and turn **Contacts** on.</string>
+-    <string name="PermissionNoStorageAvatar">**Telegram** needs storage access so you can upload profile picture. Tap Settings -> Permissions, and turn **Files and media** on.</string>
+-    <string name="PermissionDrawAboveOtherApps">Telegram needs access to draw above other apps to play videos in Picture-in-Picture mode.</string>
+-    <string name="PermissionDrawAboveOtherAppsGroupCall">Overlay mode lets you use push-to-talk and see who is talking even when you are outside of Telegram.</string>
++    <string name="PermissionContacts">To let you connect with friends across all your devices, your contacts will be continuously synced with ayu0x4gg\'s heavily encrypted cloud servers.</string>
++    <string name="PermissionStorageWithHint">**ayu0x4gg** needs storage access so you can send and save photos, videos, music and other media. Tap Settings -> Permissions, and turn **Files and media** on.</string>
++    <string name="PermissionNoAudioWithHint">**ayu0x4gg** needs microphone access so that you can send voice messages. Tap Settings -> Permissions, and turn **Microphone** on.</string>
++    <string name="PermissionNoAudioVideoWithHint">**ayu0x4gg** needs microphone access so that you can send voice messages. Tap Settings -> Permissions, and turn **Microphone** on. </string>
++    <string name="PermissionNoCameraWithHint">**ayu0x4gg** needs camera access so that you can take photos and videos. Tap Settings -> Permissions, and turn **Camera** on.</string>
++    <string name="PermissionNoCameraMicVideo">**ayu0x4gg** needs camera and microphone access so that you can send video messages. Tap Settings -> Permissions, and turn **Microphone** and **Camera** on.</string>
++    <string name="PermissionNoLocation">ayu0x4gg needs access to your location so that you can share it with your friends.</string>
++    <string name="PermissionNoLocationPosition">ayu0x4gg needs access to your location.</string>
++    <string name="PermissionNoLocationFriends">**ayu0x4gg** needs access to location so that you can share it with your friends. Tap Settings -> Permissions, and turn **Location** on.</string>
++    <string name="PermissionNoLocationPeopleNearby">**ayu0x4gg** needs access to location so that you can find people nearby. Tap Settings -> Permissions, and turn **Location** on.</string>
++    <string name="PermissionNoLocationNavigation">**ayu0x4gg** needs access to location so that you can get directions. Tap Settings -> Permissions, and turn **Location** on.</string>
++    <string name="PermissionNoContactsSharing">**ayu0x4gg** needs access to contacts so that you can share them with your friends. Tap Settings -> Permissions, and turn **Contacts** on.</string>
++    <string name="PermissionNoStorageAvatar">**ayu0x4gg** needs storage access so you can upload profile picture. Tap Settings -> Permissions, and turn **Files and media** on.</string>
++    <string name="PermissionDrawAboveOtherApps">ayu0x4gg needs access to draw above other apps to play videos in Picture-in-Picture mode.</string>
++    <string name="PermissionDrawAboveOtherAppsGroupCall">Overlay mode lets you use push-to-talk and see who is talking even when you are outside of ayu0x4gg.</string>
+     <string name="PermissionOpenSettings">SETTINGS</string>
+-    <string name="PermissionXiaomiLockscreen">Please allow Telegram to be shown on the lock screen so that calls can work properly.</string>
+-    <string name="PermissionBackgroundLocation">To share your live location in this chat, Telegram needs access to your location all the time, including while the app is in the background.\n\nWe will access your location only for the duration you choose, and you can stop sharing it any time. We won\'t use your location for any purpose other than sharing it in this chat.</string>
++    <string name="PermissionXiaomiLockscreen">Please allow ayu0x4gg to be shown on the lock screen so that calls can work properly.</string>
++    <string name="PermissionBackgroundLocation">To share your live location in this chat, ayu0x4gg needs access to your location all the time, including while the app is in the background.\n\nWe will access your location only for the duration you choose, and you can stop sharing it any time. We won\'t use your location for any purpose other than sharing it in this chat.</string>
+     <string name="PermissionDrawAboveOtherAppsTitle">Picture-in-Picture</string>
+     <string name="PermissionDrawAboveOtherAppsGroupCallTitle">Voice Chat Overlay</string>
+     <!--charts-->
+@@ -3876,14 +3876,14 @@
+     <string name="NotificationsChartTitle">Notifications</string>
+     <string name="DeviceStorage">Device storage</string>
+     <string name="TotalDeviceFreeSize">%s Free</string>
+-    <string name="ClearTelegramCache">Clear Telegram Cache</string>
++    <string name="Clearayu0x4ggCache">Clear ayu0x4gg Cache</string>
+     <string name="StatisticOverview">Overview</string>
+     <string name="ViewsPerPost">Views Per Post</string>
+     <string name="SharesPerPost">Shares Per Post</string>
+     <string name="EnabledNotifications">Enabled Notifications</string>
+     <string name="ClearLocalDatabase">Clear Local Database</string>
+-    <string name="TelegramCacheSize">%s Telegram Cache</string>
+-    <string name="LocalDatabaseSize">%s Telegram Local Database</string>
++    <string name="ayu0x4ggCacheSize">%s ayu0x4gg Cache</string>
++    <string name="LocalDatabaseSize">%s ayu0x4gg Local Database</string>
+     <string name="CacheWasCleared">%s freed on your device!</string>
+     <string name="TotalDeviceSize">%s Other Data</string>
+     <string name="GroupMembersChartTitle">Group members</string>
+@@ -3942,18 +3942,18 @@
+     <string name="ViewMessageStatistic">Message Statistic</string>
+     <string name="ViewMessage">Open Message</string>
+     <!--Intro view-->
+-    <string name="Page1Title">Telegram</string>
++    <string name="Page1Title">ayu0x4gg</string>
+     <string name="Page2Title">Fast</string>
+     <string name="Page3Title">Free</string>
+     <string name="Page4Title">Secure</string>
+     <string name="Page5Title">Powerful</string>
+     <string name="Page6Title">Cloud-Based</string>
+     <string name="Page1Message">The world\'s **fastest** messaging app.\nIt is **free** and **secure**.</string>
+-    <string name="Page2Message">**Telegram** delivers messages faster than\nany other application.</string>
+-    <string name="Page3Message">**Telegram** provides free unlimited cloud storage for chats and media.</string>
+-    <string name="Page4Message">**Telegram** keeps your messages safe\nfrom hacker attacks.</string>
+-    <string name="Page5Message">**Telegram** has no limits on\nthe size of your media and chats.</string>
+-    <string name="Page6Message">**Telegram** lets you access your messages\nfrom multiple devices.</string>
++    <string name="Page2Message">**ayu0x4gg** delivers messages faster than\nany other application.</string>
++    <string name="Page3Message">**ayu0x4gg** provides free unlimited cloud storage for chats and media.</string>
++    <string name="Page4Message">**ayu0x4gg** keeps your messages safe\nfrom hacker attacks.</string>
++    <string name="Page5Message">**ayu0x4gg** has no limits on\nthe size of your media and chats.</string>
++    <string name="Page6Message">**ayu0x4gg** lets you access your messages\nfrom multiple devices.</string>
+     <string name="StartMessaging">Start Messaging</string>
+     <!-- VoIP -->
+     <string name="AccountSettings">Account Settings</string>
+@@ -3968,9 +3968,9 @@
+     <string name="VoipFailed">Failed to connect</string>
+     <string name="VoipRinging">Ringing</string>
+     <string name="VoipBusy">Line busy</string>
+-    <string name="VoipInCallBranding">Telegram Call</string>
+-    <string name="VoipInVideoCallBranding">Telegram Video Call</string>
+-    <string name="VoipOutgoingCall">Ongoing Telegram call</string>
++    <string name="VoipInCallBranding">ayu0x4gg Call</string>
++    <string name="VoipInVideoCallBranding">ayu0x4gg Video Call</string>
++    <string name="VoipOutgoingCall">Ongoing ayu0x4gg call</string>
+     <string name="VoipVoiceChat">Ongoing Voice Chat</string>
+     <string name="VoipLiveStream">Ongoing Live Stream</string>
+     <string name="VoipEndCall">End call</string>
+@@ -3982,7 +3982,7 @@
+     <string name="VoipOngoingChatAlert2">Leave voice chat in **%1$s** and call **%2$s**?</string>
+     <string name="VoipNotificationSettings">Voice calls</string>
+     <string name="VoipSettingsRingtone">Ringtone</string>
+-    <string name="VoipRingtoneInfo">You can customize the ringtone used when this contact calls you on Telegram.</string>
++    <string name="VoipRingtoneInfo">You can customize the ringtone used when this contact calls you on ayu0x4gg.</string>
+     <string name="Calls">Calls</string>
+     <string name="DeleteAllCalls">Delete all calls</string>
+     <string name="DeleteCalls">Delete calls</string>
+@@ -4022,19 +4022,19 @@
+     <string name="NoRecentCallsInfo">Your recent voice and video calls\nwill appear here.</string>
+     <string name="VoipPeerIncompatible">**%1$s**\'s app is using an incompatible protocol. They need to update their app before you can call them.</string>
+     <string name="VoipPeerOutdated">**%1$s**\'s app does not support calls. They need to update their app before you can call them.</string>
+-    <string name="VoipPeerVideoOutdated">Sorry, **%1$s** is using an old version of Telegram that doesn\'t support video calls.</string>
++    <string name="VoipPeerVideoOutdated">Sorry, **%1$s** is using an old version of ayu0x4gg that doesn\'t support video calls.</string>
+     <string name="VoipPeerVideoOutdatedMakeVoice">Make a voice call</string>
+-    <string name="VoipRateCallAlert">Please rate the quality of your Telegram call</string>
+-    <string name="VoipNeedMicPermissionWithHint">**Telegram** needs microphone access so that you can make calls. Tap Settings -> Permissions, and turn **Microphone** on.</string>
+-    <string name="VoipNeedMicCameraPermissionWithHint">**Telegram** needs camera and microphone access so that you can make video calls. Tap Settings -> Permissions, and turn **Microphone** and **Camera** on.</string>
+-    <string name="VoipNeedCameraPermission">Telegram needs access to your camera so that you can make video calls.</string>
++    <string name="VoipRateCallAlert">Please rate the quality of your ayu0x4gg call</string>
++    <string name="VoipNeedMicPermissionWithHint">**ayu0x4gg** needs microphone access so that you can make calls. Tap Settings -> Permissions, and turn **Microphone** on.</string>
++    <string name="VoipNeedMicCameraPermissionWithHint">**ayu0x4gg** needs camera and microphone access so that you can make video calls. Tap Settings -> Permissions, and turn **Microphone** and **Camera** on.</string>
++    <string name="VoipNeedCameraPermission">ayu0x4gg needs access to your camera so that you can make video calls.</string>
+     <string name="VoipFeedbackCommentHint">Add an optional comment</string>
+     <string name="CallBack">Call Back</string>
+     <string name="CallAgain">Call Again</string>
+     <string name="DefaultRingtone">Default</string>
+     <string name="ConfirmDeleteCallLog">Do you want to delete this entry from the calls log?</string>
+-    <string name="CallViaTelegram">Telegram Call</string>
+-    <string name="VideoCallViaTelegram">Telegram Video Call</string>
++    <string name="CallViaayu0x4gg">ayu0x4gg Call</string>
++    <string name="VideoCallViaayu0x4gg">ayu0x4gg Video Call</string>
+     <string name="VoipAudioRoutingEarpiece">Earpiece</string>
+     <string name="VoipAudioRoutingHeadset">Headset</string>
+     <string name="VoipAudioRoutingSpeaker">Speaker</string>
+@@ -4048,20 +4048,20 @@
+     <string name="CallReportHint">What went wrong?</string>
+     <string name="CallReportIncludeLogs">Include technical information</string>
+     <string name="CallReportLogsExplain">Doesn\'t reveal chat contents and helps us fix the issue sooner.</string>
+-    <string name="CallReportSent">Thank you for helping make Telegram calls better.</string>
++    <string name="CallReportSent">Thank you for helping make ayu0x4gg calls better.</string>
+     <string name="TranscriptionReportSent">Thank you for your feedback.</string>
+     <string name="VoipAnsweringAsAccount">answering as %s</string>
+     <string name="VoipQuickReplies">Respond with Text</string>
+-    <string name="VoipQuickRepliesExplain">These quick responses will be available when you respond to an incoming call with a Telegram message. Change them to say anything you like.</string>
++    <string name="VoipQuickRepliesExplain">These quick responses will be available when you respond to an incoming call with a ayu0x4gg message. Change them to say anything you like.</string>
+     <string name="QuickReplyDefault1">Can\'t talk now. What\'s up?</string>
+     <string name="QuickReplyDefault2">I\'ll call you right back.</string>
+     <string name="QuickReplyDefault3">I\'ll call you later.</string>
+     <string name="QuickReplyDefault4">Can\'t talk now. Call me later?</string>
+     <string name="QuickReplyCustom">Custom Message...</string>
+     <string name="AllowCustomQuickReply">Allow Custom</string>
+-    <string name="VoipInCallBrandingWithName">Telegram Call to %s</string>
+-    <string name="VoipInVideoCallBrandingWithName">Telegram Video Call to %s</string>
+-    <string name="VoipErrorUnknown">Can\'t place a Telegram call at the moment.</string>
++    <string name="VoipInCallBrandingWithName">ayu0x4gg Call to %s</string>
++    <string name="VoipInVideoCallBrandingWithName">ayu0x4gg Video Call to %s</string>
++    <string name="VoipErrorUnknown">Can\'t place a ayu0x4gg call at the moment.</string>
+     <string name="RateCallEcho">I heard my own voice</string>
+     <string name="RateCallNoise">I heard background noise</string>
+     <string name="RateCallInterruptions">The other side kept disappearing</string>
+@@ -4301,8 +4301,8 @@
+     <string name="VoipNoiseCancellationEnabled">Enabled</string>
+     <string name="VoipNoiseCancellationDisabled">Disabled</string>
+     <string name="VoipVideoNotAvailable">Video is only available\nfor the first %1$s</string>
+-    <string name="VoipVideoNotAvailableAdmin">The video chat has over %1$s.\nNew participants must use the latest version of Telegram to view video.</string>
+-    <string name="VoipChannelVideoNotAvailableAdmin">The live stream is over %1$s.\nNew participants must use the latest version of Telegram to view video.</string>
++    <string name="VoipVideoNotAvailableAdmin">The video chat has over %1$s.\nNew participants must use the latest version of ayu0x4gg to view video.</string>
++    <string name="VoipChannelVideoNotAvailableAdmin">The live stream is over %1$s.\nNew participants must use the latest version of ayu0x4gg to view video.</string>
+     <string name="VoipRecordAudio">AUDIO ONLY</string>
+     <string name="VoipRecordPortrait">PORTRAIT VIDEO</string>
+     <string name="VoipRecordLandscape">LANDSCAPE VIDEO</string>
+@@ -4310,13 +4310,13 @@
+     <string name="VoipChannelRecordVoiceChat">Record live stream</string>
+     <string name="VoipRecordVoiceChatInfo">Choose how to record this chat</string>
+     <string name="VoipRecordStart">Start Recording</string>
+-    <string name="NoRtmpStreamFromAppOwner">**Oops!** Telegram doesn\'t see any stream coming from your streaming app.\n\nPlease make sure you entered the right Server URL and Stream Key in your app.</string>
+-    <string name="NoRtmpStreamFromAppViewer">%1$s is currently not broadcasting live stream data to Telegram.</string>
++    <string name="NoRtmpStreamFromAppOwner">**Oops!** ayu0x4gg doesn\'t see any stream coming from your streaming app.\n\nPlease make sure you entered the right Server URL and Stream Key in your app.</string>
++    <string name="NoRtmpStreamFromAppViewer">%1$s is currently not broadcasting live stream data to ayu0x4gg.</string>
+     <!--invite links-->
+     <string name="ManageInviteLinks">Manage Invite Links</string>
+     <string name="ManageLinksInfoHelp">You can create additional invite links that have a limited time or number of uses</string>
+-    <string name="PrimaryLinkHelp">Anyone on Telegram will be able to join your group by following this link.</string>
+-    <string name="PrimaryLinkHelpChannel">Anyone on Telegram will be able to join your channel by following this link.</string>
++    <string name="PrimaryLinkHelp">Anyone on ayu0x4gg will be able to join your group by following this link.</string>
++    <string name="PrimaryLinkHelpChannel">Anyone on ayu0x4gg will be able to join your channel by following this link.</string>
+     <string name="EditLink">Edit link</string>
+     <string name="SaveLink">Save Link</string>
+     <string name="NoLimit">No limit</string>
+@@ -4347,17 +4347,17 @@
+     <string name="DeleteAllRevokedLinks">Delete All Revoked Links</string>
+     <string name="NoOneJoined">No one joined</string>
+     <string name="LinkLimitReached">Limit reached</string>
+-    <string name="QRCodeLinkHelpGroup">Everyone on Telegram can scan this code to join your group.</string>
++    <string name="QRCodeLinkHelpGroup">Everyone on ayu0x4gg can scan this code to join your group.</string>
+     <string name="DeleteLinkHelp">This will delete link.</string>
+     <string name="DeleteAllRevokedLinkHelp">This will delete all revoked links.</string>
+     <string name="CreateNewLinkHelp">You can generate invite links that expire after they are used.</string>
+     <string name="LinksCreatedByThisAdmin">Invite links created by this admin</string>
+     <string name="LinksCreatedByOtherAdmins">Invite links created by other admins</string>
+     <string name="PermanentLinkForThisAdmin">Invite link for this admin</string>
+-    <string name="QRCodeLinkHelpChannel">Everyone on Telegram can scan this code to join your channel.</string>
++    <string name="QRCodeLinkHelpChannel">Everyone on ayu0x4gg can scan this code to join your channel.</string>
+     <string name="QRCodeLinkHelpProxy">Your friends can add this proxy by scanning this code with phone or in-app camera.</string>
+-    <string name="QRCodeLinkHelpFolder">Everyone on Telegram can scan this code to add this folder and join the chats included in this invite link.</string>
+-    <string name="LinkInfoChannel">Anyone who has Telegram installed will be able to join your channel by following this link.</string>
++    <string name="QRCodeLinkHelpFolder">Everyone on ayu0x4gg can scan this code to add this folder and join the chats included in this invite link.</string>
++    <string name="LinkInfoChannel">Anyone who has ayu0x4gg installed will be able to join your channel by following this link.</string>
+     <string name="LinkExpiresInTime">The link expires in %s</string>
+     <string name="PublicLink">Public link</string>
+     <string name="InviteExpired">This invite link has expired.</string>
+@@ -4443,18 +4443,18 @@
+     <string name="OnlineCount_few">%1$d online</string>
+     <string name="OnlineCount_many">%1$d online</string>
+     <string name="OnlineCount_other">%1$d online</string>
+-    <string name="TelegramContacts_zero">%1$d contacts on Telegram</string>
+-    <string name="TelegramContacts_one">%1$d contact on Telegram</string>
+-    <string name="TelegramContacts_two">%1$d contacts on Telegram</string>
+-    <string name="TelegramContacts_few">%1$d contacts on Telegram</string>
+-    <string name="TelegramContacts_many">%1$d contacts on Telegram</string>
+-    <string name="TelegramContacts_other">%1$d contacts on Telegram</string>
+-    <string name="InviteTextNum_zero">Hey, I\'m using Telegram to chat – and so are %1$d of our other contacts. Join us! Download it here: %2$s</string>
+-    <string name="InviteTextNum_one">Hey, I\'m using Telegram to chat – and so are %1$d of our other contact. Join us! Download it here: %2$s</string>
+-    <string name="InviteTextNum_two">Hey, I\'m using Telegram to chat – and so are %1$d of our other contacts. Join us! Download it here: %2$s</string>
+-    <string name="InviteTextNum_few">Hey, I\'m using Telegram to chat – and so are %1$d of our other contacts. Join us! Download it here: %2$s</string>
+-    <string name="InviteTextNum_many">Hey, I\'m using Telegram to chat – and so are %1$d of our other contacts. Join us! Download it here: %2$s</string>
+-    <string name="InviteTextNum_other">Hey, I\'m using Telegram to chat – and so are %1$d of our other contacts. Join us! Download it here: %2$s</string>
++    <string name="ayu0x4ggContacts_zero">%1$d contacts on ayu0x4gg</string>
++    <string name="ayu0x4ggContacts_one">%1$d contact on ayu0x4gg</string>
++    <string name="ayu0x4ggContacts_two">%1$d contacts on ayu0x4gg</string>
++    <string name="ayu0x4ggContacts_few">%1$d contacts on ayu0x4gg</string>
++    <string name="ayu0x4ggContacts_many">%1$d contacts on ayu0x4gg</string>
++    <string name="ayu0x4ggContacts_other">%1$d contacts on ayu0x4gg</string>
++    <string name="InviteTextNum_zero">Hey, I\'m using ayu0x4gg to chat – and so are %1$d of our other contacts. Join us! Download it here: %2$s</string>
++    <string name="InviteTextNum_one">Hey, I\'m using ayu0x4gg to chat – and so are %1$d of our other contact. Join us! Download it here: %2$s</string>
++    <string name="InviteTextNum_two">Hey, I\'m using ayu0x4gg to chat – and so are %1$d of our other contacts. Join us! Download it here: %2$s</string>
++    <string name="InviteTextNum_few">Hey, I\'m using ayu0x4gg to chat – and so are %1$d of our other contacts. Join us! Download it here: %2$s</string>
++    <string name="InviteTextNum_many">Hey, I\'m using ayu0x4gg to chat – and so are %1$d of our other contacts. Join us! Download it here: %2$s</string>
++    <string name="InviteTextNum_other">Hey, I\'m using ayu0x4gg to chat – and so are %1$d of our other contacts. Join us! Download it here: %2$s</string>
+     <string name="PeopleJoined_zero">%1$d people joined</string>
+     <string name="PeopleJoined_one">%1$d people joined</string>
+     <string name="PeopleJoined_two">%1$d people joined</string>
+@@ -5377,9 +5377,9 @@
+     <string name="ChatThemeSaveDialogText">Do you want to apply the new theme for this chat?</string>
+     <string name="ChatThemeSaveDialogApply">Apply</string>
+     <string name="ChatThemeSaveDialogDiscard">Discard</string>
+-    <string name="OptimizingTelegram">Optimizing Telegram...</string>
+-    <string name="OptimizingTelegramDescription1">This may take a while, depending on the size of the database. Please keep the app open until the process is finished.</string>
+-    <string name="OptimizingTelegramDescription2">Sorry for the inconvenience.</string>
++    <string name="Optimizingayu0x4gg">Optimizing ayu0x4gg...</string>
++    <string name="Optimizingayu0x4ggDescription1">This may take a while, depending on the size of the database. Please keep the app open until the process is finished.</string>
++    <string name="Optimizingayu0x4ggDescription2">Sorry for the inconvenience.</string>
+     <string name="DoNoSetTheme">Do No Set Theme</string>
+     <string name="EnjoyngAnimations">**oo** watching %1$s</string>
+     <string name="IsEnjoyngAnimations">%1$s is **oo** watching %2$s</string>
+@@ -5486,8 +5486,8 @@
+     <string name="ChannelSettingsJoinToSendInfo">Turn this on if you expect users to join your group before being able to send messages.</string>
+     <string name="ChannelSettingsJoinRequest">Approve new members</string>
+     <string name="ChannelSettingsJoinRequestInfo">Turn this on if you want users to join the group only after they are approved by an admin.</string>
+-    <string name="ManageAllFilesRational">Please allow **Telegram** to manage all files to open in-app file browser</string>
+-    <string name="ManageAllFilesRational2">Telegram needs permission to manage all files to migrate old cache files to Scoped Storage</string>
++    <string name="ManageAllFilesRational">Please allow **ayu0x4gg** to manage all files to open in-app file browser</string>
++    <string name="ManageAllFilesRational2">ayu0x4gg needs permission to manage all files to migrate old cache files to Scoped Storage</string>
+     <string name="Allow">Allow</string>
+     <string name="UseFileManger">Use Another App</string>
+     <string name="Application">Application</string>
+@@ -5496,12 +5496,12 @@
+     <string name="AcceptSecretChats">Accept Secret Chats</string>
+     <string name="AcceptSecretChatsDescription">Use this device for Secret Chats</string>
+     <string name="TerminateSession">Terminate Session</string>
+-    <string name="AuthAnotherClientInfo4">Link *Telegram Desktop* or *Telegram Web* by scanning the QR.</string>
++    <string name="AuthAnotherClientInfo4">Link *ayu0x4gg Desktop* or *ayu0x4gg Web* by scanning the QR.</string>
+     <string name="LinkDesktopDevice">Link Desktop Device</string>
+     <string name="TerminateOldSessionHeader">Automatically terminate old sessions</string>
+     <string name="IfInactiveFor">if inactive for</string>
+     <string name="AuthAnotherClientInfo5">Go to *getdesktop.telegram.org* or *web.telegram.org* to get a QR code</string>
+-    <string name="SessionsListInfo">The official Telegram app is available for Android, iPhone, iPad, Windows, macOS and Linux.</string>
++    <string name="SessionsListInfo">The official ayu0x4gg app is available for Android, iPhone, iPad, Windows, macOS and Linux.</string>
+     <string name="MigrateOldFolder">Migrate old folder to Scoped Storage</string>
+     <string name="SelectThisDay">Select this day</string>
+     <string name="NoMessagesForThisDay">No messages for this day</string>
+@@ -5538,7 +5538,7 @@
+     <string name="MigrationNotification">Migration</string>
+     <string name="MigrateOldFolderButton">Move Files Now</string>
+     <string name="MigrateOldFolderTitle">Migrate Files to Scoped Storage</string>
+-    <string name="MigrateOldFolderDescription">Due to a change made by **Google**, we need to move the files you downloaded using **Telegram** to a new folder.\n\nThis may take a few moments. You can continue using the app while the files are moved.</string>
++    <string name="MigrateOldFolderDescription">Due to a change made by **Google**, we need to move the files you downloaded using **ayu0x4gg** to a new folder.\n\nThis may take a few moments. You can continue using the app while the files are moved.</string>
+     <string name="MigratingFiles">Migrating files</string>
+ 
+     <string name="ReactionsCount_other">%1$d reactions</string>
+@@ -5604,9 +5604,9 @@
+     <string name="BlurInChat">Blur in chat</string>
+ 
+     <string name="AllowBackgroundActivity">Allow background activity</string>
+-    <string name="AllowBackgroundActivityInfo">This will improve reliability for incoming notifications and Telegram calls.</string>
+-    <string name="AllowBackgroundActivityInfoOneUIBelowS">This will improve reliability for incoming notifications and Telegram calls. Tap Settings -> Battery and turn **Allow background activity** on.</string>
+-    <string name="AllowBackgroundActivityInfoOneUIAboveS">This will improve reliability for incoming notifications and Telegram calls. Please select **Optimised** or **Unrestricted** in Settings > Battery.</string>
++    <string name="AllowBackgroundActivityInfo">This will improve reliability for incoming notifications and ayu0x4gg calls.</string>
++    <string name="AllowBackgroundActivityInfoOneUIBelowS">This will improve reliability for incoming notifications and ayu0x4gg calls. Tap Settings -> Battery and turn **Allow background activity** on.</string>
++    <string name="AllowBackgroundActivityInfoOneUIAboveS">This will improve reliability for incoming notifications and ayu0x4gg calls. Please select **Optimised** or **Unrestricted** in Settings > Battery.</string>
+     <string name="SetNewPassword">Set a new password</string>
+     <string name="ReadAllReactions">Read all reactions</string>
+     <string name="ReadAllMentions">Read all mentions</string>
+@@ -5623,7 +5623,7 @@
+     <string name="ManageDeviceStorage">Manage Device Storage</string>
+     <string name="RemoveDocumentsAlertMessage">They will be deleted from your disk, but will remain accessible in the cloud.</string>
+ 
+-    <string name="DownloadedFilesMessage">Telegram lets you store all documents you send and receive in the cloud and save storage space on your device.</string>
++    <string name="DownloadedFilesMessage">ayu0x4gg lets you store all documents you send and receive in the cloud and save storage space on your device.</string>
+     <string name="ClearDownloadsList">Clear Download List</string>
+     <string name="SearchEmptyViewDownloads">No recent downloads</string>
+     <string name="ForceSetPasswordAlertMessageShort_zero">If you do not set a password, you will only be able to log into your account via SMS once every %1$s days. Do you want to proceed without a password?</string>
+@@ -5635,8 +5635,8 @@
+     <string name="YourPasswordReset">Your password was successfully deactivated</string>
+     <string name="CreatePassword">Create a Password</string>
+     <string name="CreatePasscode">Create a passcode</string>
+-    <string name="CreatePasscodeInfoPIN">Please enter any 4 digits that you will use to unlock Telegram.</string>
+-    <string name="CreatePasscodeInfoPassword">Please enter the password you will use to unlock Telegram.</string>
++    <string name="CreatePasscodeInfoPIN">Please enter any 4 digits that you will use to unlock ayu0x4gg.</string>
++    <string name="CreatePasscodeInfoPassword">Please enter the password you will use to unlock ayu0x4gg.</string>
+     <string name="PasscodeReinstallNotice">If you forget your passcode, you\'ll need to **reinstall** the app. All secret chats will be lost.</string>
+     <string name="EditNumberInfo">Do you want to edit your number?\n\n**%1$s**\n\nIf the number above is correct, please wait for the verification code.</string>
+     <string name="ReportChatIllegalDrugs">Illegal Drugs</string>
+@@ -5660,7 +5660,7 @@
+     <string name="SoundOnHint">You will receive notifications with sound.</string>
+     <string name="SoundOffHint">"You will receive silent notifications. "</string>
+     <string name="NotificationsSound">Notification Sound</string>
+-    <string name="TelegramTones">Telegram tones</string>
++    <string name="ayu0x4ggTones">ayu0x4gg tones</string>
+     <string name="SystemTones">System tones</string>
+     <string name="UploadSound">Upload sound</string>
+     <string name="NotificationsSoundPrivate">Private Chats Sound</string>
+@@ -5717,22 +5717,22 @@
+     <string name="UnlockPremiumEmoji">Unlock Premium Emoji</string>
+     <string name="UnlockPremiumStickers">Unlock Premium Stickers</string>
+     <string name="UnlockPremiumReactions">Unlock Premium Reactions</string>
+-    <string name="UnlockPremiumReactionsDescription">Unlock additional reactions by subscribing to Telegram Premium.</string>
++    <string name="UnlockPremiumReactionsDescription">Unlock additional reactions by subscribing to ayu0x4gg Premium.</string>
+     <string name="SecretChatTimerYears">y</string>
+     <string name="IncreaseLimit">Increase Limit</string>
+-    <string name="LimitReachedPublicLinks">You have reserved too many public links. Try revoking the link from an older group or channel, or upgrade to **Telegram Premium** to double the limit to **%2$d** public links.</string>
++    <string name="LimitReachedPublicLinks">You have reserved too many public links. Try revoking the link from an older group or channel, or upgrade to **ayu0x4gg Premium** to double the limit to **%2$d** public links.</string>
+     <string name="LimitReachedPublicLinksPremium">You have reserved too many public links. Try revoking the link from an older group or channel.</string>
+     <string name="LimitReachedPublicLinksLocked">You have reserved too many public links. Try revoking the link from an older group or channel. We are working to let you increase this limit in the future.</string>
+     <string name="YourPublicCommunities">Your public communities</string>
+-    <string name="LimitReachedFolders">You have reached the limit of **%1$d** folders. You can double the limit to **%2$d** folders by subscribing to **Telegram Premium**.</string>
++    <string name="LimitReachedFolders">You have reached the limit of **%1$d** folders. You can double the limit to **%2$d** folders by subscribing to **ayu0x4gg Premium**.</string>
+     <string name="LimitReachedFoldersPremium">You have reached the limit of **%1$d** folders for this account.</string>
+     <string name="LimitReachedFoldersLocked">You have reached the limit of **%1$d** folders for this account. We are working to let you increase this limit in the future.</string>
+-    <string name="LimitReachedChatInFolders">Sorry, you can\'t add more than **%1$d** chats to a folder. You can increase this limit to **%2$d** by upgrading to **Telegram Premium**.</string>
++    <string name="LimitReachedChatInFolders">Sorry, you can\'t add more than **%1$d** chats to a folder. You can increase this limit to **%2$d** by upgrading to **ayu0x4gg Premium**.</string>
+     <string name="LimitReachedChatInFoldersPremium">Sorry, you can\'t add more than **%1$d** chats to a folder. Please create a new one.</string>
+     <string name="LimitReachedChatInFoldersLocked">Sorry, you can\'t add more than **%1$d** chats to a folder. Please create a new one. We are working to let you increase this limit in the future.</string>
+-    <string name="LimitReachedCommunities">You are a member of **%1$d**  groups and channels. Please leave some before joining a new one — or upgrade to **Telegram Premium** to double the limit to **%2$d** groups and channels.</string>
++    <string name="LimitReachedCommunities">You are a member of **%1$d**  groups and channels. Please leave some before joining a new one — or upgrade to **ayu0x4gg Premium** to double the limit to **%2$d** groups and channels.</string>
+     <string name="LimitReachedCommunitiesPremium">You are a member of **%1$d**  groups and channels. Please leave some before joining a new one.</string>
+-    <string name="LimitReachedReorderFolder">"Subscribe to **Telegram Premium** to move the \"%1$s\" folder."</string>
++    <string name="LimitReachedReorderFolder">"Subscribe to **ayu0x4gg Premium** to move the \"%1$s\" folder."</string>
+     <string name="LimitReachedCommunitiesLocked">You are a member of **%1$d**  groups and channels. Please leave some before joining a new one. We are working to let you increase this limit in the future.</string>
+     <string name="AccDescrPremium">Premium account</string>
+     <string name="LimitFree">Free</string>
+@@ -5743,16 +5743,16 @@
+     <string name="PremiumPreviewUploadsDescription">Increased upload size from 2Gb to 4Gb per document, unlimited storage overall.</string>
+     <string name="PremiumPreviewDownloadSpeed">Faster Download Speed</string>
+     <string name="PremiumPreviewDownloadSpeedDescription">No more limits on the speed with which media and documents are downloaded.</string>
+-    <string name="PremiumPreviewDownloadSpeedDescription2">Subscribe to Telegram Premium to download media and files at the fastest possible speed.</string>
++    <string name="PremiumPreviewDownloadSpeedDescription2">Subscribe to ayu0x4gg Premium to download media and files at the fastest possible speed.</string>
+     <string name="PremiumPreviewNoAds">No Ads</string>
+-    <string name="PremiumPreviewNoAdsDescription">No more ads in public channels where Telegram sometimes shows ads.</string>
++    <string name="PremiumPreviewNoAdsDescription">No more ads in public channels where ayu0x4gg sometimes shows ads.</string>
+     <string name="PremiumPreviewReactions">Unique Reactions</string>
+     <string name="PremiumPreviewStickers">Premium Stickers</string>
+     <string name="PremiumPreviewStickersDescription">Exclusive enlarged stickers featuring additional effects, updated monthly.</string>
+     <string name="PremiumPreviewEmoji">Animated Emoji</string>
+     <string name="PremiumPreviewEmojiDescription">Include animated emoji from different emoji sets in any message you send.</string>
+     <string name="PremiumPreviewProfileBadge">Profile Badge</string>
+-    <string name="PremiumPreviewProfileBadgeDescription">A badge next to your name showing that you are helping support Telegram.</string>
++    <string name="PremiumPreviewProfileBadgeDescription">A badge next to your name showing that you are helping support ayu0x4gg.</string>
+     <string name="PremiumPreviewAnimatedProfiles">Animated Profile Pictures</string>
+     <string name="PremiumPreviewAnimatedProfilesDescription">Video avatars animated in chat lists and chats to allow for additional self-expression.</string>
+     <string name="SubscribeToPremium">Subscribe for %s per month</string>
+@@ -5762,31 +5762,31 @@
+     <string name="SubscribeToPremiumNoPrice">Subscribe</string>
+     <string name="SubscribeToPremiumNotAvailable">Subscription not available</string>
+     <string name="SubscribeToPremiumOfficialAppNeeded">**Official app needed**</string>
+-    <string name="SubscribeToPremiumOfficialAppNeededDescription">You need an official Telegram app to subscribe to **Telegram Premium**.\n\nOnce subscribed, you will be able to use the benefits of Telegram Premium in any apps that support it, including unofficial ones.</string>
++    <string name="SubscribeToPremiumOfficialAppNeededDescription">You need an official ayu0x4gg app to subscribe to **ayu0x4gg Premium**.\n\nOnce subscribed, you will be able to use the benefits of ayu0x4gg Premium in any apps that support it, including unofficial ones.</string>
+     <string name="InstallOfficialApp">Install official app</string>
+     <string name="GiftSubscriptionFor">Gift Subscription for %1$s</string>
+     <string name="GiftPremiumOptionDiscount">-%1$d%%</string>
+     <string name="PricePerMonth">%1$s / month</string>
+     <string name="PricePerMonthMe">%1$s/month</string>
+     <string name="PricePerYear">%1$s/year</string>
+-    <string name="GiftPremiumListFeaturesAndTerms">You can review the list of features and terms of use for Telegram Premium *here*.</string>
++    <string name="GiftPremiumListFeaturesAndTerms">You can review the list of features and terms of use for ayu0x4gg Premium *here*.</string>
+     <string name="GiftPremium">Gift Premium</string>
+-    <string name="GiftTelegramPremiumTitle">Gift Telegram Premium</string>
+-    <string name="GiftTelegramPremiumDescription">Let **%1$s** enjoy exclusive features of Telegram with **Telegram Premium**.</string>
+-    <string name="TelegramPremium">Telegram Premium</string>
+-    <string name="TelegramPremiumSubtitle">Go **beyond the limits**, get exclusive features and support us by subscribing to **Telegram Premium**.</string>
+-    <string name="TelegramPremiumSubscribedTitle">You are all set!</string>
+-    <string name="TelegramPremiumSubscribedSubtitle">Thank you for subscribing to **Telegram Premium**.\nHere’s what is now unlocked.</string>
++    <string name="Giftayu0x4ggPremiumTitle">Gift ayu0x4gg Premium</string>
++    <string name="Giftayu0x4ggPremiumDescription">Let **%1$s** enjoy exclusive features of ayu0x4gg with **ayu0x4gg Premium**.</string>
++    <string name="ayu0x4ggPremium">ayu0x4gg Premium</string>
++    <string name="ayu0x4ggPremiumSubtitle">Go **beyond the limits**, get exclusive features and support us by subscribing to **ayu0x4gg Premium**.</string>
++    <string name="ayu0x4ggPremiumSubscribedTitle">You are all set!</string>
++    <string name="ayu0x4ggPremiumSubscribedSubtitle">Thank you for subscribing to **ayu0x4gg Premium**.\nHere’s what is now unlocked.</string>
+     <string name="LimitReachedFavoriteStickers">Limit of %d Stickers Reached</string>
+     <string name="LimitReachedFavoriteStickersSubtitle">An older sticker was replaced with this one. You can **increase the limit** to %d stickers</string>
+     <string name="LimitReachedFavoriteGifs">Limit of %d GIFs Reached</string>
+     <string name="LimitReachedFavoriteGifsSubtitle">An older GIF was replaced with this one. You can **increase the limit** to %d GIFs</string>
+-    <string name="LimitReachedFileSize">The document cant’t be sent, because it is larger than **%1$s**. You can double this limit to **%2$s** per document by subscribing to **Telegram Premium**.</string>
++    <string name="LimitReachedFileSize">The document cant’t be sent, because it is larger than **%1$s**. You can double this limit to **%2$s** per document by subscribing to **ayu0x4gg Premium**.</string>
+     <string name="LimitReachedFileSizePremium">The document cant’t be sent, because it is larger than **%1$s**.</string>
+     <string name="LimitReachedFileSizeLocked">The document cant’t be sent, because it is larger than **%1$s**. We are working to let you increase this limit in the future.</string>
+-    <string name="AboutPremiumTitle">About Telegram Premium</string>
+-    <string name="AboutPremiumDescription">While the free version of Telegram already gives its users more than any other messaging application, **Telegram Premium** pushes its capabilities even further.</string>
+-    <string name="AboutPremiumDescription2">**Telegram Premium** is a paid option, because most Premium Features require additional expenses from Telegram to third parties such as data center providers and server manufacturers. Contributions from **Telegram Premium** users allow us to cover such costs and also help Telegram stay free for everyone.</string>
++    <string name="AboutPremiumTitle">About ayu0x4gg Premium</string>
++    <string name="AboutPremiumDescription">While the free version of ayu0x4gg already gives its users more than any other messaging application, **ayu0x4gg Premium** pushes its capabilities even further.</string>
++    <string name="AboutPremiumDescription2">**ayu0x4gg Premium** is a paid option, because most Premium Features require additional expenses from ayu0x4gg to third parties such as data center providers and server manufacturers. Contributions from **ayu0x4gg Premium** users allow us to cover such costs and also help ayu0x4gg stay free for everyone.</string>
+     <string name="PremiumTierAnnual">Annual</string>
+     <string name="PremiumTierSemiannual">Semiannual</string>
+     <string name="PremiumTierMonthly">Monthly</string>
+@@ -5807,11 +5807,11 @@
+     <string name="ConnectedAccountsLimitTitle">Connected Accounts</string>
+     <string name="ConnectedAccountsLimitSubtitle">Connect %d accounts with different mobile numbers</string>
+     <string name="DoubledLimits">Doubled Limits</string>
+-    <string name="LimitReachedAccounts">Sorry, you can\'t add more than **%1$d** accounts. You can increase this limit to **%2$d** by upgrading to **Telegram Premium**.</string>
++    <string name="LimitReachedAccounts">Sorry, you can\'t add more than **%1$d** accounts. You can increase this limit to **%2$d** by upgrading to **ayu0x4gg Premium**.</string>
+     <string name="LimitReachedAccountsPremium">Sorry, you can\'t add more than **%1$d** accounts.</string>
+     <string name="PremiumPreviewVoiceToText">Voice-to-Text Conversion</string>
+     <string name="PremiumPreviewVoiceToTextDescription">Ability to read the transcript of any incoming voice message.</string>
+-    <string name="PremiumPreviewVoiceToTextDescription2">Subscribe to Telegram Premium to be able to convert voice and video messages to text.</string>
++    <string name="PremiumPreviewVoiceToTextDescription2">Subscribe to ayu0x4gg Premium to be able to convert voice and video messages to text.</string>
+     <string name="PremiumPreviewAdvancedChatManagement">Advanced Chat Management</string>
+     <string name="PremiumStickersShort">Premium</string>
+     <string name="PremiumStickers">Premuim Stickers</string>
+@@ -5834,13 +5834,13 @@
+     <string name="AppIconChangedTo">App icon has been changed to %1$s</string>
+     <string name="FileTooLarge">File Too Large</string>
+     <string name="PremiumPreviewAppIcon">Premium App Icon</string>
+-    <string name="PremiumPreviewAppIconDescription">Choose from a selection of Telegram app icons for your homescreen.</string>
++    <string name="PremiumPreviewAppIconDescription">Choose from a selection of ayu0x4gg app icons for your homescreen.</string>
+     <string name="UnlockPremiumIcons">Unlock Premium Icons</string>
+-    <string name="AboutTelegramPremium">About Telegram Premium</string>
++    <string name="Aboutayu0x4ggPremium">About ayu0x4gg Premium</string>
+     <string name="AdditionalReactions">Additional Reactions</string>
+-    <string name="AdditionalReactionsDescription">Unlock a wider range of reactions on messages by subscribing to Telegram Premium.</string>
++    <string name="AdditionalReactionsDescription">Unlock a wider range of reactions on messages by subscribing to ayu0x4gg Premium.</string>
+     <string name="PremiumPreviewAppIcon2">Additional App Icons</string>
+-    <string name="PremiumPreviewAppIconDescription2">Unlock a wider range of app icons by subscribing to Telegram Premium.</string>
++    <string name="PremiumPreviewAppIconDescription2">Unlock a wider range of app icons by subscribing to ayu0x4gg Premium.</string>
+     <string name="PaymentCheckoutAcceptRecurrent">I accept the *Terms of Service* of %1$s.</string>
+     <string name="ChannelJoinRequestSent">JOIN REQUEST SENT</string>
+     <string name="RevokeLinksAlert">Are you sure you want to revoke these links?\n\nThe groups will become private.</string>
+@@ -5850,36 +5850,36 @@
+     <string name="AllWebSessionsTerminated">All websites disconnected.</string>
+     <string name="InviteToGroupErrorTitleAUser">Can\'t add user</string>
+     <string name="BotCantOpenAttachMenuSameBot">This bot can\'t be opened in the chat with itself.</string>
+-    <string name="UnlockPremiumStickersDescription">Unlock this sticker and many more by subscribing to Telegram Premium.</string>
+-    <string name="LimitReachedPinDialogs">Sorry, you can\'t pin more than %1$d chats to the top. Unpin some that are currently pinned or subscribe to **Telegram Premium** to double the limit to **%2$d** chats.</string>
++    <string name="UnlockPremiumStickersDescription">Unlock this sticker and many more by subscribing to ayu0x4gg Premium.</string>
++    <string name="LimitReachedPinDialogs">Sorry, you can\'t pin more than %1$d chats to the top. Unpin some that are currently pinned or subscribe to **ayu0x4gg Premium** to double the limit to **%2$d** chats.</string>
+     <string name="LimitReachedPinDialogsPremium">Sorry, you can\'t pin more than %1$d chats to the top. Unpin some that are currently pinned.</string>
+     <string name="LimitReachedPinDialogsLocked">Sorry, you can\'t pin more than %1$d chats to the top. Unpin some that are currently pinned. We are working to let you increase this limit in the future.</string>
+     <string name="LastActiveCommunities">Recently active communities</string>
+     <string name="ChatsLeaveAlert"><![CDATA[>Are you sure you want to leave the selected chats?]]></string>
+     <string name="PremiumPreviewReactionsDescription">Additional animated reactions on messages, available only to Premium subscribers.</string>
+     <string name="PremiumPreviewAdvancedChatManagementDescription">Tools to set the default folder, auto-archive and hide new chats from non-contacts.</string>
+-    <string name="PremiumPreviewAdvancedChatManagementDescription2">Subscribers of Telegram Premium can set the default folder, auto-archive and hide new chats from non-contacts.</string>
+-    <string name="TelegramPremiumUserDialogTitle">**%s** is a subscriber of Telegram Premium.</string>
+-    <string name="TelegramPremiumUserDialogSubtitle">Owners of **Telegram Premium** accounts have exclusive access to multiple additional features.</string>
+-    <string name="TelegramPremiumUserStatusDialogTitle">%1$s set this emoji from **%2$s** as their current status.</string>
+-    <string name="TelegramPremiumUserStatusDialogSubtitle">Emoji status is a premium feature. Other features included in **Telegram Premium**:</string>
+-    <string name="TelegramPremiumUserStatusDefaultDialogTitle">This is %1$s\'s current status.</string>
+-    <string name="TelegramPremiumUserGiftedPremiumDialogTitleWithPlural">**%1$s** has gifted you a %2$s subscription for Telegram Premium.</string>
+-    <string name="TelegramPremiumUserGiftedPremiumDialogTitleWithPluralSomeone">Someone has gifted you a %1$s subscription for Telegram Premium.</string>
+-    <string name="TelegramPremiumUserGiftedPremiumDialogSubtitle">You now have access to additional features.</string>
+-    <string name="TelegramPremiumUserGiftedPremiumOutboundDialogTitleWithPlural">You gifted **%1$s** a %2$s subscription for Telegram Premium.</string>
+-    <string name="TelegramPremiumUserGiftedPremiumOutboundDialogSubtitle">**%1$s** now have access to additional features.</string>
+-    <string name="PremiumPreviewNoAdsDescription2">Remove ads such as this one by subscribing to Telegram Premium.</string>
++    <string name="PremiumPreviewAdvancedChatManagementDescription2">Subscribers of ayu0x4gg Premium can set the default folder, auto-archive and hide new chats from non-contacts.</string>
++    <string name="ayu0x4ggPremiumUserDialogTitle">**%s** is a subscriber of ayu0x4gg Premium.</string>
++    <string name="ayu0x4ggPremiumUserDialogSubtitle">Owners of **ayu0x4gg Premium** accounts have exclusive access to multiple additional features.</string>
++    <string name="ayu0x4ggPremiumUserStatusDialogTitle">%1$s set this emoji from **%2$s** as their current status.</string>
++    <string name="ayu0x4ggPremiumUserStatusDialogSubtitle">Emoji status is a premium feature. Other features included in **ayu0x4gg Premium**:</string>
++    <string name="ayu0x4ggPremiumUserStatusDefaultDialogTitle">This is %1$s\'s current status.</string>
++    <string name="ayu0x4ggPremiumUserGiftedPremiumDialogTitleWithPlural">**%1$s** has gifted you a %2$s subscription for ayu0x4gg Premium.</string>
++    <string name="ayu0x4ggPremiumUserGiftedPremiumDialogTitleWithPluralSomeone">Someone has gifted you a %1$s subscription for ayu0x4gg Premium.</string>
++    <string name="ayu0x4ggPremiumUserGiftedPremiumDialogSubtitle">You now have access to additional features.</string>
++    <string name="ayu0x4ggPremiumUserGiftedPremiumOutboundDialogTitleWithPlural">You gifted **%1$s** a %2$s subscription for ayu0x4gg Premium.</string>
++    <string name="ayu0x4ggPremiumUserGiftedPremiumOutboundDialogSubtitle">**%1$s** now have access to additional features.</string>
++    <string name="PremiumPreviewNoAdsDescription2">Remove ads such as this one by subscribing to ayu0x4gg Premium.</string>
+     <string name="FeaturedStickersPremium">Trending Premium Stickers</string>
+     <string name="UnlockPremiumEmojiPack">Unlock %1$s</string>
+-    <string name="UnlockPremiumEmojiHint">Subscribe to **Telegram Premium** to unlock this emoji.</string>
+-    <string name="UnlockPremiumEmojiReaction">Subscribe to **Telegram Premium** to unlock this reaction.</string>
++    <string name="UnlockPremiumEmojiHint">Subscribe to **ayu0x4gg Premium** to unlock this emoji.</string>
++    <string name="UnlockPremiumEmojiReaction">Subscribe to **ayu0x4gg Premium** to unlock this reaction.</string>
+     <string name="UnlockPremiumEmojiHint2">Try sending these emoji in **Saved Messages** for free to test.</string>
+-    <string name="UnlockPremiumTranscriptionHint">Subscribe to **Telegram Premium** to convert voice to text.</string>
++    <string name="UnlockPremiumTranscriptionHint">Subscribe to **ayu0x4gg Premium** to convert voice to text.</string>
+     <string name="PremiumMore">More</string>
+     <string name="Unlock">Unlock</string>
+     <string name="Restore">Restore</string>
+-    <string name="PremiumPreviewEmojiPack">This emoji pack is available only to subscribers of **Telegram Premium.**</string>
++    <string name="PremiumPreviewEmojiPack">This emoji pack is available only to subscribers of **ayu0x4gg Premium.**</string>
+     <string name="AllReactions">All reactions</string>
+     <string name="SomeReactions">Some reactions</string>
+     <string name="NoReactions">No reactions</string>
+@@ -5898,7 +5898,7 @@
+     <string name="DisableReactionsInfo">Members of the group can’t add any reactions to messages.</string>
+     <string name="ClearRecentReactionsAlertTitle">Clear recent emoji</string>
+     <string name="ClearRecentReactionsAlertMessage">Do you want to clear your recent reaction emoji from suggestions?</string>
+-    <string name="SelectSendAsPeerPremiumHint">Subscribe to **Telegram Premium** to be able to comment on behalf of your channels in group chats.</string>
++    <string name="SelectSendAsPeerPremiumHint">Subscribe to **ayu0x4gg Premium** to be able to comment on behalf of your channels in group chats.</string>
+     <string name="SelectSendAsPeerPremiumOpen">Open</string>
+     <string name="SetEmojiStatusUntilTitle">Set status until…</string>
+     <string name="SetEmojiStatusUntilButton">Set Status</string>
+@@ -6058,10 +6058,10 @@
+     <string name="TopicChangeIconAndTitleToInReply">changed the topic title and icon to %s</string>
+     <string name="SelectTopicIconHint">Select Topic Icon</string>
+     <string name="PremiumSpeedPromo">Increase Speed</string>
+-    <string name="ChannelCaptionLimitPremiumPromo_one">Make the caption shorter or subscribe to *Telegram Premium* to double the limit to **%1$s** character.</string>
+-    <string name="ChannelCaptionLimitPremiumPromo_few">Make the caption shorter or subscribe to *Telegram Premium* to double the limit to **%1$s** characters.</string>
+-    <string name="ChannelCaptionLimitPremiumPromo_many">Make the caption shorter or subscribe to *Telegram Premium* to double the limit to **%1$s** characters.</string>
+-    <string name="ChannelCaptionLimitPremiumPromo_other">Make the caption shorter or subscribe to *Telegram Premium* to double the limit to **%1$s** characters.</string>
++    <string name="ChannelCaptionLimitPremiumPromo_one">Make the caption shorter or subscribe to *ayu0x4gg Premium* to double the limit to **%1$s** character.</string>
++    <string name="ChannelCaptionLimitPremiumPromo_few">Make the caption shorter or subscribe to *ayu0x4gg Premium* to double the limit to **%1$s** characters.</string>
++    <string name="ChannelCaptionLimitPremiumPromo_many">Make the caption shorter or subscribe to *ayu0x4gg Premium* to double the limit to **%1$s** characters.</string>
++    <string name="ChannelCaptionLimitPremiumPromo_other">Make the caption shorter or subscribe to *ayu0x4gg Premium* to double the limit to **%1$s** characters.</string>
+     <string name="AllChats">All Chats</string>
+     <string name="DebugShareAlert">Share Alert</string>
+     <string name="DebugDialogsActivity">Dialogs Activity</string>
+@@ -6157,7 +6157,7 @@
+     <string name="ActionSuggestPhotoShort">Suggested profile photo</string>
+     <string name="ActionSuggestVideoShort">Suggested profile video</string>
+     <string name="SetAsMyPhoto">Set as My Photo</string>
+-    <string name="InviteToTelegramShort">Invite To Telegram</string>
++    <string name="InviteToayu0x4ggShort">Invite To ayu0x4gg</string>
+     <string name="ActionAttachMenuBotAllowed">You allowed this bot to message you when you added it to your attachment menu.</string>
+     <string name="ActionRequestedPeer">You shared un1 with un2</string>
+     <string name="ActionRequestedPeerUser">You shared a user with un2</string>
+@@ -6218,7 +6218,7 @@
+     <string name="DeleteAllProxies">Delete All Proxies</string>
+     <string name="DeleteAllProxiesConfirm">Are you sure you want to delete all proxies?</string>
+     <string name="AccDescrSendAs">Send as %1$s</string>
+-    <string name="SessionsSettingsInfo">Review the list of devices where you are logged into your Telegram account.</string>
++    <string name="SessionsSettingsInfo">Review the list of devices where you are logged into your ayu0x4gg account.</string>
+     <string name="SendMediaPermissionPhotos">Photos</string>
+     <string name="SendMediaPermissionVideos">Videos</string>
+     <string name="SendMediaPermissionStickersGifs"><![CDATA[Stickers & GIFs]]></string>
+@@ -6293,9 +6293,9 @@
+     <string name="NoEmojiOrStickersFound">No emoji or stickers found</string>
+     <string name="SafetyNetErrorOccurred">An internal error occurred. Please try again later.</string>
+     <string name="UpgradePremiumTitle">Upgrade to Premium with a discount of **%1$d%%**</string>
+-    <string name="UpgradePremiumMessage">Upgrade to the annual payment plan of Telegram Premium now to enjoy the discount.</string>
++    <string name="UpgradePremiumMessage">Upgrade to the annual payment plan of ayu0x4gg Premium now to enjoy the discount.</string>
+     <string name="SaveOnAnnualPremiumTitle">Save on your subscription up to **%1$d%%**</string>
+-    <string name="SaveOnAnnualPremiumMessage">Sign up for the annual payment plan for Telegram Premium now to get the discount.</string>
++    <string name="SaveOnAnnualPremiumMessage">Sign up for the annual payment plan for ayu0x4gg Premium now to get the discount.</string>
+     <string name="PauseMusicOnRecord">Pause music while recording</string>
+     <string name="PauseMusicOnRecordInfo">Pause music when you start recording a video message</string>
+     <string name="SetProfilePhotoAvatarConstructor">Set Profile Photo</string>
+@@ -6395,19 +6395,19 @@
+     <string name="LoginEmailResetInSinglePattern">%1$s</string>
+     <string name="LoginEmailResetInDoublePattern">%1$s and %2$s</string>
+     <string name="LoginEmailResetTitle">Reset Email</string>
+-    <string name="LoginEmailResetMessage">You can change your login email if you are logged into Telegram from another device. Otherwise, if you don\'t have access to email %1$s, you can reset this email with an **SMS** code in **%2$s**.</string>
++    <string name="LoginEmailResetMessage">You can change your login email if you are logged into ayu0x4gg from another device. Otherwise, if you don\'t have access to email %1$s, you can reset this email with an **SMS** code in **%2$s**.</string>
+     <string name="LoginEmailResetButton">Reset Login Email</string>
+-    <string name="LoginEmailResetPremiumRequiredTitle">Telegram Premium Required</string>
+-    <string name="LoginEmailResetPremiumRequiredMessage">Due to the high cost of SMS in your country, you need a **Telegram Premium** account to immediately reset this email via an SMS code.\n\nYou can ask a friend to gift a Premium subscription for your account **%1$s**</string>
++    <string name="LoginEmailResetPremiumRequiredTitle">ayu0x4gg Premium Required</string>
++    <string name="LoginEmailResetPremiumRequiredMessage">Due to the high cost of SMS in your country, you need a **ayu0x4gg Premium** account to immediately reset this email via an SMS code.\n\nYou can ask a friend to gift a Premium subscription for your account **%1$s**</string>
+     <string name="LoginEmailResetPleaseWait">Resetting email, please wait...</string>
+     <string name="DeleteAndBlock">Delete and Block</string>
+     <string name="BlockBot">Block bot</string>
+     <string name="AreYouSureDeleteThisChatWithBotWithCheckmark">Are you sure you want to delete the chat with **%1$s**?</string>
+     <string name="DecreaseSpeed">Decrease speed</string>
+-    <string name="SdCardAlert">Storing on SD card will make Telegram slow. Proceed anyway?</string>
++    <string name="SdCardAlert">Storing on SD card will make ayu0x4gg slow. Proceed anyway?</string>
+     <string name="Proceed">Proceed</string>
+     <string name="SdCardError">SD Card Error</string>
+-    <string name="SdCardErrorDescription">Telegram is unable to save data on your SD card.</string>
++    <string name="SdCardErrorDescription">ayu0x4gg is unable to save data on your SD card.</string>
+     <string name="DoNotUseSDCard">Do not use SD card</string>
+     <string name="NextMediaTap">Show next media on Tap</string>
+     <string name="NextMediaTapInfo">Tap near the edge of the screen while viewing media to navigate between photos</string>
+@@ -6460,10 +6460,10 @@
+     <string name="FilterInviteErrorTypesExcluded">You can only share folders without chat types and excluded chats.</string>
+     <string name="UnsavedChanges">Unsaved Changes</string>
+     <string name="UnsavedChangesMessage">You have changed the settings of this invite link. Apply changes?</string>
+-    <string name="LimitReachedFolderLinks">You can only create %1$d invite links.\nUpgrade to **Telegram Premium** to increase this limit to **%2$d**.</string>
++    <string name="LimitReachedFolderLinks">You can only create %1$d invite links.\nUpgrade to **ayu0x4gg Premium** to increase this limit to **%2$d**.</string>
+     <string name="LimitReachedFolderLinksPremium">You can only create %1$d invite links. Try deleting some folder invite links.</string>
+     <string name="LimitReachedFolderLinksLocked">You can only create %1$d invite links. We are working to let you increase this limit in the future.</string>
+-    <string name="LimitReachedSharedFolders">You can only have %1$d shareable folders.\nUpgrade to **Telegram Premium** to increase this limit to **%2$d**.</string>
++    <string name="LimitReachedSharedFolders">You can only have %1$d shareable folders.\nUpgrade to **ayu0x4gg Premium** to increase this limit to **%2$d**.</string>
+     <string name="LimitReachedSharedFoldersPremium">You can only have %1$d shareable folders. Try deleting some shareable folder.</string>
+     <string name="LimitReachedSharedFoldersLocked">You can only have %1$d shareable folders. We are working to let you increase this limit in the future.</string>
+     <string name="SetBackgroundFromGallery">Set Background From Gallery</string>
+@@ -6601,5 +6601,5 @@
+     <string name="ChatThemeNightSwitchTooltip">Tap to view this theme in the night mode.</string>
+     <string name="BotWebAppInstantViewOpen">Open App</string>
+     <string name="RestorePremiumHintTitle">Get Premium back with up to **%1$d%%** off</string>
+-    <string name="RestorePremiumHintMessage">Your Telegram Premium has recently expired. Tap here to extend it.</string>
++    <string name="RestorePremiumHintMessage">Your ayu0x4gg Premium has recently expired. Tap here to extend it.</string>
+ </resources>
+diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/export/AyuChatExporter.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/export/AyuChatExporter.java
+new file mode 100644
+--- /dev/null
++++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/export/AyuChatExporter.java
+@@ -0,0 +1,288 @@
++/*
++ * ayuox4gg — chat export.
++ *
++ * Reads only what the client already stores on the device: `dialogs` for the
++ * chat list and `messages_v2` for the messages. No request is made, so the
++ * export works offline and cannot be rate limited.
++ *
++ * Deliberately excluded: secret chats. Their messages are not kept in
++ * `messages_v2`, and their whole point is that they never leave the device.
++ * Nothing is uploaded anywhere — the result is a plain file the user chooses.
++ */
++
++package com.radolyn.ayugram.export;
++
++import android.content.Context;
++import android.database.Cursor;
++import android.database.sqlite.SQLiteDatabase;
++
++import org.telegram.messenger.ApplicationLoader;
++import org.telegram.messenger.FileLog;
++import org.telegram.messenger.MessagesController;
++import org.telegram.messenger.MessagesStorage;
++import org.telegram.messenger.UserConfig;
++import org.telegram.tgnet.NativeByteBuffer;
++import org.telegram.tgnet.SerializedData;
++import org.telegram.tgnet.TLRPC;
++
++import java.io.File;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.io.OutputStreamWriter;
++import java.io.Writer;
++import java.nio.charset.StandardCharsets;
++import java.text.SimpleDateFormat;
++import java.util.ArrayList;
++import java.util.Date;
++import java.util.List;
++import java.util.Locale;
++
++public final class AyuChatExporter {
++
++    /** Page size while walking `messages_v2`; keeps peak memory small. */
++    private static final int PAGE = 500;
++
++    private AyuChatExporter() {
++    }
++
++    /** One chat as it appears in the export picker. */
++    public static final class DialogInfo {
++        public final long did;
++        public final String title;
++        public final int messageCount;
++
++        DialogInfo(long did, String title, int messageCount) {
++            this.did = did;
++            this.title = title;
++            this.messageCount = messageCount;
++        }
++
++        @Override
++        public String toString() {
++            return title + " · " + messageCount;
++        }
++    }
++
++    private static SQLiteDatabase database() {
++        try {
++            return MessagesStorage.getInstance(0).getDatabase();
++        } catch (Throwable t) {
++            FileLog.e("ayuox4gg: no database for export", t);
++            return null;
++        }
++    }
++
++    /** Chats with at least one stored message, newest first. */
++    public static List<DialogInfo> dialogs() {
++        ArrayList<DialogInfo> out = new ArrayList<>();
++        SQLiteDatabase db = database();
++        if (db == null) {
++            return out;
++        }
++        Cursor cursor = null;
++        try {
++            cursor = db.rawQuery(
++                    "SELECT d.did, d.data, "
++                            + "(SELECT COUNT(*) FROM messages_v2 m WHERE m.uid = d.did) AS cnt "
++                            + "FROM dialogs d WHERE cnt > 0 ORDER BY d.date DESC", null);
++            while (cursor.moveToNext()) {
++                long did = cursor.getLong(0);
++                out.add(new DialogInfo(did, titleOf(cursor.isNull(1) ? null : cursor.getBlob(1), did),
++                        cursor.getInt(2)));
++            }
++        } catch (Throwable t) {
++            FileLog.e("ayuox4gg: could not list chats for export", t);
++        } finally {
++            if (cursor != null) {
++                cursor.close();
++            }
++        }
++        return out;
++    }
++
++    private static String titleOf(byte[] data, long did) {
++        if (data != null) {
++            SerializedData stream = null;
++            try {
++                stream = new SerializedData(data);
++                TLRPC.Dialog dialog = TLRPC.Dialog.TLdeserialize(stream, stream.readInt32(false), false);
++                if (dialog != null && dialog.peer != null) {
++                    if (dialog.peer instanceof TLRPC.TL_peerUser) {
++                        TLRPC.User user = MessagesController.getInstance(0).getUser(dialog.peer.user_id);
++                        if (user != null) {
++                            String name = ((user.first_name == null ? "" : user.first_name) + " "
++                                    + (user.last_name == null ? "" : user.last_name)).trim();
++                            if (!name.isEmpty()) {
++                                return name;
++                            }
++                        }
++                    } else {
++                        long chatId = dialog.peer instanceof TLRPC.TL_peerChat
++                                ? dialog.peer.chat_id : dialog.peer.channel_id;
++                        TLRPC.Chat chat = MessagesController.getInstance(0).getChat(chatId);
++                        if (chat != null && chat.title != null && !chat.title.isEmpty()) {
++                            return chat.title;
++                        }
++                    }
++                }
++            } catch (Throwable ignored) {
++                // An unreadable dialog blob is not worth aborting the list for.
++            } finally {
++                if (stream != null) {
++                    stream.cleanup();
++                }
++            }
++        }
++        return "chat " + did;
++    }
++
++    /** Exports live here; any file manager can reach this folder. */
++    public static File exportDir(Context context) {
++        File dir = new File(context.getExternalFilesDir(null), "ayuox4gg-exports");
++        if (!dir.exists() && !dir.mkdirs()) {
++            FileLog.e("ayuox4gg: could not create " + dir);
++        }
++        return dir;
++    }
++
++    public static File exportDir() {
++        return exportDir(ApplicationLoader.applicationContext);
++    }
++
++    /** A filesystem-safe name for a chat, so two exports never collide. */
++    public static String fileName(DialogInfo dialog) {
++        String base = dialog.title.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_").trim();
++        if (base.isEmpty()) {
++            base = "chat";
++        }
++        if (base.length() > 60) {
++            base = base.substring(0, 60);
++        }
++        return base + " · " + dialog.did + ".txt";
++    }
++
++    /**
++     * Write one chat as plain text, oldest message first.
++     *
++     * @return the written file, or null if nothing could be written
++     */
++    public static File export(long did, File target) {
++        SQLiteDatabase db = database();
++        if (db == null) {
++            return null;
++        }
++        File dir = target.getParentFile();
++        if (dir != null && !dir.exists() && !dir.mkdirs()) {
++            return null;
++        }
++
++        SimpleDateFormat stamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
++        SimpleDateFormat day = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
++        long selfId = UserConfig.getInstance(0).getClientUserId();
++        long written = 0;
++        String lastDay = null;
++
++        Cursor cursor = null;
++        Writer writer = null;
++        try {
++            writer = new OutputStreamWriter(new FileOutputStream(target), StandardCharsets.UTF_8);
++            writer.write("# ayuox4gg chat export\n");
++            writer.write("# dialog: " + did + "\n");
++            writer.write("# exported: " + stamp.format(new Date()) + "\n");
++            writer.write("# secret chats are never included\n\n");
++
++            long maxId = Long.MAX_VALUE;
++            ArrayList<long[]> ids = new ArrayList<>();
++            ArrayList<byte[]> blobs = new ArrayList<>();
++            while (true) {
++                ids.clear();
++                blobs.clear();
++                cursor = db.rawQuery(
++                        "SELECT mid, date, out, data FROM messages_v2 "
++                                + "WHERE uid = ? AND mid < ? ORDER BY mid DESC LIMIT " + PAGE,
++                        new String[]{String.valueOf(did), String.valueOf(maxId)});
++                while (cursor.moveToNext()) {
++                    ids.add(new long[]{cursor.getLong(0), cursor.getLong(1), cursor.getLong(2)});
++                    blobs.add(cursor.isNull(3) ? null : cursor.getBlob(3));
++                }
++                cursor.close();
++                cursor = null;
++                if (ids.isEmpty()) {
++                    break;
++                }
++                maxId = ids.get(ids.size() - 1)[0];
++
++                // Pages arrive newest-first; emit each one reversed so the file
++                // reads chronologically without buffering the whole history.
++                for (int i = ids.size() - 1; i >= 0; i--) {
++                    long[] row = ids.get(i);
++                    int date = (int) row[1];
++                    boolean outgoing = row[2] == 1;
++
++                    String currentDay = day.format(new Date(date * 1000L));
++                    if (!currentDay.equals(lastDay)) {
++                        writer.write("\n=== " + currentDay + " ===\n");
++                        lastDay = currentDay;
++                    }
++                    writer.write(stamp.format(new Date(date * 1000L)));
++                    writer.write(outgoing ? "  me: " : "  they: ");
++                    String body = bodyOf(blobs.get(i), selfId);
++                    writer.write(body);
++                    writer.write("\n");
++                    written++;
++                }
++            }
++
++            writer.write("\n# messages: " + written + "\n");
++            return target;
++        } catch (Throwable t) {
++            FileLog.e("ayuox4gg: chat export failed for " + did, t);
++            return null;
++        } finally {
++            if (cursor != null) {
++                cursor.close();
++            }
++            if (writer != null) {
++                try {
++                    writer.close();
++                } catch (IOException ignored) {
++                }
++            }
++        }
++    }
++
++    /**
++     * `messages_v2.data` holds a serialised `TL_message`. The client's own
++     * deserializer is used rather than guessing at the binary layout; a row that
++     * cannot be parsed becomes a placeholder so one bad message cannot abort a
++     * whole export.
++     */
++    private static String bodyOf(byte[] blob, long selfId) {
++        if (blob == null || blob.length == 0) {
++            return "[no data]";
++        }
++        NativeByteBuffer buffer = null;
++        try {
++            buffer = new NativeByteBuffer(blob.length);
++            buffer.writeBytes(blob);
++            buffer.position(0);
++            TLRPC.Message message = TLRPC.Message.TLdeserialize(buffer, buffer.readInt32(false), false);
++            if (message == null) {
++                return "[unreadable message]";
++            }
++            if (message.message != null && !message.message.isEmpty()) {
++                return message.message;
++            }
++            if (message.media != null) {
++                return "[media: " + message.media.getClass().getSimpleName() + "]";
++            }
++            return "[empty message]";
++        } catch (Throwable t) {
++            return "[unreadable message]";
++        } finally {
++            if (buffer != null) {
++                buffer.reuse();
++            }
++        }
++    }
++}
+diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuChatExportActivity.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuChatExportActivity.java
+new file mode 100644
+--- /dev/null
++++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/ui/preferences/AyuChatExportActivity.java
+@@ -0,0 +1,126 @@
++/*
++ * ayuox4gg — pick a chat and write it to a .txt file.
++ *
++ * The list is built from the local database, so it opens instantly and works
++ * without a network. Tapping a chat exports it and says where the file went.
++ */
++
++package com.radolyn.ayugram.ui.preferences;
++
++import android.content.Context;
++import android.view.View;
++
++import androidx.annotation.NonNull;
++import androidx.recyclerview.widget.RecyclerView;
++
++import com.exteragram.messenger.preferences.BasePreferencesActivity;
++import com.radolyn.ayugram.export.AyuChatExporter;
++
++import org.telegram.messenger.FileLog;
++import org.telegram.messenger.LocaleController;
++import org.telegram.messenger.R;
++import org.telegram.ui.ActionBar.AlertDialog;
++import org.telegram.ui.Cells.HeaderCell;
++import org.telegram.ui.Cells.TextCell;
++
++import java.io.File;
++import java.util.ArrayList;
++import java.util.List;
++
++public class AyuChatExportActivity extends BasePreferencesActivity {
++
++    private final List<AyuChatExporter.DialogInfo> dialogs = new ArrayList<>();
++    private int headerRow;
++    private int firstRow;
++
++    @Override
++    protected String getTitle() {
++        return LocaleController.getString(R.string.AyuExportTitle);
++    }
++
++    @Override
++    public boolean onFragmentCreate() {
++        super.onFragmentCreate();
++        dialogs.clear();
++        try {
++            dialogs.addAll(AyuChatExporter.dialogs());
++        } catch (Throwable t) {
++            // A broken database must degrade to "nothing to export", never crash
++            // the settings screen.
++            FileLog.e("ayuox4gg: export list failed", t);
++        }
++        headerRow = 0;
++        firstRow = 1;
++        return true;
++    }
++
++    @Override
++    protected BaseListAdapter createAdapter(Context context) {
++        return new ListAdapter(context);
++    }
++
++    @Override
++    protected void onItemClick(View view, int position, float x, float y) {
++        int index = position - firstRow;
++        if (index < 0 || index >= dialogs.size()) {
++            return;
++        }
++        export(dialogs.get(index));
++    }
++
++    private void export(AyuChatExporter.DialogInfo dialog) {
++        File target = new File(AyuChatExporter.exportDir(), AyuChatExporter.fileName(dialog));
++        File written = AyuChatExporter.export(dialog.did, target);
++
++        String message = written != null
++                ? LocaleController.formatString(R.string.AyuExportDone, written.getAbsolutePath())
++                : LocaleController.getString(R.string.AyuExportFailed);
++
++        new AlertDialog.Builder(getParentActivity())
++                .setTitle(LocaleController.getString(R.string.AyuExportTitle))
++                .setMessage(message)
++                .setPositiveButton(LocaleController.getString(R.string.OK), null)
++                .show();
++    }
++
++    private class ListAdapter extends BaseListAdapter {
++
++        public ListAdapter(Context context) {
++            super(context);
++        }
++
++        @Override
++        public int getItemCount() {
++            return firstRow + dialogs.size();
++        }
++
++        @Override
++        public boolean isEnabled(RecyclerView.ViewHolder holder) {
++            // getAdapterPosition() is deprecated and not present in every
++            // androidx version this tree resolves; the row position is already
++            // available through getItemViewType's contract, so use that.
++            return holder.getItemViewType() == 2;
++        }
++
++        @Override
++        public int getItemViewType(int position) {
++            return position == headerRow ? 3 : 2;
++        }
++
++        @Override
++        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position, boolean payload) {
++            if (holder.getItemViewType() == 3) {
++                ((HeaderCell) holder.itemView).setText(dialogs.isEmpty()
++                        ? LocaleController.getString(R.string.AyuExportEmpty)
++                        : LocaleController.formatString(R.string.AyuExportCount, dialogs.size()));
++                return;
++            }
++            int index = position - firstRow;
++            if (index >= 0 && index < dialogs.size()) {
++                AyuChatExporter.DialogInfo dialog = dialogs.get(index);
++                ((TextCell) holder.itemView).setTextAndValue(dialog.title,
++                        String.valueOf(dialog.messageCount), index != dialogs.size() - 1);
++            }
++        }
++    }
++}
