@@ -1,0 +1,12 @@
++ SDK=/usr/local/lib/android/sdk
++ yes
++ /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+yes: standard output: Broken pipe
++ /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --install emulator 'system-images;android-34;google_apis;x86_64' platform-tools
++ echo no
++ /usr/local/lib/android/sdk/cmdline-tools/latest/bin/avdmanager create avd -n lab -k 'system-images;android-34;google_apis;x86_64' -d pixel_6 --force
+Loading local repository...                                                     [=========                              ] 25% Loading local repository...       [=========                              ] 25% Fetch remote repository...        [=======================================] 100% Fetch remote repository...       
+Auto-selecting single ABI x86_64
++ adb wait-for-device
++ /usr/local/lib/android/sdk/emulator/emulator -avd lab -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel on -memory 2048
+/home/runner/work/_temp/96e8f862-e5c2-4b00-bf56-129b7e59c6ef.sh: line 13: adb: command not found
