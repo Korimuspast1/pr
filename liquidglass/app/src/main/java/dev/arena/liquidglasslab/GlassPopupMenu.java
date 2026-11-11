@@ -3,10 +3,6 @@ package dev.arena.liquidglasslab;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.RenderNode;
-import android.graphics.RenderEffect;
-import android.graphics.RuntimeShader;
 import android.graphics.Typeface;
 import android.text.TextPaint;
 import android.util.AttributeSet;
@@ -33,7 +29,6 @@ public class GlassPopupMenu extends GlassSurfaceView {
     private Listener listener;
     private final TextPaint text = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Path path = new Path();
     private float rowHeight;
 
     public GlassPopupMenu(Context context, AttributeSet attrs, GlassRender.Backdrop backdrop,

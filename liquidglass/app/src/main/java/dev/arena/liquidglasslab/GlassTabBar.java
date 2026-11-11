@@ -8,7 +8,6 @@ import android.graphics.Typeface;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
-import android.view.animation.PathInterpolator;
 
 /**
  * Bottom tab bar: a floating glass capsule with a separate circular search bubble,

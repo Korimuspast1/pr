@@ -205,7 +205,7 @@ public final class GlassRender {
         canvas.clipPath(path);
         canvas.translate(x, y);
 
-        if (SHADER_SUPPORTED && shader != null && EFFECT_SUPPORTED) {
+        if (SHADER_SUPPORTED && shader != null && EFFECT_SUPPORTED && backdrop.isRecorded()) {
             // content of this element = the blurred backdrop slice
             node.setPosition(0, 0, Math.round(w), Math.round(h));
             Canvas rc = node.beginRecording();
