@@ -111,12 +111,14 @@ public abstract class GlassSurfaceView extends View implements GlassParams.Liste
         if (w <= 0 || h <= 0) return;
         fillRadii(radii);
 
+        // The view's canvas is already translated to its own origin, so the material is
+        // drawn at (0,0); the recorded backdrop is shifted by the view's position.
+        float ox = getX() - (params.pressScale - 1f) * press * w / 2f;
+        float oy = getY() - (params.pressScale - 1f) * press * h / 2f;
         float scale = 1f + (params.pressScale - 1f) * press;
-        float x = getX() - (scale - 1f) * w / 2f;
-        float y = getY() - (scale - 1f) * h / 2f;
 
         GlassRender.drawGlass(canvas, backdrop, params, shader, node, shaderState,
-                x, y, w * scale, h * scale, radii,
+                ox, oy, w * scale, h * scale, radii,
                 press, pressX, pressY, tint, shadowLift);
 
         canvas.save();

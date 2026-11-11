@@ -136,7 +136,10 @@ public final class GlassRender {
      * @param shader   compiled lens shader (null -> fallback material)
      * @param node     per-element RenderNode (reused across frames)
      * @param shaderState per-element cached effect state (reused)
-     * @param x,y,w,h  element bounds in container coordinates
+     * @param ox,oy   element origin in backdrop coordinates (the canvas itself is in
+     *                element-local space, so the material is drawn at (0,0) and the
+     *                recorded backdrop is shifted by -origin)
+     * @param w,h      element size
      * @param radii    corner radii tl, tr, br, bl in px
      * @param press    0..1 press progress
      * @param px,py    press point, element-local px
@@ -145,7 +148,7 @@ public final class GlassRender {
      */
     public static void drawGlass(Canvas canvas, Backdrop backdrop, GlassParams params,
                                  RuntimeShader shader, RenderNode node, ShaderState shaderState,
-                                 float x, float y, float w, float h, float[] radii,
+                                 float ox, float oy, float w, float h, float[] radii,
                                  float press, float px, float py, int tint, float shadowDp) {
 
         if (w < 1f || h < 1f) return;
@@ -155,7 +158,7 @@ public final class GlassRender {
         // ---- outer shadow (own node: Paint shadow layers do not render shapes here)
         float shadowRadius = params.shadowRadius + shadowDp;
         if (shadowRadius > 0f && params.shadowAlpha > 0f && EFFECT_SUPPORTED) {
-            drawShadowNode(canvas, x, y, w, h, radii, Math.max(dp(shadowRadius), 1f),
+            drawShadowNode(canvas, 0f, 0f, w, h, radii, Math.max(dp(shadowRadius), 1f),
                     (int) (255 * Math.min(1f, params.shadowAlpha) * 0.5f));
         }
 
@@ -165,20 +168,19 @@ public final class GlassRender {
         if (shaderPath) {
             int recW = Math.round(w) + margin * 2;
             int recH = Math.round(h) + margin * 2;
-            node.setPosition(Math.round(x) - margin, Math.round(y) - margin,
-                    Math.round(x) - margin + recW, Math.round(y) - margin + recH);
+            node.setPosition(-margin, -margin, -margin + recW, -margin + recH);
             Canvas rc = node.beginRecording();
-            rc.translate(-x + margin, -y + margin);
+            rc.translate(margin - ox, margin - oy);
             rc.drawRenderNode(backdrop.scene());
             node.endRecording();
 
             if (shaderState.prepare(shader, params, w, h, radii, margin, press, px, py,
-                    tint, backdrop.width(), backdrop.height(), x, y)) {
+                    tint, backdrop.width(), backdrop.height())) {
                 node.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "content"));
             }
             canvas.drawRenderNode(node);
         } else {
-            drawFallback(canvas, backdrop, params, x, y, w, h, radii, tint, press, px, py);
+            drawFallback(canvas, backdrop, params, ox, oy, w, h, radii, tint, press, px, py);
         }
 
         // ---- Increase Contrast: contrasting hairline outline
@@ -187,7 +189,7 @@ public final class GlassRender {
             outline.setStyle(Paint.Style.STROKE);
             outline.setStrokeWidth(dp(1.2f));
             outline.setColor(Color.argb(190, 255, 255, 255));
-            canvas.drawRoundRect(x, y, x + w, y + h, radii[0], radii[0], outline);
+            canvas.drawRoundRect(0f, 0f, w, h, radii[0], radii[0], outline);
         }
     }
 
@@ -198,7 +200,7 @@ public final class GlassRender {
 
         boolean prepare(RuntimeShader sh, GlassParams p, float w, float h, float[] radii,
                         int margin, float press, float px, float py, int tint,
-                        int sceneW, int sceneH, float x, float y) {
+                        int sceneW, int sceneH) {
             float lightAngle = (float) Math.toRadians(p.lightAngle);
             float lx = (float) Math.cos(lightAngle);
             float ly = (float) Math.sin(lightAngle);
@@ -256,14 +258,13 @@ public final class GlassRender {
      * and a shaded counter-rim. No flat plate.
      */
     private static void drawFallback(Canvas canvas, Backdrop backdrop, GlassParams params,
-                                     float x, float y, float w, float h, float[] radii,
+                                     float ox, float oy, float w, float h, float[] radii,
                                      int tint, float press, float px, float py) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         android.graphics.Path clip = new android.graphics.Path();
         buildSilhouette(clip, w, h, radii);
 
         canvas.save();
-        canvas.translate(x, y);
         canvas.clipPath(clip);
 
         // 1. what is behind the glass
@@ -284,9 +285,9 @@ public final class GlassRender {
                     RenderEffect.createColorFilterEffect(new ColorMatrixColorFilter(cm)),
                     RenderEffect.createBlurEffect(r, r, Shader.TileMode.CLAMP));
             blur.setRenderEffect(effect);
-            canvas.translate(-x, -y);
+            canvas.translate(-ox, -oy);
             canvas.drawRenderNode(blur);
-            canvas.translate(x, y);
+            canvas.translate(ox, oy);
         } else {
             paint.setColor(0xFF1A1D24);
             canvas.drawRect(0f, 0f, w, h, paint);
