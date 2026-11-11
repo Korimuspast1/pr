@@ -137,6 +137,7 @@ public class GlassTabBar extends GlassSurfaceView {
                 tracking = false;
                 animatePress(false, x, e.getY());
                 selected = pending;
+                android.util.Log.d("LiquidGlass", "tab bar up, pending=" + pending);
                 if (listener != null) listener.onTabSelected(pending);
                 invalidate();
                 return true;

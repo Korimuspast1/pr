@@ -452,6 +452,19 @@ public final class LabView extends FrameLayout {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            // Fallback hit test: if the tab bar somehow does not consume the event (it
+            // is a plain View inside a FrameLayout, so this should not happen), resolve
+            // the tab from the touch position ourselves.
+            if (tabBar.getVisibility() == VISIBLE && tabBar.getParent() == this
+                    && event.getY() >= tabBar.getY()
+                    && event.getY() <= tabBar.getY() + tabBar.getHeight()
+                    && event.getX() >= tabBar.getX()
+                    && event.getX() <= tabBar.getX() + tabBar.getWidth()) {
+                int index = (int) ((event.getX() - tabBar.getX()) / tabBar.getWidth() * 4);
+                android.util.Log.d("LiquidGlass", "tab tap fallback -> " + index);
+                selectTab(index);
+                return true;
+            }
             if (menuOpen) {
                 setMenuOpen(false);
                 return true;
