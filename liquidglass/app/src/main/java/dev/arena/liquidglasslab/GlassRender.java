@@ -84,6 +84,11 @@ public final class GlassRender {
     /** Scene capture. Reusable, no bitmap allocation. */
     public static final class Backdrop {
         private final RenderNode sceneNode = new RenderNode("lg-scene");
+        /** The blurred scene, built once per change instead of once per element. */
+        private final RenderNode blurNode = new RenderNode("lg-blur");
+        private float blurPx = -1f;
+        private float blurSat = -1f;
+        private boolean blurDirty = true;
         int width;
         int height;
         private boolean recorded;
@@ -91,6 +96,38 @@ public final class GlassRender {
 
         public RenderNode scene() {
             return sceneNode;
+        }
+
+        /**
+         * Blurred + saturated scene. Every element samples this, so the expensive
+         * full-screen blur runs once per frame instead of once per element (which is
+         * what made the compositor starve).
+         */
+        public RenderNode blurred(GlassParams params) {
+            float px = Math.min(Math.max(dp(params.effectiveBlur()), 0f), 40f);
+            float sat = params.effectiveSaturation();
+            if (!EFFECT_SUPPORTED) return sceneNode;
+            if (!blurDirty && Math.abs(px - blurPx) < 0.01f && Math.abs(sat - blurSat) < 0.001f
+                    && blurNode.getWidth() == width && blurNode.getHeight() == height) {
+                return blurNode;
+            }
+            blurPx = px;
+            blurSat = sat;
+            blurDirty = false;
+            blurNode.setPosition(0, 0, width, height);
+            Canvas c = blurNode.beginRecording();
+            c.drawRenderNode(sceneNode);
+            blurNode.endRecording();
+            ColorMatrix cm = new ColorMatrix();
+            cm.setSaturation(sat);
+            RenderEffect effect = RenderEffect.createColorFilterEffect(
+                    new ColorMatrixColorFilter(cm));
+            if (px > 0.05f) {
+                effect = RenderEffect.createChainEffect(effect,
+                        RenderEffect.createBlurEffect(px, px, Shader.TileMode.CLAMP));
+            }
+            blurNode.setRenderEffect(effect);
+            return blurNode;
         }
 
         public int width() {
@@ -114,6 +151,7 @@ public final class GlassRender {
         /** Call when the content behind the glass changed (scene, photo, ...). */
         public void markDirty() {
             dirty = true;
+            blurDirty = true;
         }
 
         public void record(Canvas target, SceneSource source) {
@@ -177,19 +215,14 @@ public final class GlassRender {
             node.setPosition(-margin, -margin, -margin + recW, -margin + recH);
             Canvas rc = node.beginRecording();
             rc.translate(margin - ox, margin - oy);
-            rc.drawRenderNode(backdrop.scene());
+            rc.drawRenderNode(backdrop.blurred(params));
             node.endRecording();
 
             if (shaderState.prepare(shader, params, w, h, radii, margin, press, px, py,
                     tint, backdrop.width(), backdrop.height())) {
-                // blur first (what is behind the glass), then bend it with the lens
-                RenderEffect lens = RenderEffect.createRuntimeShaderEffect(shader, "content");
-                float blurPx = Math.min(Math.max(dp(params.effectiveBlur()), 0f), 32f);
-                RenderEffect effect = blurPx > 0.05f
-                        ? RenderEffect.createChainEffect(lens,
-                        RenderEffect.createBlurEffect(blurPx, blurPx, Shader.TileMode.CLAMP))
-                        : lens;
-                node.setRenderEffect(effect);
+                // the slice is already blurred by the shared backdrop node, so only the
+                // (cheap) lens shader runs per element
+                node.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "content"));
             }
             canvas.drawRenderNode(node);
         } else {
@@ -281,31 +314,10 @@ public final class GlassRender {
         canvas.save();
         canvas.clipPath(clip);
 
-        // 1. what is behind the glass
+        // 1. what is behind the glass (already blurred once for the whole screen)
         if (backdrop.isRecorded() && EFFECT_SUPPORTED) {
-            RenderNode blur = blurCache;
-            if (blur == null) {
-                blur = new RenderNode("lg-fallback-blur");
-                blurCache = blur;
-            }
-            float r = Math.min(Math.max(dp(params.effectiveBlur()), 0.1f), 28f);
-            int key = (backdrop.hashCode() * 31 + Float.floatToIntBits(r)) * 31
-                    + Float.floatToIntBits(params.effectiveSaturation());
-            if (key != blurKey) {
-                blurKey = key;
-                blur.setPosition(0, 0, backdrop.width(), backdrop.height());
-                Canvas bc = blur.beginRecording();
-                bc.drawRenderNode(backdrop.scene());
-                blur.endRecording();
-                ColorMatrix cm = new ColorMatrix();
-                cm.setSaturation(params.effectiveSaturation());
-                RenderEffect effect = RenderEffect.createChainEffect(
-                        RenderEffect.createColorFilterEffect(new ColorMatrixColorFilter(cm)),
-                        RenderEffect.createBlurEffect(r, r, Shader.TileMode.CLAMP));
-                blur.setRenderEffect(effect);
-            }
             canvas.translate(-ox, -oy);
-            canvas.drawRenderNode(blur);
+            canvas.drawRenderNode(backdrop.blurred(params));
             canvas.translate(ox, oy);
         } else {
             paint.setColor(0xFF1A1D24);
