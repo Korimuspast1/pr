@@ -12,8 +12,19 @@ yes: standard output: Broken pipe
 + /usr/local/lib/android/sdk/cmdline-tools/latest/bin/avdmanager create avd -n lab -k 'system-images;android-34;google_apis;x86_64' -d pixel_6 --force
 Loading local repository...                                                     [=========                              ] 25% Loading local repository...       [=========                              ] 25% Fetch remote repository...        [=======================================] 100% Fetch remote repository...       
 Auto-selecting single ABI x86_64
++ EMU=2438
 + /usr/local/lib/android/sdk/platform-tools/adb start-server
-+ /usr/local/lib/android/sdk/emulator/emulator -avd lab -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel on -memory 2048
++ /usr/local/lib/android/sdk/emulator/emulator -avd lab -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -accel auto -memory 2048 -no-metrics
 * daemon not running; starting now at tcp:5037
 * daemon started successfully
-+ /usr/local/lib/android/sdk/platform-tools/adb wait-for-device
++ timeout 600 /usr/local/lib/android/sdk/platform-tools/adb wait-for-device
++ echo 'no device after 10 min'
+no device after 10 min
++ tail -40 /home/runner/work/pr/pr/shots/emulator.txt
+INFO         | Android emulator version 37.2.13.0 (build_id 16740729) (CL:N/A)
+INFO         | Graphics backend: gfxstream
+ERROR        | Unknown AVD name [lab], use -list-avds to see valid list.
+ERROR        | HOME is defined but there is no file lab.ini in $HOME/.android/avd
+ERROR        | (Note: Directories are searched in the order $ANDROID_AVD_HOME, $ANDROID_SDK_HOME/avd and $HOME/.android/avd)
++ kill 2438
+/home/runner/work/_temp/fa19e933-27ec-49dd-b5ad-b45773d9b8f6.sh: line 20: kill: (2438) - No such process
