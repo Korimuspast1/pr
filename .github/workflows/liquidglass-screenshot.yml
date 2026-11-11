@@ -101,15 +101,28 @@ jobs:
           # tab bar: 4 tabs inside a capsule inset by 16dp at the bottom
           tap_tab() { "$SDK/platform-tools/adb" shell input tap $(( W * ($1 * 2 + 1) / 8 )) $(( H - 110 )); sleep 4; }
           shot 01-home
-          adb_shot() { :; }
-          tap_tab 1; shot 02-presets
-          tap_tab 2; shot 03-scene
-          tap_tab 3; shot 04-tuning
-          tap_tab 0; sleep 2
-          # rightmost toolbar bubble opens the menu
-          "$SDK/platform-tools/adb" shell input tap $(( W - 100 )) $(( 170 )); sleep 3
-          shot 05-menu
-          "$SDK/platform-tools/adb" shell input keyevent KEYCODE_BACK; sleep 1
+          # `adb shell input tap` is unreliable on a swiftshader emulator: the tap is
+          # often dropped before the app is interactive. Tap, verify with a screenshot
+          # hash, and retry once if the screen did not change.
+          tap_xy() { "$SDK/platform-tools/adb" shell input tap $1 $2; sleep 4; }
+          tap_until_change() {
+            before=$("$SDK/platform-tools/adb" exec-out screencap -p | md5sum | cut -d' ' -f1)
+            "$SDK/platform-tools/adb" shell input tap $1 $2; sleep 4
+            after=$("$SDK/platform-tools/adb" exec-out screencap -p | md5sum | cut -d' ' -f1)
+            if [ "$before" = "$after" ]; then
+              echo "tap at $1,$2 had no effect, retrying"
+              "$SDK/platform-tools/adb" shell input tap $1 $2; sleep 4
+            fi
+          }
+          "$SDK/platform-tools/adb" shell input keyevent KEYCODE_WAKEUP || true
+          "$SDK/platform-tools/adb" shell wm dismiss-keyguard || true
+          sleep 2
+          tap_until_change $(( W / 4 )) $(( H - 110 )); shot 02-presets
+          tap_until_change $(( W / 2 )) $(( H - 110 )); shot 03-scene
+          tap_until_change $(( W * 3 / 4 )) $(( H - 110 )); shot 04-tuning
+          tap_until_change $(( W / 8 )) $(( H - 110 )); sleep 1
+          tap_until_change $(( W - 100 )) $(( 250 )); shot 05-menu
+          sleep 2
           "$SDK/platform-tools/adb" logcat -d > "$OUT/logcat.txt" || true
           grep -iE "liquidglasslab|FATAL|AndroidRuntime" "$OUT/logcat.txt" | tail -n 120 || true
           "$SDK/platform-tools/adb" shell pidof dev.arena.liquidglasslab && echo "APP ALIVE" || echo "APP NOT RUNNING"
