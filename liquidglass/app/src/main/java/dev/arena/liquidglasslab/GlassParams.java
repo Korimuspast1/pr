@@ -66,9 +66,6 @@ public final class GlassParams {
     // ----------------------------------------------------------- interaction
     /** Droplet bulge under the finger, dp. */
     public float pressBulge = 10f;
-    /** Press scale (interactive glass flexes and lights up). */
-    public float pressScale = 1.0f;
-
     // ---------------------------------------------------------- behaviour
     public Variant variant = Variant.REGULAR;
     /** Accessibility: Reduce Transparency -> frostier, opaque. */
@@ -138,7 +135,6 @@ public final class GlassParams {
         shadowRadius = o.shadowRadius;
         shadowAlpha = o.shadowAlpha;
         pressBulge = o.pressBulge;
-        pressScale = o.pressScale;
         variant = o.variant;
         reduceTransparency = o.reduceTransparency;
         increaseContrast = o.increaseContrast;

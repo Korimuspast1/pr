@@ -98,8 +98,8 @@ public abstract class GlassSurfaceView extends View implements GlassParams.Liste
 
     @Override
     protected void onDraw(Canvas canvas) {
-        float step = 0.25f;
-        if (Math.abs(press - pressTarget) > 0.001f) {
+        float step = 0.35f;
+        if (Math.abs(press - pressTarget) > 0.01f) {
             press += (pressTarget - press) * step;
             postInvalidateOnAnimation();
         } else {
@@ -113,12 +113,8 @@ public abstract class GlassSurfaceView extends View implements GlassParams.Liste
 
         // The view's canvas is already translated to its own origin, so the material is
         // drawn at (0,0); the recorded backdrop is shifted by the view's position.
-        float ox = getX() - (params.pressScale - 1f) * press * w / 2f;
-        float oy = getY() - (params.pressScale - 1f) * press * h / 2f;
-        float scale = 1f + (params.pressScale - 1f) * press;
-
         GlassRender.drawGlass(canvas, backdrop, params, shader, node, shaderState,
-                ox, oy, w * scale, h * scale, radii,
+                getX(), getY(), w, h, radii,
                 press, pressX, pressY, tint, shadowLift);
 
         drawContents(canvas, w, h);
