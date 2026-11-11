@@ -1,8 +1,9 @@
 name: Liquid Glass Lab screenshots
 
-# Boots a real emulator, installs the APK, walks through the tabs and uploads
-# screenshots. This is the only way to see what the material actually looks like
-# on a device GPU (swiftshader), so it doubles as a smoke test.
+# Boots a real emulator, installs the APK, walks through the tabs and commits the
+# screenshots to liquidglass/docs/img/device/. This is the only way to see what the
+# material actually looks like on a device GPU (swiftshader), and it doubles as a
+# smoke test: if the app crashes, logcat.txt lands in the same commit.
 
 on:
   workflow_dispatch:
@@ -24,7 +25,10 @@ concurrency:
 jobs:
   shots:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
+    env:
+      API: 34
+      IMAGE: system-images;android-34;google_apis;x86_64
     steps:
       - uses: actions/checkout@v4
 
@@ -48,40 +52,52 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm || true
 
-      - name: Run app and capture screenshots
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          target: google_apis
-          profile: pixel_6
-          emulator-boot-timeout: 1800
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-          disable-animations: true
-          script: |
-            set -x
-            adb install -r "$GITHUB_WORKSPACE/lab.apk"
-            adb shell am start -W -n dev.arena.liquidglasslab/.MainActivity
-            sleep 12
-            W=$(adb shell wm size | tail -1 | sed 's/.*: //' | cut -dx -f1)
-            H=$(adb shell wm size | tail -1 | sed 's/.*: //' | cut -dx -f2)
-            shot() { adb exec-out screencap -p > "$GITHUB_WORKSPACE/shots/$1.png"; }
-            mkdir -p "$GITHUB_WORKSPACE/shots"
-            shot 01-home
-            # bottom tab bar: 4 tabs, capsule inset ~16dp; tap the middle of tab N
-            tap_tab() { X=$(( W * ($1 * 2 + 1) / 8 )); Y=$(( H - H / 24 )); adb shell input tap $X $Y; sleep 3; }
-            tap_tab 1; shot 02-presets
-            tap_tab 2; shot 03-scene
-            tap_tab 3; shot 04-tuning
-            tap_tab 0; sleep 1
-            # open the menu from the toolbar's left trailing button
-            adb shell input tap $(( W - W / 12 )) $(( H / 16 ))
-            sleep 3
-            shot 05-menu
-            adb logcat -d | grep -iE "liquidglasslab|FATAL|AndroidRuntime" | tail -n 80 \
-              > "$GITHUB_WORKSPACE/shots/logcat.txt" || true
-            adb shell pidof dev.arena.liquidglasslab || echo "PROCESS NOT RUNNING"
+      - name: Boot emulator, install and capture
+        run: |
+          set -x
+          OUT="$GITHUB_WORKSPACE/shots"
+          mkdir -p "$OUT"
+          exec > >(tee "$OUT/diag.txt") 2>&1
+          SDK="$ANDROID_HOME"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "emulator" "$IMAGE" "platform-tools" >/dev/null
+          echo no | "$SDK/cmdline-tools/latest/bin/avdmanager" create avd -n lab \
+            -k "$IMAGE" -d pixel_6 --force
+          "$SDK/emulator/emulator" -avd lab -no-window -no-audio -no-boot-anim \
+            -no-snapshot -gpu swiftshader_indirect -accel on -memory 2048 \
+            > "$OUT/emulator.txt" 2>&1 &
+          adb wait-for-device
+          for i in $(seq 1 180); do
+            BOOT=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            [ "$BOOT" = "1" ] && break
+            sleep 5
+          done
+          echo "boot_completed=$BOOT after ${i} polls"
+          adb shell settings put global window_animation_scale 0 || true
+          adb shell settings put global transition_animation_scale 0 || true
+          adb shell settings put global animator_duration_scale 0 || true
+          adb install -r "$GITHUB_WORKSPACE/lab.apk"
+          adb shell am start -W -n dev.arena.liquidglasslab/.MainActivity
+          sleep 15
+          SIZE=$(adb shell wm size | tail -1 | sed 's/.*: //')
+          W=${SIZE%x*}; H=${SIZE#*x}
+          echo "screen=$W x $H"
+          shot() { adb exec-out screencap -p > "$OUT/$1.png"; echo "shot $1 $(stat -c%s "$OUT/$1.png")"; }
+          tap_tab() { adb shell input tap $(( W * ($1 * 2 + 1) / 8 )) $(( H - H / 22 )); sleep 4; }
+          shot 01-home
+          tap_tab 1; shot 02-presets
+          tap_tab 2; shot 03-scene
+          tap_tab 3; shot 04-tuning
+          tap_tab 0; sleep 2
+          adb shell input tap $(( W - W / 9 )) $(( H / 14 )); sleep 3
+          shot 05-menu
+          adb shell input keyevent KEYCODE_BACK; sleep 1
+          adb logcat -d > "$OUT/logcat.txt" || true
+          grep -iE "liquidglasslab|FATAL|AndroidRuntime" "$OUT/logcat.txt" | tail -n 120 || true
+          adb shell pidof dev.arena.liquidglasslab && echo "APP ALIVE" || echo "APP NOT RUNNING"
+          ls -la "$OUT"
 
       - name: Upload screenshots
         if: always()
@@ -91,13 +107,15 @@ jobs:
           path: shots/**
           if-no-files-found: warn
 
-      - name: Commit screenshots to docs/
+      - name: Commit screenshots and diagnostics
         if: always()
         continue-on-error: true
         run: |
           mkdir -p liquidglass/docs/img/device
           cp shots/*.png liquidglass/docs/img/device/ 2>/dev/null || true
-          cp shots/logcat.txt liquidglass/docs/img/device/ 2>/dev/null || true
+          cp shots/diag.txt liquidglass/docs/img/device/ 2>/dev/null || true
+          grep -iE "liquidglasslab|FATAL|AndroidRuntime" shots/logcat.txt \
+            > liquidglass/docs/img/device/logcat.txt 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f liquidglass/docs/img/device
