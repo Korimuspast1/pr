@@ -107,11 +107,11 @@ jobs:
           # the tab through the activity intent instead.
           open_tab() {
             if [ -n "$2" ]; then
-              "$SDK/platform-tools/adb" shell am start \
+              "$SDK/platform-tools/adb" shell am start -S \
                 -n dev.arena.liquidglasslab/.MainActivity --es tab "$1" --ez menu true \
                 >/dev/null 2>&1
             else
-              "$SDK/platform-tools/adb" shell am start \
+              "$SDK/platform-tools/adb" shell am start -S \
                 -n dev.arena.liquidglasslab/.MainActivity --es tab "$1" >/dev/null 2>&1
             fi
             sleep 6

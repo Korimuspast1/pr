@@ -18,6 +18,10 @@ public class MainActivity extends Activity {
         GlassRender.setDensity(getResources().getDisplayMetrics().density);
         labView = new LabView(this);
         setContentView(labView);
+        // a relaunch with extras must reach onNewIntent, not just resume the task
+        setIntent(getIntent().addFlags(
+                android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP));
         // deep link: adb shell am start -n dev.arena.liquidglasslab/.MainActivity --es tab tune
         labView.post(() -> applyIntent(getIntent()));
     }

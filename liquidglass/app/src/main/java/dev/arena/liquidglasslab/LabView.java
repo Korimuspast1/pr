@@ -418,6 +418,7 @@ public final class LabView extends FrameLayout {
     /** Opens a tab by name: home, presets, scene, tune. */
     public void openTab(String name) {
         if (name == null) return;
+        android.util.Log.i("LiquidGlass", "openTab " + name);
         switch (name.toLowerCase(java.util.Locale.US)) {
             case "presets": selectTab(TAB_PRESETS); break;
             case "scene": selectTab(TAB_SCENE); break;
