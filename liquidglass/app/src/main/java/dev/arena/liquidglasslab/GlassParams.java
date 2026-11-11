@@ -8,12 +8,11 @@ import java.util.List;
 /**
  * Every tunable of the Liquid Glass optical model, in one place.
  *
- * <p>The values are the ones the docs describe as "iOS 26 look": a soft frosted
- * backdrop, a refracting bevel on the rim, a specular highlight from the top
- * left, a thin inner shadow for thickness and a hair of grain.
+ * <p>Defaults follow the reference implementation in QWEA0/Liquid-Glass-Android:
+ * a refracted bevel squeezed into the outer pixels of the silhouette, per-channel
+ * dispersion, two symmetric rim lobes and per-pixel adaptive tinting.
  *
- * <p>All lengths are expressed in dp and converted with the current display
- * density when drawn, so the material keeps its physical size on any screen.
+ * <p>All lengths are in dp and converted with the display density when drawn.
  */
 public final class GlassParams {
 
@@ -27,141 +26,151 @@ public final class GlassParams {
     private final List<Listener> listeners = new ArrayList<>();
 
     // ---------------------------------------------------------------- optics
-    /** Width of the refracting rim. */
-    public float bevel = 14f;
-    /** Base displacement at the silhouette (sign is applied in the shader). */
-    public float lens = 16f;
-    /** Profile exponent: 0.55 squircle-ish, 1 circular, >1 sharper rim. */
-    public float lensProfile = 0.55f;
-    /** Extra centroid pull, used by big surfaces (menus, sheets). */
-    public float depth = 0f;
-    /** RGB dispersion amount 0..1. */
+    /** Width of the refracting bevel, dp. */
+    public float bevel = 18f;
+    /** Displacement at the silhouette, dp. */
+    public float lens = 22f;
+    /** Profile: inverse-power exponent (4-8 squeezes the bend into the rim). */
+    public float falloff = 5f;
+    /** RGB dispersion, 0..1 (the reference caps it at 0.25 before it goes rainbow). */
     public float chroma = 0.10f;
 
     // ------------------------------------------------------------ backdrop
-    /** Backdrop blur radius. */
-    public float blur = 10f;
-    /** Backdrop saturation multiplier. */
-    public float saturation = 1.55f;
-    /** Backdrop brightness delta (RenderEffect color matrix). */
-    public float brightness = 0f;
+    /** Backdrop blur radius, dp. */
+    public float blur = 8f;
+    /** Backdrop saturation, 1 = untouched. */
+    public float saturation = 1.5f;
 
     // --------------------------------------------------------------- surface
-    /** Tint mixed into the glass; alpha is the mix amount. */
-    public int tintColor = Color.argb(16, 255, 255, 255);
-    /** Overall surface opacity (Clear uses ~0.6). */
-    public float opacity = 1f;
-    /** Dim layer strength behind Clear glass (HIG: 35 % over bright content). */
+    /** Tint for Clear mode; alpha is the mix amount. */
+    public int tintColor = Color.argb(0, 255, 255, 255);
+    /** Body colour of the glass (straight alpha, a = 0 disables). */
+    public int glassTint = 0;
+    /** Clear-mode dim layer (HIG: 35 % over bright content). */
     public float clearDim = 0.35f;
+    /** Regular mode: per-pixel adaptive tinting instead of a flat tint. */
+    public boolean adaptiveTint = true;
 
     // ----------------------------------------------------------------- rim
-    /** Specular intensity. */
+    /** Specular rim intensity. */
     public float highlight = 1.0f;
-    /** Specular falloff distance, dp. */
-    public float highlightWidth = 1.1f;
-    /** Specular exponent, higher = tighter to the light side. */
-    public float highlightFalloff = 1.0f;
+    /** Cap for the glow band width, dp. */
+    public float highlightWidth = 6f;
     /** Light direction, degrees (0 = right, 90 = down). Default: top-left. */
     public float lightAngle = 225f;
-    /** Inner shadow strength, 0..1. */
-    public float innerShadow = 0.32f;
     /** Outer drop shadow radius, dp. */
-    public float shadowRadius = 12f;
+    public float shadowRadius = 10f;
     /** Outer drop shadow alpha, 0..1. */
     public float shadowAlpha = 0.18f;
-    /** Film grain, 0..1. */
-    public float grain = 1f;
 
     // ----------------------------------------------------------- interaction
-    /** Extra lens bulge under the finger while pressed, dp. */
+    /** Droplet bulge under the finger, dp. */
     public float pressBulge = 10f;
-    /** Press scale (interactive glass flexes). */
-    public float pressScale = 1.035f;
+    /** Press scale (interactive glass flexes and lights up). */
+    public float pressScale = 1.0f;
 
     // ---------------------------------------------------------- behaviour
     public Variant variant = Variant.REGULAR;
-    /** Accessibility: Reduce Transparency -> frostier, nearly opaque. */
+    /** Accessibility: Reduce Transparency -> frostier, opaque. */
     public boolean reduceTransparency = false;
-    /** Accessibility: Increase Contrast -> contrasting 1 dp outline. */
+    /** Accessibility: Increase Contrast -> contrasting outline. */
     public boolean increaseContrast = false;
+
+    /**
+     * True when the backdrop behind the chrome is dark, so labels inside the glass
+     * must be light. Set by the lab from the current scene (Apple's material adapts
+     * its content colour the same way).
+     */
+    public boolean darkBackdrop = true;
 
     public GlassParams() {
     }
 
+    // --------------------------------------------------------------- content
+
+    /** Primary label colour for anything drawn on top of the material. */
+    public int ink() {
+        return darkBackdrop ? 0xFFFFFFFF : 0xFF0B0B0F;
+    }
+
+    /** Secondary label colour (values, captions, unselected tabs). */
+    public int inkSecondary() {
+        return darkBackdrop ? 0xB3FFFFFF : 0x99101014;
+    }
+
+    /** Faint ink used for the glyph discs inside a toolbar. */
+    public int discInk() {
+        return darkBackdrop ? 0x24FFFFFF : 0x12000000;
+    }
+
+    /** System accent, used for selected states and tinted glass. */
+    public int accent() {
+        return 0xFF0A84FF;
+    }
+
+    // ------------------------------------------------------------------ copy
+
     public GlassParams copy() {
         GlassParams p = new GlassParams();
-        p.bevel = bevel;
-        p.lens = lens;
-        p.lensProfile = lensProfile;
-        p.depth = depth;
-        p.chroma = chroma;
-        p.blur = blur;
-        p.saturation = saturation;
-        p.brightness = brightness;
-        p.tintColor = tintColor;
-        p.opacity = opacity;
-        p.clearDim = clearDim;
-        p.highlight = highlight;
-        p.highlightWidth = highlightWidth;
-        p.highlightFalloff = highlightFalloff;
-        p.lightAngle = lightAngle;
-        p.innerShadow = innerShadow;
-        p.shadowRadius = shadowRadius;
-        p.shadowAlpha = shadowAlpha;
-        p.grain = grain;
-        p.pressBulge = pressBulge;
-        p.pressScale = pressScale;
-        p.variant = variant;
-        p.reduceTransparency = reduceTransparency;
-        p.increaseContrast = increaseContrast;
+        p.setFrom(this);
         return p;
     }
 
     public void set(GlassParams o) {
+        setFrom(o);
+        notifyChanged();
+    }
+
+    private void setFrom(GlassParams o) {
         bevel = o.bevel;
         lens = o.lens;
-        lensProfile = o.lensProfile;
-        depth = o.depth;
+        falloff = o.falloff;
         chroma = o.chroma;
         blur = o.blur;
         saturation = o.saturation;
-        brightness = o.brightness;
         tintColor = o.tintColor;
-        opacity = o.opacity;
+        glassTint = o.glassTint;
         clearDim = o.clearDim;
+        adaptiveTint = o.adaptiveTint;
         highlight = o.highlight;
         highlightWidth = o.highlightWidth;
-        highlightFalloff = o.highlightFalloff;
         lightAngle = o.lightAngle;
-        innerShadow = o.innerShadow;
         shadowRadius = o.shadowRadius;
         shadowAlpha = o.shadowAlpha;
-        grain = o.grain;
         pressBulge = o.pressBulge;
         pressScale = o.pressScale;
         variant = o.variant;
         reduceTransparency = o.reduceTransparency;
         increaseContrast = o.increaseContrast;
-        notifyChanged();
-    }
-
-    /** Effective opacity after variant + accessibility are applied. */
-    public float effectiveOpacity() {
-        if (reduceTransparency) return 1f;
-        return variant == Variant.CLEAR ? Math.min(opacity, 0.62f) : opacity;
-    }
-
-    /** Effective tint alpha after variant + accessibility are applied. */
-    public float effectiveTintAlpha() {
-        float a = Color.alpha(tintColor) / 255f;
-        if (reduceTransparency) return Math.max(a, 0.55f);
-        if (variant == Variant.CLEAR) return Math.min(a, 0.03f);
-        return a;
+        darkBackdrop = o.darkBackdrop;
     }
 
     /** Effective blur: Reduce Transparency frosts the backdrop much harder. */
     public float effectiveBlur() {
         return reduceTransparency ? blur * 2.2f + 6f : blur;
+    }
+
+    /** Clear mode dims the content behind it; Reduce Transparency pushes towards opaque. */
+    public float effectiveDim() {
+        if (reduceTransparency) return 0f;
+        return variant == Variant.CLEAR ? clearDim : 0f;
+    }
+
+    /** Regular uses per-pixel adaptive tinting unless the user turned it off. */
+    public float adaptiveTintFlag() {
+        if (variant == Variant.CLEAR) return 0f;
+        return adaptiveTint && !reduceTransparency ? 1f : 0f;
+    }
+
+    /** Effective saturation after accessibility. */
+    public float effectiveSaturation() {
+        return reduceTransparency ? Math.max(1f, saturation - 0.3f) : saturation;
+    }
+
+    /** Effective specular strength after accessibility. */
+    public float effectiveHighlight() {
+        return highlight * (reduceTransparency ? 0.7f : 1f)
+                * (increaseContrast ? 1.35f : 1f);
     }
 
     public void notifyChanged() {

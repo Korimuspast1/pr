@@ -10,9 +10,9 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 
 /**
- * Bottom tab bar: a floating glass capsule with a separate circular search bubble,
- * an animated selection pill that glides between tabs (with velocity stretch and a
- * droplet bulge under the finger), and icon + label per tab.
+ * Bottom tab bar: a floating glass capsule with an animated selection pill that glides
+ * between tabs (with velocity stretch) and a separate circular search bubble next to
+ * it — the iOS 26 pattern. Icons and labels are drawn inside the capsule only.
  */
 public class GlassTabBar extends GlassSurfaceView {
 
@@ -20,29 +20,28 @@ public class GlassTabBar extends GlassSurfaceView {
         void onTabSelected(int index);
     }
 
-    private String[] labels = {"Главная", "Поиск", "Медиа", "Профиль"};
+    private String[] labels = {"Главная", "Пресеты", "Сцена", "Тюнинг"};
     private GlassButton.Glyph[] glyphs = {
-            GlassButton.Glyph.play, GlassButton.Glyph.search,
-            GlassButton.Glyph.sparkle, GlassButton.Glyph.sliders};
+            GlassButton.Glyph.play, GlassButton.Glyph.grid,
+            GlassButton.Glyph.photo, GlassButton.Glyph.tune};
     private int selected = 0;
     private int pending = 0;
-    private float offset = 0f;          // animated index
+    private float offset = 0f;
     private float velocity = 0f;
-    private float pressProgress = 0f;
     private boolean tracking;
     private float downX;
-    private float bubbleScale = 1f;
     private Listener listener;
 
     private final TextPaint labelPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path pill = new Path();
     private float tabWidth;
 
     public GlassTabBar(Context context, AttributeSet attrs, GlassRender.Backdrop backdrop,
                        GlassParams params) {
         super(context, attrs, backdrop, params);
-        setCornerRadius(30f);
-        setShadowLift(6f);
+        setCornerRadius(28f);
+        setShadowLift(8f);
         labelPaint.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         labelPaint.setTextAlign(Paint.Align.CENTER);
         setClickable(true);
@@ -66,46 +65,41 @@ public class GlassTabBar extends GlassSurfaceView {
     protected void drawContents(Canvas canvas, float w, float h) {
         float d = getResources().getDisplayMetrics().density;
         int n = labels.length;
-        float side = 6f * d;
+        float side = 5f * d;
         tabWidth = (w - side * 2f) / n;
 
-        // animate towards the selected index with a spring-ish ease
+        // spring towards the selected index
         float delta = pending - offset;
         if (Math.abs(delta) > 0.002f || Math.abs(velocity) > 0.002f) {
             velocity += delta * 0.30f;
-            velocity *= 0.72f;
+            velocity *= 0.70f;
             offset += velocity;
             postInvalidateOnAnimation();
         } else {
             offset = pending;
             velocity = 0f;
         }
-        pressProgress += ((tracking ? 1f : 0f) - pressProgress) * 0.25f;
-        if (Math.abs(pressProgress - (tracking ? 1f : 0f)) > 0.002f) postInvalidateOnAnimation();
 
         // selection pill, stretched by velocity like a droplet
         float cx = side + tabWidth * (offset + 0.5f);
-        float stretch = 1f + Math.min(Math.abs(velocity) * 0.9f, 0.35f);
+        float stretch = 1f + Math.min(Math.abs(velocity) * 0.8f, 0.30f);
         float pillH = h - 12f * d;
-        float pillW = tabWidth * 0.86f * stretch;
-        float py = 6f * d;
-        pill.setFillType(Path.FillType.EVEN_ODD);
+        float pillW = tabWidth * 0.88f * stretch;
         pill.reset();
-        pill.addRoundRect(cx - pillW / 2f, py, cx + pillW / 2f, py + pillH,
+        pill.addRoundRect(cx - pillW / 2f, 6f * d, cx + pillW / 2f, 6f * d + pillH,
                 pillH / 2f, pillH / 2f, Path.Direction.CW);
-        Paint pillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        pillPaint.setColor(0xFF0A84FF);
-        pillPaint.setAlpha((int) (255 * 0.92f));
-        canvas.drawPath(pill, pillPaint);
+        paint.setColor(params.accent());
+        paint.setAlpha(235);
+        canvas.drawPath(pill, paint);
 
-        // tab glyphs
-        labelPaint.setTextSize(10f * d);
+        float glyphSize = Math.min(19f * d, h * 0.32f);
+        labelPaint.setTextSize(Math.min(10.5f * d, h * 0.17f));
         for (int i = 0; i < n; i++) {
             float tcx = side + tabWidth * (i + 0.5f);
             boolean sel = Math.abs(offset - i) < 0.5f;
-            int color = sel ? 0xFFFFFFFF : 0xFF3C4048;
-            float gs = 20f * d;
-            GlassButton.drawGlyph(canvas, glyphs[i], tcx - gs / 2f, 12f * d, gs, color);
+            int color = sel ? 0xFFFFFFFF : params.inkSecondary();
+            GlassButton.drawGlyph(canvas, glyphs[i], tcx - glyphSize / 2f,
+                    h * 0.20f, glyphSize, color);
             labelPaint.setColor(color);
             canvas.drawText(labels[i], tcx, h - 9f * d, labelPaint);
         }
@@ -123,7 +117,7 @@ public class GlassTabBar extends GlassSurfaceView {
                 return true;
             case MotionEvent.ACTION_MOVE: {
                 if (tabWidth <= 0f) return true;
-                float side = 6f * getResources().getDisplayMetrics().density;
+                float side = 5f * getResources().getDisplayMetrics().density;
                 int idx = (int) Math.floor((x - side) / tabWidth);
                 idx = Math.max(0, Math.min(labels.length - 1, idx));
                 if (idx != pending) {

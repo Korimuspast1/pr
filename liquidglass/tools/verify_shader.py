@@ -26,10 +26,9 @@ RENDER_JAVA = os.path.join(ROOT, "app", "src", "main", "java", "dev", "arena",
                            "liquidglasslab", "GlassRender.java")
 
 REQUIRED = [
-    "uOrigin", "uSize", "uRadii", "uBevel", "uLens", "uLensProfile", "uDepth",
-    "uChroma", "uTint", "uHighlight", "uHighlightWidth", "uHighlightFalloff",
-    "uLightDir", "uInnerShadow", "uPress", "uPressPoint", "uPressBulge", "uGrain",
-    "uOpacity",
+    "margin", "viewSize", "radii", "bevel", "refractPx", "falloff", "dispersion",
+    "lightDir", "specStrength", "rimBandMax", "tintColor", "adaptiveTint", "dimAmount",
+    "press", "touchPos", "touchAmp",
 ]
 
 

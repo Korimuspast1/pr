@@ -131,25 +131,21 @@ def arr_to_image(arr):
 #  the glass renderer
 # --------------------------------------------------------------------------- #
 DEFAULTS = dict(
-    bevel=48.0,
+    bevel=22.0,
     lens=22.0,
-    lens_profile=0.55,
-    depth=0.0,
-    chroma=0.0,
-    tint=(1.0, 1.0, 1.0, 0.06),
-    highlight=1.0,
-    highlight_width=1.2,
-    highlight_falloff=1.0,
+    falloff=5.0,
+    dispersion=0.10,
     light_dir=(-0.7071, -0.7071),
-    inner_shadow=0.35,
+    spec=1.0,
+    rim_band=6.0,
+    tint=(1.0, 1.0, 1.0, 0.0),
+    adaptive=1.0,
+    dim=0.0,
     press=0.0,
-    press_point=(0.0, 0.0),
-    press_bulge=0.0,
-    grain=1.0,
-    opacity=1.0,
-    blur=10.0,
-    saturation=1.6,
-    brightness=0.0,
+    touch=(0.0, 0.0),
+    touch_amp=10.0,
+    blur=8.0,
+    saturation=1.5,
 )
 
 
@@ -162,6 +158,9 @@ def make_effect():
 
 
 class Scene:
+    """CPU reference renderer. Every glass element is one pass of the same shader the
+    app ships, with the element's own margin applied like the RenderNode does."""
+
     def __init__(self, backdrop: np.ndarray, effect):
         self.h, self.w = backdrop.shape[:2]
         self.arr = backdrop
@@ -176,45 +175,43 @@ class Scene:
         p = dict(DEFAULTS)
         p.update(kw)
         radii = radius if isinstance(radius, (tuple, list)) else (radius,) * 4
+        margin = int(round(max(p["lens"] * 1.6, p["blur"] * 1.5, 8)))
 
-        # content child: blurred + saturated backdrop, sampled in element-local space
         content = self.content(p["blur"], p["saturation"])
-        # NOTE: SkSL shader local matrices are applied in the "local -> device"
-        # direction, so to make element-local coords land on the backdrop we
-        # translate by the *negated* element origin (verified numerically).
+        # Node-local coords -> backdrop coords. The node is drawn at (x - margin), so a
+        # node-local point q must sample the backdrop at q + (x - margin); Skia applies
+        # the shader's local matrix in the local -> shader direction, hence the +.
         content_shader = content.makeShader(
             skia.TileMode.kClamp, skia.TileMode.kClamp,
             skia.SamplingOptions(skia.FilterMode.kLinear),
-            skia.Matrix.Translate(-x, -y),
+            skia.Matrix.Translate(x - margin, y - margin),
         )
 
         b = skia.RuntimeShaderBuilder(self.effect)
         b.setChild("content", content_shader)
-        b.setUniform("uOrigin", skia.V2(0.0, 0.0))
-        b.setUniform("uSize", skia.V2(float(w), float(h)))
-        b.setUniform("uRadii", skia.V4(*[float(r) for r in radii]))
-        b.setUniform("uBevel", float(p["bevel"]))
-        b.setUniform("uLens", float(p["lens"]))
-        b.setUniform("uLensProfile", float(p["lens_profile"]))
-        b.setUniform("uDepth", float(p["depth"]))
-        b.setUniform("uChroma", float(p["chroma"]))
-        b.setUniform("uTint", skia.V4(*[float(c) for c in p["tint"]]))
-        b.setUniform("uHighlight", float(p["highlight"]))
-        b.setUniform("uHighlightWidth", float(p["highlight_width"]))
-        b.setUniform("uHighlightFalloff", float(p["highlight_falloff"]))
-        b.setUniform("uLightDir", skia.V2(*[float(c) for c in p["light_dir"]]))
-        b.setUniform("uInnerShadow", float(p["inner_shadow"]))
-        b.setUniform("uPress", float(p["press"]))
-        b.setUniform("uPressPoint", skia.V2(*[float(c) for c in p["press_point"]]))
-        b.setUniform("uPressBulge", float(p["press_bulge"]))
-        b.setUniform("uGrain", float(p["grain"]))
-        b.setUniform("uOpacity", float(p["opacity"]))
+        b.setUniform("margin", float(margin))
+        b.setUniform("viewSize", skia.V2(float(w), float(h)))
+        b.setUniform("radii", skia.V4(*[float(r) for r in radii]))
+        b.setUniform("bevel", float(p["bevel"]))
+        b.setUniform("refractPx", float(p["lens"]))
+        b.setUniform("falloff", float(p["falloff"]))
+        b.setUniform("dispersion", float(p["dispersion"]))
+        b.setUniform("lightDir", skia.V2(*[float(c) for c in p["light_dir"]]))
+        b.setUniform("specStrength", float(p["spec"]))
+        b.setUniform("rimBandMax", float(p["rim_band"]))
+        b.setUniform("tintColor", skia.V4(*[float(c) for c in p["tint"]]))
+        b.setUniform("adaptiveTint", float(p["adaptive"]))
+        b.setUniform("dimAmount", float(p["dim"]))
+        b.setUniform("press", float(p["press"]))
+        b.setUniform("touchPos", skia.V2(*[float(c) for c in p["touch"]]))
+        b.setUniform("touchAmp", float(p["touch_amp"]))
 
         paint = skia.Paint(AntiAlias=True)
         paint.setShader(b.makeShader())
+        # the node covers the element plus the margin, exactly like the RenderNode
         self.canvas.save()
-        self.canvas.translate(x, y)
-        self.canvas.drawRect(skia.Rect.MakeWH(w, h), paint)
+        self.canvas.translate(x - margin, y - margin)
+        self.canvas.drawRect(skia.Rect.MakeWH(w + margin * 2, h + margin * 2), paint)
         self.canvas.restore()
 
     def content(self, blur, saturation):
@@ -263,62 +260,61 @@ def saturation_matrix(s):
 #  reference cards
 # --------------------------------------------------------------------------- #
 def card_components(effect, out):
+    """The component sheet: what the app puts on screen, rendered 1:1."""
     W, H = 1080, 1920
-    sc = Scene(backdrop_text(W, H), effect)
-    # status-bar-ish toolbar (floating capsule)
-    sc.glass(40, 90, 1000, 96, 48, bevel=40, lens=14, chroma=0.0, inner_shadow=0.25)
-    # control-centre style grid of square tiles
-    for i in range(4):
-        sc.glass(40 + i * 252, 240, 220, 220, 56, bevel=44, lens=18, chroma=0.25,
-                 tint=(0.55, 0.75, 1.0, 0.10))
-    # main pill button
-    sc.glass(140, 520, 800, 88, 44, bevel=38, lens=16, chroma=0.1, highlight=1.1)
-    # bottom tab bar with a selected bubble (tinted)
-    sc.glass(40, H - 190, 1000, 108, 54, bevel=46, lens=20, chroma=0.15, inner_shadow=0.4)
-    sc.glass(240, H - 178, 200, 84, 42, bevel=34, lens=14, chroma=0.3,
-             tint=(0.35, 0.65, 1.0, 0.35), highlight=1.4)
-    # floating circular buttons + search bubble
-    sc.glass(830, H - 330, 96, 96, 48, bevel=40, lens=22, chroma=0.2, highlight=1.2)
-    # pressed droplet on a slider knob
-    sc.glass(150, 760, 120, 72, 36, bevel=34, lens=26, chroma=0.45,
-             press=1.0, press_point=(60, 36), press_bulge=18, highlight=1.6)
-    # menu: taller surface, thicker slab
-    sc.glass(560, 700, 420, 380, 44, bevel=56, lens=26, depth=1.0,
-             inner_shadow=0.45, chroma=0.2)
-    sc.save(os.path.join(out, "lab-components.png"))
+    sc = Scene(backdrop_aurora(W, H), effect)
+    # toolbar capsule
+    sc.glass(40, 90, 1000, 116, 58)
+    # two pill buttons
+    sc.glass(40, 250, 480, 116, 58)
+    sc.glass(560, 250, 480, 116, 58, tint=(0.04, 0.52, 1.0, 0.85), adaptive=0.0)
+    # menu slab
+    sc.glass(40, 420, 700, 460, 52, bevel=28, lens=30, falloff=3.5, rim_band=9)
+    # slider capsule
+    sc.glass(40, 930, 1000, 116, 58)
+    # tab bar
+    sc.glass(40, 1600, 760, 124, 62)
+    # search bubble
+    sc.glass(830, 1600, 124, 124, 62)
+    sc.save(os.path.join(out, "components-sheet.png"))
 
 
 def card_variants(effect, out):
     W, H = 1080, 1320
     sc = Scene(backdrop_night(W, H), effect)
-    sc.glass(60, 80, 960, 340, 56, bevel=52, lens=24, inner_shadow=0.4)   # regular
-    sc.glass(60, 480, 960, 340, 56, bevel=52, lens=24, inner_shadow=0.4,
-             opacity=0.62, tint=(1, 1, 1, 0.02), highlight=1.3)          # clear (no dim)
-    sc.glass(60, 880, 960, 340, 56, bevel=52, lens=24, inner_shadow=0.4,
-             opacity=0.62, tint=(0, 0, 0, 0.35), highlight=1.3)          # clear + dim layer
-    sc.save(os.path.join(out, "lab-variants.png"))
+    sc.glass(60, 80, 960, 340, 56)                                     # regular
+    sc.glass(60, 480, 960, 340, 56, adaptive=0.0, tint=(1, 1, 1, 0.02))  # clear
+    sc.glass(60, 880, 960, 340, 56, adaptive=0.0, tint=(1, 1, 1, 0.02), dim=0.35)  # clear + dim
+    sc.save(os.path.join(out, "variants-regular-clear.png"))
+
+
+def card_lensing(effect, out):
+    """Anatomy: the same strip over a grid, at three lens strengths."""
+    W, H = 1080, 900
+    sc = Scene(backdrop_text(W, H), effect)
+    for i, lens in enumerate((0.0, 18.0, 40.0)):
+        sc.glass(60, 80 + i * 270, 960, 200, 50, bevel=30, lens=lens, falloff=5.0,
+                 dispersion=0.12 if lens else 0.0, blur=0.0)
+    sc.save(os.path.join(out, "anatomy-lensing.png"))
 
 
 def card_light(effect, out):
     W, H = 1080, 1320
     sc = Scene(backdrop_light(W, H), effect)
-    sc.glass(60, 90, 960, 96, 48, bevel=40, lens=12, inner_shadow=0.45,
-             tint=(0.1, 0.1, 0.12, 0.05))
-    sc.glass(60, 260, 960, 420, 44, bevel=48, lens=20, inner_shadow=0.25)
-    sc.glass(60, 760, 460, 96, 48, bevel=36, lens=14, chroma=0.1)
-    sc.glass(560, 760, 460, 96, 48, bevel=36, lens=14, chroma=0.1,
-             tint=(0.2, 0.45, 1.0, 0.18))
+    sc.glass(60, 90, 960, 116, 58)
+    sc.glass(60, 250, 960, 420, 52)
+    sc.glass(60, 710, 460, 116, 58)
+    sc.glass(560, 710, 460, 116, 58, tint=(0.04, 0.52, 1.0, 0.85), adaptive=0.0)
     sc.save(os.path.join(out, "lab-light.png"))
 
 
 def card_aurora(effect, out):
     W, H = 1080, 1920
     sc = Scene(backdrop_aurora(W, H), effect)
-    sc.glass(60, 150, 960, 700, 60, bevel=60, lens=30, chroma=0.3, inner_shadow=0.3)
-    sc.glass(60, 950, 960, 140, 70, bevel=48, lens=22, chroma=0.2)
+    sc.glass(60, 150, 960, 700, 60, bevel=34, lens=34, dispersion=0.22)
+    sc.glass(60, 950, 960, 140, 70)
     for i in range(3):
-        sc.glass(80 + i * 320, 1180, 280, 280, 90, bevel=52, lens=26, chroma=0.35,
-                 highlight=1.2)
+        sc.glass(80 + i * 320, 1180, 280, 280, 90, dispersion=0.18)
     sc.save(os.path.join(out, "lab-aurora.png"))
 
 

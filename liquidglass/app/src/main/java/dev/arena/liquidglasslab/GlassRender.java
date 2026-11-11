@@ -5,42 +5,46 @@ import android.graphics.Color;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RenderEffect;
 import android.graphics.RenderNode;
 import android.graphics.RuntimeShader;
 import android.graphics.Shader;
 import android.os.Build;
+import android.util.Log;
 
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * The glass painter: RenderNode plumbing + the optical shader.
  *
- * <p>Per frame the app
+ * <p>Architecture (same as QWEA0/Liquid-Glass-Android and Apple's effect):
  * <ol>
- *   <li>records the whole scene (wallpaper + content behind the chrome) into
- *       {@code sceneNode};</li>
- *   <li>{@code backdropNode} draws that scene through a RenderEffect chain
- *       {@code blur -> colour matrix}, i.e. "what you can see through the glass";</li>
- *   <li>every glass element is its own RenderNode whose content is a translated copy
- *       of {@code backdropNode} and whose render effect is the runtime shader keyed on
- *       the {@code content} child. The shader bends light, paints the rim and the
- *       inner shadow, and is clipped to the element silhouette.</li>
+ *   <li>the lab view records the whole scene once per frame;</li>
+ *   <li>each element records its own slice of that scene into a RenderNode whose
+ *       bounds are the element plus {@code margin} on every side, so the shader can
+ *       sample "outside" the silhouette without hitting transparent black;</li>
+ *   <li>the render effect is {@code lens shader -> blur}: the shader bends light
+ *       along the SDF normal, splits channels for dispersion and paints the rim;</li>
+ *   <li>the shader clips itself with the SDF, so no canvas clip is needed and the
+ *       element can never paint outside its own bounds.</li>
  * </ol>
  *
- * <p>That is the same architecture Apple's effect uses (render the backdrop once,
- * re-project it per element), and the same one used by the Compose ports.
- * Requires API 33 for {@link RuntimeShader}; API 31–32 falls back to a frosted
- * surface with a rim.
+ * <p>If AGSL is unavailable (API &lt; 33 or a driver that rejects the shader) the
+ * element falls back to a hand-painted glass look built from the same backdrop, so
+ * every screen still shows glass instead of a flat plate.
  */
 public final class GlassRender {
+
+    private static final String TAG = "LiquidGlass";
 
     public static final boolean SHADER_SUPPORTED = Build.VERSION.SDK_INT >= 33;
     public static final boolean EFFECT_SUPPORTED = Build.VERSION.SDK_INT >= 31;
 
-    private static final Map<String, RuntimeShader> SHADERS = new HashMap<>();
+    /** Why the app is on the fallback path; shown in the lab's status line. */
+    public static String diagnostics = SHADER_SUPPORTED ? "AGSL lens" : "API < 33: fallback";
+
+    /** AGSL is compiled once per element: uniform values live in the shader instance. */
+    private static boolean shaderBroken;
+    private static String shaderSource = "";
 
     private static float sDensity = 1f;
 
@@ -55,37 +59,37 @@ public final class GlassRender {
         return value * sDensity;
     }
 
-    /** Compiles (and caches) a RuntimeShader by key. Returns null on API &lt; 33. */
+    /**
+     * Returns a fresh {@link RuntimeShader} for one element. Each element needs its own
+     * instance because a RenderEffect snapshots the shader's uniform values when it is
+     * built; sharing one instance would make every element show the last element's ones.
+     */
     public static RuntimeShader shader(String key, String source) {
-        if (!SHADER_SUPPORTED) return null;
-        if (SHADERS.containsKey(key)) return SHADERS.get(key);
-        RuntimeShader shader;
+        if (!SHADER_SUPPORTED || shaderBroken) return null;
+        shaderSource = source;
         try {
-            shader = new RuntimeShader(source);
+            RuntimeShader shader = new RuntimeShader(source);
+            diagnostics = "AGSL lens";
+            return shader;
         } catch (Throwable t) {
-            shader = null;
+            Log.w(TAG, "RuntimeShader rejected: " + t);
+            shaderBroken = true;
+            diagnostics = "shader compile failed: " + t.getClass().getSimpleName();
+            return null;
         }
-        SHADERS.put(key, shader);
-        return shader;
     }
 
     // ---------------------------------------------------------------- backdrop
 
-    /** Scene capture + blurred content node. Reusable, no bitmap allocation. */
+    /** Scene capture. Reusable, no bitmap allocation. */
     public static final class Backdrop {
         private final RenderNode sceneNode = new RenderNode("lg-scene");
-        private final RenderNode backdropNode = new RenderNode("lg-backdrop");
-        private final ColorMatrix matrix = new ColorMatrix();
         int width;
         int height;
         private boolean recorded;
 
         public RenderNode scene() {
             return sceneNode;
-        }
-
-        public RenderNode blurred() {
-            return backdropNode;
         }
 
         public int width() {
@@ -96,50 +100,23 @@ public final class GlassRender {
             return height;
         }
 
+        public boolean isRecorded() {
+            return recorded;
+        }
+
         public void setSize(int w, int h) {
             width = w;
             height = h;
         }
 
-        public void record(Canvas target, SceneSource source, GlassParams params) {
+        public void record(Canvas target, SceneSource source) {
             if (width <= 0 || height <= 0) return;
-            // 1. scene
             sceneNode.setPosition(0, 0, width, height);
             Canvas c = sceneNode.beginRecording();
             c.drawColor(Color.BLACK);
             source.drawScene(c, width, height);
             sceneNode.endRecording();
             recorded = true;
-
-            // 2. backdrop = scene + blur + colour matrix
-            if (!EFFECT_SUPPORTED) return;
-            backdropNode.setPosition(0, 0, width, height);
-            Canvas b = backdropNode.beginRecording();
-            b.drawRenderNode(sceneNode);
-            backdropNode.endRecording();
-
-            matrix.setSaturation(params.saturation);
-            RenderEffect effect = null;
-            float blurPx = dp(params.effectiveBlur());
-            if (blurPx > 0.05f) {
-                effect = RenderEffect.createBlurEffect(blurPx, blurPx, Shader.TileMode.CLAMP);
-            }
-            if (params.brightness != 0f) {
-                float off = params.brightness * 255f;
-                matrix.postConcat(new ColorMatrix(new float[]{
-                        1, 0, 0, 0, off,
-                        0, 1, 0, 0, off,
-                        0, 0, 1, 0, off,
-                        0, 0, 0, 1, 0}));
-            }
-            // a ColorMatrixColorFilter snapshots its matrix, so it is rebuilt whenever
-            // the saturation/brightness parameters change
-            effect = RenderEffect.createColorFilterEffect(new ColorMatrixColorFilter(matrix), effect);
-            backdropNode.setRenderEffect(effect);
-        }
-
-        public boolean isRecorded() {
-            return recorded;
         }
     }
 
@@ -153,98 +130,219 @@ public final class GlassRender {
     /**
      * Draws one glass element.
      *
-     * @param canvas    hardware canvas in window coordinates
-     * @param backdrop  recorded backdrop
-     * @param params    material parameters
-     * @param shader    compiled optical shader (null on API &lt; 33)
-     * @param node      a per-element RenderNode (reused across frames)
-     * @param path      a per-element Path (reused)
-     * @param x,y,w,h   element bounds, window coordinates
-     * @param radii     corner radii tl, tr, br, bl in px
-     * @param press     0..1 press progress
-     * @param px,py     press point, element-local px
-     * @param tint      per-element tint (0 = use the global tint)
-     * @param shadowDp  extra shadow lift for raised elements (0 = none)
-     * @param drawOrigin {x, y} of the element position in canvas space; the
-     *                   element's own bounds are used for the shader
+     * @param canvas   canvas in the container's coordinate space
+     * @param backdrop recorded scene, same coordinate space
+     * @param params   material parameters
+     * @param shader   compiled lens shader (null -> fallback material)
+     * @param node     per-element RenderNode (reused across frames)
+     * @param shaderState per-element cached effect state (reused)
+     * @param x,y,w,h  element bounds in container coordinates
+     * @param radii    corner radii tl, tr, br, bl in px
+     * @param press    0..1 press progress
+     * @param px,py    press point, element-local px
+     * @param tint     per-element body colour (0 = none)
+     * @param shadowDp extra shadow lift for raised elements
      */
     public static void drawGlass(Canvas canvas, Backdrop backdrop, GlassParams params,
-                                 RuntimeShader shader, RenderNode node, Path path,
+                                 RuntimeShader shader, RenderNode node, ShaderState shaderState,
                                  float x, float y, float w, float h, float[] radii,
-                                 float press, float px, float py, int tint, float shadowDp,
-                                 float[] drawOrigin) {
+                                 float press, float px, float py, int tint, float shadowDp) {
 
         if (w < 1f || h < 1f) return;
 
-        buildSilhouette(path, w, h, radii);
+        int margin = Math.max(1, (int) Math.ceil(dp(params.lens) * 1.6f + dp(params.blur) * 1.5f));
 
-        // ---- outer shadow: a blurred copy of the silhouette in its own RenderNode.
-        // (Paint.setShadowLayer only renders text on a hardware canvas, so shapes need this.)
+        // ---- outer shadow (own node: Paint shadow layers do not render shapes here)
         float shadowRadius = params.shadowRadius + shadowDp;
         if (shadowRadius > 0f && params.shadowAlpha > 0f && EFFECT_SUPPORTED) {
-            drawShadowNode(canvas, path, x - drawOrigin[0], y - drawOrigin[1], w, h,
-                    Math.max(dp(shadowRadius), 1f),
-                    (int) (255 * Math.min(1f, params.shadowAlpha) * 0.55f));
+            drawShadowNode(canvas, x, y, w, h, radii, Math.max(dp(shadowRadius), 1f),
+                    (int) (255 * Math.min(1f, params.shadowAlpha) * 0.5f));
         }
 
-        // ---- Clear variant: dim layer (HIG: 35 % black over bright content)
-        boolean clear = params.variant == GlassParams.Variant.CLEAR;
-        if (clear && params.clearDim > 0f) {
-            Paint dim = new Paint(Paint.ANTI_ALIAS_FLAG);
-            dim.setColor(Color.argb((int) (255 * Math.min(1f, params.clearDim)), 0, 0, 0));
-            canvas.save();
-            canvas.translate(x - drawOrigin[0], y - drawOrigin[1]);
-            canvas.drawPath(path, dim);
-            canvas.restore();
-        }
+        boolean shaderPath = SHADER_SUPPORTED && shader != null && EFFECT_SUPPORTED
+                && backdrop.isRecorded();
 
-        int tintColor = tint != 0 ? tint : params.tintColor;
-
-        canvas.save();
-        canvas.translate(x - drawOrigin[0], y - drawOrigin[1]);
-        canvas.clipPath(path);
-        canvas.translate(x, y);
-
-        if (SHADER_SUPPORTED && shader != null && EFFECT_SUPPORTED && backdrop.isRecorded()) {
-            // content of this element = the blurred backdrop slice
-            node.setPosition(0, 0, Math.round(w), Math.round(h));
+        if (shaderPath) {
+            int recW = Math.round(w) + margin * 2;
+            int recH = Math.round(h) + margin * 2;
+            node.setPosition(Math.round(x) - margin, Math.round(y) - margin,
+                    Math.round(x) - margin + recW, Math.round(y) - margin + recH);
             Canvas rc = node.beginRecording();
-            rc.translate(-x, -y);
-            rc.drawRenderNode(backdrop.blurred());
+            rc.translate(-x + margin, -y + margin);
+            rc.drawRenderNode(backdrop.scene());
             node.endRecording();
 
-            applyUniforms(shader, params, w, h, radii, press, px, py, tintColor);
-            node.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "content"));
+            if (shaderState.prepare(shader, params, w, h, radii, margin, press, px, py,
+                    tint, backdrop.width(), backdrop.height(), x, y)) {
+                node.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "content"));
+            }
             canvas.drawRenderNode(node);
         } else {
-            // fallback: frosted scrim + rim
-            Paint scrim = new Paint(Paint.ANTI_ALIAS_FLAG);
-            scrim.setColor(Color.argb((int) (255 * 0.55f * params.effectiveOpacity()),
-                    236, 240, 248));
-            canvas.drawRect(0f, 0f, w, h, scrim);
-            drawFallbackRim(canvas, w, h, params);
+            drawFallback(canvas, backdrop, params, x, y, w, h, radii, tint, press, px, py);
         }
 
         // ---- Increase Contrast: contrasting hairline outline
         if (params.increaseContrast) {
             Paint outline = new Paint(Paint.ANTI_ALIAS_FLAG);
             outline.setStyle(Paint.Style.STROKE);
-            outline.setStrokeWidth(dp(1f));
-            outline.setColor(Color.argb(150, 255, 255, 255));
-            canvas.drawPath(path, outline);
-            outline.setStrokeWidth(dp(0.5f));
-            outline.setColor(Color.argb(90, 0, 0, 0));
-            canvas.drawPath(path, outline);
+            outline.setStrokeWidth(dp(1.2f));
+            outline.setColor(Color.argb(190, 255, 255, 255));
+            canvas.drawRoundRect(x, y, x + w, y + h, radii[0], radii[0], outline);
+        }
+    }
+
+    /** Cached effect inputs, so the RenderEffect is only rebuilt when they change. */
+    public static final class ShaderState {
+        private final float[] last = new float[20];
+        private boolean valid;
+
+        boolean prepare(RuntimeShader sh, GlassParams p, float w, float h, float[] radii,
+                        int margin, float press, float px, float py, int tint,
+                        int sceneW, int sceneH, float x, float y) {
+            float lightAngle = (float) Math.toRadians(p.lightAngle);
+            float lx = (float) Math.cos(lightAngle);
+            float ly = (float) Math.sin(lightAngle);
+
+            float[] now = {
+                    margin, w, h, radii[0], radii[1], radii[2], radii[3],
+                    dp(p.bevel), -dp(p.lens), p.falloff,
+                    p.variant == GlassParams.Variant.CLEAR ? p.chroma * 0.6f : p.chroma,
+                    lx, ly, p.effectiveHighlight(), dp(p.highlightWidth) * 0.6f,
+                    tint, p.adaptiveTintFlag(), p.effectiveDim(), press, px
+            };
+            boolean changed = !valid || now.length != last.length;
+            if (!changed) {
+                for (int i = 0; i < now.length; i++) {
+                    if (Math.abs(now[i] - last[i]) > 1e-4f) {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            if (!changed) return false;
+            System.arraycopy(now, 0, last, 0, now.length);
+            valid = true;
+
+            sh.setFloatUniform("margin", (float) margin);
+            sh.setFloatUniform("viewSize", w, h);
+            sh.setFloatUniform("radii", radii[0], radii[1], radii[2], radii[3]);
+            sh.setFloatUniform("bevel", Math.max(dp(p.bevel), 1f));
+            sh.setFloatUniform("refractPx", Math.max(dp(p.lens), 0f));
+            sh.setFloatUniform("falloff", Math.max(p.falloff, 0f));
+            sh.setFloatUniform("dispersion", Math.max(0f, Math.min(p.chroma, 1f)));
+            sh.setFloatUniform("lightDir", lx, ly);
+            sh.setFloatUniform("specStrength", p.effectiveHighlight());
+            sh.setFloatUniform("rimBandMax", Math.max(dp(p.highlightWidth), 2f));
+            int t = tint != 0 ? tint : p.tintColor;
+            sh.setFloatUniform("tintColor", Color.red(t) / 255f, Color.green(t) / 255f,
+                    Color.blue(t) / 255f, tint != 0 ? Color.alpha(t) / 255f
+                            : (p.variant == GlassParams.Variant.CLEAR ? 0.10f : 0f));
+            sh.setFloatUniform("adaptiveTint", p.adaptiveTintFlag());
+            sh.setFloatUniform("dimAmount", p.effectiveDim());
+            sh.setFloatUniform("press", press);
+            sh.setFloatUniform("touchPos", px, py);
+            sh.setFloatUniform("touchAmp", dp(p.pressBulge));
+            return true;
+        }
+    }
+
+    /**
+     * Fallback material that still looks like glass: the blurred backdrop itself, a
+     * soft tint, brightness that rises towards the top, a lit rim on the light side
+     * and a shaded counter-rim. No flat plate.
+     */
+    private static void drawFallback(Canvas canvas, Backdrop backdrop, GlassParams params,
+                                     float x, float y, float w, float h, float[] radii,
+                                     int tint, float press, float px, float py) {
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        android.graphics.Path clip = new android.graphics.Path();
+        buildSilhouette(clip, w, h, radii);
+
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.clipPath(clip);
+
+        // 1. what is behind the glass
+        if (backdrop.isRecorded() && EFFECT_SUPPORTED) {
+            RenderNode blur = blurCache;
+            if (blur == null) {
+                blur = new RenderNode("lg-fallback-blur");
+                blurCache = blur;
+            }
+            blur.setPosition(0, 0, backdrop.width(), backdrop.height());
+            Canvas bc = blur.beginRecording();
+            bc.drawRenderNode(backdrop.scene());
+            blur.endRecording();
+            float r = Math.max(dp(params.effectiveBlur()), 0.1f);
+            ColorMatrix cm = new ColorMatrix();
+            cm.setSaturation(params.effectiveSaturation());
+            RenderEffect effect = RenderEffect.createChainEffect(
+                    RenderEffect.createColorFilterEffect(new ColorMatrixColorFilter(cm)),
+                    RenderEffect.createBlurEffect(r, r, Shader.TileMode.CLAMP));
+            blur.setRenderEffect(effect);
+            canvas.translate(-x, -y);
+            canvas.drawRenderNode(blur);
+            canvas.translate(x, y);
+        } else {
+            paint.setColor(0xFF1A1D24);
+            canvas.drawRect(0f, 0f, w, h, paint);
+        }
+
+        // 2. tint / dim
+        float dim = params.effectiveDim();
+        if (dim > 0f) {
+            paint.setColor(Color.argb((int) (255 * dim), 0, 0, 0));
+            canvas.drawRect(0f, 0f, w, h, paint);
+        }
+        if (tint != 0) {
+            paint.setColor(tint);
+            canvas.drawRect(0f, 0f, w, h, paint);
+        }
+
+        // 3. thickness: brighter towards the light, darker at the opposite edge
+        paint.setShader(new android.graphics.LinearGradient(0f, 0f, w * 0.4f, h,
+                new int[]{0x22FFFFFF, 0x00FFFFFF, 0x33000000},
+                new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+        canvas.drawRect(0f, 0f, w, h, paint);
+        paint.setShader(null);
+
+        // 4. lit rim: bright on the light side, shaded on the opposite side
+        Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
+        rim.setStyle(Paint.Style.STROKE);
+        rim.setStrokeWidth(Math.max(dp(1.4f), 1.2f));
+        rim.setShader(new android.graphics.LinearGradient(0f, 0f, w, h,
+                new int[]{0xCCFFFFFF, 0x33FFFFFF, 0x66000000},
+                new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+        canvas.drawPath(clip, rim);
+
+        // 5. inner shadow hugging the silhouette (sells the thickness)
+        Paint inner = new Paint(Paint.ANTI_ALIAS_FLAG);
+        inner.setStyle(Paint.Style.STROKE);
+        inner.setStrokeWidth(dp(8f));
+        inner.setColor(0x33000000);
+        canvas.save();
+        canvas.clipPath(clip);
+        canvas.drawPath(clip, inner);
+        canvas.restore();
+
+        // 6. press: a soft light under the finger
+        if (press > 0.01f) {
+            paint.setShader(new android.graphics.RadialGradient(px, py, Math.max(w, h) * 0.6f,
+                    0x30FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+            canvas.drawRect(0f, 0f, w, h, paint);
+            paint.setShader(null);
         }
 
         canvas.restore();
     }
 
+    private static RenderNode blurCache;
+
     private static RenderNode shadowNode;
 
-    /** Draws a blurred silhouette behind the element (see comment above). */
-    private static void drawShadowNode(Canvas canvas, Path silhouette, float x, float y,
-                                       float w, float h, float radius, int alpha) {
+    /** Draws a blurred silhouette behind the element. */
+    private static void drawShadowNode(Canvas canvas, float x, float y, float w, float h,
+                                       float[] radii, float radius, int alpha) {
         int pad = (int) Math.ceil(radius * 2.5f);
         if (shadowNode == null) shadowNode = new RenderNode("lg-shadow");
         int nw = (int) Math.ceil(w) + pad * 2;
@@ -255,91 +353,28 @@ public final class GlassRender {
         c.translate(pad, pad);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         p.setColor(Color.argb(Math.max(0, Math.min(255, alpha)), 0, 0, 0));
-        c.drawPath(silhouette, p);
+        android.graphics.Path path = new android.graphics.Path();
+        buildSilhouette(path, w, h, radii);
+        c.drawPath(path, p);
         shadowNode.endRecording();
         shadowNode.setRenderEffect(RenderEffect.createBlurEffect(radius, radius,
                 Shader.TileMode.CLAMP));
         canvas.save();
-        canvas.translate(x - pad, y - pad + radius * 0.3f);
+        canvas.translate(x - pad, y - pad + radius * 0.35f);
         canvas.drawRenderNode(shadowNode);
         canvas.restore();
     }
 
-    private static void applyUniforms(RuntimeShader s, GlassParams p, float w, float h,
-                                      float[] radii, float press, float px, float py,
-                                      int tint) {
-        s.setFloatUniform("uOrigin", 0f, 0f);
-        s.setFloatUniform("uSize", w, h);
-        s.setFloatUniform("uRadii", radii[0], radii[1], radii[2], radii[3]);
-        s.setFloatUniform("uBevel", Math.max(dp(p.bevel), 0.5f));
-        s.setFloatUniform("uLens", -dp(p.lens));
-        s.setFloatUniform("uLensProfile", p.lensProfile);
-        s.setFloatUniform("uDepth", p.depth);
-        s.setFloatUniform("uChroma", p.chroma);
-        float a = p.effectiveTintAlpha();
-        s.setFloatUniform("uTint", Color.red(tint) / 255f, Color.green(tint) / 255f,
-                Color.blue(tint) / 255f, a);
-        s.setFloatUniform("uHighlight", p.highlight * (p.reduceTransparency ? 0.6f : 1f));
-        s.setFloatUniform("uHighlightWidth", Math.max(dp(p.highlightWidth), 0.4f));
-        s.setFloatUniform("uHighlightFalloff", p.highlightFalloff);
-        double angle = Math.toRadians(p.lightAngle);
-        s.setFloatUniform("uLightDir", (float) Math.cos(angle), (float) Math.sin(angle));
-        s.setFloatUniform("uInnerShadow", p.innerShadow);
-        s.setFloatUniform("uPress", press);
-        s.setFloatUniform("uPressPoint", px, py);
-        s.setFloatUniform("uPressBulge", dp(p.pressBulge));
-        s.setFloatUniform("uGrain", p.reduceTransparency ? 0f : p.grain);
-        s.setFloatUniform("uOpacity", p.effectiveOpacity());
-    }
-
-    private static void drawFallbackRim(Canvas canvas, float w, float h, GlassParams p) {
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(Math.max(dp(p.highlightWidth), dp(1f)));
-        paint.setColor(Color.argb(120, 255, 255, 255));
-        canvas.drawRect(0.5f, 0.5f, w - 0.5f, h - 0.5f, paint);
-    }
-
-    // ------------------------------------------------------------- viewbackdrop
-
-    /**
-     * Convenience wrapper: records windows-sized scene into a {@link Backdrop},
-     * so widgets only need to know how to paint the scene.
-     */
-    public static final class ViewBackdrop {
-        public final Backdrop backdrop = new Backdrop();
-        private final SceneSource source;
-
-        public ViewBackdrop(SceneSource source) {
-            this.source = source;
-        }
-
-        public void layout(int width, int height) {
-            if (backdrop.width() == width && backdrop.height() == height) return;
-            backdrop.width = width;
-            backdrop.height = height;
-        }
-
-        public void refresh(Canvas canvas, GlassParams params) {
-            backdrop.record(canvas, source, params);
-        }
-
-        public GlassRender.Backdrop get() {
-            return backdrop;
-        }
-    }
-
     // ----------------------------------------------------------------- shapes
 
-    /** Rounded rect with per-corner radii, using squircle-ish cubic handles. */
-    public static void buildSilhouette(Path path, float w, float h, float[] r) {
+    /** Rounded rect with per-corner radii (squircle-ish corner handles). */
+    public static void buildSilhouette(android.graphics.Path path, float w, float h, float[] r) {
         path.reset();
         float max = Math.min(w, h) / 2f;
         float tl = Math.min(r[0], max);
         float tr = Math.min(r[1], max);
         float br = Math.min(r[2], max);
         float bl = Math.min(r[3], max);
-        // 0.42 ~ circular arc, 0.55 ~ squircle (smoother transition into the bezel)
         float k = 0.55f;
         path.moveTo(tl, 0f);
         path.lineTo(w - tr, 0f);

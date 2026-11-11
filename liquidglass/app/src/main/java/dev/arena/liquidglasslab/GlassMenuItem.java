@@ -9,8 +9,8 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 
 /**
- * One row of a glass menu: icon, label, optional value, hover/press highlight that
- * lights the glass from the touch point (iOS 26 menu rows behave like this).
+ * One row of a glass list: icon, label, optional trailing value, and a highlight that
+ * lights the glass from the touch point.
  */
 public class GlassMenuItem extends GlassSurfaceView {
 
@@ -21,17 +21,17 @@ public class GlassMenuItem extends GlassSurfaceView {
     private String label = "Пункт";
     private String value = "";
     private GlassButton.Glyph glyph = GlassButton.Glyph.sparkle;
-    private boolean highlighted;
+    private int accentDot;
     private Listener listener;
     private final TextPaint text = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint valueText = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     public GlassMenuItem(Context context, AttributeSet attrs, GlassRender.Backdrop backdrop,
                          GlassParams params) {
         super(context, attrs, backdrop, params);
-        setCornerRadius(14f);
-        setShadowLift(-6f);
-        text.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        setCornerRadius(18f);
+        text.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         valueText.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
         valueText.setTextAlign(Paint.Align.RIGHT);
         setClickable(true);
@@ -45,32 +45,50 @@ public class GlassMenuItem extends GlassSurfaceView {
         invalidate();
     }
 
-    public void setHighlighted(boolean h) {
-        if (highlighted != h) {
-            highlighted = h;
-            invalidate();
-        }
+    /** Optional coloured dot instead of an icon (used by the preset list). */
+    public void dot(int color) {
+        accentDot = color;
+        invalidate();
+    }
+
+    public String label() {
+        return label;
     }
 
     @Override
     protected void drawContents(Canvas canvas, float w, float h) {
         float d = getResources().getDisplayMetrics().density;
-        if (highlighted) {
-            Paint hi = new Paint(Paint.ANTI_ALIAS_FLAG);
-            hi.setColor(0x24FFFFFF);
-            canvas.drawRoundRect(0, 0, w, h, 14f * d, 14f * d, hi);
+        float cy = h / 2f;
+        float left = 18f * d;
+
+        if (accentDot != 0) {
+            paint.setColor(accentDot);
+            canvas.drawCircle(left + 7f * d, cy, 7f * d, paint);
+            left += 28f * d;
+        } else {
+            float gs = Math.min(18f * d, h * 0.40f);
+            GlassButton.drawGlyph(canvas, glyph, left, cy - gs / 2f, gs, params.ink());
+            left += gs + 12f * d;
         }
-        float gs = 17f * d;
-        GlassButton.drawGlyph(canvas, glyph, 12f * d, (h - gs) / 2f, gs, 0xFF1A1C21);
-        text.setColor(0xFF14161B);
-        text.setTextSize(14f * d);
+
+        text.setColor(params.ink());
+        text.setTextSize(Math.min(14f * d, h * 0.34f));
+        text.setTextAlign(Paint.Align.LEFT);
         Paint.FontMetrics fm = text.getFontMetrics();
-        canvas.drawText(label, 12f * d + gs + 10f * d,
-                h / 2f - (fm.ascent + fm.descent) / 2f, text);
+        String shown = label;
+        float available = w - left - 18f * d;
+        if (!value.isEmpty()) available -= valueText.measureText(value) + 30f * d;
+        shown = GlassToolbar.ellipsise(shown, text, available);
+        canvas.drawText(shown, left, cy - (fm.ascent + fm.descent) / 2f, text);
+
         if (!value.isEmpty()) {
-            valueText.setColor(0xFF777C86);
-            valueText.setTextSize(12f * d);
-            canvas.drawText(value, w - 12f * d, h / 2f - (fm.ascent + fm.descent) / 2f, valueText);
+            valueText.setColor(params.inkSecondary());
+            valueText.setTextSize(Math.min(13f * d, h * 0.31f));
+            canvas.drawText(value, w - 18f * d, cy - (fm.ascent + fm.descent) / 2f, valueText);
+        }
+        if (isClickable()) {
+            GlassButton.drawGlyph(canvas, GlassButton.Glyph.chevron, w - 22f * d, cy - 6f * d,
+                    12f * d, params.inkSecondary());
         }
     }
 
@@ -82,6 +100,7 @@ public class GlassMenuItem extends GlassSurfaceView {
                 return true;
             case MotionEvent.ACTION_UP:
                 animatePress(false, e.getX(), e.getY());
+                performClick();
                 if (listener != null) listener.onPicked(this);
                 return true;
             case MotionEvent.ACTION_CANCEL:

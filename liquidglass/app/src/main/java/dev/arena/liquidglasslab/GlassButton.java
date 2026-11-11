@@ -12,18 +12,19 @@ import android.util.AttributeSet;
  * A glass pill button — the iOS 26 "capsule" control.
  *
  * <p>Contains: capsule silhouette, optional leading glyph (drawn with paths, no
- * assets), label, an interactive press that both flexes the silhouette and adds a
- * droplet bulge under the finger.
+ * assets), label, an interactive press that flexes the silhouette and adds a droplet
+ * bulge under the finger. Everything is centred inside the capsule and clipped to it.
  */
 public class GlassButton extends GlassSurfaceView {
 
     private String label = "Button";
     private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-    private float glyphSize;
     private GlassButton.Glyph glyph = Glyph.none;
-    private int contentColor = 0xFF101114;
+    private int contentColor = 0;
+    private boolean tinted;
 
-    public enum Glyph { none, plus, play, pause, chevron, search, sliders, sparkle }
+    public enum Glyph { none, plus, play, pause, chevron, chevronDown, search, sliders, sparkle,
+        grid, check, close, photo, tune, dots }
 
     public GlassButton(Context context, AttributeSet attrs, GlassRender.Backdrop backdrop,
                        GlassParams params) {
@@ -35,44 +36,60 @@ public class GlassButton extends GlassSurfaceView {
 
     public GlassButton label(String text) {
         label = text;
+        invalidate();
         return this;
     }
 
     public GlassButton glyph(Glyph g) {
         glyph = g;
+        invalidate();
         return this;
     }
 
+    /** Use the system accent as the glass tint (the iOS "prominent" glass button). */
+    public GlassButton tinted() {
+        tinted = true;
+        tint = 0xFF0A84FF;
+        invalidate();
+        return this;
+    }
+
+    /** Fixed content colour; by default it follows the backdrop (params.ink()). */
     public GlassButton textColor(int color) {
         contentColor = color;
+        invalidate();
         return this;
+    }
+
+    protected int ink() {
+        return contentColor != 0 ? contentColor : params.ink();
     }
 
     @Override
     protected void drawContents(Canvas canvas, float w, float h) {
-        float density = getResources().getDisplayMetrics().density;
-        float textSize = h * 0.34f;
+        float d = getResources().getDisplayMetrics().density;
+        int color = ink();
+        float textSize = Math.min(h * 0.34f, 15f * d);
         textPaint.setTextSize(textSize);
-        textPaint.setColor(contentColor);
-        textPaint.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        textPaint.setColor(color);
         textPaint.setTextAlign(Paint.Align.LEFT);
 
-        float pad = h * 0.34f;
-        glyphSize = h * 0.40f;
-        float gx = pad;
+        float glyphSize = Math.min(h * 0.42f, 20f * d);
         boolean hasGlyph = glyph != Glyph.none;
-        float textX = hasGlyph ? gx + glyphSize + h * 0.18f : pad;
-        float textW = textPaint.measureText(label);
-        float total = (hasGlyph ? glyphSize + h * 0.18f : 0f) + textW;
-        textX = (w - total) / 2f + (hasGlyph ? glyphSize + h * 0.18f : 0f);
-        gx = textX - glyphSize - h * 0.18f;
+        float gap = hasGlyph ? 7f * d : 0f;
+        float textW = label.isEmpty() ? 0f : textPaint.measureText(label);
+        float total = (hasGlyph ? glyphSize : 0f) + gap + textW;
+        float x = (w - total) / 2f;
 
         if (hasGlyph) {
-            drawGlyph(canvas, glyph, gx, (h - glyphSize) / 2f, glyphSize, contentColor);
+            drawGlyph(canvas, glyph, x, (h - glyphSize) / 2f, glyphSize, color);
+            x += glyphSize + gap;
         }
-        Paint.FontMetrics fm = textPaint.getFontMetrics();
-        float baseline = h / 2f - (fm.ascent + fm.descent) / 2f;
-        canvas.drawText(label, textX, baseline, textPaint);
+        if (!label.isEmpty()) {
+            Paint.FontMetrics fm = textPaint.getFontMetrics();
+            float baseline = h / 2f - (fm.ascent + fm.descent) / 2f;
+            canvas.drawText(label, x, baseline, textPaint);
+        }
     }
 
     /** Tiny path-based icon set, so the APK needs no vector assets. */
@@ -80,7 +97,7 @@ public class GlassButton extends GlassSurfaceView {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         p.setColor(color);
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(s * 0.14f);
+        p.setStrokeWidth(Math.max(s * 0.13f, 1.2f));
         p.setStrokeCap(Paint.Cap.ROUND);
         p.setStrokeJoin(Paint.Join.ROUND);
         float cx = x + s / 2f;
@@ -92,9 +109,9 @@ public class GlassButton extends GlassSurfaceView {
                 break;
             case play: {
                 Path path = new Path();
-                path.moveTo(x + s * 0.28f, y + s * 0.18f);
+                path.moveTo(x + s * 0.30f, y + s * 0.16f);
                 path.lineTo(x + s * 0.84f, cy);
-                path.lineTo(x + s * 0.28f, y + s * 0.82f);
+                path.lineTo(x + s * 0.30f, y + s * 0.84f);
                 path.close();
                 p.setStyle(Paint.Style.FILL);
                 c.drawPath(path, p);
@@ -102,26 +119,30 @@ public class GlassButton extends GlassSurfaceView {
             }
             case pause:
                 p.setStyle(Paint.Style.FILL);
-                c.drawRoundRect(x + s * 0.26f, y + s * 0.2f, x + s * 0.42f, y + s * 0.8f,
+                c.drawRoundRect(x + s * 0.26f, y + s * 0.18f, x + s * 0.43f, y + s * 0.82f,
                         s * 0.05f, s * 0.05f, p);
-                c.drawRoundRect(x + s * 0.58f, y + s * 0.2f, x + s * 0.74f, y + s * 0.8f,
+                c.drawRoundRect(x + s * 0.57f, y + s * 0.18f, x + s * 0.74f, y + s * 0.82f,
                         s * 0.05f, s * 0.05f, p);
                 break;
             case chevron:
-                c.drawLine(cx - s * 0.18f, cy - s * 0.26f, cx + s * 0.12f, cy, p);
-                c.drawLine(cx + s * 0.12f, cy, cx - s * 0.18f, cy + s * 0.26f, p);
+                c.drawLine(cx - s * 0.10f, cy - s * 0.24f, cx - s * 0.30f, cy, p);
+                c.drawLine(cx - s * 0.30f, cy, cx - s * 0.10f, cy + s * 0.24f, p);
+                break;
+            case chevronDown:
+                c.drawLine(cx - s * 0.24f, cy - s * 0.08f, cx, cy + s * 0.16f, p);
+                c.drawLine(cx, cy + s * 0.16f, cx + s * 0.24f, cy - s * 0.08f, p);
                 break;
             case search:
-                c.drawCircle(cx - s * 0.06f, cy - s * 0.06f, s * 0.26f, p);
-                c.drawLine(cx + s * 0.14f, cy + s * 0.14f, cx + s * 0.32f, cy + s * 0.32f, p);
+                c.drawCircle(cx - s * 0.06f, cy - s * 0.06f, s * 0.24f, p);
+                c.drawLine(cx + s * 0.12f, cy + s * 0.12f, cx + s * 0.30f, cy + s * 0.30f, p);
                 break;
             case sliders:
                 for (int i = 0; i < 2; i++) {
-                    float ly = cy + (i == 0 ? -s * 0.18f : s * 0.18f);
-                    c.drawLine(x + s * 0.2f, ly, x + s * 0.8f, ly, p);
-                    float kx = x + s * (i == 0 ? 0.38f : 0.66f);
+                    float ly = cy + (i == 0 ? -s * 0.17f : s * 0.17f);
+                    c.drawLine(x + s * 0.20f, ly, x + s * 0.80f, ly, p);
+                    float kx = x + s * (i == 0 ? 0.38f : 0.64f);
                     p.setStyle(Paint.Style.FILL);
-                    c.drawCircle(kx, ly, s * 0.1f, p);
+                    c.drawCircle(kx, ly, s * 0.09f, p);
                     p.setStyle(Paint.Style.STROKE);
                 }
                 break;
@@ -135,9 +156,47 @@ public class GlassButton extends GlassSurfaceView {
                             (float) (cx + Math.cos(a) * s * 0.36f),
                             (float) (cy + Math.sin(a) * s * 0.36f));
                 }
+                p.setStyle(Paint.Style.FILL);
                 c.drawPath(path, p);
                 break;
             }
+            case grid:
+                p.setStrokeWidth(Math.max(s * 0.10f, 1f));
+                for (int i = 0; i < 2; i++) {
+                    for (int j = 0; j < 2; j++) {
+                        c.drawRect(x + s * (0.16f + 0.36f * i), y + s * (0.16f + 0.36f * j),
+                                x + s * (0.44f + 0.36f * i), y + s * (0.44f + 0.36f * j), p);
+                    }
+                }
+                break;
+            case check:
+                c.drawLine(cx - s * 0.26f, cy, cx - s * 0.06f, cy + s * 0.20f, p);
+                c.drawLine(cx - s * 0.06f, cy + s * 0.20f, cx + s * 0.28f, cy - s * 0.20f, p);
+                break;
+            case close:
+                c.drawLine(cx - s * 0.22f, cy - s * 0.22f, cx + s * 0.22f, cy + s * 0.22f, p);
+                c.drawLine(cx + s * 0.22f, cy - s * 0.22f, cx - s * 0.22f, cy + s * 0.22f, p);
+                break;
+            case photo:
+                c.drawRoundRect(x + s * 0.14f, y + s * 0.20f, x + s * 0.86f, y + s * 0.80f,
+                        s * 0.10f, s * 0.10f, p);
+                c.drawCircle(x + s * 0.34f, y + s * 0.36f, s * 0.06f, p);
+                break;
+            case tune:
+                for (int i = 0; i < 3; i++) {
+                    float ly = y + s * (0.24f + 0.26f * i);
+                    c.drawLine(x + s * 0.14f, ly, x + s * 0.86f, ly, p);
+                    p.setStyle(Paint.Style.FILL);
+                    c.drawCircle(x + s * (i == 1 ? 0.64f : 0.36f), ly, s * 0.07f, p);
+                    p.setStyle(Paint.Style.STROKE);
+                }
+                break;
+            case dots:
+                p.setStyle(Paint.Style.FILL);
+                for (int i = 0; i < 3; i++) {
+                    c.drawCircle(cx + s * (i - 1) * 0.26f, cy, s * 0.07f, p);
+                }
+                break;
             default:
                 break;
         }

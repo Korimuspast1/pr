@@ -3,9 +3,9 @@ package dev.arena.liquidglasslab;
 import android.graphics.Color;
 
 /**
- * A preset is a named snapshot of {@link GlassParams} plus the backdrop it is
- * meant for. The presets mirror what Apple ships in iOS 26 / macOS 26 so the
- * lab can be used to compare "our" material against the real thing.
+ * A preset is a named snapshot of {@link GlassParams}, tuned to match a look that
+ * Apple ships or that the reference Android port documents. Presets are applied as a
+ * whole, so "reset" is just re-applying the first one.
  */
 public final class GlassPreset {
 
@@ -25,19 +25,17 @@ public final class GlassPreset {
 
     private static GlassParams base() {
         GlassParams p = new GlassParams();
-        p.bevel = 14f;
-        p.lens = 16f;
-        p.lensProfile = 0.55f;
+        p.bevel = 18f;
+        p.lens = 22f;
+        p.falloff = 5f;
         p.chroma = 0.10f;
-        p.blur = 10f;
-        p.saturation = 1.55f;
-        p.highlight = 1.0f;
-        p.highlightWidth = 1.1f;
-        p.innerShadow = 0.30f;
-        p.shadowRadius = 12f;
+        p.blur = 8f;
+        p.saturation = 1.5f;
+        p.highlight = 1f;
+        p.highlightWidth = 6f;
+        p.shadowRadius = 10f;
         p.shadowAlpha = 0.18f;
-        p.tintColor = Color.argb(16, 255, 255, 255);
-        p.opacity = 1f;
+        p.adaptiveTint = true;
         return p;
     }
 
@@ -46,59 +44,66 @@ public final class GlassPreset {
 
         GlassParams ios = base();
         list.add(new GlassPreset("ios26", "iOS 26 · Regular",
-                "Базовый материал: мягкое размытие, линза 16 dp, блик 1 dp", 0xFF0A84FF, ios));
+                "Базовый материал: линза 22 dp, дисперсия 0.10, адаптивный тинт",
+                0xFF0A84FF, ios));
 
         GlassParams thick = base();
-        thick.bevel = 22f;
-        thick.lens = 24f;
-        thick.depth = 0.8f;
-        thick.blur = 14f;
+        thick.bevel = 28f;
+        thick.lens = 34f;
+        thick.falloff = 3.2f;
+        thick.blur = 12f;
         thick.chroma = 0.16f;
-        thick.innerShadow = 0.42f;
-        thick.shadowRadius = 20f;
+        thick.shadowRadius = 18f;
         thick.shadowAlpha = 0.26f;
+        thick.highlightWidth = 9f;
         list.add(new GlassPreset("thick", "Thick slab",
-                "Крупные поверхности: меню, шторки — «толще» стекло", 0xFF9B59FF, thick));
+                "Крупные поверхности: меню, шторки — толще стекло, глубже тень",
+                0xFF9B59FF, thick));
 
         GlassParams clear = base();
         clear.variant = GlassParams.Variant.CLEAR;
-        clear.opacity = 0.62f;
-        clear.tintColor = Color.argb(8, 255, 255, 255);
-        clear.highlight = 1.35f;
-        clear.blur = 4f;
+        clear.adaptiveTint = false;
+        clear.blur = 3f;
+        clear.highlight = 1.3f;
+        clear.clearDim = 0.35f;
         list.add(new GlassPreset("clear", "Clear",
-                "Без адаптации, почти прозрачное — только поверх медиа", 0xFF32D74B, clear));
+                "Без адаптации, почти прозрачное + слой затемнения 35 %",
+                0xFF32D74B, clear));
 
         GlassParams frosted = base();
-        frosted.blur = 26f;
+        frosted.blur = 24f;
         frosted.saturation = 1.2f;
         frosted.bevel = 10f;
         frosted.lens = 10f;
-        frosted.tintColor = Color.argb(46, 255, 255, 255);
-        frosted.innerShadow = 0.18f;
-        list.add(new GlassPreset("frosted", "Frosted (Reduced Transparency)",
-                "Режим доступности: сильнее морозит фон", 0xFF8E8E93, frosted));
+        frosted.falloff = 2f;
+        frosted.reduceTransparency = true;
+        list.add(new GlassPreset("frosted", "Frosted (Reduce Transparency)",
+                "Режим доступности: сильнее морозит фон, почти непрозрачно",
+                0xFF8E8E93, frosted));
 
         GlassParams lensy = base();
-        lensy.bevel = 26f;
-        lensy.lens = 34f;
-        lensy.lensProfile = 1.0f;
-        lensy.chroma = 0.55f;
-        lensy.highlight = 1.5f;
-        lensy.highlightWidth = 1.6f;
-        lensy.innerShadow = 0.22f;
+        lensy.bevel = 30f;
+        lensy.lens = 46f;
+        lensy.falloff = 6.5f;
+        lensy.chroma = 0.24f;
+        lensy.highlight = 1.2f;
+        lensy.highlightWidth = 7f;
         list.add(new GlassPreset("lens", "Lens / physical",
-                "Максимальная рефракция и дисперсия — «как лупа»", 0xFFFF9F0A, lensy));
+                "Максимальная рефракция и дисперсия — «как лупа»",
+                0xFFFF9F0A, lensy));
 
-        GlassParams flat = base();
-        flat.bevel = 6f;
-        flat.lens = 4f;
-        flat.chroma = 0f;
-        flat.highlight = 0.5f;
-        flat.innerShadow = 0.1f;
-        flat.grain = 0f;
-        list.add(new GlassPreset("flat", "Minimal glass",
-                "Только подсветка кромки, почти без линзы", 0xFF64D2FF, flat));
+        GlassParams minimal = base();
+        minimal.bevel = 8f;
+        minimal.lens = 4f;
+        minimal.falloff = 1f;
+        minimal.chroma = 0f;
+        minimal.highlight = 0.6f;
+        minimal.highlightWidth = 3f;
+        minimal.adaptiveTint = false;
+        minimal.tintColor = Color.argb(20, 255, 255, 255);
+        list.add(new GlassPreset("minimal", "Minimal glass",
+                "Только подсветка кромки, почти без линзы",
+                0xFF64D2FF, minimal));
 
         return list;
     }
