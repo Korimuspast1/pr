@@ -297,13 +297,15 @@ public final class LabView extends FrameLayout {
         int menuW = Math.min(Math.round(300 * d), w - pad * 2);
         menu.layout(pad, contentTop, pad + menuW, contentTop + menuH);
 
-        int buttonsTop = contentBottom - rowH - rowGap;
+        int buttonsTop = contentBottom - rowH;
         int bw = (w - pad * 2 - colGap) / 2;
         primary.layout(pad, buttonsTop, pad + bw, buttonsTop + rowH);
         secondary.layout(pad + bw + colGap, buttonsTop, w - pad, buttonsTop + rowH);
-        slider.layout(pad, buttonsTop - rowGap - rowH, w - pad, buttonsTop - rowGap);
-        toggle.layout(pad, buttonsTop - rowGap * 2 - rowH * 2,
-                w - pad, buttonsTop - rowGap * 2 - rowH);
+        int sliderH = Math.round(68 * d);
+        slider.layout(pad, buttonsTop - rowGap - sliderH, w - pad, buttonsTop - rowGap);
+        int toggleH = Math.round(58 * d);
+        toggle.layout(pad, buttonsTop - rowGap * 2 - sliderH - toggleH,
+                w - pad, buttonsTop - rowGap * 2 - sliderH);
 
         // ---- preset rows: one per band
         for (int i = 0; i < presetRows.size(); i++) {
@@ -411,6 +413,23 @@ public final class LabView extends FrameLayout {
 
     public GlassParams params() {
         return params;
+    }
+
+    /** Opens a tab by name: home, presets, scene, tune. */
+    public void openTab(String name) {
+        if (name == null) return;
+        switch (name.toLowerCase(java.util.Locale.US)) {
+            case "presets": selectTab(TAB_PRESETS); break;
+            case "scene": selectTab(TAB_SCENE); break;
+            case "tune":
+            case "tuning": selectTab(TAB_TUNE); break;
+            default: selectTab(TAB_HOME); break;
+        }
+    }
+
+    /** Opens the popup menu (used by the screenshot harness). */
+    public void openMenu() {
+        setMenuOpen(true);
     }
 
     public void onShown() {

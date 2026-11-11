@@ -18,6 +18,8 @@ public class MainActivity extends Activity {
         GlassRender.setDensity(getResources().getDisplayMetrics().density);
         labView = new LabView(this);
         setContentView(labView);
+        // deep link: adb shell am start -n dev.arena.liquidglasslab/.MainActivity --es tab tune
+        labView.post(() -> applyIntent(getIntent()));
     }
 
     @Override
@@ -31,6 +33,19 @@ public class MainActivity extends Activity {
                 // the lab simply keeps the procedural backdrop
             }
         }
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (labView != null) labView.post(() -> applyIntent(intent));
+    }
+
+    private void applyIntent(android.content.Intent intent) {
+        if (intent == null || labView == null) return;
+        labView.openTab(intent.getStringExtra("tab"));
+        if (intent.getBooleanExtra("menu", false)) labView.openMenu();
     }
 
     @Override

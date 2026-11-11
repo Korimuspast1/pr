@@ -102,40 +102,25 @@ jobs:
           W=${SIZE%x*}; H=${SIZE#*x}
           echo "screen=$W x $H"
           shot() { timeout 90 "$SDK/platform-tools/adb" exec-out screencap -p > "$OUT/$1.png"; echo "shot $1 $(stat -c%s "$OUT/$1.png")"; }
-          # the emulator's System UI can ANR under software rendering; make sure the
-          # dialog never covers the app in the captures
-          dismiss_anr() {
-            # if a dialog still slipped through, tap its "Wait" button (or back)
-            "$SDK/platform-tools/adb" shell input tap $(( W / 3 )) $(( H * 37 / 100 )) >/dev/null 2>&1 || true
-            "$SDK/platform-tools/adb" shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
-            sleep 1
-          }
-          # tab bar: 4 tabs inside a capsule inset by 16dp at the bottom
-          tap_tab() { "$SDK/platform-tools/adb" shell input tap $(( W * ($1 * 2 + 1) / 8 )) $(( H - 110 )); sleep 4; }
-          shot 01-home
-          # `adb shell input tap` is unreliable on a swiftshader emulator: the tap is
-          # often dropped before the app is interactive. Tap, verify with a screenshot
-          # hash, and retry once if the screen did not change.
-          tap_xy() { "$SDK/platform-tools/adb" shell input tap $1 $2; sleep 4; }
-          tap_until_change() {
-            before=$("$SDK/platform-tools/adb" exec-out screencap -p | md5sum | cut -d' ' -f1)
-            dismiss_anr
-            "$SDK/platform-tools/adb" shell input tap $1 $2; sleep 4
-            after=$("$SDK/platform-tools/adb" exec-out screencap -p | md5sum | cut -d' ' -f1)
-            if [ "$before" = "$after" ]; then
-              echo "tap at $1,$2 had no effect, retrying"
-              "$SDK/platform-tools/adb" shell input tap $1 $2; sleep 4
+          # `adb shell input tap` is unreliable on a software-rendered emulator (taps get
+          # dropped and the System UI ANR dialog steals them), so each screenshot opens
+          # the tab through the activity intent instead.
+          open_tab() {
+            if [ -n "$2" ]; then
+              "$SDK/platform-tools/adb" shell am start \
+                -n dev.arena.liquidglasslab/.MainActivity --es tab "$1" --ez menu true \
+                >/dev/null 2>&1
+            else
+              "$SDK/platform-tools/adb" shell am start \
+                -n dev.arena.liquidglasslab/.MainActivity --es tab "$1" >/dev/null 2>&1
             fi
+            sleep 6
           }
-          "$SDK/platform-tools/adb" shell input keyevent KEYCODE_WAKEUP || true
-          "$SDK/platform-tools/adb" shell wm dismiss-keyguard || true
-          sleep 2
-          tap_until_change $(( W / 4 )) $(( H - 110 )); shot 02-presets
-          tap_until_change $(( W / 2 )) $(( H - 110 )); shot 03-scene
-          tap_until_change $(( W * 3 / 4 )) $(( H - 110 )); shot 04-tuning
-          tap_until_change $(( W / 8 )) $(( H - 110 )); sleep 1
-          tap_until_change $(( W - 100 )) $(( 250 )); shot 05-menu
-          sleep 2
+          open_tab home; shot 01-home
+          open_tab presets; shot 02-presets
+          open_tab scene; shot 03-scene
+          open_tab tune; shot 04-tuning
+          open_tab home menu; shot 05-menu
           "$SDK/platform-tools/adb" logcat -d > "$OUT/logcat.txt" || true
           grep -iE "liquidglasslab|FATAL|AndroidRuntime" "$OUT/logcat.txt" | tail -n 120 || true
           "$SDK/platform-tools/adb" shell pidof dev.arena.liquidglasslab && echo "APP ALIVE" || echo "APP NOT RUNNING"
