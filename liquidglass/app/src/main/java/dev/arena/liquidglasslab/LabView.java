@@ -170,6 +170,7 @@ public final class LabView extends FrameLayout {
             row.bind(style.title, style.dark ? "тёмный фон" : "светлый фон",
                     GlassButton.Glyph.photo, item -> {
                         scene.setStyle(style);
+                        backdrop.markDirty();
                         params.darkBackdrop = style.dark;
                         params.notifyChanged();
                         say("Фон: " + style.title);
@@ -383,6 +384,7 @@ public final class LabView extends FrameLayout {
         Scene.Style[] styles = Scene.Style.values();
         Scene.Style next = styles[(scene.style().ordinal() + 1) % styles.length];
         scene.setStyle(next);
+        backdrop.markDirty();
         params.darkBackdrop = next.dark;
         params.notifyChanged();
         say("Фон: " + next.title);
@@ -400,6 +402,7 @@ public final class LabView extends FrameLayout {
 
     public void setPhoto(android.graphics.Bitmap bitmap) {
         scene.setPhoto(bitmap);
+        backdrop.markDirty();
         params.darkBackdrop = true;
         params.notifyChanged();
         say("Фото загружено");

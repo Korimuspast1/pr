@@ -87,6 +87,7 @@ public final class GlassRender {
         int width;
         int height;
         private boolean recorded;
+        private boolean dirty = true;
 
         public RenderNode scene() {
             return sceneNode;
@@ -105,18 +106,26 @@ public final class GlassRender {
         }
 
         public void setSize(int w, int h) {
+            if (width != w || height != h) dirty = true;
             width = w;
             height = h;
         }
 
+        /** Call when the content behind the glass changed (scene, photo, ...). */
+        public void markDirty() {
+            dirty = true;
+        }
+
         public void record(Canvas target, SceneSource source) {
             if (width <= 0 || height <= 0) return;
+            if (recorded && !dirty) return;
             sceneNode.setPosition(0, 0, width, height);
             Canvas c = sceneNode.beginRecording();
             c.drawColor(Color.BLACK);
             source.drawScene(c, width, height);
             sceneNode.endRecording();
             recorded = true;
+            dirty = false;
         }
     }
 
@@ -173,7 +182,14 @@ public final class GlassRender {
 
             if (shaderState.prepare(shader, params, w, h, radii, margin, press, px, py,
                     tint, backdrop.width(), backdrop.height())) {
-                node.setRenderEffect(RenderEffect.createRuntimeShaderEffect(shader, "content"));
+                // blur first (what is behind the glass), then bend it with the lens
+                RenderEffect lens = RenderEffect.createRuntimeShaderEffect(shader, "content");
+                float blurPx = Math.min(Math.max(dp(params.effectiveBlur()), 0f), 32f);
+                RenderEffect effect = blurPx > 0.05f
+                        ? RenderEffect.createChainEffect(lens,
+                        RenderEffect.createBlurEffect(blurPx, blurPx, Shader.TileMode.CLAMP))
+                        : lens;
+                node.setRenderEffect(effect);
             }
             canvas.drawRenderNode(node);
         } else {
@@ -207,7 +223,8 @@ public final class GlassRender {
                     dp(p.bevel), -dp(p.lens), p.falloff,
                     p.variant == GlassParams.Variant.CLEAR ? p.chroma * 0.6f : p.chroma,
                     lx, ly, p.effectiveHighlight(), dp(p.highlightWidth) * 0.6f,
-                    tint, p.adaptiveTintFlag(), p.effectiveDim(), press, px, p.glassTint
+                    tint, p.adaptiveTintFlag(), p.effectiveDim(), press, px, p.glassTint,
+                    p.effectiveBlur(), p.effectiveSaturation()
             };
             if (last.length != now.length) last = new float[now.length];
             boolean changed = !valid;
