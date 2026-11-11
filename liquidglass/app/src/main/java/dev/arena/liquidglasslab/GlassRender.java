@@ -193,7 +193,7 @@ public final class GlassRender {
 
     /** Cached effect inputs, so the RenderEffect is only rebuilt when they change. */
     public static final class ShaderState {
-        private final float[] last = new float[20];
+        private float[] last = new float[0];
         private boolean valid;
 
         boolean prepare(RuntimeShader sh, GlassParams p, float w, float h, float[] radii,
@@ -210,7 +210,8 @@ public final class GlassRender {
                     lx, ly, p.effectiveHighlight(), dp(p.highlightWidth) * 0.6f,
                     tint, p.adaptiveTintFlag(), p.effectiveDim(), press, px, p.glassTint
             };
-            boolean changed = !valid || now.length != last.length;
+            if (last.length != now.length) last = new float[now.length];
+            boolean changed = !valid;
             if (!changed) {
                 for (int i = 0; i < now.length; i++) {
                     if (Math.abs(now[i] - last[i]) > 1e-4f) {
