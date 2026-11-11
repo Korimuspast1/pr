@@ -66,8 +66,12 @@ jobs:
           "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "emulator" "$IMAGE" "platform-tools" >/dev/null
           ls "$SDK/platform-tools/adb"
           ADB="$SDK/platform-tools/adb"
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
           echo no | "$SDK/cmdline-tools/latest/bin/avdmanager" create avd -n lab \
             -k "$IMAGE" -d pixel_6 --force
+          ls -la "$ANDROID_AVD_HOME"
+          "$SDK/emulator/emulator" -list-avds
           "$SDK/emulator/emulator" -avd lab -no-window -no-audio -no-boot-anim \
             -no-snapshot -gpu swiftshader_indirect -accel auto -memory 2048 \
             -no-metrics > "$OUT/emulator.txt" 2>&1 &
