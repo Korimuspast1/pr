@@ -88,30 +88,41 @@ The certificate digest of the generated key is printed in the run log
 | third | fixed those; `AyuUpdateVerifier` failed to compile (`NameNotFoundException` not caught) |
 | fourth | **success** — APK in `ayuox4gg/artifacts/ayuox4gg-20261110-0447/` |
 | fifth | success, published manifest was missing, so the build was unverifiable |
-| sixth | **success** — `ayuox4gg-20261111-0115`, verified below |
+| sixth | **success** — `ayuox4gg-20261111-0115` |
+| seventh | success, but the dex proved patch 0005 had been skipped (`bootstrap-ayu.sh` only warns) |
+| eighth | failed in javac: the rebrand had renamed 55 string **ids**, so `R.string.*` no longer resolved |
+| ninth | failed in javac: `getDatabase()` returns Telegram's own SQLite wrapper, not Android's |
+| tenth | **success** — `ayuox4gg-20261111-1212`, verified below |
 
 The last published build:
 
 | | |
 | --- | --- |
-| file | `ayuGram-arm64-v8a-11112026.apk` (43,347,315 bytes, 10,594 entries) |
-| sha256 | `637aeea3989a892fb9e9385c530b06909f46abdcfd8e1a5bffcd5e08ebd6b2dd` |
-| certificate sha256 | `1c82b08a92556e062cc069ecaca9dbe4fa1333437fb5cd01e10778412cec9bba` |
+| file | `ayuGram-arm64-v8a-11112026.apk` (43,355,975 bytes, 10,594 entries) |
+| sha256 | `7a73da99927a7b171829b30bb43ac04cbc10005b35fc4504687a12e728ca08cd` |
+| certificate sha256 | `56879abfb5c6400df066ac87bfd5ebf77bc9bc235bb772a4ed7b01fbb7193f02` |
 | native | `lib/arm64-v8a/libtmessages.45.so`, 23.3 MB |
 | cleartext | restricted by `networkSecurityConfig` (patch 0002) |
 | debug signed | no |
 
 ```bash
 python3 ayuox4gg/tools/unpack_apk.py --list
-python3 ayuox4gg/tools/unpack_apk.py ayuox4gg-20261111-0115 --out ~/ayu.apk
+python3 ayuox4gg/tools/unpack_apk.py ayuox4gg-20261111-1212 --out ~/ayu.apk
 python3 ayuox4gg/tools/forensics.py ~/ayu.apk \
-  --expect-sha256 637aeea3989a892fb9e9385c530b06909f46abdcfd8e1a5bffcd5e08ebd6b2dd
+  --expect-sha256 7a73da99927a7b171829b30bb43ac04cbc10005b35fc4504687a12e728ca08cd
 ```
 
 Verified inside that APK's dex (not just in the repository): the proprietary
-stand-ins, patches 0001-0003, `AyuSecrets` (`ayuox4gg.secrets.v1`,
+stand-ins, patches 0001-0004, `AyuSecrets` (`ayuox4gg.secrets.v1`,
 `ayu_secrets`) and `AyuUpdateVerifier` (`signing certificate mismatch`,
-`refusing to install update`).
+`refusing to install update`) — and, from patch 0005, `AyuChatExporter`,
+`AyuChatExportActivity`, `ayuox4gg-exports` and the four badge preference keys
+(`localVerified`, `localPremiumBadge`, `localScam`, `localFake`).
+
+The UI strings live in `resources.arsc`, not in dex, so check them there: the
+1212 APK contains "Export a chat to a .txt file", "Local verified badge" and
+the new `ayu0x4gg` app name, and no longer contains the old
+"AyuGram Preferences".
 
 ## Why the APK cannot be produced here
 
