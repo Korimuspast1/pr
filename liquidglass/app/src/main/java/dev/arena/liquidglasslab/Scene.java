@@ -159,14 +159,14 @@ public final class Scene {
     private void feed(Canvas c, float w, float h) {
         float d = w / 1080f;
         // hero album art
-        RectF art = new RectF(60f * d, 220f * d, w - 60f * d, 760f * d);
+        RectF art = new RectF(60f * d, 560f * d, w - 60f * d, 1060f * d);
         paint.setShader(new LinearGradient(art.left, art.top, art.right, art.bottom,
                 0xFFE2573F, 0xFF2B2E8C, Shader.TileMode.CLAMP));
         c.drawRoundRect(art, 40f * d, 40f * d, paint);
         paint.setShader(null);
 
         // track card
-        RectF card = new RectF(60f * d, 800f * d, w - 60f * d, 1010f * d);
+        RectF card = new RectF(60f * d, 1110f * d, w - 60f * d, 1320f * d);
         paint.setColor(0x1FFFFFFF);
         c.drawRoundRect(card, 32f * d, 32f * d, paint);
         text.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
@@ -192,7 +192,7 @@ public final class Scene {
                 "Трек 4 — Specular", "Трек 5 — Adaptivity", "Трек 6 — Clear",
                 "Трек 7 — Regular"};
         text.setTextSize(27f * d);
-        float y = 1060f * d;
+        float y = 1380f * d;
         for (int i = 0; i < names.length && y + 100f * d < h - 40f * d; i++) {
             RectF row = new RectF(60f * d, y, w - 60f * d, y + 88f * d);
             paint.setColor(0x1AFFFFFF);

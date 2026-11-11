@@ -17,7 +17,7 @@ import android.util.AttributeSet;
  */
 public class GlassButton extends GlassSurfaceView {
 
-    private String label = "Button";
+    private String label = "";
     private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private GlassButton.Glyph glyph = Glyph.none;
     private int contentColor = 0;
