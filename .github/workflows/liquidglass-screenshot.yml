@@ -101,6 +101,7 @@ jobs:
           # tab bar: 4 tabs inside a capsule inset by 16dp at the bottom
           tap_tab() { "$SDK/platform-tools/adb" shell input tap $(( W * ($1 * 2 + 1) / 8 )) $(( H - 110 )); sleep 4; }
           shot 01-home
+          adb_shot() { :; }
           tap_tab 1; shot 02-presets
           tap_tab 2; shot 03-scene
           tap_tab 3; shot 04-tuning

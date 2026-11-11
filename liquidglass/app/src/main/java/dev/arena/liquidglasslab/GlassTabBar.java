@@ -105,6 +105,13 @@ public class GlassTabBar extends GlassSurfaceView {
         }
     }
 
+    private int tabAt(float x) {
+        if (tabWidth <= 0f) return selected;
+        float side = 5f * getResources().getDisplayMetrics().density;
+        int idx = (int) Math.floor((x - side) / tabWidth);
+        return Math.max(0, Math.min(labels.length - 1, idx));
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent e) {
         float x = e.getX();
@@ -112,14 +119,13 @@ public class GlassTabBar extends GlassSurfaceView {
             case MotionEvent.ACTION_DOWN:
                 tracking = true;
                 downX = x;
+                // a plain tap never produces a MOVE, so resolve the tab here as well
+                pending = tabAt(x);
                 animatePress(true, x, e.getY());
                 invalidate();
                 return true;
             case MotionEvent.ACTION_MOVE: {
-                if (tabWidth <= 0f) return true;
-                float side = 5f * getResources().getDisplayMetrics().density;
-                int idx = (int) Math.floor((x - side) / tabWidth);
-                idx = Math.max(0, Math.min(labels.length - 1, idx));
+                int idx = tabAt(x);
                 if (idx != pending) {
                     pending = idx;
                     if (listener != null) listener.onTabSelected(idx);

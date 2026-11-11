@@ -66,19 +66,17 @@ public class GlassSlider extends GlassSurfaceView {
         dragProgress += ((dragging ? 1f : 0f) - dragProgress) * 0.25f;
         if (Math.abs(dragProgress - (dragging ? 1f : 0f)) > 0.004f) postInvalidateOnAnimation();
 
+        // two-line row: label + value on top, the track underneath, so nothing can
+        // ever overlap the track or the knob
         text.setColor(params.ink());
-        text.setTextSize(Math.min(13f * d, h * 0.24f));
+        text.setTextSize(Math.min(14f * d, h * 0.26f));
         text.setTextAlign(Paint.Align.LEFT);
-        Paint.FontMetrics fm = text.getFontMetrics();
-        float baseline = h / 2f - (fm.ascent + fm.descent) / 2f;
-        canvas.drawText(title, 18f * d, baseline, text);
+        float labelBaseline = 18f * d + text.getTextSize() * 0.85f;
+        canvas.drawText(title, 18f * d, labelBaseline, text);
 
-        float titleW = text.measureText(title);
-        trackLeft = 18f * d + titleW + 14f * d;
-        trackRight = w - 18f * d - Math.max(30f * d, h * 0.5f);
-        if (trackRight < trackLeft) trackRight = trackLeft + 1f;
-
-        float cy = h / 2f;
+        trackLeft = 18f * d;
+        trackRight = w - 18f * d;
+        float cy = h - Math.max(18f * d, h * 0.22f);
         float trackH = Math.max(4f * d, 3f);
         paint.setColor(params.darkBackdrop ? 0x40FFFFFF : 0x33000000);
         canvas.drawRoundRect(trackLeft, cy - trackH / 2f, trackRight, cy + trackH / 2f,
@@ -96,8 +94,8 @@ public class GlassSlider extends GlassSurfaceView {
 
         text.setTextAlign(Paint.Align.RIGHT);
         text.setColor(params.inkSecondary());
-        text.setTextSize(Math.min(12f * d, h * 0.22f));
-        canvas.drawText(Math.round(value * 100) + suffix, w - 16f * d, baseline, text);
+        text.setTextSize(Math.min(13f * d, h * 0.24f));
+        canvas.drawText(Math.round(value * 100) + suffix, w - 18f * d, labelBaseline, text);
     }
 
     @Override
