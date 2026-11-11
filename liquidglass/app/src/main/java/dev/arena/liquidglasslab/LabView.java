@@ -151,13 +151,14 @@ public final class LabView extends FrameLayout {
     private void buildPresetRows(Context context) {
         for (GlassPreset p : presets) {
             GlassMenuItem row = new GlassMenuItem(context, null, backdrop, params);
-            row.bind(p.title, p.subtitle, GlassButton.Glyph.none, item -> {
+            row.bind(p.title, "", GlassButton.Glyph.none, item -> {
                 params.set(p.params);
                 params.darkBackdrop = scene.style().dark;
                 params.notifyChanged();
                 syncTuningRows();
                 say("Пресет: " + p.title);
             });
+            row.subtitle(p.subtitle);
             row.dot(p.accent);
             presetRows.add(row);
             allRows.add(row);
@@ -167,7 +168,7 @@ public final class LabView extends FrameLayout {
     private void buildSceneRows(Context context) {
         for (Scene.Style style : Scene.Style.values()) {
             GlassMenuItem row = new GlassMenuItem(context, null, backdrop, params);
-            row.bind(style.title, style.dark ? "тёмный фон" : "светлый фон",
+            row.bind(style.title, style.dark ? "тёмный" : "светлый",
                     GlassButton.Glyph.photo, item -> {
                         scene.setStyle(style);
                         backdrop.markDirty();
@@ -308,9 +309,10 @@ public final class LabView extends FrameLayout {
                 w - pad, buttonsTop - rowGap * 2 - sliderH);
 
         // ---- preset rows: one per band
+        int presetH = Math.round(66 * d);
         for (int i = 0; i < presetRows.size(); i++) {
-            int y = contentTop + i * (rowH + rowGap);
-            presetRows.get(i).layout(pad, y, w - pad, y + rowH);
+            int y = contentTop + i * (presetH + rowGap);
+            presetRows.get(i).layout(pad, y, w - pad, y + presetH);
         }
 
         // ---- scene rows

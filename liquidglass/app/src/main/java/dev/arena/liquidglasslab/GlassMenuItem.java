@@ -20,6 +20,7 @@ public class GlassMenuItem extends GlassSurfaceView {
 
     private String label = "Пункт";
     private String value = "";
+    private String subtitle = "";
     private GlassButton.Glyph glyph = GlassButton.Glyph.sparkle;
     private int accentDot;
     private Listener listener;
@@ -35,6 +36,12 @@ public class GlassMenuItem extends GlassSurfaceView {
         valueText.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
         valueText.setTextAlign(Paint.Align.RIGHT);
         setClickable(true);
+    }
+
+    /** Optional second line (used by the preset list). */
+    public void subtitle(String text) {
+        this.subtitle = text == null ? "" : text;
+        invalidate();
     }
 
     public void bind(String label, String value, GlassButton.Glyph glyph, Listener l) {
@@ -72,14 +79,23 @@ public class GlassMenuItem extends GlassSurfaceView {
         }
 
         text.setColor(params.ink());
-        text.setTextSize(Math.min(14f * d, h * 0.34f));
+        text.setTextSize(Math.min(14f * d, h * 0.30f));
         text.setTextAlign(Paint.Align.LEFT);
         Paint.FontMetrics fm = text.getFontMetrics();
-        String shown = label;
         float available = w - left - 18f * d;
         if (!value.isEmpty()) available -= valueText.measureText(value) + 30f * d;
-        shown = GlassToolbar.ellipsise(shown, text, available);
-        canvas.drawText(shown, left, cy - (fm.ascent + fm.descent) / 2f, text);
+        if (!subtitle.isEmpty() && h > 48f * d) {
+            // two-line row: title above, caption below — never overlapping
+            canvas.drawText(GlassToolbar.ellipsise(label, text, available),
+                    left, cy - 4f * d, text);
+            text.setTextSize(Math.min(11.5f * d, h * 0.24f));
+            text.setColor(params.inkSecondary());
+            canvas.drawText(GlassToolbar.ellipsise(subtitle, text, available),
+                    left, cy + text.getTextSize() + 4f * d, text);
+        } else {
+            canvas.drawText(GlassToolbar.ellipsise(label, text, available),
+                    left, cy - (fm.ascent + fm.descent) / 2f, text);
+        }
 
         if (!value.isEmpty()) {
             valueText.setColor(params.inkSecondary());
