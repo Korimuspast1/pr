@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A glass droplet: highlight arc on the upper left, refracted edge on the lower right -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M54,22 C71,22 84,35 84,52 C84,69 71,84 54,86 C37,84 24,69 24,52 C24,35 37,22 54,22 Z"
+        android:fillAlpha="0.32"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M54,22 C71,22 84,35 84,52 C84,69 71,84 54,86 C37,84 24,69 24,52 C24,35 37,22 54,22 Z"
+        android:strokeWidth="2.4"
+        android:strokeAlpha="0.85"
+        android:strokeColor="#FFFFFFFF" />
+    <path
+        android:pathData="M40,38 C44,32 52,29 58,30"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeColor="#CCFFFFFF" />
+</vector>

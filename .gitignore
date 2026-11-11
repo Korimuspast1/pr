@@ -1,3 +1,17 @@
 # Python bytecode generated while validating the Elyx source
 __pycache__/
 *.py[cod]
+
+# ---- Android / Liquid Glass Lab -------------------------------------------
+# Gradle & IDE
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# The lab ships a prebuilt, committed APK in release/; do not ignore release/.
+!release/LiquidGlassLab.apk
