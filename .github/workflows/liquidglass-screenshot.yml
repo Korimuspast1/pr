@@ -61,42 +61,46 @@ jobs:
           mkdir -p "$OUT"
           exec > >(tee "$OUT/diag.txt") 2>&1
           SDK="$ANDROID_HOME"
+          export PATH="$SDK/platform-tools:$SDK/emulator:$PATH"
           yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
           "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "emulator" "$IMAGE" "platform-tools" >/dev/null
+          ls "$SDK/platform-tools/adb"
+          ADB="$SDK/platform-tools/adb"
           echo no | "$SDK/cmdline-tools/latest/bin/avdmanager" create avd -n lab \
             -k "$IMAGE" -d pixel_6 --force
           "$SDK/emulator/emulator" -avd lab -no-window -no-audio -no-boot-anim \
             -no-snapshot -gpu swiftshader_indirect -accel on -memory 2048 \
             > "$OUT/emulator.txt" 2>&1 &
-          adb wait-for-device
+          "$SDK/platform-tools/adb" start-server
+          "$SDK/platform-tools/adb" wait-for-device
           for i in $(seq 1 180); do
-            BOOT=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            BOOT=$("$SDK/platform-tools/adb" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
             [ "$BOOT" = "1" ] && break
             sleep 5
           done
           echo "boot_completed=$BOOT after ${i} polls"
-          adb shell settings put global window_animation_scale 0 || true
-          adb shell settings put global transition_animation_scale 0 || true
-          adb shell settings put global animator_duration_scale 0 || true
-          adb install -r "$GITHUB_WORKSPACE/lab.apk"
-          adb shell am start -W -n dev.arena.liquidglasslab/.MainActivity
+          "$SDK/platform-tools/adb" shell settings put global window_animation_scale 0 || true
+          "$SDK/platform-tools/adb" shell settings put global transition_animation_scale 0 || true
+          "$SDK/platform-tools/adb" shell settings put global animator_duration_scale 0 || true
+          "$SDK/platform-tools/adb" install -r "$GITHUB_WORKSPACE/lab.apk"
+          "$SDK/platform-tools/adb" shell am start -W -n dev.arena.liquidglasslab/.MainActivity
           sleep 15
-          SIZE=$(adb shell wm size | tail -1 | sed 's/.*: //')
+          SIZE=$("$SDK/platform-tools/adb" shell wm size | tail -1 | sed 's/.*: //')
           W=${SIZE%x*}; H=${SIZE#*x}
           echo "screen=$W x $H"
-          shot() { adb exec-out screencap -p > "$OUT/$1.png"; echo "shot $1 $(stat -c%s "$OUT/$1.png")"; }
-          tap_tab() { adb shell input tap $(( W * ($1 * 2 + 1) / 8 )) $(( H - H / 22 )); sleep 4; }
+          shot() { "$SDK/platform-tools/adb" exec-out screencap -p > "$OUT/$1.png"; echo "shot $1 $(stat -c%s "$OUT/$1.png")"; }
+          tap_tab() { "$SDK/platform-tools/adb" shell input tap $(( W * ($1 * 2 + 1) / 8 )) $(( H - H / 22 )); sleep 4; }
           shot 01-home
           tap_tab 1; shot 02-presets
           tap_tab 2; shot 03-scene
           tap_tab 3; shot 04-tuning
           tap_tab 0; sleep 2
-          adb shell input tap $(( W - W / 9 )) $(( H / 14 )); sleep 3
+          "$SDK/platform-tools/adb" shell input tap $(( W - W / 9 )) $(( H / 14 )); sleep 3
           shot 05-menu
-          adb shell input keyevent KEYCODE_BACK; sleep 1
-          adb logcat -d > "$OUT/logcat.txt" || true
+          "$SDK/platform-tools/adb" shell input keyevent KEYCODE_BACK; sleep 1
+          "$SDK/platform-tools/adb" logcat -d > "$OUT/logcat.txt" || true
           grep -iE "liquidglasslab|FATAL|AndroidRuntime" "$OUT/logcat.txt" | tail -n 120 || true
-          adb shell pidof dev.arena.liquidglasslab && echo "APP ALIVE" || echo "APP NOT RUNNING"
+          "$SDK/platform-tools/adb" shell pidof dev.arena.liquidglasslab && echo "APP ALIVE" || echo "APP NOT RUNNING"
           ls -la "$OUT"
 
       - name: Upload screenshots
