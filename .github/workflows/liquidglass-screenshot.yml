@@ -70,10 +70,13 @@ jobs:
             -k "$IMAGE" -d pixel_6 --force
           "$SDK/emulator/emulator" -avd lab -no-window -no-audio -no-boot-anim \
             -no-snapshot -gpu swiftshader_indirect -accel on -memory 2048 \
-            > "$OUT/emulator.txt" 2>&1 &
+            -no-metrics > "$OUT/emulator.txt" 2>&1 &
+          EMU=$!
           "$SDK/platform-tools/adb" start-server
-          "$SDK/platform-tools/adb" wait-for-device
-          for i in $(seq 1 180); do
+          # never block forever: the emulator either answers within 10 min or we bail
+          timeout 600 "$SDK/platform-tools/adb" wait-for-device || {
+            echo "no device after 10 min"; tail -40 "$OUT/emulator.txt"; kill $EMU; exit 1; }
+          for i in $(seq 1 120); do
             BOOT=$("$SDK/platform-tools/adb" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
             [ "$BOOT" = "1" ] && break
             sleep 5
@@ -82,20 +85,24 @@ jobs:
           "$SDK/platform-tools/adb" shell settings put global window_animation_scale 0 || true
           "$SDK/platform-tools/adb" shell settings put global transition_animation_scale 0 || true
           "$SDK/platform-tools/adb" shell settings put global animator_duration_scale 0 || true
-          "$SDK/platform-tools/adb" install -r "$GITHUB_WORKSPACE/lab.apk"
-          "$SDK/platform-tools/adb" shell am start -W -n dev.arena.liquidglasslab/.MainActivity
-          sleep 15
+          timeout 300 "$SDK/platform-tools/adb" install -r "$GITHUB_WORKSPACE/lab.apk" || {
+            echo "install failed"; "$SDK/platform-tools/adb" logcat -d | tail -60; }
+          timeout 180 "$SDK/platform-tools/adb" shell am start -W \
+            -n dev.arena.liquidglasslab/.MainActivity || true
+          sleep 12
           SIZE=$("$SDK/platform-tools/adb" shell wm size | tail -1 | sed 's/.*: //')
           W=${SIZE%x*}; H=${SIZE#*x}
           echo "screen=$W x $H"
           shot() { "$SDK/platform-tools/adb" exec-out screencap -p > "$OUT/$1.png"; echo "shot $1 $(stat -c%s "$OUT/$1.png")"; }
-          tap_tab() { "$SDK/platform-tools/adb" shell input tap $(( W * ($1 * 2 + 1) / 8 )) $(( H - H / 22 )); sleep 4; }
+          # tab bar: 4 tabs inside a capsule inset by 16dp at the bottom
+          tap_tab() { "$SDK/platform-tools/adb" shell input tap $(( W * ($1 * 2 + 1) / 8 )) $(( H - 110 )); sleep 4; }
           shot 01-home
           tap_tab 1; shot 02-presets
           tap_tab 2; shot 03-scene
           tap_tab 3; shot 04-tuning
           tap_tab 0; sleep 2
-          "$SDK/platform-tools/adb" shell input tap $(( W - W / 9 )) $(( H / 14 )); sleep 3
+          # rightmost toolbar bubble opens the menu
+          "$SDK/platform-tools/adb" shell input tap $(( W - 100 )) $(( 170 )); sleep 3
           shot 05-menu
           "$SDK/platform-tools/adb" shell input keyevent KEYCODE_BACK; sleep 1
           "$SDK/platform-tools/adb" logcat -d > "$OUT/logcat.txt" || true
