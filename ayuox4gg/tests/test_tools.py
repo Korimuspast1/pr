@@ -485,6 +485,30 @@ class RepositoryStateTests(unittest.TestCase):
             applied.append(patch.name)
         self.assertTrue(applied, "no patches were applied")
 
+    def test_rebrand_changes_text_but_never_resource_identifiers(self):
+        """The rebrand must not rename `<string name=...>` ids.
+
+        Rewriting every "Telegram" occurrence in strings.xml also rewrote the
+        ids themselves (InviteToTelegram -> InviteToayu0x4gg), and the Java that
+        references R.string.InviteToTelegram then failed to compile. Only the
+        *text* may change; identifiers are the ABI between resources and code.
+        """
+        patch = PATCHES / "0005-built-features-and-rebrand.patch"
+        if not patch.is_file():
+            self.skipTest("patch 0005 not present")
+        text = patch.read_text(encoding="utf-8", errors="replace")
+        # A removed line that still carries the upstream id is fine; one whose
+        # id has been renamed is the bug. Compare against what upstream has.
+        removed = [
+            line[1:] for line in text.splitlines()
+            if line.startswith("-") and not line.startswith("---")
+            and '<string name="' in line and "ayu0x4gg" in line
+            and 'Telegram' not in line
+        ]
+        self.assertEqual(
+            removed, [],
+            "patch 0005 rewrites the id of a string resource, not just its text")
+
     def test_tools_have_no_third_party_imports_at_module_level(self):
         allowed = {"javalang"}
         for path in [TOOLS / "security_audit.py", TOOLS / "forensics.py"]:
