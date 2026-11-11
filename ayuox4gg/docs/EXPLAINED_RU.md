@@ -15,12 +15,45 @@
 Сам проект `AyuGram4A` с 2023 года не развивается: живой апстрим — это
 **exteraGram** (откуда форк) и **AyuGram Desktop**.
 
-**Скомпилировать APK в этой песочнице физически нельзя**, и это не отговорка:
-нет сети до `dl.google.com` / `maven.google.com` / `repo1.maven.org` /
-`services.gradle.org` (разрешены только github, pypi и их CDN), нет JDK, нет
-Android SDK и NDK, всего 2 ГБ RAM. Плюс сам апстрим требует **дописать 4 класса**
-(`AyuMessageUtils`, `AyuHistoryHook` и др.), которых в репозитории нет —
-в README прямо написано «или ищите реверснутую версию».
+**В песочнице APK собрать нельзя** — нет сети до `dl.google.com` /
+`maven.google.com` / `repo1.maven.org` / `services.gradle.org`, нет JDK, SDK и
+NDK. **Поэтому он собран на GitHub Actions** и лежит в репозитории:
+
+| | |
+|---|---|
+| файл | `ayuGram-arm64-v8a-11112026.apk` |
+| размер | 43 347 315 байт (41,3 МБ) |
+| sha256 | `637aeea3989a892fb9e9385c530b06909f46abdcfd8e1a5bffcd5e08ebd6b2dd` |
+| сертификат подписи | `1c82b08a92556e062cc069ecaca9dbe4fa1333437fb5cd01e10778412cec9bba` |
+| нативная часть | `lib/arm64-v8a/libtmessages.45.so` (23,3 МБ) |
+| cleartext | закрыт `networkSecurityConfig` (патч 0002) |
+| debug-подпись | нет |
+
+Скачать и проверить:
+
+```bash
+python3 ayuox4gg/tools/unpack_apk.py --list
+python3 ayuox4gg/tools/unpack_apk.py ayuox4gg-20261111-0115 --out ~/ayu.apk
+python3 ayuox4gg/tools/forensics.py ~/ayu.apk \
+  --expect-sha256 637aeea3989a892fb9e9385c530b06909f46abdcfd8e1a5bffcd5e08ebd6b2dd
+```
+
+Пересобрать (нужен push в репозиторий — workflow запускается меткой):
+
+```bash
+echo "rebuild $(date -u)" > ayuox4gg/REBUILD
+git add ayuox4gg/REBUILD && git commit -m "ci: rebuild" && git push
+```
+
+Сборка идёт ~40-90 минут: нативная часть компилируется целиком.
+
+### Что проверено в самом APK (не в репозитории)
+
+Поиском строк в `classes*.dex` собранного файла: заглушки
+`AyuHistoryHook`/`AyuMessageUtils`, патчи 0001-0003 (`Dropping oversized frame`,
+`Frame without a type discriminator`), `AyuSecrets` (`ayuox4gg.secrets.v1`,
+`ayu_secrets`) и `AyuUpdateVerifier` (`signing certificate mismatch`,
+`refusing to install update`).
 
 ### Почему APK нельзя было собрать даже с твоими ключами
 

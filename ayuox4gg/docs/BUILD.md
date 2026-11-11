@@ -79,6 +79,40 @@ python3 ayuox4gg/tools/forensics.py ayu.apk --expect-sha256 <digest from the run
 The certificate digest of the generated key is printed in the run log
 (`SHA256:` line) and in `apksigner verify --print-certs`.
 
+## Builds that actually ran
+
+| Run | Result |
+| --- | --- |
+| first | failed at `Apply ayuox4gg overlay` (a `$GITHUB_ENV` value used inside the same step) |
+| second | native CMake/NDK **succeeded**; javac failed on 4 errors, all in this overlay |
+| third | fixed those; `AyuUpdateVerifier` failed to compile (`NameNotFoundException` not caught) |
+| fourth | **success** — APK in `ayuox4gg/artifacts/ayuox4gg-20261110-0447/` |
+| fifth | success, published manifest was missing, so the build was unverifiable |
+| sixth | **success** — `ayuox4gg-20261111-0115`, verified below |
+
+The last published build:
+
+| | |
+| --- | --- |
+| file | `ayuGram-arm64-v8a-11112026.apk` (43,347,315 bytes, 10,594 entries) |
+| sha256 | `637aeea3989a892fb9e9385c530b06909f46abdcfd8e1a5bffcd5e08ebd6b2dd` |
+| certificate sha256 | `1c82b08a92556e062cc069ecaca9dbe4fa1333437fb5cd01e10778412cec9bba` |
+| native | `lib/arm64-v8a/libtmessages.45.so`, 23.3 MB |
+| cleartext | restricted by `networkSecurityConfig` (patch 0002) |
+| debug signed | no |
+
+```bash
+python3 ayuox4gg/tools/unpack_apk.py --list
+python3 ayuox4gg/tools/unpack_apk.py ayuox4gg-20261111-0115 --out ~/ayu.apk
+python3 ayuox4gg/tools/forensics.py ~/ayu.apk \
+  --expect-sha256 637aeea3989a892fb9e9385c530b06909f46abdcfd8e1a5bffcd5e08ebd6b2dd
+```
+
+Verified inside that APK's dex (not just in the repository): the proprietary
+stand-ins, patches 0001-0003, `AyuSecrets` (`ayuox4gg.secrets.v1`,
+`ayu_secrets`) and `AyuUpdateVerifier` (`signing certificate mismatch`,
+`refusing to install update`).
+
 ## Why the APK cannot be produced here
 
 The sandbox has outbound access to `github.com`, `codeload.github.com`,
