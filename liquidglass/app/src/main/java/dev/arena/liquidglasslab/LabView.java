@@ -144,6 +144,7 @@ public final class LabView extends FrameLayout {
 
         setBackgroundColor(0xFF000000);
         applyVisibility();
+        installGlassBounds();
     }
 
     // ------------------------------------------------------------------ setup
@@ -367,6 +368,22 @@ public final class LabView extends FrameLayout {
         setVisible(menu, menuOpen && chromeVisible);
     }
 
+    /**
+     * Every glass element renders a margin around itself (refraction + blur sampling +
+     * drop shadow). Children are normally clipped to their own bounds, which would cut
+     * that margin into a hard straight edge, so each element gets an inflated
+     * drawing rect and an offset that maps its content back onto its bounds.
+     */
+    private void installGlassBounds() {
+        int pad = Math.round(40 * getResources().getDisplayMetrics().density);
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            child.setClipBounds(new android.graphics.Rect(-pad, -pad, pad, pad));
+            child.setTranslationX(-pad);
+            child.setTranslationY(-pad);
+        }
+    }
+
     private static void setVisible(View v, boolean visible) {
         v.setVisibility(visible ? VISIBLE : GONE);
     }
@@ -432,11 +449,16 @@ public final class LabView extends FrameLayout {
         text.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
         text.setTextSize(12.5f * d);
         text.setColor(params.darkBackdrop ? 0xE6FFFFFF : 0xE60A0A0F);
-        canvas.drawText(status, 20 * d, insetTop() + 84 * d, text);
+        canvas.drawText(status, 20 * d, contentTopForText(), text);
         text.setTextSize(11f * d);
         text.setColor(params.darkBackdrop ? 0x99FFFFFF : 0x990A0A0F);
         canvas.drawText(GlassRender.diagnostics + " · " + params.variant + " · "
-                + scene.style().title, 20 * d, insetTop() + 104 * d, text);
+                + scene.style().title, 20 * d, contentTopForText() + 20 * d, text);
+    }
+
+    private float contentTopForText() {
+        float d = getResources().getDisplayMetrics().density;
+        return insetTop() + Math.round(8 * d) + Math.round(58 * d) + Math.round(34 * d);
     }
 
     // --------------------------------------------------------------- touches

@@ -121,10 +121,7 @@ public abstract class GlassSurfaceView extends View implements GlassParams.Liste
                 ox, oy, w * scale, h * scale, radii,
                 press, pressX, pressY, tint, shadowLift);
 
-        canvas.save();
-        canvas.clipRect(0f, 0f, w, h);
         drawContents(canvas, w, h);
-        canvas.restore();
     }
 
     /** Subclass hook: draw icons/labels on top of the material. */

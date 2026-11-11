@@ -274,17 +274,22 @@ public final class GlassRender {
                 blur = new RenderNode("lg-fallback-blur");
                 blurCache = blur;
             }
-            blur.setPosition(0, 0, backdrop.width(), backdrop.height());
-            Canvas bc = blur.beginRecording();
-            bc.drawRenderNode(backdrop.scene());
-            blur.endRecording();
-            float r = Math.max(dp(params.effectiveBlur()), 0.1f);
-            ColorMatrix cm = new ColorMatrix();
-            cm.setSaturation(params.effectiveSaturation());
-            RenderEffect effect = RenderEffect.createChainEffect(
-                    RenderEffect.createColorFilterEffect(new ColorMatrixColorFilter(cm)),
-                    RenderEffect.createBlurEffect(r, r, Shader.TileMode.CLAMP));
-            blur.setRenderEffect(effect);
+            float r = Math.min(Math.max(dp(params.effectiveBlur()), 0.1f), 28f);
+            int key = (backdrop.hashCode() * 31 + Float.floatToIntBits(r)) * 31
+                    + Float.floatToIntBits(params.effectiveSaturation());
+            if (key != blurKey) {
+                blurKey = key;
+                blur.setPosition(0, 0, backdrop.width(), backdrop.height());
+                Canvas bc = blur.beginRecording();
+                bc.drawRenderNode(backdrop.scene());
+                blur.endRecording();
+                ColorMatrix cm = new ColorMatrix();
+                cm.setSaturation(params.effectiveSaturation());
+                RenderEffect effect = RenderEffect.createChainEffect(
+                        RenderEffect.createColorFilterEffect(new ColorMatrixColorFilter(cm)),
+                        RenderEffect.createBlurEffect(r, r, Shader.TileMode.CLAMP));
+                blur.setRenderEffect(effect);
+            }
             canvas.translate(-ox, -oy);
             canvas.drawRenderNode(blur);
             canvas.translate(ox, oy);
@@ -342,6 +347,7 @@ public final class GlassRender {
     }
 
     private static RenderNode blurCache;
+    private static int blurKey = 0;
 
     private static RenderNode shadowNode;
 

@@ -92,8 +92,8 @@ public class GlassTabBar extends GlassSurfaceView {
         paint.setAlpha(235);
         canvas.drawPath(pill, paint);
 
-        float glyphSize = Math.min(19f * d, h * 0.32f);
-        labelPaint.setTextSize(Math.min(10.5f * d, h * 0.17f));
+        float glyphSize = Math.min(20f * d, h * 0.30f);
+        labelPaint.setTextSize(Math.min(11f * d, h * 0.16f));
         for (int i = 0; i < n; i++) {
             float tcx = side + tabWidth * (i + 0.5f);
             boolean sel = Math.abs(offset - i) < 0.5f;
