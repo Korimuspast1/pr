@@ -1,0 +1,118 @@
+name: Publish ayuox4gg APK as a release asset
+
+# Why this exists: the build workflow only commits the APK to the repository as
+# 8 MiB parts, which is fine for `git` but useless as a download link — nobody
+# should have to concatenate six files by hand. This job reassembles the parts,
+# refuses to publish unless the sha256 matches the recorded one, and attaches
+# the result to a GitHub Release, which gives a single stable URL:
+#
+#   https://github.com/<owner>/<repo>/releases/download/<tag>/<apk>
+#
+# It does not rebuild anything: it publishes the artefact that already exists.
+# The runner is the one place that can reach uploads.github.com (the authoring
+# sandbox cannot), so the upload has to happen here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build:
+        description: "Artifact directory name under ayuox4gg/artifacts/"
+        type: string
+        default: "ayuox4gg-20261111-1212"
+  push:
+    branches: ["arena/**", "main"]
+    paths:
+      - "ayuox4gg/PUBLISH"
+      - ".github/workflows/publish-apk.yml"
+
+permissions:
+  contents: write   # creating the release and uploading the asset
+
+concurrency:
+  group: ayuox4gg-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout overlay
+        uses: actions/checkout@v4
+
+      - name: Reassemble and verify the APK
+        id: apk
+        run: |
+          set -euo pipefail
+          BUILD="${{ github.event.inputs.build || 'ayuox4gg-20261111-1212' }}"
+          DIR="ayuox4gg/artifacts/$BUILD"
+          test -d "$DIR" || { echo "::error::no such build: $DIR"; exit 1; }
+
+          # The recorded hash is the only thing that makes the parts meaningful.
+          EXPECTED="$(grep -oE '\b[0-9a-f]{64}\b' "$DIR/README.md" | head -n 1)"
+          test -n "$EXPECTED" || { echo "::error::no sha256 in $DIR/README.md"; exit 1; }
+
+          # Parts are named .part00 .part01 ...; lexical order is byte order.
+          cat "$DIR"/*.part* > /tmp/ayu.apk
+          ACTUAL="$(sha256sum /tmp/ayu.apk | cut -d' ' -f1)"
+
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::sha256 mismatch: expected $EXPECTED, got $ACTUAL"
+            exit 1
+          fi
+          echo "sha256 ok: $ACTUAL"
+
+          NAME="$(grep -oE '`[^`]+\.apk`' "$DIR/README.md" | head -n 1 | tr -d '`')"
+          test -n "$NAME" || NAME="ayuox4gg.apk"
+
+          echo "tag=$BUILD"   >> "$GITHUB_OUTPUT"
+          echo "name=$NAME"   >> "$GITHUB_OUTPUT"
+          echo "sha=$ACTUAL"  >> "$GITHUB_OUTPUT"
+          ls -l /tmp/ayu.apk
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.apk.outputs.tag }}
+          NAME: ${{ steps.apk.outputs.name }}
+          SHA: ${{ steps.apk.outputs.sha }}
+        run: |
+          set -euo pipefail
+          NOTES="$(printf '%s\n' \
+            "Собран из \`AyuGram/AyuGram4A@7013145676d36d82ee13c02a89f72097b7490dcd\` с оверлеем ayuox4gg." \
+            "" \
+            "- экспорт чата в \`.txt\` из локальной базы (без сети, секретные чаты не выгружаются)" \
+            "- косметические значки verified / premium / scam / fake — только на этом устройстве" \
+            "- переименование в \`ayu0x4gg\`" \
+            "- защита из патчей 0001-0004 на месте" \
+            "" \
+            "| | |" \
+            "|---|---|" \
+            "| sha256 | \`$SHA\` |" \
+            "" \
+            "Проверить перед установкой:" \
+            '```bash' \
+            "python3 ayuox4gg/tools/forensics.py ~/Downloads/$NAME --expect-sha256 $SHA" \
+            '```')"
+
+          # A re-run must not fail just because the release is already there.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes "$NOTES"
+          else
+            gh release create "$TAG" --title "ayu0x4gg $TAG" --notes "$NOTES"
+          fi
+
+          # --clobber makes this idempotent: re-running replaces the asset
+          # instead of erroring on a duplicate name.
+          gh release upload "$TAG" /tmp/ayu.apk --clobber
+
+      - name: Report the download link
+        env:
+          TAG: ${{ steps.apk.outputs.tag }}
+          NAME: ${{ steps.apk.outputs.name }}
+        run: |
+          set -euo pipefail
+          URL="https://github.com/${{ github.repository }}/releases/download/$TAG/$NAME"
+          echo "### Скачать" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "<$URL>" >> "$GITHUB_STEP_SUMMARY"
+          echo "$URL"
