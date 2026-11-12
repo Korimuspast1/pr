@@ -29,7 +29,15 @@ NDK. **Поэтому он собран на GitHub Actions** и лежит в �
 | cleartext | закрыт `networkSecurityConfig` (патч 0002) |
 | debug-подпись | нет |
 
-Скачать и проверить:
+Скачать одним файлом:
+
+<https://github.com/Korimuspast1/pr/releases/download/ayuox4gg-20261111-1212/ayuox4gg-20261111-1212.apk>
+
+Репозиторий приватный, поэтому по ссылке нужен вход в GitHub; для терминала —
+`gh release download ayuox4gg-20261111-1212`.
+
+Либо из частей с проверкой:
+
 
 ```bash
 python3 ayuox4gg/tools/unpack_apk.py --list

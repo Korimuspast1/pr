@@ -105,6 +105,16 @@ The last published build:
 | cleartext | restricted by `networkSecurityConfig` (patch 0002) |
 | debug signed | no |
 
+Скачать одним файлом (без склейки частей):
+
+<https://github.com/Korimuspast1/pr/releases/download/ayuox4gg-20261111-1212/ayuox4gg-20261111-1212.apk>
+
+> Репозиторий **приватный**, поэтому ссылка работает только после входа в
+> GitHub. Анонимный запрос вернёт `404` — это не признак битой сборки. Для
+> скачивания из терминала: `gh release download ayuox4gg-20261111-1212`.
+
+Либо из частей в репозитории:
+
 ```bash
 python3 ayuox4gg/tools/unpack_apk.py --list
 python3 ayuox4gg/tools/unpack_apk.py ayuox4gg-20261111-1212 --out ~/ayu.apk
