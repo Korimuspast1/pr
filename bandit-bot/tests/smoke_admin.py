@@ -162,14 +162,64 @@ r = run(ADMIN, "да")
 check("после «да» игрок стёрт", db.get_player(777) is None)
 check("инвентарь стёрт", db.get_inventory(777) == [])
 
-# --- кнопки: деньги через панель ---
-m = M(777, "/start"); B.cmd_start(m)  # пересоздаём игрока
+# --- кнопко-админка БЕЗ текста (только нажатия) ---
+m = M(777, "/start"); B.cmd_start(m)  # пересоздаём игрока после сброса
 coins_before = db.get_player(777)["money"]
 cb(ADMIN, "adm:money")
-r = run(ADMIN, "777 1000")
-check("кнопка «деньги» + ввод суммы работает", db.get_player(777)["money"] == coins_before + 1000)
-r = run(ADMIN, "отмена")
-check("отмена админ-ввода", True)
+cb(ADMIN, "adm:amt:100000")
+cb(ADMIN, "adm:tgt:777")
+check("кнопки: деньги выданы без текста", db.get_player(777)["money"] == coins_before + 100_000)
+cb(ADMIN, "adm:car")
+cb(ADMIN, "adm:carsel:12")
+cb(ADMIN, "adm:tgt:777")
+check("кнопки: выдан shamal", db.get_player(777)["car_tier"] == 12)
+cb(ADMIN, "adm:house")
+cb(ADMIN, "adm:housesel:5")
+cb(ADMIN, "adm:tgt:777")
+check("кнопки: выдан замок", db.get_player(777)["house_tier"] == 5)
+cb(ADMIN, "adm:item")
+cb(ADMIN, "adm:itemid:chain")
+cb(ADMIN, "adm:qty:3")
+cb(ADMIN, "adm:tgt:777")
+inv = {i["item_id"]: i["qty"] for i in db.get_inventory(777)}
+check("кнопки: выданы 3 цепи", inv.get("chain") == 3)
+cb(ADMIN, "adm:business")
+cb(ADMIN, "adm:bizsel:5")
+cb(ADMIN, "adm:bizlvl:15")
+cb(ADMIN, "adm:tgt:777")
+p = db.get_player(777)
+check("кнопки: элитный бордель ур.15", p["business_tier"] == 5 and p["business_level"] == 15)
+cb(ADMIN, "adm:premium")
+cb(ADMIN, "adm:amt:30")
+cb(ADMIN, "adm:tgt:777")
+check("кнопки: премиум выдан", db.is_premium(db.get_player(777)))
+cb(ADMIN, "adm:rides")
+cb(ADMIN, "adm:amt:100")
+cb(ADMIN, "adm:tgt:777")
+check("кнопки: поездки добавлены", db.get_player(777)["rides"] >= 100)
+
+# --- своё число (единственный текст во всей админке — число) ---
+m = M(777, "/start")  # не пересоздаём, просто проверяем ввод
+cb(ADMIN, "adm:money")
+cb(ADMIN, "adm:custom")
+coins_before = db.get_player(777)["money"]
+r = run(ADMIN, "777777")   # своё число — сумма
+cb(ADMIN, "adm:tgt:777")
+check("своё число + выбор цели кнопкой", db.get_player(777)["money"] == coins_before + 777_777)
+
+# --- меню: админская кнопка только у админа ---
+def kb_texts(kb):
+    return [b.text for row in kb.keyboard for b in row]
+check("кнопка «админка» в меню только у админа",
+      any("админка" in t for t in kb_texts(B.kb_main(True)))
+      and not any("админка" in t for t in kb_texts(B.kb_main(False))))
+
+# --- сброс кнопками с подтверждением ---
+cb(ADMIN, "adm:reset")
+cb(ADMIN, "adm:tgt:777")
+check("сброс ждёт «да»", db.get_player(777) is not None)
+cb(ADMIN, "adm:cfmn")
+check("отмена сброса кнопкой", db.get_player(777) is not None)
 
 # --- «выдать всё» текстом ---
 r = run(ADMIN, "выдать всё 777")

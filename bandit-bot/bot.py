@@ -244,7 +244,7 @@ def help_text() -> str:
 
 # ---------------- клавиатуры ----------------
 
-def kb_main():
+def kb_main(is_admin_user: bool = False):
     kb = types.InlineKeyboardMarkup(row_width=2)
     kb.add(
         types.InlineKeyboardButton("👤 профиль", callback_data="menu:profile"),
@@ -256,6 +256,8 @@ def kb_main():
         types.InlineKeyboardButton("🎁 бонус", callback_data="menu:bonus"),
         types.InlineKeyboardButton("❓ команды", callback_data="menu:help"),
     )
+    if is_admin_user:
+        kb.add(types.InlineKeyboardButton("👑 админка", callback_data="adm:open"))
     return kb
 
 
@@ -376,7 +378,7 @@ def send_profile(m, p, target_p=None):
     text = profile_text(p2, compact=bool(s.get("compact")))
     if target_p is not None:
         text = "👀 <b>глянул чужой профиль:</b>\n\n" + text
-    bot.reply_to(m, text, reply_markup=kb_main() if target_p is None else None)
+    bot.reply_to(m, text, reply_markup=kb_main(is_admin(m.from_user.id)) if target_p is None else None)
 
 
 def taxi_card(p) -> str:
@@ -1234,7 +1236,7 @@ def cmd_start(m):
         f"такси, скам, бизнесы, казино, банды и трейды — всё как в старом добром ВК-боте.\n\n"
         f"баланс: {money(p['money'])} · уровень {lvl}\n"
         f"жми кнопки или пиши «команды»",
-        reply_markup=kb_main(),
+        reply_markup=kb_main(is_admin(m.from_user.id)),
     )
 
 
@@ -1588,12 +1590,12 @@ def on_text(m):
         reply(help_text())
         return
     if cmd in ("меню", "старт"):
-        reply("🚬 что делаем, бандит?", kb_main())
+        reply("🚬 что делаем, бандит?", kb_main(is_admin(m.from_user.id)))
         return
 
     # неизвестное сообщение: молча реагируем только в лс
     if m.chat.type == "private":
-        reply("не понял 🤔 напиши «команды» — там всё расписано", kb_main())
+        reply("не понял 🤔 напиши «команды» — там всё расписано", kb_main(is_admin(m.from_user.id)))
 
 
 def buy_house(p):
@@ -1626,29 +1628,16 @@ def on_callback(c):
     if data.startswith("adm:"):
         if not is_admin(c.from_user.id):
             return
-        adm = data.split(":", 1)[1]
-        if adm == "stats":
-            bot.send_message(m.chat.id, admin_stats())
-        elif adm == "reset":
-            STATE[c.from_user.id] = {"kind": "admin:reset"}
-            bot.send_message(m.chat.id, "кому сбросить прогресс? id/@ник или ответь на сообщение игрока")
-        elif adm == "all":
-            STATE[c.from_user.id] = {"kind": "admin:all"}
-            bot.send_message(m.chat.id, "кому выдать ВСЁ? id/@ник или ответь на сообщение игрока")
-        elif adm in ("money", "bandi", "xp", "premium", "item", "car", "house", "business", "rides"):
-            STATE[c.from_user.id] = {"kind": "admin:" + adm}
-            bot.send_message(m.chat.id, admin_prompt(adm))
-        else:
-            bot.send_message(m.chat.id, "неизвестная админ-кнопка")
+        adm_wizard(c)
         return
 
     def send(txt, kb=None):
         bot.send_message(m.chat.id, txt, reply_markup=kb)
 
     if data == "menu:main":
-        send("🚬 что делаем, бандит?", kb_main())
+        send("🚬 что делаем, бандит?", kb_main(is_admin(c.from_user.id)))
     elif data == "menu:profile":
-        send(profile_text(p, compact=bool(db.get_settings(p).get("compact"))), kb_main())
+        send(profile_text(p, compact=bool(db.get_settings(p).get("compact"))), kb_main(is_admin(c.from_user.id)))
     elif data == "menu:jobs":
         send("💼 <b>работа</b> — выбирай, чем бабосы делать:", kb_jobs())
     elif data == "menu:taxi":
@@ -2034,13 +2023,13 @@ def kb_admin():
     )
     kb.add(
         types.InlineKeyboardButton("👑 премиум", callback_data="adm:premium"),
-        types.InlineKeyboardButton("🚕 машина", callback_data="adm:car"),
-        types.InlineKeyboardButton("🏠 дом", callback_data="adm:house"),
+        types.InlineKeyboardButton("🚕 поездки", callback_data="adm:rides"),
+        types.InlineKeyboardButton("👕 предмет", callback_data="adm:item"),
     )
     kb.add(
+        types.InlineKeyboardButton("🚗 машина", callback_data="adm:car"),
+        types.InlineKeyboardButton("🏠 дом", callback_data="adm:house"),
         types.InlineKeyboardButton("🏢 бизнес", callback_data="adm:business"),
-        types.InlineKeyboardButton("👕 предмет", callback_data="adm:item"),
-        types.InlineKeyboardButton("🚕 поездки", callback_data="adm:rides"),
     )
     kb.add(
         types.InlineKeyboardButton("🎁 выдать ВСЁ", callback_data="adm:all"),
@@ -2137,6 +2126,8 @@ def handle_admin(m, text: str) -> bool:
             STATE.pop(uid, None)
             bot.reply_to(m, "ок, отменил")
             return True
+        if st["kind"] == "admin:wiz":
+            return wizard_consume(m, st, text)
         return admin_consume(m, st, text)
 
     if cmd == "админка":
@@ -2182,3 +2173,399 @@ def handle_admin(m, text: str) -> bool:
         return True
 
     return False
+
+
+# =====================================================================
+# АДМИНКА — чистый кнопко-интерфейс (ни одного текста)
+# =====================================================================
+
+AMOUNT_PRESETS = {
+    "money":   [("+10К", 10_000), ("+100К", 100_000), ("+1М", 1_000_000),
+                ("+10М", 10_000_000), ("+100М", 100_000_000),
+                ("−10К", -10_000), ("−100К", -100_000), ("−1М", -1_000_000),
+                ("забрать всё", "-all")],
+    "bandi":   [("+10", 10), ("+50", 50), ("+100", 100), ("+500", 500), ("+1000", 1000),
+                ("−50", -50), ("−100", -100), ("−500", -500)],
+    "xp":      [("+500", 500), ("+2500", 2500), ("+10К", 10_000),
+                ("+50К", 50_000), ("−10К", -10_000)],
+    "premium": [("+7 дней", 7), ("+30 дней", 30), ("+90 дней", 90),
+                ("+365 дней", 365), ("−30 (забрать)", -30)],
+    "rides":   [("+10", 10), ("+50", 50), ("+100", 100),
+                ("+1000", 1000), ("−100", -100)],
+}
+
+AMT_PROMPT = {
+    "money":   "сколько денег выдаём?",
+    "bandi":   "сколько банди выдаём?",
+    "xp":      "сколько опыта выдаём?",
+    "premium": "на сколько дней продливаем премиум?",
+    "rides":   "сколько поездок добавляем?",
+}
+
+WIZ_ANY = ("money", "bandi", "xp", "premium", "rides")
+
+
+def kb_amount(what: str):
+    kb = types.InlineKeyboardMarkup(row_width=3)
+    kb.add(*[types.InlineKeyboardButton(label, callback_data=f"adm:amt:{val}")
+             for label, val in AMOUNT_PRESETS[what]])
+    kb.add(
+        types.InlineKeyboardButton("✏️ своё число", callback_data="adm:custom"),
+        types.InlineKeyboardButton("⬅️ назад", callback_data="adm:open"),
+    )
+    return kb
+
+
+def kb_cars():
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    for i, car in enumerate(G.CARS):
+        kb.add(types.InlineKeyboardButton(f"{i} {car['name'][:18]}",
+                                          callback_data=f"adm:carsel:{i}"))
+    kb.add(types.InlineKeyboardButton("⬅️ назад", callback_data="adm:open"))
+    return kb
+
+
+def kb_houses():
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    for i, house in enumerate(G.HOUSES):
+        kb.add(types.InlineKeyboardButton(f"{i} {house['name'][:20]}",
+                                          callback_data=f"adm:housesel:{i}"))
+    kb.add(types.InlineKeyboardButton("⬅️ назад", callback_data="adm:open"))
+    return kb
+
+
+def kb_businesses():
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    for i, b in enumerate(G.BUSINESSES):
+        kb.add(types.InlineKeyboardButton(f"{i} {b['name'][:20]}",
+                                          callback_data=f"adm:bizsel:{i}"))
+    kb.add(types.InlineKeyboardButton("➖ убрать бизнес", callback_data="adm:bizsel:-1"))
+    kb.add(types.InlineKeyboardButton("⬅️ назад", callback_data="adm:open"))
+    return kb
+
+
+def kb_biz_levels():
+    kb = types.InlineKeyboardMarkup(row_width=4)
+    kb.add(*[types.InlineKeyboardButton(f"ур. {lvl}", callback_data=f"adm:bizlvl:{lvl}")
+             for lvl in (1, 5, 10, 15)])
+    kb.add(types.InlineKeyboardButton("⬅️ назад", callback_data="adm:open"))
+    return kb
+
+
+def kb_items():
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    for c in G.CLOTHES:
+        kb.add(types.InlineKeyboardButton(c["name"][:22],
+                                          callback_data=f"adm:itemid:{c['id']}"))
+    kb.add(types.InlineKeyboardButton("🎁 весь шмот", callback_data="adm:itemid:all"))
+    kb.add(types.InlineKeyboardButton("⬅️ назад", callback_data="adm:open"))
+    return kb
+
+
+def kb_qty():
+    kb = types.InlineKeyboardMarkup(row_width=5)
+    kb.add(*[types.InlineKeyboardButton(f"×{q}", callback_data=f"adm:qty:{q}")
+             for q in (1, 3, 5, 10, 25)])
+    kb.add(types.InlineKeyboardButton("⬅️ назад", callback_data="adm:open"))
+    return kb
+
+
+def kb_admin_target():
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    players = db.fetchall("SELECT user_id, nick FROM players ORDER BY xp DESC LIMIT 10")
+    for row in players:
+        nick = (row["nick"] or "???")[:18]
+        kb.add(types.InlineKeyboardButton(f"{nick} ({row['user_id']})",
+                                          callback_data=f"adm:tgt:{row['user_id']}"))
+    kb.add(
+        types.InlineKeyboardButton("✏️ ввести id/@ник", callback_data="adm:customtgt"),
+        types.InlineKeyboardButton("❌ отмена", callback_data="adm:cancel"),
+    )
+    return kb
+
+
+def kb_confirm():
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        types.InlineKeyboardButton("✅ да", callback_data="adm:cfmy"),
+        types.InlineKeyboardButton("❌ нет", callback_data="adm:cfmn"),
+    )
+    return kb
+
+
+def kb_admin_back():
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        types.InlineKeyboardButton("⬅️ в админку", callback_data="adm:open"),
+        types.InlineKeyboardButton("🏠 в меню", callback_data="menu:main"),
+    )
+    return kb
+
+
+def _parse_signed(s: str):
+    t = s.lower().strip().replace(" ", "")
+    if t in ("всё", "все", "all"):
+        return "all"
+    if t in ("-всё", "-все", "-all"):
+        return "-all"
+    if re.fullmatch(r"-?\d+", t):
+        return int(t)
+    return None
+
+
+def wiz_apply(admin_uid: int, t, st) -> str:
+    what = st["what"]
+
+    def amt_or_all(current: int):
+        amt = st.get("amount", 0)
+        if amt == "all":
+            return 10**15
+        if amt == "-all":
+            return -current
+        return amt
+
+    if what == "money":
+        return admin_apply(admin_uid, t, "money", [str(amt_or_all(t["money"]))])
+    if what == "bandi":
+        return admin_apply(admin_uid, t, "bandi", [str(amt_or_all(t["bandi"]))])
+    if what == "xp":
+        return admin_apply(admin_uid, t, "xp", [str(amt_or_all(t["xp"]))])
+    if what == "premium":
+        return admin_apply(admin_uid, t, "premium", [str(st.get("amount", 30))])
+    if what == "rides":
+        return admin_apply(admin_uid, t, "rides", [str(st.get("amount", 0))])
+    if what == "car":
+        return admin_apply(admin_uid, t, "car", [str(st.get("tier", 0))])
+    if what == "house":
+        return admin_apply(admin_uid, t, "house", [str(st.get("tier", 0))])
+    if what == "business":
+        tier = st.get("tier", 0)
+        if tier < 0:
+            return admin_apply(admin_uid, t, "business", ["-1"])
+        return admin_apply(admin_uid, t, "business",
+                           [str(tier), str(st.get("level", 1))])
+    if what == "item":
+        item = st.get("item", "cap")
+        qty = str(st.get("qty", 1))
+        if item == "all":
+            return admin_apply(admin_uid, t, "item", ["всё", qty])
+        return admin_apply(admin_uid, t, "item", [item, qty])
+    if what == "all":
+        return admin_apply(admin_uid, t, "all", [])
+    return "не знаю, что выдаём 🙂"
+
+
+def wiz_finish(chat_id: int, admin_uid: int, st, target):
+    what = st["what"]
+    if what in ("reset", "all"):
+        STATE[admin_uid] = {**st, "target": target["user_id"], "await": None}
+        if what == "reset":
+            txt = (f"точно сбросить «{esc(target['nick'])}» (id {target['user_id']})?\n"
+                   f"удалится весь прогресс, шмот и банда.")
+        else:
+            txt = f"точно выдать ВСЁ игроку «{esc(target['nick'])}»?"
+        bot.send_message(chat_id, txt, reply_markup=kb_confirm())
+        return
+    res = wiz_apply(admin_uid, target, st)
+    STATE.pop(admin_uid, None)
+    bot.send_message(chat_id, res, reply_markup=kb_admin_back())
+
+
+def wizard_consume(m, st, text: str) -> bool:
+    uid = m.from_user.id
+    low = text.lower().strip()
+    await_ = st.get("await")
+
+    if await_ == "amount":
+        amt = _parse_signed(low)
+        if amt is None:
+            bot.reply_to(m, "число (можно с минусом), «всё» или «отмена»")
+            return True
+        st["amount"] = amt
+        st.pop("await", None)
+        STATE[uid] = st
+        bot.reply_to(m, "кому?", reply_markup=kb_admin_target())
+        return True
+
+    if await_ == "target":
+        try:
+            target, _ = admin_resolve(m, text.split())
+        except AdminError as e:
+            bot.reply_to(m, "🚫 " + str(e) + "\n(или ответь на сообщение игрока)")
+            return True
+        wiz_finish(m.chat.id, uid, st, target)
+        return True
+
+    bot.reply_to(m, "жми кнопки 🙂", reply_markup=kb_admin())
+    return True
+
+
+def adm_wizard(c):
+    """единая точка входа всех adm:* кнопок (только после is_admin-check)"""
+    m = c.message
+    chat = m.chat.id
+    uid = c.from_user.id
+    parts = (c.data or "").split(":")
+    act = parts[1] if len(parts) > 1 else ""
+
+    def send(t, kb=None):
+        bot.send_message(chat, t, reply_markup=kb)
+
+    if act == "open":
+        send("👑 <b>админка бандита</b>\n\nтолько кнопки: выбери, что выдаём", kb_admin())
+        return
+    if act == "stats":
+        send(admin_stats(), kb_admin_back())
+        return
+    if act == "cancel":
+        STATE.pop(uid, None)
+        send("ок, отменил", kb_admin())
+        return
+
+    # --- выбор категории ---
+    if act in WIZ_ANY:
+        STATE[uid] = {"kind": "admin:wiz", "what": act}
+        send(AMT_PROMPT[act], kb_amount(act))
+        return
+    if act == "car":
+        STATE[uid] = {"kind": "admin:wiz", "what": "car"}
+        send("какую тачку выдаём?", kb_cars())
+        return
+    if act == "house":
+        STATE[uid] = {"kind": "admin:wiz", "what": "house"}
+        send("какой дом выдаём?", kb_houses())
+        return
+    if act == "business":
+        STATE[uid] = {"kind": "admin:wiz", "what": "business"}
+        send("какой бизнес выдаём?", kb_businesses())
+        return
+    if act == "item":
+        STATE[uid] = {"kind": "admin:wiz", "what": "item"}
+        send("что выдаём?", kb_items())
+        return
+
+    # --- промежуточные шаги ---
+    if act == "carsel":
+        st = STATE.get(uid) or {"kind": "admin:wiz", "what": "car"}
+        st.update({"what": "car", "tier": int(parts[2])})
+        STATE[uid] = st
+        send("кому?", kb_admin_target())
+        return
+    if act == "housesel":
+        st = STATE.get(uid) or {"kind": "admin:wiz", "what": "house"}
+        st.update({"what": "house", "tier": int(parts[2])})
+        STATE[uid] = st
+        send("кому?", kb_admin_target())
+        return
+    if act == "bizsel":
+        tier = int(parts[2])
+        st = STATE.get(uid) or {"kind": "admin:wiz", "what": "business"}
+        st.update({"what": "business", "tier": tier})
+        STATE[uid] = st
+        if tier < 0:
+            send("кому убираем бизнес?", kb_admin_target())
+        else:
+            send("какой уровень?", kb_biz_levels())
+        return
+    if act == "bizlvl":
+        st = STATE.get(uid)
+        if not st or st.get("what") != "business":
+            send("сначала выбери бизнес 🙂", kb_admin())
+            return
+        st["level"] = int(parts[2])
+        STATE[uid] = st
+        send("кому?", kb_admin_target())
+        return
+    if act == "itemid":
+        st = STATE.get(uid) or {"kind": "admin:wiz", "what": "item"}
+        st.update({"what": "item", "item": parts[2]})
+        STATE[uid] = st
+        send("сколько штук?", kb_qty())
+        return
+    if act == "qty":
+        st = STATE.get(uid)
+        if not st or st.get("what") != "item":
+            send("сначала выбери предмет 🙂", kb_admin())
+            return
+        st["qty"] = int(parts[2])
+        STATE[uid] = st
+        send("кому?", kb_admin_target())
+        return
+    if act == "amt":
+        st = STATE.get(uid)
+        if not st or st.get("what") not in WIZ_ANY:
+            send("сначала выбери, что выдаём 🙂", kb_admin())
+            return
+        raw = parts[2]
+        try:
+            st["amount"] = raw if raw in ("all", "-all") else int(raw)
+        except ValueError:
+            send("не понял сумму", kb_admin())
+            return
+        STATE[uid] = st
+        send("кому?", kb_admin_target())
+        return
+
+    # --- свой ввод (для тех, кому кнопки малы) ---
+    if act == "custom":
+        st = STATE.get(uid) or {"kind": "admin:wiz", "what": "money"}
+        st.update({"kind": "admin:wiz", "await": "amount"})
+        STATE[uid] = st
+        send("напиши число (можно с минусом, «всё» / «-всё»). «отмена» — назад")
+        return
+    if act == "customtgt":
+        st = STATE.get(uid)
+        if not st:
+            send("сначала выбери, что выдаём 🙂", kb_admin())
+            return
+        st["await"] = "target"
+        STATE[uid] = st
+        send("напиши id или @ник игрока (или ответь на его сообщение)")
+        return
+
+    # --- выбор цели ---
+    if act == "tgt":
+        st = STATE.get(uid)
+        if not st or st.get("kind") != "admin:wiz":
+            send("сначала выбери, что выдаём 🙂", kb_admin())
+            return
+        target = db.get_player(int(parts[2]))
+        if not target:
+            send("игрок не найден")
+            return
+        wiz_finish(chat, uid, st, target)
+        return
+
+    # --- подтверждения ---
+    if act == "cfmy":
+        st = STATE.pop(uid, None)
+        if not st or st.get("what") not in ("reset", "all"):
+            send("нечего подтверждать")
+            return
+        target = db.get_player(st.get("target") or 0)
+        if not target:
+            send("игрок не найден (может, уже сброшен?)")
+            return
+        if st["what"] == "reset":
+            wipe_player(target["user_id"])
+            send(f"🔄 игрок «{esc(target['nick'])}» (id {target['user_id']}) сброшен в полный ноль")
+        else:
+            send(_give_all(target))
+        send("дальше?", kb_admin_back())
+        return
+    if act == "cfmn":
+        STATE.pop(uid, None)
+        send("ок, отменил", kb_admin())
+        return
+
+    # --- спецдействия ---
+    if act == "reset":
+        STATE[uid] = {"kind": "admin:wiz", "what": "reset"}
+        send("кого сбрасываем?", kb_admin_target())
+        return
+    if act == "all":
+        STATE[uid] = {"kind": "admin:wiz", "what": "all"}
+        send("кому выдать ВСЁ? 😈", kb_admin_target())
+        return
+
+    send("неизвестная кнопка", kb_admin())
