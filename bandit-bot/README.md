@@ -103,6 +103,21 @@ chmod +x ~/.termux/boot/bandit.sh
 - не закрывай термукс свайпом из последних приложений
 - логи — прямо в консоли; Ctrl+C — остановка
 
+## если что-то падает (термукс)
+
+| симптом | что делать |
+|---|---|
+| `ModuleNotFoundError: telebot` | запусти `./start.sh` ещё раз — он сам всё поставит; либо `python -m pip install pyTelegramBotAPI` |
+| `name 'is_admin' is not defined` (и такие же «is not defined») | у тебя старые файлы: `git pull && rm -rf __pycache__ && ./start.sh` |
+| `❌ не могу достучаться до телеграма` | интернет на телефоне / токен (`@botfather` → `/token`) / vpn / нет интернета в термуксе |
+| `Conflict: terminated by other getUpdates request` | бот запущен в двух местах сразу — закрой лишний экземпляр |
+| `python: command not found` | `pkg install python -y` |
+| бот молчит в группе | `@botfather` → `/setprivacy` → **Disable**, потом добавь бота в группу |
+| `bot was blocked by the user` в логах | игрока заблокировал бота — не страшно, это его право |
+
+Первое, что делать всегда: `./start.sh` — он сам ставит зависимости и чистит
+кэш. Если сомневаешься в файлах: `git pull && rm -rf __pycache__ .venv`.
+
 ## проверка, что всё работает
 
 ```bash

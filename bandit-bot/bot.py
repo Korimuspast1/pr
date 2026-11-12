@@ -1785,12 +1785,23 @@ def on_callback(c):
 
 
 def main():
-    me = bot.get_me()
+    try:
+        me = bot.get_me()
+    except Exception as e:
+        print("❌ не могу достучаться до телеграма:", e)
+        print()
+        print("что проверить:")
+        print("  1) интернет на этом устройстве (открой любой сайт)")
+        print("  2) токен верный — у @botfather команда /token; скопируй заново в token.txt")
+        print("  3) сеть не режется (vpn / блокировки / нет интернета в термуксе)")
+        sys.exit(1)
     global BOT_USERNAME
     BOT_USERNAME = me.username
-    print(f"@{me.username} запущен. «бот бандит» ждёт игроков…")
+    print(f"✅ @{me.username} запущен. «бот бандит» ждёт игроков…")
+    print("   Ctrl+C — остановить бота")
     db.connect()
-    bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
+    bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60,
+                         interval=1, restart_on_change=False)
 
 
 if __name__ == "__main__":
