@@ -78,6 +78,15 @@ jobs:
           SHA: ${{ steps.apk.outputs.sha }}
         run: |
           set -euo pipefail
+          # Remove assets from earlier runs that had a different name; otherwise
+          # the release accumulates dead links.
+          for old in $(gh release view "$TAG" --json assets --jq '.assets[].name'); do
+            if [ "$old" != "$NAME" ]; then
+              echo "removing stale asset: $old"
+              gh release delete-asset "$TAG" "$old" --yes || true
+            fi
+          done
+
           NOTES="$(printf '%s\n' \
             "Собран из \`AyuGram/AyuGram4A@7013145676d36d82ee13c02a89f72097b7490dcd\` с оверлеем ayuox4gg." \
             "" \
@@ -102,9 +111,15 @@ jobs:
             gh release create "$TAG" --title "ayu0x4gg $TAG" --notes "$NOTES"
           fi
 
+          # `gh release upload` names the asset after the file it is given, so
+          # the file must already carry the name we want. Passing /tmp/ayu.apk
+          # and hoping NAME is used produced an asset called "ayu.apk" twice.
+          mkdir -p "/tmp/asset"
+          cp /tmp/ayu.apk "/tmp/asset/$NAME"
+
           # --clobber makes this idempotent: re-running replaces the asset
           # instead of erroring on a duplicate name.
-          gh release upload "$TAG" /tmp/ayu.apk --clobber
+          gh release upload "$TAG" "/tmp/asset/$NAME" --clobber
 
       - name: Report the download link
         env:
