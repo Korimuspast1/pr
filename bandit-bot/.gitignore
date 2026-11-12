@@ -1,0 +1,6 @@
+# секреты и база — в git не нужны
+token.txt
+*.db
+*.db-wal
+*.db-shm
+__pycache__/
