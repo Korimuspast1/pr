@@ -1291,6 +1291,11 @@ def on_text(m):
         return
     p = player_from(m)
 
+    # админка (только для избранных id)
+    if is_admin(m.from_user.id):
+        if handle_admin(m, text):
+            return
+
     # ожидания ввода (трейд) проверяем первыми
     if handle_pending(m, p, text):
         return
@@ -1611,9 +1616,31 @@ def on_callback(c):
     p = db.ensure_player(c.from_user.id, c.from_user.username or "",
                          G.START_MONEY, default_nick())
     try:
-        bot.answer_callback_query(c.id)
+        if data.startswith("adm:") and not is_admin(c.from_user.id):
+            bot.answer_callback_query(c.id, "не велено 🚫", show_alert=True)
+        else:
+            bot.answer_callback_query(c.id)
     except Exception:
         pass
+
+    if data.startswith("adm:"):
+        if not is_admin(c.from_user.id):
+            return
+        adm = data.split(":", 1)[1]
+        if adm == "stats":
+            bot.send_message(m.chat.id, admin_stats())
+        elif adm == "reset":
+            STATE[c.from_user.id] = {"kind": "admin:reset"}
+            bot.send_message(m.chat.id, "кому сбросить прогресс? id/@ник или ответь на сообщение игрока")
+        elif adm == "all":
+            STATE[c.from_user.id] = {"kind": "admin:all"}
+            bot.send_message(m.chat.id, "кому выдать ВСЁ? id/@ник или ответь на сообщение игрока")
+        elif adm in ("money", "bandi", "xp", "premium", "item", "car", "house", "business", "rides"):
+            STATE[c.from_user.id] = {"kind": "admin:" + adm}
+            bot.send_message(m.chat.id, admin_prompt(adm))
+        else:
+            bot.send_message(m.chat.id, "неизвестная админ-кнопка")
+        return
 
     def send(txt, kb=None):
         bot.send_message(m.chat.id, txt, reply_markup=kb)
@@ -1779,3 +1806,379 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# =====================================================================
+# АДМИНКА (только для ADMIN_IDS, наружу не светится)
+# =====================================================================
+
+ADMIN_ID = 1398491942  # главный админ
+ADMIN_IDS = {ADMIN_ID}
+for _tok in os.environ.get("BANDIT_ADMINS", "").split(","):
+    _tok = _tok.strip()
+    if _tok.isdigit():
+        ADMIN_IDS.add(int(_tok))
+
+
+def is_admin(uid: int) -> bool:
+    return uid in ADMIN_IDS
+
+
+class AdminError(Exception):
+    pass
+
+
+def admin_resolve(m, tokens):
+    """определяет цель админ-выдачи: ответ на сообщение либо первый токен (id / @ник).
+    возвращает (строка игрока из бд, оставшиеся аргументы)"""
+    if m.reply_to_message and m.reply_to_message.from_user:
+        p = db.get_player(m.reply_to_message.from_user.id)
+        if not p:
+            raise AdminError("игрок не в игре")
+        return p, tokens
+    if not tokens:
+        raise AdminError("укажи цель: id или @ник (или ответь на сообщение игрока)")
+    tok = tokens[0]
+    if tok.startswith("@"):
+        uname = tok[1:].lower()
+        row = db.fetchone("SELECT user_id FROM players WHERE lower(username) = ?", (uname,))
+        if not row:
+            raise AdminError(f"игрок @{uname} не найден среди играющих")
+        return db.get_player(row["user_id"]), tokens[1:]
+    if tok.isdigit():
+        p = db.get_player(int(tok))
+        if not p:
+            raise AdminError(f"игрок id {tok} не найден")
+        return p, tokens[1:]
+    raise AdminError("цель: id или @ник (или ответь на сообщение)")
+
+
+def _num(args, i, default=None):
+    try:
+        return int(args[i])
+    except (IndexError, ValueError):
+        return default
+
+
+def _give_all(t):
+    uid = t["user_id"]
+    db.execute("UPDATE players SET money = money + ?, bandi = bandi + ?, xp = xp + ?, "
+               "rides = rides + 1000, car_tier = ?, house_tier = ?, "
+               "business_tier = 5, business_level = ?, business_raw = 0, business_done = 0, "
+               "business_xp = 0, business_last = ? "
+               "WHERE user_id = ?",
+               (100_000_000, 1000, 10000, len(G.CARS) - 1, len(G.HOUSES) - 1,
+                G.BUSINESS_MAX_LEVEL, now(), uid))
+    db.buy_premium(uid, 365)
+    for c in G.CLOTHES:
+        db.add_item(uid, c["id"], 1)
+    return ("🎁 выдано ВСЁ: $100.000.000, 1000 💎, 10000 опыта, 1000 поездок, "
+            "личный самолёт shamal ✈, замок «бандит» 🏰, элитный бордель (ур. 15), "
+            "весь шмот по 1 штуке, премиум на 365 дней. аппетита 😈")
+
+
+def admin_apply(admin_uid: int, t, what: str, args) -> str:
+    uid = t["user_id"]
+    nick = esc(t["nick"])
+
+    if what == "all":
+        return _give_all(t)
+
+    if what in ("money", "деньги", "бабки", "cash"):
+        amt = _num(args, 0)
+        if amt is None:
+            return "сколько? пример: <b>выдать деньги @ник 100000</b> (минус — забрать)"
+        db.execute("UPDATE players SET money = MAX(0, money + ?) WHERE user_id = ?", (amt, uid))
+        verb = "выдал" if amt >= 0 else "забрал"
+        p2 = db.get_player(uid)
+        return f"💰 {verb} {money(abs(amt))} → «{nick}» (баланс: {money(p2['money'])})"
+
+    if what in ("bandi", "банди", "алмазы", "гемы"):
+        amt = _num(args, 0)
+        if amt is None:
+            return "сколько? пример: <b>выдать банди @ник 100</b>"
+        db.execute("UPDATE players SET bandi = MAX(0, bandi + ?) WHERE user_id = ?", (amt, uid))
+        verb = "выдал" if amt >= 0 else "забрал"
+        p2 = db.get_player(uid)
+        return f"💎 {verb} {abs(amt)} банди → «{nick}» (теперь: {G.fmt_num(p2['bandi'])})"
+
+    if what in ("xp", "опыт", "exp", "expу"):
+        amt = _num(args, 0)
+        if amt is None:
+            return "сколько? пример: <b>выдать опыт @ник 5000</b>"
+        db.execute("UPDATE players SET xp = MAX(0, xp + ?) WHERE user_id = ?", (amt, uid))
+        lvl, rem, need = G.level_info(db.get_player(uid)["xp"])
+        return f"⭐ опыт {'+' if amt >= 0 else ''}{amt} → «{nick}» (уровень {lvl}, {rem}/{need})"
+
+    if what in ("premium", "премиум"):
+        days = _num(args, 0, 30)
+        if days >= 0:
+            base = max(t["premium_until"], now())
+            db.execute("UPDATE players SET premium_until = ? WHERE user_id = ?",
+                       (base + days * 86400, uid))
+            return f"👑 премиум +{days} дн → «{nick}» (до {pretty_date(db.get_player(uid)['premium_until'])})"
+        db.execute("UPDATE players SET premium_until = MAX(0, premium_until + ?) WHERE user_id = ?",
+                   (days * 86400, uid))
+        return f"👑 премиум {days} дн (забрано) → «{nick}»"
+
+    if what in ("item", "предмет", "шмот", "вещь"):
+        if not args:
+            return "что выдать? пример: <b>выдать предмет @ник chain 3</b> или <b>… всё</b>"
+        tok = args[0].lower()
+        qty = _num(args, 1, 1) or 1
+        if tok in ("всё", "все", "all"):
+            for c in G.CLOTHES:
+                db.add_item(uid, c["id"], qty)
+            return f"👕 выдал весь шмот ×{qty} → «{nick}»"
+        item = G.CLOTHES_BY_ID.get(tok)
+        if item is None:
+            low = tok
+            for c in G.CLOTHES:
+                if low in c["id"] or low in c["name"].lower():
+                    item = c
+                    break
+        if item is None:
+            ids = ", ".join(c["id"] for c in G.CLOTHES)
+            return f"не нашёл предмет «{esc(tok)}». id: {ids}"
+        db.add_item(uid, item["id"], qty)
+        return f"👕 выдал «{esc(item['name'])}» ×{qty} → «{nick}»"
+
+    if what in ("car", "машина", "авто", "тачка"):
+        tier = _num(args, 0)
+        if tier is None:
+            return f"какой тир? 0..{len(G.CARS) - 1}. пример: <b>выдать машина @ник 12</b>"
+        tier = max(0, min(tier, len(G.CARS) - 1))
+        db.execute("UPDATE players SET car_tier = ? WHERE user_id = ?", (tier, uid))
+        return f"🚕 выдал «{esc(G.CARS[tier]['name'])}» → «{nick}»"
+
+    if what in ("house", "дом"):
+        tier = _num(args, 0)
+        if tier is None:
+            return f"какой тир? 0..{len(G.HOUSES) - 1}. пример: <b>выдать дом @ник 5</b>"
+        tier = max(0, min(tier, len(G.HOUSES) - 1))
+        db.execute("UPDATE players SET house_tier = ? WHERE user_id = ?", (tier, uid))
+        return f"🏠 выдал «{esc(G.HOUSES[tier]['name'])}» → «{nick}»"
+
+    if what in ("business", "бизнес"):
+        tier = _num(args, 0)
+        if tier is None:
+            return "какой тир? -1 убрать, 0..5 (5 = элитный бордель), потом уровень 1..15"
+        if tier == -1:
+            db.execute("UPDATE players SET business_tier = -1, business_level = 1, "
+                       "business_raw = 0, business_done = 0, business_xp = 0 WHERE user_id = ?", (uid,))
+            return f"🏢 бизнес убран → «{nick}»"
+        tier = max(0, min(tier, len(G.BUSINESSES) - 1))
+        level = _num(args, 1, 1) or 1
+        level = max(1, min(level, G.BUSINESS_MAX_LEVEL))
+        db.execute("UPDATE players SET business_tier = ?, business_level = ?, "
+                   "business_xp = 0, business_last = ? WHERE user_id = ?",
+                   (tier, level, now(), uid))
+        return f"🏢 выдал «{esc(G.BUSINESSES[tier]['name'])}» ур. {level} → «{nick}»"
+
+    if what in ("rides", "поездки", "рейсы"):
+        n = _num(args, 0, 0)
+        db.execute("UPDATE players SET rides = MAX(0, rides + ?) WHERE user_id = ?", (n, uid))
+        p2 = db.get_player(uid)
+        return f"🚕 поездки {'+' if n >= 0 else ''}{n} → «{nick}» (всего {p2['rides']})"
+
+    if what in ("nick", "ник"):
+        newnick = " ".join(args).strip()
+        if not (1 <= len(newnick) <= 24):
+            return "ник — от 1 до 24 символов"
+        if any(ord(ch) < 32 for ch in newnick):
+            return "в нике нельзя управляющие символы"
+        db.execute("UPDATE players SET nick = ? WHERE user_id = ?", (newnick, uid))
+        return f"✏️ «{nick}» теперь «{esc(newnick)}»"
+
+    return ("что выдаём? варианты: <b>деньги · банди · опыт · премиум · предмет · машина · "
+            "дом · бизнес · поездки · ник · всё</b>\n"
+            "пример: <b>выдать деньги @ник 100000</b>")
+
+
+WHAT_MAP = {
+    "деньги": "money", "money": "money", "бабки": "money", "cash": "money",
+    "банди": "bandi", "bandi": "bandi", "алмазы": "bandi", "гемы": "bandi",
+    "опыт": "xp", "xp": "xp", "exp": "xp",
+    "премиум": "premium", "premium": "premium",
+    "предмет": "item", "item": "item", "шмот": "item", "вещь": "item",
+    "машина": "car", "авто": "car", "car": "car", "тачка": "car",
+    "дом": "house", "house": "house",
+    "бизнес": "business", "business": "business",
+    "поездки": "rides", "рейсы": "rides", "rides": "rides",
+    "ник": "nick", "nick": "nick",
+    "всё": "all", "все": "all", "all": "all",
+}
+
+
+def admin_prompt(kind: str) -> str:
+    prompts = {
+        "money": "кому и сколько? примеры: <b>@ник 100000</b> · <b>1398491942 50000</b>\nили ответь на сообщение и пиши только сумму (можно с минусом)",
+        "bandi": "кому и сколько банди? пример: <b>@ник 100</b>\nили ответь на сообщение и пиши только число",
+        "xp": "кому и сколько опыта? пример: <b>@ник 5000</b>\nили ответь на сообщение и пиши только число",
+        "premium": "кому и на сколько дней? пример: <b>@ник 30</b>\nминус — забрать премиум. или ответь на сообщение и пиши только дни",
+        "item": "что и кому? формат: <b>цель предмет [кол-во]</b>\nпример: <b>@ник chain 3</b> · <b>@ник всё</b> — весь шмот",
+        "car": f"кому и какой тир? <b>@ник 12</b> (0..{len(G.CARS) - 1}, 12 = shamal ✈)\nили ответь на сообщение и пиши только тир",
+        "house": f"кому и какой тир? <b>@ник 5</b> (0..{len(G.HOUSES) - 1}, 5 = замок «бандит»)\nили ответь на сообщение и пиши только тир",
+        "business": "кому и какой бизнес? <b>цель тир [уровень]</b>\nтир: -1 убрать · 0..5 (5 = элитный бордель) · уровень 1..15",
+        "rides": "кому и сколько поездок добавить? <b>@ник 100</b>\nили ответь на сообщение и пиши только число",
+    }
+    return prompts.get(kind, "что выдаём?")
+
+
+def kb_admin():
+    kb = types.InlineKeyboardMarkup(row_width=3)
+    kb.add(
+        types.InlineKeyboardButton("💰 деньги", callback_data="adm:money"),
+        types.InlineKeyboardButton("💎 банди", callback_data="adm:bandi"),
+        types.InlineKeyboardButton("⭐ опыт", callback_data="adm:xp"),
+    )
+    kb.add(
+        types.InlineKeyboardButton("👑 премиум", callback_data="adm:premium"),
+        types.InlineKeyboardButton("🚕 машина", callback_data="adm:car"),
+        types.InlineKeyboardButton("🏠 дом", callback_data="adm:house"),
+    )
+    kb.add(
+        types.InlineKeyboardButton("🏢 бизнес", callback_data="adm:business"),
+        types.InlineKeyboardButton("👕 предмет", callback_data="adm:item"),
+        types.InlineKeyboardButton("🚕 поездки", callback_data="adm:rides"),
+    )
+    kb.add(
+        types.InlineKeyboardButton("🎁 выдать ВСЁ", callback_data="adm:all"),
+        types.InlineKeyboardButton("📊 статистика", callback_data="adm:stats"),
+        types.InlineKeyboardButton("🔄 сброс", callback_data="adm:reset"),
+    )
+    return kb
+
+
+def admin_stats() -> str:
+    row = db.fetchone("SELECT COUNT(*) AS c, COALESCE(SUM(money),0) AS m, "
+                      "COALESCE(SUM(rides),0) AS r, COALESCE(SUM(bandi),0) AS b FROM players")
+    gangs = db.fetchone("SELECT COUNT(*) AS c FROM gangs")
+    trades = db.fetchone("SELECT COUNT(*) AS c FROM trades WHERE state = 'open'")
+    prem = db.fetchone("SELECT COUNT(*) AS c FROM players WHERE premium_until > ?", (now(),))
+    return (
+        "📊 <b>статистика бота</b>\n\n"
+        f"игроков: {row['c']}\n"
+        f"👑 премиумов: {prem['c']}\n"
+        f"💰 денег в экономике: {money(row['m'])}\n"
+        f"💎 банди всего: {G.fmt_num(row['b'])}\n"
+        f"🚕 поездок наезжено: {G.fmt_num(row['r'])}\n"
+        f"🏴 банд: {gangs['c']}\n"
+        f"🤝 открытых трейдов: {trades['c']}\n"
+        f"🗄 база: <code>{esc(os.path.basename(db.DB_PATH))}</code>"
+    )
+
+
+def wipe_player(uid: int):
+    with db.transaction():
+        # вернуть эскроу открытых трейдов
+        open_trades = db.fetchall(
+            "SELECT * FROM trades WHERE state = 'open' AND (a_id = ? OR b_id = ?)",
+            (uid, uid),
+        )
+        for t in open_trades:
+            trade_cancel(t, uid)
+        # распустить банду, если лидер
+        owned = db.fetchall("SELECT id FROM gangs WHERE owner_id = ?", (uid,))
+        for g in owned:
+            db.execute("UPDATE players SET gang_id = 0 WHERE gang_id = ?", (g["id"],))
+            db.execute("DELETE FROM gangs WHERE id = ?", (g["id"],))
+        db.execute("DELETE FROM inventory WHERE user_id = ?", (uid,))
+        db.execute("DELETE FROM promos_used WHERE user_id = ?", (uid,))
+        db.execute("DELETE FROM refs WHERE referee_id = ? OR referrer_id = ?", (uid, uid))
+        db.execute("DELETE FROM players WHERE user_id = ?", (uid,))
+
+
+def admin_consume(m, st, text: str) -> bool:
+    uid = m.from_user.id
+    kind = st["kind"][len("admin:"):]
+    tokens = text.split()
+
+    if kind == "reset_confirm":
+        STATE.pop(uid, None)
+        if text.lower().strip() in ("да", "yes", "y", "д"):
+            target_id = st["target"]
+            wipe_player(target_id)
+            bot.reply_to(m, f"🔄 игрок id {target_id} полностью сброшен")
+        else:
+            bot.reply_to(m, "ок, никого не трогаю")
+        return True
+
+    try:
+        target, args = admin_resolve(m, tokens)
+    except AdminError as e:
+        bot.reply_to(m, "🚫 " + str(e) + "\n(или «отмена»)")
+        return True
+
+    if kind == "reset":
+        STATE[uid] = {"kind": "admin:reset_confirm", "target": target["user_id"]}
+        bot.reply_to(m, f"точно сбросить «{esc(target['nick'])}» (id {target['user_id']})?\n"
+                        f"удалится весь прогресс, шмот и банда. напиши «да»")
+        return True
+
+    msg = admin_apply(uid, target, kind, args)
+    STATE.pop(uid, None)
+    bot.reply_to(m, msg)
+    return True
+
+
+def handle_admin(m, text: str) -> bool:
+    """админские команды; True — сообщение обработано и съедено"""
+    uid = m.from_user.id
+    low = text.lower().strip()
+    parts = low.split()
+    cmd = parts[0] if parts else ""
+    rest = text.split(maxsplit=1)[1] if len(parts) > 1 else ""
+
+    # ожидание ввода для админки
+    st = STATE.get(uid)
+    if st and str(st.get("kind", "")).startswith("admin:"):
+        if low in ("отмена", "cancel"):
+            STATE.pop(uid, None)
+            bot.reply_to(m, "ок, отменил")
+            return True
+        return admin_consume(m, st, text)
+
+    if cmd == "админка":
+        bot.reply_to(m, "👑 <b>админка бандита</b>\n\nвыбирай кнопку или пиши команды:\n"
+                        "<b>выдать деньги/банди/опыт/премиум/предмет/машина/дом/бизнес/поездки/ник/всё</b>\n"
+                        "<b>сброс</b> — вайп игрока · <b>статистика</b> — цифры бота",
+                     reply_markup=kb_admin())
+        return True
+
+    if cmd == "статистика":
+        bot.reply_to(m, admin_stats())
+        return True
+
+    if cmd == "сброс":
+        tokens = rest.split() if rest else []
+        try:
+            target, _ = admin_resolve(m, tokens)
+        except AdminError as e:
+            bot.reply_to(m, "🚫 " + str(e))
+            return True
+        STATE[uid] = {"kind": "admin:reset_confirm", "target": target["user_id"]}
+        bot.reply_to(m, f"точно сбросить «{esc(target['nick'])}» (id {target['user_id']})?\n"
+                        f"удалится весь прогресс, шмот и банда. напиши «да»")
+        return True
+
+    if cmd == "выдать":
+        sub = rest.split(maxsplit=1)
+        what_ru = sub[0].lower() if sub else ""
+        argstr = sub[1] if len(sub) > 1 else ""
+        what = WHAT_MAP.get(what_ru)
+        if what is None:
+            bot.reply_to(m, "что выдаём? <b>деньги · банди · опыт · премиум · предмет · машина · "
+                            "дом · бизнес · поездки · ник · всё</b>\n"
+                            "пример: <b>выдать деньги @ник 100000</b>")
+            return True
+        tokens = argstr.split()
+        try:
+            target, args = admin_resolve(m, tokens)
+        except AdminError as e:
+            bot.reply_to(m, "🚫 " + str(e))
+            return True
+        bot.reply_to(m, admin_apply(uid, target, what, args))
+        return True
+
+    return False
