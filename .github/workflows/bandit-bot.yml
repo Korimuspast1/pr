@@ -1,0 +1,27 @@
+name: bandit-bot
+
+# запускается только вручную (кнопкой в Actions), сам по пушам не стартует
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: bandit-bot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350   # максимум ~6 часов, дальше github сам выключит
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: ставим зависимости
+        run: pip install -r bandit-bot/requirements.txt
+      - name: запускаем бота
+        working-directory: bandit-bot
+        env:
+          BANDIT_TOKEN: ${{ secrets.BANDIT_TOKEN }}
+          BANDIT_DB: /tmp/bandit.db
+        run: python -u bot.py
