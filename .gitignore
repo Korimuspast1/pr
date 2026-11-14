@@ -1,3 +1,12 @@
 # Python bytecode generated while validating the Elyx source
 __pycache__/
 *.py[cod]
+
+# Android / VersionShelf build outputs and signing material
+android-versionshelf/.gradle/
+android-versionshelf/build/
+android-versionshelf/app/build/
+android-versionshelf/local.properties
+android-versionshelf/keystore/
+*.jks
+*.keystore
