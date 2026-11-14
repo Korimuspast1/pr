@@ -1,0 +1,14 @@
+[package]
+name = "world-render"
+version = "0.1.0"
+edition = "2021"
+description = "Procedural island world rendered by a tiny CPU raymarcher (no external crates)"
+
+[[bin]]
+name = "world-render"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
