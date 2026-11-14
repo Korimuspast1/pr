@@ -66,6 +66,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(300);
   ok(ev('!!UI.S && UI.S.players.length === 3'), 'игра запущена кнопками');
 
+  // оборона: в длинных прогонах боты захватывают столицу без войск
+  ok(ev('(() => { const S = UI.S, c = S.cities.find(q => q.owner === 0); if (!c) return false; S.players[0].stock.gold = 99999; S.players[0].stock.food = 99999; for (let k = 0; k < 8; k++) newArmy(S, 0, c.x + 1 + (k % 3) - 1, c.y + 1 + ((k / 3) | 0) - 1, [mkSquad("heavy")]); return true; })()'), 'оборона игрока усилена');
+
   // заселяем жителей
   ok(ev('(() => { for (let i = 0; i < 4000; i++) tick(UI.S, 0.25); return UI.S.folk.filter(f => f.st !== "dead").length; })()') > 0, 'жители появились');
 
@@ -83,6 +86,14 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(detail.includes('Казнить') && detail.includes(fname), 'карточка жителя открылась (имя и действия видны)', detail.slice(0, 80));
   ok(/Наёмники/.test(detail) && /тюрьм/.test(detail), 'действия: наёмники и тюрьма');
   ok(/К списку/.test(detail), 'кнопка возврата к списку есть');
+
+  // новые действия и обязательная тюрьма
+  ok(!!d.querySelector('[data-act^="fgift:"]') && !!d.querySelector('[data-act^="ffeast:"]') && !!d.querySelector('[data-act^="fdraft:"]'), 'новые действия: подарок, пир, призыв');
+  ok(!d.querySelector('[data-act^="fprison:"]'), 'без тюрьмы кнопка посадки скрыта');
+  ok(ev('(() => { const S = UI.S, c = S.cities.find(q => q.owner === 0); if (!c) return false; for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) { const x = c.x + dx, y = c.y + dy; if (siteOk(S, 0, "prison", x, y) === null && doBuild(S, 0, "prison", x, y) === null) return true; } return false; })()'), 'тюрьма построена');
+  ev('ACT.folkone(' + fid + ')');
+  await wait(50);
+  ok(!!d.querySelector('[data-act^="fprison:"]'), 'после постройки тюрьмы кнопка появилась');
 
   // сажаем в тюрьму
   click('[data-act^="fprison:"]');
@@ -104,6 +115,21 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(ev('!UI.modal'), 'окно подтверждения закрылось');
   ok(/Всего жителей/.test(sheetText()), 'после казни вернулись к списку жителей');
   ok(ev('folkGet(UI.S, ' + fid + ').st') === 'dead', 'житель казнён');
+
+  // третья страница стройки с тюрьмой и смена мелодии в настройках
+  click('[data-act="tab:build"]');
+  await wait(50);
+  ev('ACT.bpage(2)');
+  await wait(50);
+  ok(!!d.querySelector('#bar [data-act="place:prison"]'), 'тюрьма есть на странице ОБЩЕЕ');
+  ok(/ОБЩЕЕ|ПРОИЗВ\./.test(d.getElementById('bar').textContent), 'переключатель страниц стройки жив');
+  ev('ACT.settings()');
+  await wait(50);
+  ok(/Мелодия/.test(d.getElementById('modal').textContent) && !!d.querySelector('[data-act="song"]'), 'в настройках показана мелодия и есть смена');
+  click('[data-act="song"]');
+  await wait(50);
+  ok(errs.length === 0, 'смена мелодии без ошибок', errs.slice(0, 3).join(' | '));
+  ev('closeModal()');
 
   // ПОЛИТ. открывает меню
   click('[data-act="tab:pol"]');

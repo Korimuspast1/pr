@@ -77,6 +77,11 @@ const defend = (S) => { // в длинных симуляциях игроку �
   ok(houses.every(b => G.BD[b.type]), 'жители строят настоящие здания');
   const f = S.folk.find(q => q.st === 'ok');
   ok(f, 'есть живой житель');
+  ok(G.folkPrison(S, f.id, true) !== null, 'до постройки тюрьмы не сажают');
+  const c0 = S.cities.find(q => q.owner === 0);
+  let pj = false;
+  for (let dy = -8; dy <= 8 && !pj; dy++) for (let dx = -8; dx <= 8 && !pj; dx++) { const x = c0.x + dx, y = c0.y + dy; if (G.siteOk(S, 0, 'prison', x, y) === null) pj = G.doBuild(S, 0, 'prison', x, y) === null; }
+  ok(pj, 'тюрьма построена');
   ok(G.folkPrison(S, f.id, true) === null && G.folkGet(S, f.id).st === 'prison', 'в тюрьму садят');
   ok(G.folkPrison(S, f.id, false) === null && G.folkGet(S, f.id).st === 'ok', 'из тюрьмы выпускают');
   const g = S.folk.find(q => q.st === 'ok');

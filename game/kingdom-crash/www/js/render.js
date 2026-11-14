@@ -68,6 +68,8 @@ function animBuilding(c, type, ox, oy, col, tm, seed, res, bb) {
     case 'port': waveFlag(c, ox + 29 * H, oy + 12 * H, col, tm, seed); break;
     case 'mine': { waveFlag(c, ox + 28 * H, oy + 1 * H, col, tm, seed); const f = Math.floor(tm * 6 + seed) % 3; R_(c, ox + 15 * H, oy + 17 * H, 2 * H, 2 * H, f === 0 ? '#ffe890' : '#f8c850'); if (Math.floor(tm * 2 + seed) % 4 === 0) R_(c, ox + 4 * H, oy + 21 * H, 0.5, 0.5, '#fff'); if (Math.floor(tm * 2 + seed) % 4 === 2) R_(c, ox + 27 * H, oy + 19 * H, 0.5, 0.5, '#fff'); break; }
     case 'farm': { for (let j = 0; j < 5; j++) { const px = (tm * 5 + j * 3 + seed) % 22; if (px < 18) R_(c, ox + (1 + px) * H, oy + (2 + j * 4) * H, 0.5, 0.5, '#d8ff98'); } break; }
+    case 'house': smoke(c, ox + 24 * H, oy + 2 * H, tm, seed, 0.55); break;
+    case 'prison': { const f = Math.floor(tm * 2 + seed) % 2; R_(c, ox + 15.5 * H, oy + 12 * H, 1, 1, f ? '#ffe890' : '#c8a848'); break; }
   }
 }
 function ownerCol(S, o) { return o < 0 ? '#9a9a9a' : S.players[o].col; }
@@ -116,6 +118,7 @@ function frame(S, now) {
   for (const b of vis) {
     const st = STRUCT[b.type];
     drawSpr(c, bldSprite(b, ownerCol(S, b.owner), st ? structMask(S, b) : 0), b.x * TS, b.y * TS);
+    if (RN.cam.z >= 1.1) { TERR.over(c, b.x, b.y + 1); TERR.over(c, b.x - 1, b.y + 1); TERR.over(c, b.x + 1, b.y + 1); }
     if (b.owner >= -1) animBuilding(c, b.type, b.x * TS, b.y * TS, ownerCol(S, b.owner), now / 1000, b.id, b.res, b);
     if (st && b.hp < b.mhp) { const f = Math.max(0, b.hp / b.mhp); if (f < 0.6) for (let k = 0; k < 3; k++) R_(c, b.x * TS + 3 + hash(b.x, b.y, k) * 9, b.y * TS + 3 + hash(b.x, b.y, k + 5) * 9, 0.5, 2.2 + k, '#2a2420'); R_(c, b.x * TS + 2, b.y * TS - 1.4, 12, 1.3, '#14100c'); R_(c, b.x * TS + 2.3, b.y * TS - 1.1, 11.4 * f, 0.7, f > 0.5 ? '#7dff7d' : f > 0.25 ? '#ffd24a' : '#ff6a4a'); }
     if (b.type === 'tower' && b.gar && b.gar.s.length) { const col = ownerCol(S, b.owner), n = Math.min(3, b.gar.s.length); for (let k = 0; k < n; k++) { const sh = b.gar.s[k], bob = tm - (sh.atk || -9) < 0.3 ? -0.3 : 0; drawFig(c, 'archer', col, b.x * TS + 4.2 + k * 3.8, b.y * TS + 4.6 + bob, 1); } }

@@ -19,6 +19,8 @@ import sys
 import zipfile
 import zlib
 
+NEW_PKG = 'kingofnof.com'  # новый applicationId (пользователь попросил именно это имя)
+
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import pkcs12, pkcs7
@@ -127,6 +129,98 @@ def patch_manifest_xml(data, version_name, version_code):
         return bytes(buf)
     except Exception as e:  # не фатально: версия в манифесте просто не обновится
         print('  ! манифест не пропатчен:', e)
+        return data
+
+
+def patch_package(data, new_pkg):
+    """Переименовывает applicationId (package=...) бинарного манифеста.
+
+    Длины строк меняются, поэтому строковой пул пересобирается целиком:
+    индексы строк сохраняются, ссылки из элементов остаются валидными.
+    Имя активности делаем абсолютным, чтобы класс com.kingdomcrash.game.MainActivity
+    в dex остался рабочим при новом имени пакета.
+    """
+    try:
+        buf = bytearray(data)
+        pos = struct.unpack_from('<H', buf, 2)[0]
+        chunks = []
+        while pos < len(buf):
+            ctype, hs, csize = struct.unpack_from('<HHI', buf, pos)
+            chunks.append((pos, ctype, csize))
+            pos += csize
+        pi = next(i for i, (p, t, sz) in enumerate(chunks) if t == 0x0001)
+        pool, _, pool_size = chunks[pi]
+        str_count, style_count = struct.unpack_from('<II', buf, pool + 8)
+        flags = struct.unpack_from('<I', buf, pool + 16)[0]
+        strings_start = struct.unpack_from('<I', buf, pool + 20)[0]
+        utf8 = bool(flags & 0x100)
+        offs = struct.unpack_from('<%dI' % str_count, buf, pool + 28)
+
+        def _lenprefix(q):  # читает один префикс длины AXML, возвращает (значение, сдвиг)
+            if not utf8:
+                n = struct.unpack_from('<H', buf, q)[0]; q += 2
+                if n & 0x8000:
+                    n = ((n & 0x7fff) << 16) | struct.unpack_from('<H', buf, q)[0]; q += 2
+                return n, q
+            n = buf[q]; q += 1
+            if n & 0x80:
+                n = ((n & 0x7f) << 8) | buf[q]; q += 1
+            return n, q
+
+        def _encprefix(n):  # обратное к _lenprefix
+            if not utf8:
+                if n < 0x8000:
+                    return struct.pack('<H', n)
+                return struct.pack('<HH', (n >> 16) | 0x8000, n & 0xFFFF)
+            if n < 0x80:
+                return bytes([n])
+            return bytes([(n >> 8) | 0x80, n & 0xFF])
+
+        reps = {}
+        entries = []
+        for o in offs:
+            q = pool + strings_start + o
+            start = q
+            n, q = _lenprefix(q)          # длина в символах
+            if utf8:
+                n2, q = _lenprefix(q)     # длина в байтах
+                body = bytes(buf[q:q + n2]); q += n2
+                nul = 1
+            else:
+                body = bytes(buf[q:q + n * 2]); q += n * 2
+                n2 = n
+                nul = 2
+            raw = bytes(buf[start:q + nul])
+            key = body.decode('utf-8' if utf8 else 'utf-16-le', 'replace')
+            entries.append([key, raw])
+
+        for e in entries:
+            if e[0] == 'com.kingdomcrash.game':
+                reps[id(e)] = new_pkg
+            elif e[0] == '.MainActivity':
+                reps[id(e)] = 'com.kingdomcrash.game.MainActivity'  # класс в dex не меняется
+
+        def _newentry(txt):
+            if utf8:
+                bs = txt.encode('utf-8')
+                return _encprefix(len(txt)) + _encprefix(len(bs)) + bs + b'\x00'
+            return _encprefix(len(txt)) + txt.encode('utf-16-le') + b'\x00\x00'
+
+        new_entries = [(_newentry(reps[id(e)]) if id(e) in reps else e[1]) for e in entries]
+
+        strings_start_new = 28 + 4 * str_count
+        body = b''.join(new_entries)
+        new_offs, acc = [], 0
+        for raw in new_entries:
+            new_offs.append(acc); acc += len(raw)
+        pool_new = struct.pack('<HHIIIIII', 0x0001, 28, strings_start_new + len(body), str_count, style_count, flags, strings_start_new, 0)
+        pool_new += struct.pack('<%dI' % str_count, *new_offs) + body
+        out = bytearray(buf[:pool]) + bytearray(pool_new) + bytearray(buf[pool + pool_size:])
+        struct.pack_into('<I', out, 4, len(out))
+        print('  пакет в манифесте: %s (пул пересобран, %d строк)' % (new_pkg, str_count))
+        return bytes(out)
+    except Exception as e:
+        print('  ! пакет не переименован:', e)
         return data
 
 
@@ -262,6 +356,7 @@ def main():
             continue  # заменим целиком
         data = src.read(info.filename)
         if info.filename == 'AndroidManifest.xml':
+            data = patch_package(data, NEW_PKG)
             data = patch_manifest_xml(data, ver, code)
         entries.append((info.filename, info.compress_type, data))
     src.close()

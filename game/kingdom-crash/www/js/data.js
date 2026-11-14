@@ -41,7 +41,8 @@ const BD = {
   mill: { n: 'Мельница', cost: { wood: 60, gold: 50 }, site: 'field', pts: 30, d: 'Ветряная мельница. Фермы вплотную к ней дают на 50% больше еды.' },
   tavern: { n: 'Таверна', cost: { wood: 80, gold: 120 }, site: 'free', pts: 35, d: 'Здесь нанимают наёмников: сразу и только за золото, без оружия со склада.' },
   port: { n: 'Порт', cost: { wood: 120, gold: 120, iron: 20 }, site: 'coast', pts: 50, d: 'Строит торговые и военные суда. Только на берегу моря или большого озера.' },
-  house: { n: 'Дом', cost: { wood: 25, gold: 10 }, site: 'free', pts: 8, d: 'Дом жителей. Селяне селятся в провинции и сами строят дома, рынки и фермы.' }
+  house: { n: 'Дом', cost: { wood: 25, gold: 10 }, site: 'free', pts: 8, d: 'Дом жителей. Селяне селятся в провинции и сами строят дома, рынки и фермы.' },
+  prison: { n: 'Тюрьма', cost: { wood: 50, gold: 60 }, site: 'free', pts: 10, d: '5 мест для заключённых на каждую тюрьму. Пока тюрьмы нет, жителей нельзя сажать.' },
 };
 const TRAIN_BLD = { barracks: 1, siege: 1, academy: 1 }; // здания с очередью обучения
 const STRUCT = { wall: 1, tower: 1, gate: 1 };
@@ -88,7 +89,7 @@ const CMD = { archer: { n: 'Воевода', of: 'лучников', ico: 'bow' 
 const DAY = 120; // секунд игрового времени в одних сутках (2 минуты)
 const CLAIM_DAYS = 3; // дней на формирование претензии
 const DIFF = { easy: { n: 'Лёгкая', mult: 0.8, think: 5.5 }, normal: { n: 'Средняя', mult: 1.0, think: 3.2 }, hard: { n: 'Сложная', mult: 1.25, think: 1.8 } };
-const GAME_VERSION = '2.1.0';
+const GAME_VERSION = '2.2.0';
 const MAPTYPES = ['continent', 'continents', 'islands', 'lakes', 'random'];
 const CAP_MIN = 10.5; // минимальное расстояние между столицами
 const SEA_MIN = 10; // меньший водоём — пруд: порт у него не строят
@@ -191,7 +192,8 @@ const ICONMAP = {
   shield: ['RRRRBBBB', 'RRRRBBBB', 'RRRRBBBB', 'BBBBRRRR', 'BBBBRRRR', '.BBBRRR.', '..BBRR..', '...BR...'],
   t_folk: ['..KKKK..', '.KPPPPK.', '.KPPPPK.', '..KPPK..', '.KRRRRK.', 'KRRRRRRK', 'KSRRRRSK', '.KKKKKK.'],
   t_san: ['..KKKK..', '.KWWWWK.', 'KWWKKWWK', 'KWKKKKWK', 'KWWKKWWK', '.KWWWWK.', '..KKKK..', '...RR...'],
-  person: ['..KKK...', '..KPK...', '..KKK...', '.KRRRK..', 'KRRRRRK.', '.KRRRK..', '.KK.KK..', '.KK.KK..']
+  person: ['..KKK...', '..KPK...', '..KKK...', '.KRRRK..', 'KRRRRRK.', '.KRRRK..', '.KK.KK..', '.KK.KK..'],
+  prison: ['..KKKK..', '.KGGGGK.', 'KGWKGWGK', 'KGWKGWGK', 'KGGKKGGK', 'KGKKKKGK', 'KGGKKGGK', 'KKKKKKKK']
 };
 const ICON = {}, ICONURL = {};
 function initIcons() {
@@ -507,6 +509,15 @@ DRAW.house = function (c, x, y, col) {
   // забор и поленница
   for (let i = 0; i < 5; i++) R_(c, x + 1 + i * 3, y + 30, 1, 2, '#6a4826'); R_(c, x + 1, y + 30, 13, 1, '#8a6a3a');
   R_(c, x + 25, y + 24, 4, 3, '#8a5a2b'); R_(c, x + 25, y + 24, 4, 1, '#a8743a'); R_(c, x + 26, y + 22, 2, 2, '#c08a50');
+};
+DRAW.prison = function (c, x, y, col) {
+  rrect(c, x + 2, y + 27, 28, 5, '#8a8f78', 2);
+  bricks(c, x + 3, y + 10, 26, 18, '#8a8478');
+  R_(c, x + 3, y + 9, 26, 2, '#6a655c');
+  gable(c, x + 1, y + 3, 30, 7, col); R_(c, x + 1, y + 9, 30, 1, '#4a4038');
+  for (const wx of [6, 14, 22]) { R_(c, x + wx, y + 13, 6, 7, '#14100c'); for (let i = 0; i < 6; i += 2) R_(c, x + wx + i, y + 13, 1, 7, '#b8c4d4'); }
+  R_(c, x + 12, y + 20, 8, 8, '#3a2410'); R_(c, x + 12, y + 20, 8, 1, '#8a8f98'); R_(c, x + 16, y + 23, 1, 2, '#f2c230');
+  flag(c, x + 15, y - 1, col);
 };
 HF.spear = function (c, x, y, col) {
   R_(c, x + 4, y + 10, 2, 3, '#5a4a3a'); R_(c, x + 7, y + 10, 2, 3, '#5a4a3a'); R_(c, x + 3, y + 12, 3, 1, '#2a1808'); R_(c, x + 7, y + 12, 3, 1, '#2a1808');

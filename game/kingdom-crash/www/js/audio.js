@@ -117,17 +117,19 @@ const SND = (() => {
     if (song.t < ctx.currentTime) song.t = ctx.currentTime + 0.1; // после паузы не «догоняем» пропущенное
     while (song.t < ctx.currentTime + 0.7) {
       const m = S0.mel[song.i], up = song.pass % 2 === 1 ? 12 : 0;
-      if (song.beat % S0.bassEvery === 0) { const b = S0.bass[(song.beat / S0.bassEvery) % S0.bass.length]; note(b, song.t, 0.5); note(b + 7, song.t + S0.beat * 2, 0.2); }
+      if (song.nb % S0.bassEvery === 0) { const b = S0.bass[(song.nb / S0.bassEvery) % S0.bass.length]; note(b, song.t, 0.5); note(b + 7, song.t + S0.beat * 2, 0.2); }
       if (m[0]) note(m[0] + up, song.t, 0.4 + Math.random() * 0.1);
-      song.t += m[1] * S0.beat; song.beat += m[1]; song.i++;
+      song.t += m[1] * S0.beat; song.beat += m[1]; song.i++; song.nb++;
       if (song.i >= S0.mel.length) {
-        song.i = 0; song.beat = 0; song.pass++;
-        if (song.pass >= 2) { song.pass = 0; let ns = song.s; while (ns === song.s && SONGS.length > 1) ns = (Math.random() * SONGS.length) | 0; song.s = ns; song.t += S0.beat * S0.gap; } // пауза и новая мелодия
+        song.i = 0; song.beat = 0; song.nb = 0; song.pass++;
+        if (song.pass >= 1) { song.pass = 0; let ns = song.s; while (ns === song.s && SONGS.length > 1) ns = (Math.random() * SONGS.length) | 0; song.s = ns; song.t += SONGS[ns].beat * 2.5; } // короткая пауза и следующая мелодия
         else song.t += S0.beat * S0.bassEvery * 2;
       }
     }
   }
-  function startMusic() { if (timer || !ctx || !st.music) return; song = { s: (Math.random() * SONGS.length) | 0, t: ctx.currentTime + 0.5, i: 0, beat: 0, pass: 0 }; timer = setInterval(schedule, 250); schedule(); }
+  function startMusic() { if (timer || !ctx || !st.music) return; song = { s: (Math.random() * SONGS.length) | 0, t: ctx.currentTime + 0.5, i: 0, beat: 0, nb: 0, pass: 0 }; timer = setInterval(schedule, 250); schedule(); }
+  function next() { if (!song || !ctx) return; let ns = song.s; while (ns === song.s && SONGS.length > 1) ns = (Math.random() * SONGS.length) | 0; song.s = ns; song.i = 0; song.beat = 0; song.nb = 0; song.pass = 0; if (song.t > ctx.currentTime + 0.3) song.t = ctx.currentTime + 0.15; }
+  function songName() { return song ? SONGS[song.s].n : ''; }
   function stopMusic() { if (timer) { clearInterval(timer); timer = 0; } song = null; }
 
   function set(k, v) { if (k === 'sfx') st.sfx = !!v; if (k === 'music') { st.music = !!v; if (st.music) { if (ready) startMusic(); } else stopMusic(); } }
@@ -138,5 +140,5 @@ const SND = (() => {
     else if (ready) { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}); }
   });
   ['pointerdown', 'touchend', 'keydown'].forEach(ev => window.addEventListener(ev, unlock, { passive: true }));
-  return { play, set, unlock, state: () => (ctx ? ctx.state : 'none') };
+  return { play, set, unlock, next, songName, state: () => (ctx ? ctx.state : 'none') };
 })();

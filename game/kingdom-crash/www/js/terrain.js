@@ -193,6 +193,7 @@ const TERR = (() => {
   function decor(tx, ty, out) {
     const i = ty * W + tx, t = S.ter[i], bx = tx * PPT, by = ty * PPT, T = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? -1 : S.ter[y * W + x];
     if (S.res[i]) out.push([spr.ore[S.res[i]], bx + 1, by + 28]);
+    if (S.occ[i] >= 0) return; // под зданием деревья и кусты не рисуются
     if (t === TR.FOREST) {
       let fn = 0, hill = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const q = T(tx + dx, ty + dy); if ((dx || dy) && q === TR.FOREST) fn++; if (q === TR.HILL || q === TR.MOUNT) hill++; }
       const stand = ns(NB, tx * 3.1 + 40, ty * 3.1 + 80), dense = fn >= 5 ? 1 : fn >= 2 ? 0.9 : 0.74;
@@ -209,6 +210,13 @@ const TERR = (() => {
     } else if (t === TR.SAND) {
       if (th(tx, ty, 230) > 0.86) out.push([spr.rock[2], bx + 4 + th(tx, ty, 231) * 22, by + 10 + th(tx, ty, 232) * 18]);
     }
+  }
+  function overdraw(c, tx, ty) { // мировые координаты: k = TS/PPT
+    if (!S || tx < 0 || ty < 0 || tx >= W || ty >= H) return;
+    const i = ty * W + tx; if (S.occ[i] >= 0) return;
+    const list = []; decor(tx, ty, list); const k = TS / PPT;
+    list.sort((a, b) => a[2] - b[2]);
+    for (const [im, x, y] of list) c.drawImage(im, (x - (im.width - 8) / 2 - 1) * k, (y - im.height + 3) * k, im.width * k, im.height * k);
   }
   function plant(c, tx0, ty0, tx1, ty1, ox, oy, k) { // k — масштаб (1 или 0.25)
     const list = []; for (let ty = Math.max(0, ty0); ty < Math.min(H, ty1); ty++) for (let tx = Math.max(0, tx0); tx < Math.min(W, tx1); tx++) decor(tx, ty, list);
@@ -270,5 +278,5 @@ const TERR = (() => {
     if (chunks.size > cap) { const old = Array.from(chunks.entries()).sort((a, b) => a[1].used - b[1].used); for (let k = 0; k < old.length && chunks.size > cap; k++) if (old[k][1].used !== stamp) chunks.delete(old[k][0]); }
     c.restore();
   }
-  return { init, draw, dirty, overview, count: () => chunks.size };
+  return { init, draw, dirty, over: overdraw, overview, count: () => chunks.size };
 })();

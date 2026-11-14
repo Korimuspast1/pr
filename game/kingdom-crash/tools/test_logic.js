@@ -83,7 +83,8 @@ const army = (S, owner, x, y, types) => G.newArmy(S, owner, x + 0.5, y + 0.5, ty
   const build = t => { const s = site(t); return s && G.doBuild(S, 0, t, s[0], s[1]) === null ? S.buildings[S.buildings.length - 1] : null; };
   const f = build('forge'); ok(!!f, 'кузня'); run(S, 2); ok(f.busy, 'кузня работает');
   const iron0 = p.stock.iron; G.setRecipe(S, f, 'armH'); ok(p.stock.iron > iron0 && !f.busy, 'при смене изделия сырьё возвращается');
-  p.stock.armH = G.ITEM_CAP; run(S, 8); ok(!f.busy && /полон/.test(f.status), 'при полном складе производство стоит, а не жжёт ресурсы', f.status);
+  p.stock.armH = 10; run(S, 8); ok(!f.busy && f.stop === 10 && /Достаточно/.test(f.status), 'при полном складе производство стоит, а не жжёт ресурсы', f.status);
+  f.stop = null; p.stock.armH = G.ITEM_CAP; run(S, 8); ok(!f.busy && /Достаточно|полон/.test(f.status), 'без предела склад ограничен общим капом', f.status);
   f.off = true; p.stock.armH = 0; run(S, 8); ok(!f.busy, 'производство можно остановить');
   const bar = build('barracks'); ok(G.enqueue(S, bar, 'militia') === null && G.enqueue(S, bar, 'cmd') !== null && G.enqueue(S, bar, 'nope') !== null && G.enqueue(S, null, 'archer') !== null, 'очередь казарм проверяет вид отряда');
   const n0 = S.armies.length; run(S, 60); ok(S.armies.length === n0 + 1 && S.armies[S.armies.length - 1].sq[0].t === 'militia', 'ополчение обучено');

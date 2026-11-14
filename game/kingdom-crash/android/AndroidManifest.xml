@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Kingdom Crash: оболочка для игры. Разрешений нет вовсе: игра работает без сети и ничего не отправляет. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.kingdomcrash.game">
+    package="kingofnof.com">
 
     <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="34" />
 
@@ -27,7 +27,7 @@
 
         <!-- единственный экран; снаружи доступен только запуск с рабочего стола -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.kingdomcrash.game.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="portrait"

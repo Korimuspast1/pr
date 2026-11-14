@@ -220,7 +220,7 @@ function cityOk(S, pid, x, y) {
   for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) { const o = S.terr[(y + dy) * S.W + x + dx]; if (o !== pid && o !== -2) return 'Чужая территория'; }
   return null;
 }
-function clearForest(S, x, y) { S.patches = S.patches || []; for (let dy = -1; dy <= 2; dy++) for (let dx = -1; dx <= 2; dx++) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= S.W || Y >= S.H) continue; const i = Y * S.W + X; if (S.ter[i] === TR.FOREST && dx >= 0 && dx <= 1 && dy >= 0 && dy <= 1) S.ter[i] = TR.GRASS; } S.patches.push({ x, y }); }
+function clearForest(S, x, y) { S.patches = S.patches || []; for (let dy = -1; dy <= 2; dy++) for (let dx = -1; dx <= 2; dx++) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= S.W || Y >= S.H) continue; const i = Y * S.W + X; if (S.ter[i] === TR.FOREST && dx >= 0 && dx <= 1 && dy >= 0 && dy <= 1) S.ter[i] = TR.GRASS; } (S.patches = S.patches || []).push({ x, y }); }
 function cityClaim(S, pid, x, y) { const cx = x + 1, cy = y + 1; let land = 0, free = 0, forest = 0; for (let yy = Math.floor(cy - 5); yy <= cy + 5; yy++) for (let xx = Math.floor(cx - 5); xx <= cx + 5; xx++) { if (xx < 0 || yy < 0 || xx >= S.W || yy >= S.H || Math.hypot(xx + 0.5 - cx, yy + 0.5 - cy) > 4) continue; const i = yy * S.W + xx; if (isWater(S.ter[i])) continue; land++; if (S.terr[i] === -2) { free++; } if (S.ter[i] === TR.FOREST) forest++; } return { land, free, forest }; }
 function cityCost(S, pid) { const n = S.cities.filter(c => c.owner === pid).length; return { gold: 150 + 60 * n, wood: 100, food: 50 }; }
 function doBuild(S, pid, type, x, y) {
@@ -234,15 +234,15 @@ function doBuild(S, pid, type, x, y) {
   const d = BD[type]; if (!canAfford(p, d.cost)) return 'Не хватает ресурсов'; pay(p, d.cost);
   { const oi = S.occ[y * S.W + x]; if (type === 'gate' && oi >= 0 && oi < 1000000) { const ob = S.bmap.get(oi); if (ob) demolish(S, ob); } }
   const hp = d.hp ? Math.round(d.hp * (perk(p, 'mason') ? 1.4 : 1)) : 0;
-  const b = { id: S.nid++, type, x, y, owner: pid, recipe: RECIPES[type] ? Object.keys(RECIPES[type])[0] : null, busy: false, pt: 0, queue: [], status: '', res: S.res[y * S.W + x], t0: S.time, hp, mhp: hp, gar: null, wet: false };
-  S.buildings.push(b); S.bmap.set(b.id, b); S.occ[y * S.W + x] = b.id; p.flags['b_' + type] = 1; S.sv = (S.sv || 0) + 1;
+  const b = { id: S.nid++, type, x, y, owner: pid, recipe: RECIPES[type] ? Object.keys(RECIPES[type])[0] : null, busy: false, pt: 0, queue: [], status: '', res: S.res[y * S.W + x], t0: S.time, hp, mhp: hp, gar: null, wet: false, stop: RECIPES[type] && S.players[pid].human ? 10 : null };
+  S.buildings.push(b); S.bmap.set(b.id, b); S.occ[y * S.W + x] = b.id; p.flags['b_' + type] = 1; S.sv = (S.sv || 0) + 1; (S.patches = S.patches || []).push({ x, y });
   if (type === 'tower') linkTower(S, b);
   if (STRUCT[type]) refreshStructs(S); if (type === 'moat') recomputeMoat(S); return null;
 }
 function nextCityName(S) { const used = new Set(S.cities.map(c => c.name)); const free = CITY_NAMES.filter(n => !used.has(n)); return free.length ? free[(S.rnd() * free.length) | 0] : 'Город ' + (S.cities.length + 1); }
 function demolish(S, b) {
   if (b.gar && b.gar.s.length) ungarrison(S, b);
-  S.occ[b.y * S.W + b.x] = -1; S.buildings = S.buildings.filter(q => q !== b); S.bmap.delete(b.id); S.sv = (S.sv || 0) + 1;
+  S.occ[b.y * S.W + b.x] = -1; S.buildings = S.buildings.filter(q => q !== b); S.bmap.delete(b.id); S.sv = (S.sv || 0) + 1; (S.patches = S.patches || []).push({ x: b.x, y: b.y });
   if (STRUCT[b.type]) refreshStructs(S); if (b.type === 'moat') recomputeMoat(S);
 }
 function refreshStructs(S) { S.structs = S.buildings.filter(b => STRUCT[b.type]); }
@@ -299,7 +299,8 @@ function startClaim(S, a, b) {
   if (a === 0) addMsg(S, 0, { type: 'war', title: 'Претензия начата', text: 'Через 3 дня можно будет объявить войну: ' + pname(S, b) }); S.players[a].flags.claim = 1; return null;
 }
 function startWar(S, a, b) {
-  const r = rel2(S, a, b); if (r.st === 'war') return;
+  const r = rel2(S, a, b); if (r.st === 'war') return 'Уже идёт война';
+  if (r.ally) return 'Сначала разорвите союз';
   r.st = 'war'; r.warSince = S.time; r.trade = false; r.ally = false; r.op = Math.min(r.op, -50); r.cl = {}; r.pass = {};
   // прежние предложения между сторонами теряют силу
   if (S.pending) S.pending = S.pending.filter(q => q.kind === 'truce' || !((q.from === a && q.to === b) || (q.from === b && q.to === a)));
@@ -459,8 +460,8 @@ function freeBuild(S, pid, type, x, y) {
   const err = siteTile(S, pid, type, x, y); if (err) return null;
   { const oi = S.occ[y * S.W + x]; if (type === 'gate' && oi >= 0 && oi < 1000000) { const ob = S.bmap.get(oi); if (ob) demolish(S, ob); } }
   const d = BD[type], hp = d.hp ? Math.round(d.hp * (perk(S.players[pid], 'mason') ? 1.4 : 1)) : 0;
-  const b = { id: S.nid++, type, x, y, owner: pid, recipe: RECIPES[type] ? Object.keys(RECIPES[type])[0] : null, busy: false, pt: 0, queue: [], status: '', res: S.res[y * S.W + x], t0: S.time, hp, mhp: hp, gar: null, wet: false };
-  S.buildings.push(b); S.bmap.set(b.id, b); S.occ[y * S.W + x] = b.id;
+  const b = { id: S.nid++, type, x, y, owner: pid, recipe: RECIPES[type] ? Object.keys(RECIPES[type])[0] : null, busy: false, pt: 0, queue: [], status: '', res: S.res[y * S.W + x], t0: S.time, hp, mhp: hp, gar: null, wet: false, stop: RECIPES[type] && S.players[pid].human ? 10 : null };
+  S.buildings.push(b); S.bmap.set(b.id, b); S.occ[y * S.W + x] = b.id; (S.patches = S.patches || []).push({ x, y });
   if (STRUCT[type]) refreshStructs(S); if (type === 'moat') recomputeMoat(S); S.sv = (S.sv || 0) + 1;
   return b;
 }
@@ -581,10 +582,35 @@ function folkKill(S, id, anon) {
   info(S, 0, 'Казнь', f.name + ' казнён по вашему приказу. Люди встревожены.', 'info');
   return null;
 }
+function folkGift(S, id, feast) {
+  const f = folkGet(S, id); if (!f) return 'Житель не найден';
+  if (f.st === 'dead') return 'Житель мёртв';
+  if (f.st === 'army') return 'Он уже на службе';
+  const p = S.players[0], cost = feast ? 8 : 10;
+  if (feast && !S.buildings.some(b => b.owner === 0 && b.type === 'tavern')) return 'Нужна своя таверна';
+  if (!(S.opts.sandbox && p.human) && (p.stock.gold || 0) < cost) return 'Нужно ' + cost + ' золота';
+  if (!(S.opts.sandbox && p.human)) pay(p, { gold: cost });
+  if (feast) { f.mood = Math.min(100, f.mood + 25); f.wealth = Math.min(100, f.wealth + 5); info(S, 0, 'Пир в таверне', f.name + ' отлично провёл время. Настроение поднялось.', 'info'); }
+  else { f.wealth = Math.min(100, f.wealth + 15); f.mood = Math.min(100, f.mood + 10); info(S, 0, 'Подарок', f.name + ' получил подарок. Люди это заметят.', 'info'); }
+  return null;
+}
+function folkDraft(S, id) {
+  const f = folkGet(S, id); if (!f) return 'Житель не найден';
+  if (f.st !== 'ok') return 'Он недоступен';
+  if (f.age < 16 || f.age > 55) return 'Годен в возрасте 16–55 лет';
+  const c = capitalOf(S, 0); if (!c) return 'Нет столицы';
+  f.st = 'army'; f.job = 'ополченец';
+  newArmy(S, 0, c.x + 1, c.y + 1, [mkSquad('militia')]);
+  info(S, 0, 'Призыв', f.name + ' поступил в ополчение новой армии.', 'info');
+  return null;
+}
 function folkPrison(S, id, jail) {
   const f = folkGet(S, id); if (!f) return 'Житель не найден';
   if (f.st === 'dead') return 'Житель мёртв';
   if (jail) {
+    const cells = S.buildings.reduce((n, b) => n + (b.owner === 0 && b.type === 'prison' ? 5 : 0), 0);
+    if (!cells) return 'Сначала постройте тюрьму (СТРОЙКА → ОБЩЕЕ)';
+    if (S.folk.reduce((n, q) => n + (q.st === 'prison' ? 1 : 0), 0) >= cells) return 'В тюрьмах нет свободных мест';
     if (f.st === 'prison') return 'Уже в тюрьме';
     f.st = 'prison'; info(S, 0, 'Тюрьма', f.name + ' посажен в тюрьму.', 'info');
   } else {
@@ -830,12 +856,22 @@ function tickProd(S, dt) {
   for (const b of S.buildings) {
     if (b.owner < 0) continue; const p = S.players[b.owner]; if (!p.alive) continue;
     const rc = RECIPES[b.type];
+    if (b.type === 'sawmill' && b.owner === 0) { // лесорубы пилорамы вырубают лес вокруг — видно на карте
+      b.cut = (b.cut || 0) + dt;
+      if (b.cut >= 15) {
+        b.cut = 0;
+        const cand = [];
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = b.x + dx, y = b.y + dy; if (x < 0 || y < 0 || x >= S.W || y >= S.H) continue; const i = y * S.W + x; if (S.ter[i] === TR.FOREST && S.occ[i] < 0) cand.push(i); }
+        if (cand.length) { const i = cand[(S.rnd() * cand.length) | 0]; S.ter[i] = TR.GRASS; (S.patches = S.patches || []).push({ x: i % S.W, y: (i / S.W) | 0 }); }
+      }
+    }
     if (rc) {
       const r = rc[b.recipe]; if (!r) continue;
+      const cap = Math.min(b.stop || ITEM_CAP, ITEM_CAP);
       if (!b.busy) {
         if (b.off) b.status = 'Производство остановлено';
         else if (S.opts.sandbox && p.human) b.status = 'В песочнице склад бесконечен';
-        else if ((p.stock[r.out] || 0) >= ITEM_CAP) b.status = 'Склад полон: ' + ITEM_CAP;
+        else if ((p.stock[r.out] || 0) >= cap) b.status = 'Достаточно на складе: ' + cap + ' шт.';
         else if (canAfford(p, r.in)) { pay(p, r.in); b.busy = true; b.pt = 0; b.status = ''; } else b.status = 'Не хватает ресурсов';
       } else { b.pt += dt * p.mult * (perk(p, 'craft') ? 1.3 : 1) * (sanOn(S, b.owner, 'arms') ? 0.6 : 1); if (b.pt >= r.t) { p.stock[r.out]++; p.earned += RVAL[r.out]; b.busy = false; } }
     } else if (TRAIN_BLD[b.type] && b.queue.length) {

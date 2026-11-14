@@ -98,8 +98,9 @@ function addRecord(S) {
 
 /* ----- нижняя панель ----- */
 const TABS = [['map', 'КАРТА', 't_map'], ['city', 'ГОРОДА', 't_city'], ['build', 'СТРОЙКА', 't_build'], ['army', 'АРМИЯ', 't_army'], ['pol', 'ПОЛИТ.', 't_pol'], ['fleet', 'ФЛОТ', 't_fleet']];
-const SHORT = { academy: 'АКАДЕМИЯ', siege: 'ОСАДНАЯ', wall: 'СТЕНА', tower: 'БАШНЯ', gate: 'ВОРОТА', moat: 'РОВ', hospital: 'ГОСПИТ.', farm: 'ФЕРМА', sawmill: 'ЛЕСОПИЛ.', mine: 'РУДНИК', barracks: 'КАЗАРМЫ', forge: 'КУЗНЯ', workshop: 'МАСТЕРСК.', stable: 'КОНЮШНЯ', market: 'РЫНОК', port: 'ПОРТ', mill: 'МЕЛЬНИЦА', tavern: 'ТАВЕРНА' };
-const BUILD_PAGES = [['farm', 'sawmill', 'mine', 'mill', 'barracks', 'hospital', 'forge', 'workshop', 'stable'], ['wall', 'tower', 'gate', 'moat', 'siege', 'market', 'port', 'academy', 'tavern']];
+const SHORT = { academy: 'АКАДЕМИЯ', siege: 'ОСАДНАЯ', wall: 'СТЕНА', tower: 'БАШНЯ', gate: 'ВОРОТА', moat: 'РОВ', hospital: 'ГОСПИТ.', farm: 'ФЕРМА', sawmill: 'ЛЕСОПИЛ.', mine: 'РУДНИК', barracks: 'КАЗАРМЫ', forge: 'КУЗНЯ', workshop: 'МАСТЕРСК.', stable: 'КОНЮШНЯ', market: 'РЫНОК', port: 'ПОРТ', mill: 'МЕЛЬНИЦА', tavern: 'ТАВЕРНА', prison: 'ТЮРЬМА' };
+const BUILD_PAGES = [['farm', 'sawmill', 'mine', 'mill', 'barracks', 'hospital', 'forge', 'workshop', 'stable'], ['wall', 'tower', 'gate', 'moat', 'siege', 'market', 'port', 'academy', 'tavern'], ['prison']];
+const BPAGE_LBL = ['ПРОИЗВ.', 'УКРЕПЛ.', 'ОБЩЕЕ'], BPAGE_ICO = ['B:farm', 'B:tower', 'B:prison'];
 const BAR = {
   map: [['center', 'ЦЕНТР', 'home'], ['mm', 'КАРТА', 't_map'], ['folk', 'ЖИТЕЛИ', 't_folk'], ['borders', 'ГРАНИЦЫ', 'flag'], ['stock', 'СКЛАД', 'iron'], ['save', 'СОХРАН.', 'scroll'], ['plan', 'ПЛАН', 'check'], ['rate', 'РЕЙТИНГ', 'trophy'], ['ach', 'НАГРАДЫ', 'star'], ['menu', 'МЕНЮ', 'menu']],
   city: [['cities', 'ГОРОДА', 't_city'], ['place:city', 'НОВЫЙ', 'flag'], ['upg', 'УЛУЧШ.', 't_build'], ['center', 'СТОЛИЦА', 'home']],
@@ -122,7 +123,7 @@ function barOn(act) { // подсветка включённых режимов
 function renderTabs() {
   morph($('tabs'), TABS.map(t => `<button class="${UI.tab === t[0] ? 'on' : ''}" data-act="tab:${t[0]}">${IMG(t[2], 24)}<span>${t[1]}</span></button>`).join(''));
   const bs = t => ['place:' + t, SHORT[t], 'B:' + t]; let sl;
-  if (UI.tab === 'build') sl = BUILD_PAGES[UI.bpage ? 1 : 0].map(bs).concat([UI.bpage ? ['bpage:0', 'ПРОИЗВ.', 'B:farm'] : ['bpage:1', 'УКРЕПЛ.', 'B:tower']]);
+  if (UI.tab === 'build') { const nx = (UI.bpage + 1) % 3; sl = BUILD_PAGES[UI.bpage % 3].map(bs).concat([['bpage:' + nx, BPAGE_LBL[nx], BPAGE_ICO[nx]]]); }
   else sl = (BAR[UI.tab] || []).slice();
   while (sl.length < 10) sl.push(null);
   const fixed = [`<button data-act="pause" class="${UI.paused ? 'on' : ''}"><div class="bx fix">${IMG('pause', 32)}</div>ПАУЗА</button>`,
@@ -223,6 +224,9 @@ function sheetHtml(sh) {
         b += b0.busy ? `<div class="gl">Производится: ${RNAME[r.out]} — ${Math.floor(100 * b0.pt / r.t)}% (ещё ${secs((r.t - b0.pt) / ps)}с)</div><div class="pb"><i style="width:${pct(100 * b0.pt / r.t)}%"></i></div>` : `<div class="${b0.off ? 'dim' : 'bad'}">${esc(b0.status || 'Ожидание ресурсов')}</div>`;
         if (b0.off && b0.busy) b += '<div class="dim">Это изделие доделают, новое начинать не будут.</div>';
         b += `<div class="btns">${btn('prod:' + b0.id, b0.off ? 'Возобновить производство' : 'Остановить производство')}</div>`;
+        const capN = Math.min(b0.stop || ITEM_CAP, ITEM_CAP);
+        b += `<div class="dim" style="margin-top:6px">Сколько изделий держать на складе (сейчас ${capN}). Достигнув предела, мастерская не тратит ресурсы — можно копить железо для второй кузницы.</div><div class="btns">` +
+          [5, 10, 20].map(n => btn(`stopset:${b0.id}:${n}`, String(n) + ' шт.', capN === n ? 'on' : '')).join('') + btn(`stopset:${b0.id}:0`, 'Без предела', !b0.stop ? 'on' : '') + '</div>';
       }
       if (STRUCT[b0.type]) b += hpLine(b0);
       if (b0.type === 'gate') b += '<div class="dim">Свои войска и союзники проходят, враги — нет, пока ворота не сломают.</div>';
@@ -352,8 +356,9 @@ function listHtml(sh) {
         `<div class="row sp"><span>Достаток</span><b>${f.wealth > 70 ? 'богат' : f.wealth > 35 ? 'средний' : 'беден'}</b></div>` +
         `<div class="row sp"><span>Настроение</span><b class="${f.mood > 60 ? 'gd' : f.mood < 35 ? 'bad' : ''}">${Math.round(f.mood)}%</b></div>` +
         `<div class="row sp"><span>Статус</span><b>${f.st === 'prison' ? 'в тюрьме' : 'на свободе'}</b></div>` +
-        `<div class="dim" style="margin-top:6px">С ним можно сделать что-нибудь: казнить, нанять наёмников анонимно или посадить в тюрьму.</div>` +
-        `<div class="btns">${btn('folk', '← К списку')}${btn('fkill1:' + f.id, 'Казнить')}${btn('fmerc:' + f.id, 'Наёмники (анонимно)', 'gold')}${f.st === 'prison' ? btn('fprison:' + f.id + ':0', 'Освободить') : btn('fprison:' + f.id + ':1', 'В тюрьму')}</div>` +
+        `<div class="dim" style="margin-top:6px">С ним можно: вручить подарок, угостить в таверне, призвать в ополчение, казнить, нанять наёмников анонимно${f.st === 'prison' ? ', выпустить из тюрьмы' : ' или посадить в тюрьму'}.</div>` +
+        `<div class="btns">${btn('folk', '← К списку')}${btn('fgift:' + f.id, 'Подарок · 10 зол.')}${btn('ffeast:' + f.id, 'Пир · 8 зол.')}${btn('fdraft:' + f.id, 'Призвать')}${btn('fkill1:' + f.id, 'Казнить')}${btn('fmerc:' + f.id, 'Наёмники (анонимно)', 'gold')}${f.st === 'prison' ? btn('fprison:' + f.id + ':0', 'Освободить') : (UI.S.buildings.some(x => x.owner === 0 && x.type === 'prison') ? btn('fprison:' + f.id + ':1', 'В тюрьму') : '')}</div>` +
+        (f.st !== 'prison' && !UI.S.buildings.some(x => x.owner === 0 && x.type === 'prison') ? '<div class="dim">Посадить в тюрьму можно только при своей тюрьме (СТРОЙКА → ОБЩЕЕ).</div>' : '') +
         `<div class="dim">Наёмники стоят 150 золота и делают дело без следов. Публичная казнь пугает людей.</div>`;
       break;
     }
@@ -376,7 +381,7 @@ const ACT = {
   pause() { UI.paused = !UI.paused; renderTabs(); },
   speed() { UI.speed = UI.speed === 1 ? 2 : UI.speed === 2 ? 4 : 1; renderTabs(); },
   closesheet() { closeSheet(); },
-  bpage(n) { UI.bpage = +n ? 1 : 0; renderTabs(); },
+  bpage(n) { UI.bpage = (+n) % 3; renderTabs(); },
   ungar(id) { const b = myBld(id); if (b && b.gar) { ungarrison(UI.S, b); say('Отряд покинул башню', true); renderSheet(true); } },
   togglepass(a) { const [id, other] = a.split(':'), b = myBld(id); if (!b) return; const e = toggleTowerPass(UI.S, b, +other); say(e || 'Проход изменён', !e); recomputeAll(); renderSheet(true); },
   minsheet() { UI.sheetMin = !UI.sheetMin; renderSheet(true); },
@@ -392,13 +397,18 @@ const ACT = {
   fkill2(id) { closeModal(); const e = folkKill(UI.S, id, false); say(e || 'Приказ выполнен', !e); const f = folkGet(UI.S, id); if (!f || f.st === 'dead') openList('folk'); else renderSheet(true); },
   fmerc(id) { const f = folkGet(UI.S, id); if (!f) return; const e = folkKill(UI.S, id, true); say(e || 'Наёмники вышли на дело — результат будет известен сразу', !e); const g = folkGet(UI.S, id); if (!g || g.st === 'dead') openList('folk'); else renderSheet(true); },
   fprison(a) { const [id, y] = a.split(':'); const e = folkPrison(UI.S, id, y === '1'); say(e || (y === '1' ? 'Посажен в тюрьму' : 'Освобождён'), !e); renderSheet(true); },
+  fgift(id) { const e = folkGift(UI.S, id); say(e || 'Подарок вручён', !e); renderSheet(true); },
+  ffeast(id) { const e = folkGift(UI.S, id, true); say(e || 'Пир устроен', !e); renderSheet(true); },
+  fdraft(id) { const e = folkDraft(UI.S, id); say(e || 'Житель призван в ополчение', !e); renderSheet(true); },
+  stopset(a) { const [id, n] = a.split(':'); const b = UI.S.bmap.get(+id); if (!b) return; b.stop = +n ? +n : null; renderSheet(true); },
+  song() { SND.next(); showSettings(true); },
   nations() { closeModal(); showNatList(); }, polsan() { closeModal(); showSanctionPick(); },
   nat(id) { showNatCard(+id); }, sancpick(id) { showSanctions(+id); },
   sanc(a) { const [k, id] = a.split(':'); const e = applySanction(UI.S, 0, +id, k); say(e || 'Санкция введена', !e); recomputeAll(); showSanctions(+id); },
   unsanc(a) { const [k, id] = a.split(':'); const e = liftSanction(UI.S, 0, +id, k); say(e || 'Санкция снята', !e); recomputeAll(); showSanctions(+id); },
   attack() { closeModal(); showAttack(); },
-  warask(id) { const q = UI.S.players[+id]; if (!q || +id === 0) return; confirmBox('Объявить войну?', 'Вы объявляете войну: <b>' + esc(q.name) + '</b>. Армии сразу смогут вступать на их землю.', 'Напасть!', 'doattack:' + id); },
-  doattack(id) { closeModal(); const S = UI.S, q = S.players[+id]; if (!q || +id === 0 || !q.alive) return; if (atWar(S, 0, +id)) return say('Война уже идёт', false); startWar(S, 0, +id); say('Война объявлена: ' + q.name, true); SND.play('horn'); recomputeAll(); },
+  warask(id) { const q = UI.S.players[+id]; if (!q || +id === 0) return; const r = rel(UI.S, 0, +id); if (r.ally) return say('Это союзник — сначала разорвите союз в ПОЛИТ.', false); confirmBox('Объявить войну?', 'Вы объявляете войну: <b>' + esc(q.name) + '</b>. Армии сразу смогут вступать на их землю.', 'Напасть!', 'doattack:' + id); },
+  doattack(id) { closeModal(); const S = UI.S, q = S.players[+id]; if (!q || +id === 0 || !q.alive) return; if (atWar(S, 0, +id)) return say('Война уже идёт', false); const e = startWar(S, 0, +id); if (e) return say(e, false); say('Война объявлена: ' + q.name, true); SND.play('horn'); recomputeAll(); },
   place(t) { if (t !== 'city' && !BD[t]) return; RN.sel = null; RN.place = { type: t, x: null, y: null }; setSheet({ k: 'place' }); renderTabs(); },
   confirmplace() {
     const pl = RN.place; if (!pl || pl.x == null) return; const S = UI.S, isLine = (pl.type === 'wall' || pl.type === 'moat') && pl.x2 != null;
@@ -575,7 +585,7 @@ function showRecords() {
 }
 function showSettings(keep) {
   const row = (k, name, hint) => `<div class="opt"><div>${name}<div class="dim">${hint}</div></div>${btn('toggle:' + k, SET[k] ? 'Вкл.' : 'Выкл.', SET[k] ? 'on' : '')}</div>`;
-  let b = row('sfx', 'Звуки', 'Щелчки, бой, сигналы') + row('music', 'Музыка', 'Лютня на фоне') + row('hints', 'Подсказки плана', 'Свиток с текущим шагом развития') + row('confirm', 'Спрашивать перед сносом', 'Защита от случайного нажатия');
+  let b = row('sfx', 'Звуки', 'Щелчки, бой, сигналы') + row('music', 'Музыка', 'Лютня на фоне') + `<div class="opt"><div>Мелодия<div class="dim">${esc(SND.songName() || 'сменяется автоматически')}</div></div>${btn('song', 'Следующая')}</div>` + row('hints', 'Подсказки плана', 'Свиток с текущим шагом развития') + row('confirm', 'Спрашивать перед сносом', 'Защита от случайного нажатия');
   b += `<div class="dim" style="margin-top:8px">Kingdom Crash ${GAME_VERSION}. Игра работает без интернета и ничего никуда не отправляет.</div>`;
   showModal(IMG('gear', 22) + 'Настройки', b, UI.S ? null : btn('closemodal', 'Закрыть', 'gold') + (hasSave() ? btn('askdrop', 'Удалить сохранение') : ''), { kind: 'settings', keep, back: UI.S ? 'menu' : '' });
 }
@@ -632,7 +642,7 @@ function showNatCard(id) {
   else {
     if (ci && ci.ready) btns.push(btn('war:' + id, 'Объявить войну', 'gold'));
     else if (!ci && !r.ally) btns.push(btn('claim:' + id, 'Претензия'));
-    btns.push(btn('warask:' + id, 'Напасть сразу'));
+    if (!r.ally) btns.push(btn('warask:' + id, 'Напасть сразу'));
     if (!r.ally && r.st === 'peace') btns.push(btn('offer:ally:' + id, 'Союз'));
     if (r.ally) btns.push(btn('breakally:' + id, 'Разорвать союз'));
     if (r.st === 'peace' && !r.trade) btns.push(btn('offer:trade:' + id, 'Торговля'));
@@ -664,7 +674,7 @@ function showSanctions(id) {
 function showAttack() {
   const S = UI.S; if (!S) return;
   showModal(IMG('skull', 22) + 'Объявить войну', `<div class="dim">Выберите страну. Война объявляется сразу — армии смогут вступать на их землю.</div><div class="list">` +
-    S.players.filter(q => q.id !== 0 && q.alive).map(q => { const r = rel(S, 0, q.id); return `<div class="it"><div class="g">${sw(q.col)} ${esc(q.name)}<div class="dim">мощь ${Math.round(milPower(S, q.id))} против вашей ${Math.round(milPower(S, 0))} · ${r.st === 'war' ? 'уже воюем' : r.ally ? 'союзник' : r.st === 'truce' ? 'перемирие' : 'мир'}</div></div>${r.st === 'war' ? '' : btn('warask:' + q.id, 'Напасть', 'gold')}</div>`; }).join('') + '</div>',
+    S.players.filter(q => q.id !== 0 && q.alive).map(q => { const r = rel(S, 0, q.id); return `<div class="it"><div class="g">${sw(q.col)} ${esc(q.name)}<div class="dim">мощь ${Math.round(milPower(S, q.id))} против вашей ${Math.round(milPower(S, 0))} · ${r.st === 'war' ? 'уже воюем' : r.ally ? 'союзник' : r.st === 'truce' ? 'перемирие' : 'мир'}</div></div>${r.st === 'war' || r.ally ? '' : btn('warask:' + q.id, 'Напасть', 'gold')}</div>`; }).join('') + '</div>',
     btn('closemodal', 'Закрыть'), { kind: 'war' });
 }
 const NAT_ACTS = { claim: 1, breakally: 1, war: 1, offer: 1, canceltrade: 1, doattack: 1 };
