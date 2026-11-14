@@ -140,5 +140,44 @@ const SND = (() => {
     else if (ready) { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}); }
   });
   ['pointerdown', 'touchend', 'keydown'].forEach(ev => window.addEventListener(ev, unlock, { passive: true }));
-  return { play, set, unlock, next, songName, state: () => (ctx ? ctx.state : 'none') };
+  /* ----- саундтрек: готовые записи мелодий игры (плеер в настройках) ----- */
+  const TRACKS = [
+    { n: 'Пляска', src: 'soundtrack/01-plyaska.mp3' },
+    { n: 'Вечерняя баллада', src: 'soundtrack/02-vechernyaya-ballada.mp3' },
+    { n: 'Марш дружины', src: 'soundtrack/03-marsh-druzhiny.mp3' },
+    { n: 'Ярмарка', src: 'soundtrack/04-yarmarka.mp3' }
+  ];
+  let trEl = null, trIdx = 0, trPlay = false;
+  function trackName() { return TRACKS[trIdx].n; }
+  function trackPlaying() { return trPlay; }
+  function trackEl() {
+    if (!trEl && typeof window.Audio === 'function') {
+      try {
+        trEl = new window.Audio(); trEl.preload = 'none'; trEl.volume = 0.75;
+        trEl.addEventListener('ended', () => trackNext());
+        trEl.addEventListener('error', () => { trPlay = false; });
+      } catch (e) { trEl = null; }
+    }
+    return trEl;
+  }
+  function trackToggle() {
+    const el = trackEl(); if (!el) return false;
+    if (trPlay) { try { el.pause(); } catch (e) {} trPlay = false; return false; }
+    try {
+      if (!el.src || el.src.indexOf(TRACKS[trIdx].src) < 0) el.src = TRACKS[trIdx].src;
+      const pr = el.play(); if (pr && pr.then) pr.catch(() => { trPlay = false; });
+      trPlay = true;
+    } catch (e) { trPlay = false; }
+    return trPlay;
+  }
+  function trackNext() {
+    trIdx = (trIdx + 1) % TRACKS.length;
+    const el = trackEl(); if (!el) return;
+    try {
+      el.src = TRACKS[trIdx].src;
+      const pr = el.play(); if (pr && pr.then) pr.catch(() => { trPlay = false; });
+      trPlay = true;
+    } catch (e) { trPlay = false; }
+  }
+  return { play, set, unlock, next, songName, state: () => (ctx ? ctx.state : 'none'), trackToggle, trackNext, trackName, trackPlaying };
 })();

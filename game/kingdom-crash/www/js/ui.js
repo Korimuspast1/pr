@@ -402,6 +402,8 @@ const ACT = {
   fdraft(id) { const e = folkDraft(UI.S, id); say(e || 'Житель призван в ополчение', !e); renderSheet(true); },
   stopset(a) { const [id, n] = a.split(':'); const b = UI.S.bmap.get(+id); if (!b) return; b.stop = +n ? +n : null; renderSheet(true); },
   song() { SND.next(); showSettings(true); },
+  track() { SND.trackToggle(); showSettings(true); },
+  tracknext() { SND.trackNext(); showSettings(true); },
   nations() { closeModal(); showNatList(); }, polsan() { closeModal(); showSanctionPick(); },
   nat(id) { showNatCard(+id); }, sancpick(id) { showSanctions(+id); },
   sanc(a) { const [k, id] = a.split(':'); const e = applySanction(UI.S, 0, +id, k); say(e || 'Санкция введена', !e); recomputeAll(); showSanctions(+id); },
@@ -585,7 +587,7 @@ function showRecords() {
 }
 function showSettings(keep) {
   const row = (k, name, hint) => `<div class="opt"><div>${name}<div class="dim">${hint}</div></div>${btn('toggle:' + k, SET[k] ? 'Вкл.' : 'Выкл.', SET[k] ? 'on' : '')}</div>`;
-  let b = row('sfx', 'Звуки', 'Щелчки, бой, сигналы') + row('music', 'Музыка', 'Лютня на фоне') + `<div class="opt"><div>Мелодия<div class="dim">${esc(SND.songName() || 'сменяется автоматически')}</div></div>${btn('song', 'Следующая')}</div>` + row('hints', 'Подсказки плана', 'Свиток с текущим шагом развития') + row('confirm', 'Спрашивать перед сносом', 'Защита от случайного нажатия');
+  let b = row('sfx', 'Звуки', 'Щелчки, бой, сигналы') + row('music', 'Музыка', 'Лютня на фоне') + `<div class="opt"><div>Мелодия<div class="dim">${esc(SND.songName() || 'сменяется автоматически')}</div></div>${btn('song', 'Следующая')}</div>` + `<div class="opt"><div>Саундтрек<div class="dim">${esc(SND.trackName())}${SND.trackPlaying() ? ' · играет' : ''}</div></div>${btn('track', SND.trackPlaying() ? 'Стоп' : 'Слушать')}${btn('tracknext', 'Дальше')}</div>` + row('hints', 'Подсказки плана', 'Свиток с текущим шагом развития') + row('confirm', 'Спрашивать перед сносом', 'Защита от случайного нажатия');
   b += `<div class="dim" style="margin-top:8px">Kingdom Crash ${GAME_VERSION}. Игра работает без интернета и ничего никуда не отправляет.</div>`;
   showModal(IMG('gear', 22) + 'Настройки', b, UI.S ? null : btn('closemodal', 'Закрыть', 'gold') + (hasSave() ? btn('askdrop', 'Удалить сохранение') : ''), { kind: 'settings', keep, back: UI.S ? 'menu' : '' });
 }
