@@ -1,0 +1,121 @@
+name: Build RootDB Pro APK
+
+on:
+  push:
+    branches: [arena/70c231a7-pr]
+    paths:
+      - 'rootdb-editor/**'
+      - '.github/workflows/build-rootdb.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK (manual, no third-party action)
+        run: |
+          set -e
+          mkdir -p "$HOME/android-sdk/cmdline-tools"
+          cd "$HOME/android-sdk/cmdline-tools"
+          curl -fsSL -o tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q tools.zip
+          mv cmdline-tools latest
+          rm tools.zip
+          echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> "$GITHUB_ENV"
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$HOME/android-sdk/platform-tools" >> "$GITHUB_PATH"
+          echo "$HOME/android-sdk/build-tools/35.0.0" >> "$GITHUB_PATH"
+
+      - name: Install SDK packages
+        run: |
+          set -e
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+
+      - name: Build debug APK
+        working-directory: rootdb-editor
+        run: |
+          ./gradlew assembleDebug --stacktrace --no-daemon > build.log 2>&1 || { echo "===== BUILD FAILED, last 150 lines ====="; tail -n 150 build.log; exit 1; }
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: rootdb-editor/build.log
+          retention-days: 7
+
+      - name: Publish build errors as annotations
+        if: failure()
+        run: |
+          echo "===== ERRORS (annotations) ====="
+          grep -E "^e: |error:|FAILED|What went wrong|Could not|Execution failed|Unresolved reference|Type mismatch|None of the following|incompatible|manifest merger|Resource compilation|Android resource linking|minCompileSdk|aar-metadata" rootdb-editor/build.log | head -n 80 | while IFS= read -r line; do
+            clean=$(echo "$line" | tr -d '\r' | sed 's/%/%25/g')
+            echo "::error::$clean"
+          done
+          echo "===== TAIL ====="
+          tail -n 60 rootdb-editor/build.log | while IFS= read -r line; do
+            clean=$(echo "$line" | tr -d '\r' | sed 's/%/%25/g')
+            echo "::error::$clean"
+          done
+
+      - name: Verify APK signature and manifest
+        continue-on-error: true
+        run: |
+          BT="$HOME/android-sdk/build-tools/35.0.0"
+          echo "--- build-tools dir ---"
+          ls "$BT" 2>&1 | head -n 30 || ls "$HOME/android-sdk/build-tools" 2>&1 | head
+          APK=$(find rootdb-editor/app/build/outputs/apk/debug -name '*.apk' | head -n1)
+          echo "APK: $APK"
+          ls -lh "$APK"
+          "$BT/apksigner" verify --verbose "$APK" || echo "apksigner: check failed"
+          "$BT/aapt2" dump badging "$APK" | head -n 20 || echo "aapt2: check failed"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RootDB-Pro
+          path: rootdb-editor/app/build/outputs/apk/debug/*.apk
+          retention-days: 90
+
+      - name: Commit APK to release/
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p release
+          cp rootdb-editor/app/build/outputs/apk/debug/*.apk release/RootDB-Pro.apk
+          git add release/RootDB-Pro.apk
+          git commit -m "release: RootDB Pro APK (auto)" || echo "nothing to commit"
+          git push origin HEAD:${{ github.ref_name }} || echo "push skipped"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: RootDB Pro v1.0.0
+          body: |
+            RootDB Pro — root-редактор локальных баз (Material Expressive).
+
+            - Список всех приложений, сканирование SQLite/SQLCipher-баз через root
+            - Просмотр и правки таблиц, SQL-консоль, глобальный поиск
+            - Расшифровка SQLCipher в обычную SQLite, AES-декодер значений
+            - SharedPreferences и файлы через root, бэкапы
+            - Guardian: фоновая защита правок от отката
+
+            Установите APK, выдайте Root (Magisk/KernelSU) и разрешите уведомления для Guardian.
+          files: rootdb-editor/app/build/outputs/apk/debug/*.apk
+          fail_on_unmatched_files: true
