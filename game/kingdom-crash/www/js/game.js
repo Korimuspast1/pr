@@ -1169,8 +1169,10 @@ function saveGame(S, slot) {
 }
 // краткие сведения о слотах: показываются в списке сохранений
 function readSaveMeta(slot) {
+  let raw = null;
+  try { raw = localStorage.getItem(saveKey(slot)); } catch (e) { return null; } // хранилище недоступно — это не «повреждено»
   try {
-    const raw = localStorage.getItem(saveKey(slot)); if (!raw || raw.length < 100 || raw[0] !== '{') return null;
+    if (!raw || raw.length < 100 || raw[0] !== '{') return null;
     const d = JSON.parse(raw); if (!d || (d.v !== 1 && d.v !== 2)) return null;
     const m = d.meta && typeof d.meta === 'object' ? d.meta : {};
     return { slot, name: _s(m.name || (Array.isArray(d.players) && d.players[0] && d.players[0].name) || 'Партия', 28), ci: _i(m.ci, 0, PNAMES.length - 1, 0),

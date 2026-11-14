@@ -353,7 +353,7 @@ function listHtml(sh) {
         `<div class="row sp"><span>Настроение</span><b class="${f.mood > 60 ? 'gd' : f.mood < 35 ? 'bad' : ''}">${Math.round(f.mood)}%</b></div>` +
         `<div class="row sp"><span>Статус</span><b>${f.st === 'prison' ? 'в тюрьме' : 'на свободе'}</b></div>` +
         `<div class="dim" style="margin-top:6px">С ним можно сделать что-нибудь: казнить, нанять наёмников анонимно или посадить в тюрьму.</div>` +
-        `<div class="btns">${btn('fkill1:' + f.id, 'Казнить')}${btn('fmerc:' + f.id, 'Наёмники (анонимно)', 'gold')}${f.st === 'prison' ? btn('fprison:' + f.id + ':0', 'Освободить') : btn('fprison:' + f.id + ':1', 'В тюрьму')}</div>` +
+        `<div class="btns">${btn('folk', '← К списку')}${btn('fkill1:' + f.id, 'Казнить')}${btn('fmerc:' + f.id, 'Наёмники (анонимно)', 'gold')}${f.st === 'prison' ? btn('fprison:' + f.id + ':0', 'Освободить') : btn('fprison:' + f.id + ':1', 'В тюрьму')}</div>` +
         `<div class="dim">Наёмники стоят 150 золота и делают дело без следов. Публичная казнь пугает людей.</div>`;
       break;
     }
@@ -387,10 +387,10 @@ const ACT = {
   save() { UI.saveMode = 'save'; showSaves('save'); },
   menu() { showMenuModal(); }, cities() { openList('cities'); }, armies() { openList('armies'); }, barr() { openList('barracks'); }, taverns() { openList('taverns'); }, ports() { openList('ports'); }, ships() { openList('ships'); },
   dip() { openList('dip'); }, trade() { openList('trade'); }, eco() { openList('eco'); }, ult() { openList('ult'); },
-  folk() { openList('folk'); }, folkone(id) { setSheet({ k: 'folkone', id: +id }); },
+  folk() { openList('folk'); }, folkone(id) { setSheet({ k: 'list', what: 'folkone', id: +id }); },
   fkill1(id) { const f = folkGet(UI.S, id); if (!f) return; confirmBox('Казнить жителя?', '<b>' + esc(f.name) + '</b> будет казнён публично. Люди встревожены.', 'Казнить', 'fkill2:' + id, 'saves'); },
-  fkill2(id) { closeModal(); const e = folkKill(UI.S, id, false); say(e || 'Приказ выполнен', !e); renderSheet(true); },
-  fmerc(id) { const f = folkGet(UI.S, id); if (!f) return; const e = folkKill(UI.S, id, true); say(e || 'Наёмники вышли на дело — результат будет известен сразу', !e); renderSheet(true); },
+  fkill2(id) { closeModal(); const e = folkKill(UI.S, id, false); say(e || 'Приказ выполнен', !e); const f = folkGet(UI.S, id); if (!f || f.st === 'dead') openList('folk'); else renderSheet(true); },
+  fmerc(id) { const f = folkGet(UI.S, id); if (!f) return; const e = folkKill(UI.S, id, true); say(e || 'Наёмники вышли на дело — результат будет известен сразу', !e); const g = folkGet(UI.S, id); if (!g || g.st === 'dead') openList('folk'); else renderSheet(true); },
   fprison(a) { const [id, y] = a.split(':'); const e = folkPrison(UI.S, id, y === '1'); say(e || (y === '1' ? 'Посажен в тюрьму' : 'Освобождён'), !e); renderSheet(true); },
   nations() { closeModal(); showNatList(); }, polsan() { closeModal(); showSanctionPick(); },
   nat(id) { showNatCard(+id); }, sancpick(id) { showSanctions(+id); },
