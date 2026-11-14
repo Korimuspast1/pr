@@ -1,0 +1,15 @@
+{
+  "name": "isocity-tools",
+  "private": true,
+  "type": "module",
+  "description": "Headless tests and PNG renderer for the pixel city",
+  "scripts": {
+    "test": "node live-test.mjs 40",
+    "shot": "node app-shot.mjs ../app.png 1280 800 300 14 560",
+    "smoke": "node smoke.mjs",
+    "preview": "node preview.mjs 1400 900 ../docs/day.png 560 2 20 18 14"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^0.1.60"
+  }
+}
