@@ -1,0 +1,13 @@
+{
+  "name": "blood-sandbox",
+  "private": true,
+  "type": "module",
+  "version": "2.0.0",
+  "description": "2D gore sandbox — spawn people, cut limbs, realistic ragdoll physics and blood loss",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "test": "node test/sandbox.mjs",
+    "render": "node test/render.mjs"
+  }
+}
