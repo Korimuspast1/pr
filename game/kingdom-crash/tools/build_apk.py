@@ -79,6 +79,7 @@ def patch_manifest_xml(data, version_name, version_code):
             return bytes(buf)
         pool_size = next(sz for p, t, sz in chunks if p == pool)
         strs = _pool_strings(bytes(buf[pool:pool + pool_size]))
+        strs = [(pool + body, ln, old) for body, ln, old in strs]  # смещения в файле, не в пуле
 
         def _key(raw):  # строка может быть в UTF-8 или UTF-16
             for enc in ('utf-8', 'utf-16-le'):
@@ -121,6 +122,8 @@ def patch_manifest_xml(data, version_name, version_code):
                             break
                     if new is not None and new != old:
                         buf[body:body + ln] = new
+        # контроль: строка версии действительно заменена, длина файла не изменилась
+        assert len(buf) == len(data), 'патч манифеста изменил размер файла!'
         return bytes(buf)
     except Exception as e:  # не фатально: версия в манифесте просто не обновится
         print('  ! манифест не пропатчен:', e)
@@ -328,6 +331,18 @@ def main():
         ok &= r.returncode == 0
         os.remove(sf_path)
         os.remove(rsa_path)
+
+    try:
+        from androguard.core.apk import APK  # noqa
+        a = APK(args.out)
+        good = a.is_valid_APK() and a.get_androidversion_name() == ver and str(a.get_androidversion_code()) == str(code)
+        print('androguard: манифест распознан, версия %s (%s)' % (a.get_androidversion_name(), a.get_androidversion_code()))
+        ok &= bool(good)
+    except ImportError:
+        print('androguard: не установлен, проверка манифеста пропущена')
+    except Exception as e:
+        print('! манифест не прошёл проверку androguard:', e)
+        ok = False
 
     print('итог:', 'OK' if ok else 'ЕСТЬ ОШИБКИ')
     return 0 if ok else 1
