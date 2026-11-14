@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Страшный рёв — 6 секунд</title>
+<style>
+  :root { --bg:#080a0f; --card:#10141d; --line:#222a3a; --fg:#e9eef8; --dim:#8b97ad; --accent:#ff4d5e; --cyan:#5ad7e5; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:radial-gradient(1100px 600px at 50% -10%, #172033 0%, var(--bg) 65%);
+         color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+         display:flex; align-items:center; justify-content:center; padding:28px 18px; }
+  .wrap { width:min(760px,100%); }
+  h1 { font-size:clamp(24px,5vw,38px); margin:0 0 6px; letter-spacing:-.02em; }
+  .sub { color:var(--dim); margin:0 0 26px; font-size:15px; line-height:1.5; }
+  .card { background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0)) ,var(--card);
+          border:1px solid var(--line); border-radius:18px; padding:26px; box-shadow:0 24px 70px rgba(0,0,0,.5); }
+  canvas { width:100%; height:150px; display:block; border-radius:10px; background:#090c12; border:1px solid var(--line); }
+  .row { display:flex; align-items:center; gap:16px; margin-top:22px; flex-wrap:wrap; }
+  button { appearance:none; border:0; cursor:pointer; font:inherit; font-weight:700; color:#fff;
+           background:linear-gradient(135deg,var(--accent),#b3243a); padding:15px 30px; border-radius:999px;
+           font-size:16px; letter-spacing:.01em; box-shadow:0 8px 26px rgba(255,77,94,.28); transition:transform .12s, filter .12s; }
+  button:hover { transform:translateY(-2px); filter:brightness(1.1); }
+  button:active { transform:translateY(0); }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--dim); box-shadow:none; padding:14px 20px; font-size:14px; font-weight:600; }
+  button.ghost:hover { color:var(--fg); border-color:#3a4a63; }
+  .time { font-variant-numeric:tabular-nums; color:var(--dim); font-size:14px; min-width:96px; }
+  .vol { display:flex; align-items:center; gap:9px; color:var(--dim); font-size:13px; margin-left:auto; }
+  input[type=range] { accent-color:var(--accent); width:110px; }
+  .marks { display:flex; justify-content:space-between; color:#5d6880; font-size:11px; margin-top:8px; padding:0 2px; }
+  .links { margin-top:24px; display:flex; gap:10px; flex-wrap:wrap; }
+  .links a { color:var(--cyan); text-decoration:none; border:1px solid var(--line); padding:9px 15px; border-radius:9px; font-size:13px; }
+  .links a:hover { border-color:var(--cyan); }
+  .note { color:#66728a; font-size:12px; line-height:1.6; margin-top:20px; }
+  .bar { height:3px; background:var(--line); border-radius:9px; overflow:hidden; margin-top:14px; }
+  .bar i { display:block; height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--cyan)); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Страшный рёв</h1>
+  <p class="sub">6 секунд. Низкий звериный рык с питч-дауном, визгом и инфразвуком.<br>Сделано с нуля — ассеты Voices of the Void не использовались.</p>
+
+  <div class="card">
+    <canvas id="wave" width="1400" height="300"></canvas>
+    <div class="marks"><span>0.0 с · удар</span><span>1.3 с · крик</span><span>2.5 с · визг</span><span>4.0 с · урчание</span><span>6.0 с · затухание</span></div>
+    <div class="bar"><i id="bar"></i></div>
+
+    <div class="row">
+      <button id="play">▶ Слушать</button>
+      <button id="loop" class="ghost">⟳ Повтор: выкл</button>
+      <span class="time" id="time">0:00 / 0:06</span>
+      <label class="vol">Громкость <input id="vol" type="range" min="0" max="100" value="85"></label>
+    </div>
+
+    <div class="links">
+      <a href="scary-roar-6s.wav" download>WAV 16-bit</a>
+      <a href="scary-roar-6s.mp3" download>MP3 192 kbps</a>
+      <a href="scary-roar-6s.ogg" download>OGG Vorbis</a>
+      <a href="README.md">README</a>
+      <a href="render.py">render.py</a>
+    </div>
+
+    <p class="note">⚠️ Начинайте с небольшой громкости: много суб-баса 25–60 Гц. На маленьких колонках включите наушники — иначе низ не услышать.</p>
+  </div>
+</div>
+
+<audio id="audio" src="scary-roar-6s.mp3" preload="auto"></audio>
+<script>
+const audio = document.getElementById('audio');
+const playBtn = document.getElementById('play');
+const loopBtn = document.getElementById('loop');
+const timeEl = document.getElementById('time');
+const vol = document.getElementById('vol');
+const bar = document.getElementById('bar');
+const canvas = document.getElementById('wave');
+const ctx = canvas.getContext('2d');
+
+audio.volume = 0.85;
+let looping = false;
+
+function fmt(s){ return '0:' + String(Math.floor(s)).padStart(2,'0') + '.' + String(Math.floor((s%1)*10)); }
+
+playBtn.onclick = async () => {
+  if (audio.paused) {
+    try { await audio.play(); } catch(e) { playBtn.textContent = 'Ошибка воспроизведения'; }
+  } else { audio.pause(); }
+};
+audio.onplay  = () => playBtn.textContent = '❚❚ Пауза';
+audio.onpause = () => playBtn.textContent = '▶ Слушать';
+audio.onended = () => { playBtn.textContent = '▶ Слушать'; bar.style.width = '0%'; };
+loopBtn.onclick = () => {
+  looping = !looping;
+  audio.loop = looping;
+  loopBtn.textContent = '⟳ Повтор: ' + (looping ? 'вкл' : 'выкл');
+};
+vol.oninput = () => audio.volume = vol.value / 100;
+audio.ontimeupdate = () => {
+  const p = audio.duration ? audio.currentTime / audio.duration : 0;
+  bar.style.width = (p*100).toFixed(1) + '%';
+  timeEl.textContent = fmt(audio.currentTime) + ' / ' + fmt(audio.duration || 6);
+};
+
+fetch('scary-roar-6s.wav').then(r => r.arrayBuffer()).then(buf => {
+  const ac = new (window.AudioContext || window.webkitAudioContext)();
+  ac.decodeAudioData(buf).then(d => {
+    const data = d.getChannelData(0);
+    const W = canvas.width, H = canvas.height, step = Math.floor(data.length / W);
+    const grad = ctx.createLinearGradient(0,0,W,0);
+    grad.addColorStop(0,'#ff4d5e'); grad.addColorStop(.55,'#ff8a5c'); grad.addColorStop(1,'#5ad7e5');
+    ctx.fillStyle = '#090c12'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = 1;
+    for(let i=1;i<5;i++){ ctx.beginPath(); ctx.moveTo(0,H*i/5); ctx.lineTo(W,H*i/5); ctx.stroke(); }
+    ctx.fillStyle = grad;
+    for(let x=0;x<W;x++){
+      let mn=1, mx=-1;
+      for(let j=0;j<step;j+=3){ const v=data[x*step+j]||0; if(v<mn)mn=v; if(v>mx)mx=v; }
+      const y1 = H/2 - mx*H*0.46, y2 = H/2 - mn*H*0.46;
+      ctx.fillRect(x, y1, 1, Math.max(1, y2-y1));
+    }
+  }).catch(()=>{});
+}).catch(()=>{});
+</script>
+</body>
+</html>
