@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kingdom Crash</string>
+    <string name="no_webview">Не удалось запустить системный компонент «Android System WebView».\n\nОбновите или включите его в магазине приложений и откройте игру снова.</string>
+</resources>

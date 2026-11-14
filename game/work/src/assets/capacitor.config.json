@@ -1,0 +1,9 @@
+{
+	"appId": "com.kingdomcrash.game",
+	"appName": "Kingdom Crash",
+	"webDir": "www",
+	"backgroundColor": "#1b2013",
+	"android": {
+		"allowMixedContent": false
+	}
+}

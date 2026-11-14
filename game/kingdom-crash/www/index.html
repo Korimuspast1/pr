@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- Игра полностью автономна: скрипты и стили только свои, сеть не нужна и запрещена -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data: blob:; font-src 'self' file: data:; media-src 'self' file: data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#2b2926">
+<title>Kingdom Crash</title>
+<link rel="stylesheet" href="font.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+  <div id="fade"></div>
+
+  <div id="hud" class="hidden">
+    <div id="topbar">
+      <div id="flag"><i id="flagc"></i></div>
+      <div id="nation"></div>
+      <div id="score"><span id="scoreI"></span><b id="scoreN">0</b></div>
+      <div id="clock"></div>
+      <button class="px" id="burger" data-act="menu" aria-label="Меню"></button>
+    </div>
+    <div id="resbar"></div>
+    <button class="px" id="inboxBtn" data-act="inbox"><span id="inboxIc"></span><span class="lbl">ПИСЬМА</span><b id="badge" class="hidden">0</b></button>
+    <button id="plan" data-act="plan" class="hidden"></button>
+    <div id="toasts"></div>
+    <canvas id="mm" width="160" height="160" class="hidden"></canvas>
+    <div id="sheet" class="hidden"></div>
+    <div id="tabs"></div>
+    <div id="bar"></div>
+  </div>
+
+  <div id="menu" class="screen">
+    <div class="title"><div class="t1">KINGDOM</div><div class="t2">CRASH</div></div>
+    <div class="sub">средневековая стратегия</div>
+    <div class="col">
+      <button class="px big gold" data-act="newgame">ИГРАТЬ</button>
+      <button class="px big hidden" id="contBtn" data-act="continue">ПРОДОЛЖИТЬ</button>
+      <button class="px big" data-act="howto">КАК ИГРАТЬ</button>
+      <div class="row3">
+        <button class="px sm" data-act="ach"><span id="mAch"></span>НАГРАДЫ</button>
+        <button class="px sm" data-act="records"><span id="mRec"></span>РЕКОРДЫ</button>
+        <button class="px sm" data-act="settings"><span id="mSet"></span>НАСТРОЙКИ</button>
+      </div>
+    </div>
+    <div class="ver" id="ver"></div>
+  </div>
+
+  <div id="create" class="screen hidden"></div>
+  <div id="modal" class="hidden"></div>
+  <div id="loading" class="hidden"><div class="box"><div id="loadTxt">Создаём мир...</div><div class="pb"><i></i></div></div></div>
+</div>
+<script src="js/boot.js"></script>
+<script src="js/data.js"></script>
+<script src="js/map.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/terrain.js"></script>
+<script src="js/render.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
