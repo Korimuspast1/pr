@@ -96,7 +96,7 @@ const run = (S, n) => { for (let i = 0; i < n; i++) G.tick(S, 0.25); };
   run(S, 800);
   const acts = {};
   for (const f of S.folk) if (f.st === 'ok') acts[f.act] = (acts[f.act] || 0) + 1;
-  ok((acts.work || 0) + (acts.rest || 0) + (acts.walk || 0) + (acts.chat || 0) === S.folk.filter(f => f.st === 'ok').length, 'каждый житель занят делом');
+  ok((acts.work || 0) + (acts.rest || 0) + (acts.walk || 0) + (acts.chat || 0) + (acts.dance || 0) === S.folk.filter(f => f.st === 'ok').length, 'каждый житель занят делом');
   ok((acts.work || 0) > 0 || (acts.rest || 0) > 0, 'есть работающие или отдыхающие', JSON.stringify(acts));
 }
 

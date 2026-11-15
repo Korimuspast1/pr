@@ -3,7 +3,7 @@
    Звуковых файлов в игре нет: эффекты и лютневая мелодия синтезируются на лету (Web Audio).
    Если звук недоступен или отключён — модуль молча ничего не делает. */
 const SND = (() => {
-  let ctx = null, sfx = null, mus = null, ready = false, noiseBuf = null, timer = 0, song = null;
+  let ctx = null, sfx = null, mus = null, amb = null, ready = false, noiseBuf = null, timer = 0, song = null;
   const st = { sfx: true, music: true }, last = {}, plucks = {};
 
   function init() {
@@ -14,6 +14,7 @@ const SND = (() => {
       const comp = ctx.createDynamicsCompressor(); comp.connect(ctx.destination); // чтобы громкие моменты не хрипели
       sfx = ctx.createGain(); sfx.gain.value = 0.6; sfx.connect(comp);
       mus = ctx.createGain(); mus.gain.value = 0.5; mus.connect(comp);
+      amb = ctx.createGain(); amb.gain.value = 0.7; amb.connect(comp); // звуки природы
       const n = ctx.sampleRate; noiseBuf = ctx.createBuffer(1, n, n); const d = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
     } catch (e) { ctx = null; return false; }
     return true;
@@ -179,5 +180,66 @@ const SND = (() => {
       trPlay = true;
     } catch (e) { trPlay = false; }
   }
-  return { play, set, unlock, next, songName, state: () => (ctx ? ctx.state : 'none'), trackToggle, trackNext, trackName, trackPlaying };
+  /* ===== Звуки природы: ветер, птицы, говор людей ===== */
+  let _ambT = null, _wind = null;
+  function ambStart() {
+    if (!ctx || _ambT || !amb) return;
+    if (typeof SET !== 'undefined' && SET && !SET.ambient) return;
+    try { // тихий ветер — фоновый шум
+      const n = (ctx.sampleRate || 44100) * 2, buf = ctx.createBuffer(1, n, ctx.sampleRate || 44100), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
+      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+      const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = 380;
+      const g = ctx.createGain(); g.gain.value = 0.055;
+      src.connect(fl); fl.connect(g); g.connect(amb); src.start();
+      _wind = { src, g };
+    } catch (e) { }
+    _ambT = setInterval(function () {
+      if (!ctx || (typeof SET !== 'undefined' && SET && !SET.ambient)) return;
+      const r = Math.random();
+      if (r < 0.6) birds(); else if (r < 0.85) crowd();
+    }, 3800);
+  }
+  function ambStop() {
+    if (_ambT) { clearInterval(_ambT); _ambT = null; }
+    if (_wind) { try { _wind.src.stop(); } catch (e) { } _wind = null; }
+  }
+  function _chirp(t, f0, f1, dur, vol) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(120, f1), t + dur);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(amb); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function birds() { // птицы поют: 2-4 коротких свиста
+    if (!init() || !amb) return;
+    const t = ctx.currentTime + 0.05, n = 2 + ((Math.random() * 3) | 0);
+    for (let i = 0; i < n; i++) { const s0 = t + i * (0.14 + Math.random() * 0.22); _chirp(s0, 2200 + Math.random() * 1200, 1600 + Math.random() * 1400, 0.09 + Math.random() * 0.1, 0.075); }
+  }
+  function crowd() { // далёкий говор людей: шумовой всплеск
+    if (!init() || !amb) return;
+    const t = ctx.currentTime + 0.02, dur = 1.1 + Math.random() * 1.2;
+    try {
+      const n = (ctx.sampleRate || 44100) * 2, buf = ctx.createBuffer(1, n, ctx.sampleRate || 44100), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.6;
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const fl = ctx.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.value = 500 + Math.random() * 500; fl.Q.value = 1.2;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + dur * 0.4); g.gain.linearRampToValueAtTime(0, t + dur);
+      src.connect(fl); fl.connect(g); g.connect(amb); src.start(t); src.stop(t + dur + 0.1);
+    } catch (e) { }
+  }
+  function fest() { // фанфары праздника
+    if (!init() || !st.sfx) return;
+    const t = ctx.currentTime + 0.03, notes = [523, 659, 784, 1046];
+    for (let i = 0; i < notes.length; i++) {
+      const o = ctx.createOscillator(), g = ctx.createGain(), o2 = ctx.createOscillator();
+      o.type = 'triangle'; o2.type = 'sine';
+      o.frequency.value = notes[i]; o2.frequency.value = notes[i] * 2;
+      const stt = t + i * 0.16;
+      g.gain.setValueAtTime(0, stt); g.gain.linearRampToValueAtTime(0.16, stt + 0.03); g.gain.exponentialRampToValueAtTime(0.001, stt + 0.5);
+      o.connect(g); o2.connect(g); g.connect(sfx);
+      o.start(stt); o.stop(stt + 0.55); o2.start(stt); o2.stop(stt + 0.55);
+    }
+  }
+  return { play, set, unlock, next, songName, state: () => (ctx ? ctx.state : 'none'), trackToggle, trackNext, trackName, trackPlaying, ambStart, ambStop, birds, crowd, fest };
 })();

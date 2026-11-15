@@ -136,6 +136,9 @@ function frame(S, now) {
     if (RN.cam.z >= 1.1) { TERR.over(c, b.x, b.y + 1); TERR.over(c, b.x - 1, b.y + 1); TERR.over(c, b.x + 1, b.y + 1); }
     if (b.owner >= -1) animBuilding(c, b.type, b.x * TS, b.y * TS, ownerCol(S, b.owner), now / 1000, b.id, b.res, b);
     if (st && b.hp < b.mhp) { const f = Math.max(0, b.hp / b.mhp); if (f < 0.6) for (let k = 0; k < 3; k++) R_(c, b.x * TS + 3 + hash(b.x, b.y, k) * 9, b.y * TS + 3 + hash(b.x, b.y, k + 5) * 9, 0.5, 2.2 + k, '#2a2420'); R_(c, b.x * TS + 2, b.y * TS - 1.4, 12, 1.3, '#14100c'); R_(c, b.x * TS + 2.3, b.y * TS - 1.1, 11.4 * f, 0.7, f > 0.5 ? '#7dff7d' : f > 0.25 ? '#ffd24a' : '#ff6a4a'); }
+    if ((b.lvl || 1) > 1) { // значок уровня здания: 2-3 золотых ромба сверху
+      for (let k = 0; k < (b.lvl || 1); k++) { const yy = b.y * TS - 2.6 - Math.abs(Math.sin(tm * 2 + b.id + k)) * 0.5; R_(c, b.x * TS + 4 + k * 3, yy, 1.6, 1.6, '#f2c230'); R_(c, b.x * TS + 4.4 + k * 3, yy + 0.4, 0.8, 0.8, '#fff0c0'); }
+    }
     if (b.type === 'tower' && b.gar && b.gar.s.length) { const col = ownerCol(S, b.owner), n = Math.min(3, b.gar.s.length); for (let k = 0; k < n; k++) { const sh = b.gar.s[k], bob = tm - (sh.atk || -9) < 0.3 ? -0.3 : 0; drawFig(c, 'archer', col, b.x * TS + 4.2 + k * 3.8, b.y * TS + 4.6 + bob, 1); } }
   }
   // города
@@ -181,7 +184,8 @@ function frame(S, now) {
       const s2 = d.s, st = S.time - (s2.atk || -9), face = d.inB ? (s2.face || 1) : (a.face || 1); let fx = s2._dx, fy = s2._dy, by = d.walk ? -Math.abs(Math.sin(tm * 9 + d.i * 1.7)) * 0.45 : 0;
       if (d.inB && st < 0.24 && d.e.t !== 'archer') { fx += face * Math.sin(st / 0.24 * Math.PI) * 0.9; by -= 0.15; }
       drawFig(c, d.e.t, col, fx, fy + by, face, d.e.cls);
-      if (d.e.t === 'cmd') { c.save(); c.globalAlpha = 0.5 + 0.25 * Math.sin(tm * 3); c.strokeStyle = '#ffe27a'; c.lineWidth = 0.5; c.beginPath(); c.ellipse(fx, fy + 0.4, 2.8, 1.1, 0, 0, 6.3); c.stroke(); if (sel && sel.k === 'army' && sel.id === a.id) { c.globalAlpha = 0.45; c.setLineDash([2, 2]); c.lineWidth = 0.6; c.beginPath(); c.ellipse(fx, fy, AURA_R * TS, AURA_R * TS * 0.8, 0, 0, 6.3); c.stroke(); } c.restore(); }
+      if (d.e.t === 'cmd') { c.save(); c.globalAlpha = 0.5 + 0.25 * Math.sin(tm * 3); c.strokeStyle = '#ffe27a'; c.lineWidth = 0.5; c.beginPath(); c.ellipse(fx, fy + 0.4, 2.8, 1.1, 0, 0, 6.3); c.stroke();
+        { const lv = cmdLvl(d.e); for (let k = 0; k < lv; k++) { const sy2 = fy - 8.4 - Math.abs(Math.sin(tm * 2 + k)) * 0.6; R_(c, fx - lv + k * 2, sy2, 1.7, 1.7, '#f2c230'); R_(c, fx - lv + 0.45 + k * 2, sy2 + 0.45, 0.8, 0.8, '#fff2c8'); } } if (sel && sel.k === 'army' && sel.id === a.id) { c.globalAlpha = 0.45; c.setLineDash([2, 2]); c.lineWidth = 0.6; c.beginPath(); c.ellipse(fx, fy, AURA_R * TS, AURA_R * TS * 0.8, 0, 0, 6.3); c.stroke(); } c.restore(); }
       const mh = SQ[d.e.t].hp; if (s2.hp < mh * 0.98) { R_(c, fx - 1.5, fy - 4.6, 3, 0.55, '#14100c'); R_(c, fx - 1.4, fy - 4.5, 2.8 * Math.max(0, s2.hp / mh), 0.35, s2.hp / mh > 0.5 ? '#7dff7d' : s2.hp / mh > 0.25 ? '#ffd24a' : '#ff6a4a'); }
     }
     const bx = x - fm.w / 2 - 1.8; R_(c, bx, y - fm.h / 2 - 3.5, 0.4, 5.5, '#5a3a1a'); c.save(); c.translate(bx + 0.4, y - fm.h / 2 - 3.4); c.scale(0.55, 0.55); waveFlag(c, 0, 0, col, tm, a.id); c.restore();
@@ -226,8 +230,10 @@ function frame(S, now) {
       if (pl.type === 'city') { c.save(); c.globalAlpha = 0.12; c.fillStyle = '#fff'; c.beginPath(); c.ellipse((t.x + 1) * TS, (t.y + 1) * TS, 4 * TS, 4 * TS, 0, 0, 6.3); c.fill(); c.globalAlpha = 0.9; c.setLineDash([2, 2]); c.strokeStyle = '#fff'; c.lineWidth = 0.7; c.stroke(); c.restore(); }
     }
   }
+  drawCars(c, S, tm, vx0, vy0, vx1, vy1); drawFestFx(c, S, tm, vx0, vy0, vx1, vy1);
   // облака
   const cw = S.W * TS, off = (tm * 2.5) % cw; c.drawImage(RN.cloud, off, 0, cw, S.H * TS); c.drawImage(RN.cloud, off - cw, 0, cw, S.H * TS);
+  drawSkyBirds(c, S, tm, RN.cv.width, RN.cv.height);
   { // смена времени суток (плавно)
     const tn = todTint(todHours(S)), dark = Math.max(0, Math.min(1, (255 - tn[1]) / 150));
     { // тёплый тон + время суток. Приглушение красок вынесено в стили (filter у холста): раньше оно делалось здесь
@@ -235,6 +241,25 @@ function frame(S, now) {
       // Тон слегка усилен: приглушение теперь накладывается после него.
       const r0 = tn[0] * 0.98, g0 = tn[1] * 0.95, b0 = tn[2] * 0.9, lum = 0.213 * r0 + 0.715 * g0 + 0.072 * b0, bo = v => Math.max(0, Math.min(255, lum + (v - lum) / 0.64)) | 0;
       c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'multiply'; c.fillStyle = `rgb(${bo(r0)},${bo(g0)},${bo(b0)})`; c.fillRect(0, 0, RN.cv.width, RN.cv.height); c.restore(); c.imageSmoothingEnabled = false;
+    }
+    { // времена года и погода — только вид, на игру не влияет
+      const seas = Math.floor(S.time / (DAY * 10)) % 4; // весна-лето-осень-зима, каждые 10 игровых дней
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
+      c.globalCompositeOperation = 'multiply';
+      c.fillStyle = seas === 0 ? 'rgba(206,228,255,0.22)' : seas === 1 ? 'rgba(255,238,200,0.12)' : seas === 2 ? 'rgba(255,214,170,0.2)' : 'rgba(216,230,255,0.24)';
+      c.fillRect(0, 0, RN.cv.width, RN.cv.height);
+      c.globalCompositeOperation = 'source-over';
+      const p = Math.sin(S.time * 0.21) * 0.5 + 0.5, W2 = RN.cv.width, H2 = RN.cv.height;
+      const snow = seas === 3 && p > 0.25, leaves = seas === 2 && p > 0.3, rain = seas === 0 && p > 0.55;
+      if (snow || leaves || rain) for (let i = 0; i < 70; i++) {
+        const h1 = hash(i, 7, 3), h2 = hash(i, 11, 5), h3 = hash(i, 3, 9);
+        const sx = ((h1 * W2 + (leaves ? tm * 46 + Math.sin(tm + i) * 14 : 0)) % (W2 + 16)) - 8;
+        const sy = ((h2 * H2 + tm * (snow ? 46 : leaves ? 120 : 470) * (0.65 + h3 * 0.7)) % (H2 + 16)) - 8;
+        if (snow) { c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(sx, sy, 2, 2); }
+        else if (leaves) { c.fillStyle = i % 3 ? 'rgba(214,148,52,0.8)' : 'rgba(178,96,38,0.8)'; c.fillRect(sx, sy, 2, 1.6); }
+        else { c.fillStyle = 'rgba(165,195,235,0.5)'; c.fillRect(sx, sy, 1, 6); }
+      }
+      c.restore(); c.imageSmoothingEnabled = false;
     }
     if (dark > 0.12) { c.globalAlpha = Math.min(1, dark * 1.3);
       for (const ct of S.cities) { const ox = ct.x * TS, oy = ct.y * TS - 14; if (ct.x < vx0 - 3 || ct.x > vx1 || ct.y < vy0 - 3 || ct.y > vy1) continue; R_(c, ox + 14.5, oy + 27.5, 3, 3.5, '#ffd870'); const n = Math.min(6, 1 + ct.level); for (let i = 0; i < n; i++) { const h = CITY_HS[i]; R_(c, ox + (h[0] + 1.5) * 0.5, oy + (32 + h[1] + 6) * 0.5, 1, 1, '#ffd870'); R_(c, ox + (h[0] + 6.5) * 0.5, oy + (32 + h[1] + 6) * 0.5, 0.5, 1, '#ffb850'); } }
@@ -278,6 +303,46 @@ function markerHit(S, tx, ty) { // тап по значку армии
   for (const g of armyClusters(S)) { const m = markerPos(g, cam), cx = m.x, cy = m.tip - 14, px = (tx * TS - cam.x) * cam.z, py = (ty * TS - cam.y) * cam.z, d = Math.max(Math.abs(px - cx), Math.abs(py - cy)); if (d < 17 && d < bd) { bd = d; best = g; } }
   return best;
 }
+/* караваны: телега с золотом, едет между городами */
+function drawCars(c, S, tm, vx0, vy0, vx1, vy1) {
+  for (const car of S.cars || []) {
+    if (car.x < vx0 - 1 || car.x > vx1 || car.y < vy0 - 1 || car.y > vy1) continue;
+    const x = car.x * TS, y = car.y * TS + Math.sin(tm * 6 + car.id) * 0.4, f = car.face, K = 2.1; // покрупнее, чтобы заметно на карте
+    const sq = (dx, dy, w, h, col) => R_(c, (f > 0 ? x + dx : x - dx - w) * 1, y + dy, w, h, col);
+    sq(2, 4, 3.6, 3.2, '#6a4a2e'); sq(4, 1.4, 2.6, 2.6, '#7a5a3a'); sq(5.6, 0.2, 1.6, 1.6, '#4a2e14'); // лошадка
+    sq(9, -1.6, K * 5, K * 4, '#8a5a2b'); sq(9, -1.6, K * 5, 1.8, '#a8743a'); // кузов
+    sq(10, -5.2, K * 3.4, K * 1.9, '#f2c230'); sq(10.8, -6.2, K * 1.7, 1.8, '#ffe27a'); // груз золота
+    R_(c, x + 4, y + 7, 3, 3, '#231a12'); R_(c, x + 12, y + 7, 3, 3, '#231a12'); // колёса
+    R_(c, x + 5, y + 8, 1, 1, '#f2c230'); R_(c, x + 13, y + 8, 1, 1, '#f2c230');
+    if (RN.cam.z >= 1.1) { c.fillStyle = '#f2c230'; c.fillRect(x + 11, y - 8.6, 2.6, 0.9); c.fillRect(x + 11, y - 10.4, 2.6, 0.9); } // монеты над грузом
+  }
+}
+/* праздник: фейерверк и огни над городом */
+function drawFestFx(c, S, tm, vx0, vy0, vx1, vy1) {
+  const F = S.fest; if (!F || F.x < vx0 - 2 || F.x > vx1 || F.y < vy0 - 2 || F.y > vy1) return;
+  const x = F.x * TS, y = F.y * TS;
+  for (let i = 0; i < 3; i++) { // салюты: три разноцветных вспышки в такт
+    const ph = (tm * 0.7 + i * 0.37) % 1, rr = ph * 9, al = ph < 0.15 ? ph / 0.15 : Math.max(0, 1 - ph);
+    const bx = x + Math.sin(i * 2.1 + 1) * 22, by = y - 18 - i * 7 + Math.cos(i * 1.7) * 6;
+    c.save(); c.globalAlpha = al * 0.95;
+    const cols = ['#ffd24a', '#ff7a3c', '#8a7aff'];
+    for (let k = 0; k < 8; k++) { const an = k / 8 * 6.283 + i; R_(c, bx + Math.cos(an) * rr, by + Math.sin(an) * rr, 1.4, 1.4, cols[i]); }
+    c.restore();
+  }
+  c.save(); c.globalAlpha = 0.5 + 0.3 * Math.sin(tm * 5); // праздничные огни гирлянды
+  for (let k = 0; k < 7; k++) R_(c, x - 10 + k * 3.4, y - 8 + Math.sin(k) * 1.6, 1.2, 1.2, ['#ffd24a', '#ff6a8a', '#7ad6ff', '#a8ff7a'][k % 4]);
+  c.restore();
+}
+/* птицы в небе: стайка летит через экран */
+function drawSkyBirds(c, S, tm, W2, H2) {
+  for (let i = 0; i < 5; i++) {
+    const sp = 18 + i * 5, x = ((tm * sp + hash(i, 2, 7) * W2 * 2) % (W2 + 60)) - 30, y = H2 * (0.06 + hash(i, 5, 3) * 0.16) + Math.sin(tm * 1.2 + i * 2) * 10;
+    const fl = Math.sin(tm * 9 + i * 2) > 0;
+    c.save(); c.globalAlpha = 0.5 + hash(i, 8, 1) * 0.3; c.fillStyle = '#2c3e50';
+    c.fillRect(x, y, 2, 1); c.fillRect(x - (fl ? 2 : 1), y - (fl ? 1 : 0), 1, 1); c.fillRect(x + 2, y - (fl ? 1 : 0), 1, 1);
+    c.restore();
+  }
+}
 function animCity(c, ct, col, tm) {
   const ox = ct.x * TS, oy = ct.y * TS - 14, H = 0.5, sd = ct.id * 1.7;
   waveFlag(c, ox + 6 * H, oy + 32 * H, col, tm, sd); waveFlag(c, ox + 58 * H, oy + 32 * H, col, tm, sd + 1); if (!ct.isCap) waveFlag(c, ox + 32 * H, oy + 20 * H, col, tm, sd + 2);
@@ -285,10 +350,10 @@ function animCity(c, ct, col, tm) {
 }
 const FOLK_COLS = ['#c65b3c', '#4a7ec7', '#7c4aad', '#c79a3a', '#3f9a6a', '#b0527a', '#6a7ab0', '#a8622c', '#d0784a', '#4c9aa8'];
 function drawFolk(c, f, tm, isSel) {
-  const w = f.act === 'walk', wk = f.act === 'work';
-  const ph = Math.floor(tm * (w ? 7 : 3) + f.id * 1.7) % 2;
-  const cls = f.act === 'chat' ? 't' : wk ? 'k' + ph : w ? 'w' + ph : 'i';
-  const by = w ? -Math.abs(Math.sin(tm * 7 + f.id * 1.7)) * 0.35 : 0;
+  const w = f.act === 'walk', wk = f.act === 'work', dn = f.act === 'dance';
+  const ph = Math.floor(tm * (w ? 7 : dn ? 5 : 3) + f.id * 1.7) % 2;
+  const cls = dn ? 'd' + ph : f.act === 'chat' ? 't' : wk ? 'k' + ph : w ? 'w' + ph : 'i';
+  const by = w ? -Math.abs(Math.sin(tm * 7 + f.id * 1.7)) * 0.35 : dn ? -Math.abs(Math.sin(tm * 5 + f.id * 1.7)) * 0.7 : 0;
   const fx = f.x * TS, fy = f.y * TS + by;
   drawFig(c, 'folk', FOLK_COLS[f.id % FOLK_COLS.length], fx, fy, f.face || 1, cls);
   if (f.act === 'chat' && RN.cam.z >= 1.1) { // облачко разговора

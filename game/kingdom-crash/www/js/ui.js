@@ -44,7 +44,7 @@ const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 };
-const SET = { sfx: 1, music: 1, hints: 1, confirm: 1 };
+const SET = { sfx: 1, music: 1, hints: 1, confirm: 1, ambient: 1 };
 { const s = store.get('kc_set'); if (s && typeof s === 'object') for (const k in SET) if (s[k] === 0 || s[k] === 1) SET[k] = s[k]; }
 function applySettings() { SND.set('sfx', SET.sfx); SND.set('music', SET.music); store.set('kc_set', SET); }
 const cnt = (S, t) => { let n = 0; for (const b of S.buildings) if (b.owner === 0 && b.type === t) n++; return n; };
@@ -166,20 +166,43 @@ function updateHud() {
   // подсказка плана
   const pl = planState(), showPlan = !!SET.hints && !pl.done;
   setCls('plan', 'hidden', !showPlan); setCls('hud', 'noplan', !showPlan);
-  if (showPlan) setHtml('plan', `<b>${pl.i + 1}/${PLAN.length}</b><span>${PLAN[pl.i][0]}</span>`);
+  if (showPlan) setHtml('plan', `<b>${pl.i + 1}/${PLAN.length}</b><span>${PLAN[pl.i][0]} <i class="go-hint">▶ открыть вкладку</i></span>`);
   if (pl.done && UI.planWas === false) { UI.toasts.push({ t: { title: 'План развития выполнен', text: 'Королевство крепко стоит на ногах.', good: true, icon: 'star' }, rt: now, dur: 5000 }); SND.play('ach'); }
   UI.planWas = pl.done;
   if (!$('mm').classList.contains('hidden')) { UI.mmN = (UI.mmN || 0) + 1; if (UI.mmN % 4 === 0) drawMinimap(S); }
   if (now - UI.achT > 2000) { UI.achT = now; checkAch(); }
 }
 const PLAN = [
-  ['Постройте ферму на лугу (вкладка СТРОЙКА)', p => p.flags.b_farm], ['Постройте лесопилку в лесу', p => p.flags.b_sawmill], ['Постройте рудник на залежи руды', p => p.flags.b_mine],
-  ['Постройте казармы', p => p.flags.b_barracks], ['Обучите ополчение в казармах — оружие ему не нужно', p => p.flags.squad], ['Постройте мастерскую: луки и копья', p => p.flags.b_workshop],
-  ['Постройте кузню: мечи и доспехи', p => p.flags.b_forge], ['Поставьте мельницу вплотную к ферме', p => p.flags.b_mill], ['Постройте конюшню — для конницы', p => p.flags.b_stable],
-  ['Постройте рынок', p => p.flags.b_market], ['Улучшите город: нажмите на него', p => p.flags.upg], ['Основайте второй город (ГОРОДА, затем НОВЫЙ)', (p, S) => myCities(S).length >= 2],
-  ['Объедините отряды в армию (АРМИЯ, затем ОБЪЕД.)', p => p.flags.army], ['Захватите город: подведите армию. Вольный город берут без войны', p => p.flags.capture], ['Постройте порт на берегу моря', p => p.flags.b_port],
-  ['Постройте судно в порту', p => p.flags.ship], ['Заключите торговое соглашение (ПОЛИТ., затем ТОРГОВЛЯ)', p => p.flags.trade], ['Постройте таверну и наймите наёмников', p => p.flags.merc]
+  ['Постройте ферму на лугу', p => p.flags.b_farm, 'farm'], ['Постройте лесопилку в лесу', p => p.flags.b_sawmill, 'sawmill'], ['Постройте рудник на залежи руды', p => p.flags.b_mine, 'mine'],
+  ['Постройте казармы', p => p.flags.b_barracks, 'barracks'], ['Обучите ополчение в казармах — оружие ему не нужно', p => p.flags.squad, 'squad'], ['Постройте мастерскую: луки и копья', p => p.flags.b_workshop, 'workshop'],
+  ['Постройте кузню: мечи и доспехи', p => p.flags.b_forge, 'forge'], ['Поставьте мельницу вплотную к ферме', p => p.flags.b_mill, 'mill'], ['Постройте конюшню — для конницы', p => p.flags.b_stable, 'stable'],
+  ['Постройте рынок', p => p.flags.b_market, 'market'], ['Улучшите город: нажмите на него', p => p.flags.upg, 'upg'], ['Основайте второй город', (p, S) => myCities(S).length >= 2, 'city'],
+  ['Объедините отряды в армию', p => p.flags.army, 'merge'], ['Захватите город: подведите армию', p => p.flags.capture, 'army'], ['Постройте порт на берегу моря', p => p.flags.b_port, 'port'],
+  ['Постройте судно в порту', p => p.flags.ship, 'ship'], ['Заключите торговое соглашение', p => p.flags.trade, 'trade'], ['Постройте таверну и наймите наёмников', p => p.flags.merc, 'merc']
 ];
+/* клик по свитку плана — сразу открываем нужную вкладку и подсвечиваем кнопку */
+function hiBtn(act) {
+  try {
+    const els = document.querySelectorAll('[data-act="' + act + '"]');
+    for (const el of els) { el.classList.add('need'); setTimeout(() => el.classList.remove('need'), 6000); }
+  } catch (e) { }
+}
+function planJump() {
+  const pl = planState(); if (pl.done) return;
+  const tg = PLAN[pl.i][2], PROD = ['farm', 'sawmill', 'mine', 'mill', 'barracks', 'workshop', 'forge', 'stable'];
+  const go = (tab, page, act) => { ACT.tab(tab); if (page != null) ACT.bpage(page); if (act) hiBtn(act); };
+  if (PROD.indexOf(tg) >= 0) go('build', 0, 'place:' + tg);
+  else if (tg === 'market' || tg === 'port') go('build', 1, 'place:' + tg);
+  else if (tg === 'upg') go('city', null, 'upg');
+  else if (tg === 'city') go('city', null, 'place:city');
+  else if (tg === 'squad') go('army', null, 'barr');
+  else if (tg === 'merge') go('army', null, 'merge');
+  else if (tg === 'army') go('army', null, null);
+  else if (tg === 'trade') go('pol', null, 'trade');
+  else if (tg === 'ship') go('fleet', null, 'ports');
+  else if (tg === 'merc') go('army', null, 'merc');
+  say('Мы открыли нужную вкладку — золотом мигает нужная кнопка', false);
+}
 function planState() { const S = UI.S, p = me(); for (let i = 0; i < PLAN.length; i++) if (!PLAN[i][1](p, S)) return { i, done: false }; return { i: PLAN.length, done: true }; }
 
 /* ----- окно выбранного объекта ----- */
@@ -211,6 +234,11 @@ function sheetHtml(sh) {
     case 'bld': {
       const b0 = S.buildings.find(q => q.id === sh.id); if (!b0) return null; const d = BD[b0.type], mine = b0.owner === 0; let b = `<div class="row">${bldIcon(b0.type, 32)} <div class="dim" style="flex:1">${d.d}</div></div>`;
       if (!mine) return { title: d.n, body: b + `<div class="dim">Владелец: ${b0.owner < 0 ? 'никто (заброшено)' : esc(pname(S, b0.owner))}</div>` + (STRUCT[b0.type] ? hpLine(b0) : '') };
+      if (b0.type !== 'wall' && b0.type !== 'moat' && b0.type !== 'gate') { // улучшение до 3 уровня
+        const lvl = b0.lvl || 1;
+        b += `<div class="row">Уровень: ${'<b class=\'gl\'>' + '★'.repeat(lvl) + '</b>'}${lvl < 3 ? ' · производство +' + (lvl - 1) * 30 + '%' : ' · максимум'}</div>`;
+        if (lvl < 3) b += `<div class="row">Улучшение: ${needTxt(upgCost(b0), p)}</div><div class="btns">${btn('upgbld:' + b0.id, 'Улучшить до ' + (lvl + 1) + ' уровня', 'gold')}</div>`;
+      }
       if (b0.type === 'farm') { const mn = millNear(S, b0); b += `<div class="gd">+${farmRate(S, b0, p).toFixed(2)} еды/с${mn ? ' — рядом мельница' : ''}</div>${mn ? '' : '<div class="dim">Мельница вплотную к ферме добавит 50%.</div>'}`; }
       if (b0.type === 'mill') { let n = 0; for (const q of S.buildings) if (q.type === 'farm' && q.owner === 0 && Math.abs(q.x - b0.x) <= 1 && Math.abs(q.y - b0.y) <= 1) n++; b += `<div class="${n ? 'gd' : 'bad'}">${n ? 'Ферм рядом: ' + n + ' — каждая даёт на 50% больше еды.' : 'Рядом нет ферм — мельница простаивает.'}</div>`; }
       if (b0.type === 'sawmill') { let f = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = b0.x + dx, Y = b0.y + dy; if (X >= 0 && Y >= 0 && X < S.W && Y < S.H && S.ter[Y * S.W + X] === TR.FOREST) f++; } b += `<div class="gd">+${((0.45 + 0.08 * f) * p.mult * (perk(p, 'wood') ? 1.3 : 1)).toFixed(2)} дерева/с. Чем гуще лес вокруг, тем выше добыча.</div>`; }
@@ -281,7 +309,12 @@ function sheetHtml(sh) {
       const a = S.armies.find(q => q.id === sh.id); if (!a || (a.owner !== 0 && !canSee(S, a))) return null; const mine = a.owner === 0 || allied(S, 0, a.owner);
       let b = `<div class="row chips">${sw(ownerCol(S, a.owner))}<span>${units(a)} воинов</span></div><div class="chips">` + a.sq.map(q => `<span class="chip">${IMG(SQ[q.t].ico, 18)}${q.u}<i style="width:${Math.round(100 * q.hp / (sqMax(q.t) * (q.t === 'cmd' ? SQ.cmd.hp : SQ[q.t].hp)))}%"></i></span>`).join('') + '</div>';
       { let w = 0; for (const q of a.sq) w += q.w || 0; if (w) b += `<div class="dim">Раненых можно вернуть в госпитале: ${w}</div>`; }
-      { const cq = a.sq.find(z => z.t === 'cmd'); if (cq) b += `<div class="gl">${CMD[cq.cls].n} (${CMD[cq.cls].of}): +25% урона и на 20% меньше получаемого урона войскам этого вида в радиусе 4,5 клетки</div>`; }
+      { const cq = a.sq.find(z => z.t === 'cmd'); if (cq) {
+        const lv = cmdLvl(cq), need = Math.max(0, 300 - ((cq.xp || 0) % 300));
+        b += `<div class="gl">${CMD[cq.cls].n} (${CMD[cq.cls].of}): +25% урона и на 20% меньше получаемого урона войскам этого вида в радиусе 4,5 клетки</div>`;
+        b += `<div class="row">Уровень полководца: <b class="gl">${'★'.repeat(lv)}</b> ${lv < 3 ? '<span class="dim">(до следующего: ' + need + ' сек. в боях)</span>' : '<span class="dim">(максимум)</span>'}</div>`;
+        if (a.owner === 0 && !a.ship) b += `<div class="btns">${btn('natisk:' + a.id, a._bo > 0 ? 'НАТИСК идёт!' : 'НАТИСК — урон +18% на 12 сек.', a._bo > 0 ? 'on' : 'gold')}</div>`;
+      } }
       b += `<div class="dim">${a.ship ? 'На корабле' : a.retreat ? 'Отступает' : a.sg ? 'Осада укрепления' : a.fight ? 'В бою!' : a.st === 'move' ? 'В походе' : 'Ожидает'}${combo(a) > 1 ? ' · бонус рода войск +' + Math.round((combo(a) - 1) * 100) + '%' : ''}</div>`;
       if (a.owner === 0 && !a.ship) b += `<div class="btns tiny">${btn('merge', IMG('merge', 16) + ' Объед.')}${btn('split', IMG('split', 16) + ' Разд.')}${btn('stop', 'Стоять')}${btn('retreat', 'Отступ.')}</div>`;
       return { title: a.owner === 0 ? 'Армия' : mine ? 'Армия союзника' : 'Чужая армия: ' + esc(pname(S, a.owner)), body: b };
@@ -474,7 +507,9 @@ const ACT = {
   dropsave() { dropSave(); closeModal(); refreshMenu(); },
   howto() { showModal('Как играть', HOWTO, null, { back: UI.S ? 'menu' : '' }); },
   ach() { showAch(); }, records() { showRecords(); }, settings() { showSettings(); },
-  toggle(k) { if (!Object.prototype.hasOwnProperty.call(SET, k)) return; SET[k] = SET[k] ? 0 : 1; applySettings(); showSettings(true); },
+  toggle(k) { if (!Object.prototype.hasOwnProperty.call(SET, k)) return; SET[k] = SET[k] ? 0 : 1; applySettings(); if (k === 'ambient') { try { if (SET.ambient) SND.ambStart(); else SND.ambStop(); } catch (e) { } } showSettings(true); },
+  upgbld(id) { const b = UI.S.buildings.find(q => q.id === +id); if (!b) return; const e2 = upgradeBld(UI.S, b); say(e2 || 'Здание улучшено', !e2); recomputeAll(); renderSheet(true); },
+  natisk(id) { const a = UI.S.armies.find(q => q.id === +id); if (!a || a.owner !== 0) return; if (a._bo > 0) { say('Натиск уже идёт', false); return; } a._bo = 12; say('Натиск! Урон армии +18% на 12 секунд.', true); renderSheet(true); },
   asktomenu() { confirmBox('Выйти в главное меню?', 'Партия будет сохранена — её можно продолжить позже.', 'Выйти', 'tomenu', UI.S && !UI.S.over ? 'menu' : ''); },
   tomenu() {
     const S = UI.S; if (S && !S.over) saveGame(S); // выход в меню не должен стоить игроку прогресса
@@ -502,10 +537,12 @@ const ACT = {
 function recomputeAll() { calcRates(UI.S); calcScore(UI.S); }
 function refreshMenu() { $('contBtn').classList.toggle('hidden', !hasSave()); }
 document.addEventListener('click', e => {
+  const pln = e.target.closest ? e.target.closest('#plan') : null; if (pln) { SND.play('click'); planJump(); return; }
   const t = e.target.closest ? e.target.closest('[data-act]') : null; if (!t) return;
   const s = t.getAttribute('data-act'), i = s.indexOf(':'), n = i < 0 ? s : s.slice(0, i), a = i < 0 ? '' : s.slice(i + 1);
   if (!Object.prototype.hasOwnProperty.call(ACT, n)) return;
   if (n !== 'tab') SND.play('click');
+  if (SET.ambient && !UI._amb0) { UI._amb0 = 1; try { SND.ambStart(); } catch (e2) { } }
   try { ACT[n](a); } catch (err) { uiError(err); }
   if (UI.modal && UI.modal.kind === 'nat' && UI.natSel != null && NAT_ACTS[n]) showNatCard(UI.natSel);
 });
@@ -543,7 +580,8 @@ UI.mapTap = function (tx, ty) {
 /* ----- окна ----- */
 const HOWTO = `<b class="gl">Цель.</b> Развивайте королевство, захватывайте города и копите очки (или захватите все столицы).<br><br>
 <b class="gl">Управление.</b> Тяните карту пальцем, щипком меняйте масштаб. Нажмите на здание, город или армию — откроется окно. Кнопка «Назад» закрывает окно или открывает меню.<br><br>
-<b class="gl">Стройка.</b> Вкладка СТРОЙКА: выберите здание и нажмите на подсвеченную клетку. Ферма — на лугу, лесопилка — в лесу, рудник — на залежи, порт — на берегу моря. Мельница вплотную к фермам даёт им +50% еды. Строить можно только в своих границах; границы растут со временем.<br><br>
+<b class="gl">Навигация.</b> Внизу — вкладки: КАРТА, ГОРОД, СТРОЙКА, АРМИЯ, ПОЛИТ., ФЛОТ. У СТРОЙКИ есть 3 страницы (ПРОИЗВ. → УКРЕПЛ. → ОБЩЕЕ), между ними переключает кнопка с листом в правом нижнем углу панели. Не знаете, где что? Нажмите на свиток «План развития» сверху — игра сама откроет нужную вкладку и подсветит кнопку золотым.<br><br>
+<b class="gl">Стройка.</b> Вкладка СТРОЙКА: выберите здание и нажмите на подсвеченную клетку. Ферма — на лугу, лесопилка — в лесу, рудник — на залежи, порт — на берегу моря. Мельница вплотную к фермам даёт им +50% еды. Строить можно только в своих границах; границы растут со временем. Любое здание можно улучшить до 3 уровня — нажмите на него и выберите «Улучшить».<br><br>
 <b class="gl">Войска.</b> Мастерская делает луки и копья, кузня — мечи и доспехи, конюшня — коней. В казармах обучают отряды по 10 воинов. Ополчению оружие не нужно, но оно слабое. Копейщики бьют конницу, конница — лучников, тяжёлые рыцари — конницу, лучники — лёгких рыцарей. В таверне можно сразу нанять наёмников за золото.<br><br>
 <b class="gl">Армии.</b> Выберите армию и нажмите на карту — она пойдёт. Отряды, стоящие вплотную, можно объединить (до ${MAX_SQ_ARMY} отрядов). Разные рода войск в одной армии дают бонус. Новый приказ отменяет отступление.<br><br>
 <b class="gl">Захват.</b> Подведите армию к городу: поверх него появится сетка цвета захватчика. Когда сетка заполнится и армия удержит город, он ваш. Вольные (серые) города можно брать без объявления войны, но обороняются они крепко.<br><br>
@@ -552,7 +590,7 @@ const HOWTO = `<b class="gl">Цель.</b> Развивайте королевс
 <b class="gl">Море.</b> В порту стройте суда. Военное судно перевозит армию: выберите армию и нажмите на порт, затем выберите корабль и нажмите на берег.<br><br>
 <b class="gl">Политика.</b> Во вкладке ПОЛИТ. открывается меню: выберите страну и посмотрите её характеристики (мощь, города, отношение). Предъявляйте претензии, объявляйте войну, торгуйте. Раздел «Санкции» — как в Victoria 3: закрыть транзит, торговое эмбарго, пошлины, запрет оружия, конфискация казны и другие. Кнопка НАПАСТЬ во вкладке АРМИЯ объявляет войну выбранной стране сразу.
 <b class=<b class="gl">Жители и сохранение.</b> Кнопка ЖИТЕЛИ рядом с КАРТА показывает всех жителей провинции: они сами заселяются и строят дома, рынки и фермы. Жители ходят по округе: работают, отдыхают и беседуют между собой — нажмите на любого жителя прямо на карте, чтобы открыть его карточку. Там, где они ходят, плавно проступают тропинки. На жителя можно нажать и сделать с ним что-нибудь: казнить, отправить наёмников анонимно или посадить в тюрьму. Кнопка СОХРАН. открывает слоты сохранений — выбирайте, в какой слот сохранить и какой загрузить. Рядом поставленные башни соединяются стеной, в соединении можно сделать проход.
-<b class=<b class="gl">Державы и события.</b> У каждой державы своя особенность — она указана при выборе. Соперники развиваются сами, но постепенно. Время от времени случаются события: урожай, караван, пожар, ярмарка.`;
+<b class=<b class="gl">Державы и события.</b> У каждой державы своя особенность — она указана при выборе. Соперники развиваются сами, но постепенно. Время от времени случаются события: урожай, караван, пожар, ярмарка.<b class="gl">Королевство живёт.</b> Времена года и погода меняют вид карты. В городах проходят праздники с танцами и фейерверком. Между городами ездят торговые караваны с золотом — их могут ограбить враги, прикрывайте дороги. Полководцы набирают опыт в боях и растут в уровнях, а кнопка «НАТИСК» на время усиливает армию.<br><br>`;
 function showModal(title, body, foot, o) {
   o = o || {}; const el = $('modal'), was = !el.classList.contains('hidden') && !!UI.modal;
   const html = `<div class="box"><div class="hd"><div class="tt">${title}</div></div><div class="bd${o.flat ? ' flat' : ''}">${body}</div><div class="ft">${foot || btn('closemodal', 'Закрыть')}</div></div>`;
@@ -589,7 +627,7 @@ function showRecords() {
 }
 function showSettings(keep) {
   const row = (k, name, hint) => `<div class="opt"><div>${name}<div class="dim">${hint}</div></div>${btn('toggle:' + k, SET[k] ? 'Вкл.' : 'Выкл.', SET[k] ? 'on' : '')}</div>`;
-  let b = row('sfx', 'Звуки', 'Щелчки, бой, сигналы') + row('music', 'Музыка', 'Лютня на фоне') + `<div class="opt"><div>Мелодия<div class="dim">${esc(SND.songName() || 'сменяется автоматически')}</div></div>${btn('song', 'Следующая')}</div>` + `<div class="opt"><div>Саундтрек<div class="dim">${esc(SND.trackName())}${SND.trackPlaying() ? ' · играет' : ''}</div></div>${btn('track', SND.trackPlaying() ? 'Стоп' : 'Слушать')}${btn('tracknext', 'Дальше')}</div>` + row('hints', 'Подсказки плана', 'Свиток с текущим шагом развития') + row('confirm', 'Спрашивать перед сносом', 'Защита от случайного нажатия');
+  let b = row('sfx', 'Звуки', 'Щелчки, бой, сигналы') + row('music', 'Музыка', 'Лютня на фоне') + row('ambient', 'Звуки природы', 'Птицы, ветер и говор людей вокруг') + `<div class="opt"><div>Мелодия<div class="dim">${esc(SND.songName() || 'сменяется автоматически')}</div></div>${btn('song', 'Следующая')}</div>` + `<div class="opt"><div>Саундтрек<div class="dim">${esc(SND.trackName())}${SND.trackPlaying() ? ' · играет' : ''}</div></div>${btn('track', SND.trackPlaying() ? 'Стоп' : 'Слушать')}${btn('tracknext', 'Дальше')}</div>` + row('hints', 'Подсказки плана', 'Свиток с текущим шагом развития') + row('confirm', 'Спрашивать перед сносом', 'Защита от случайного нажатия');
   b += `<div class="dim" style="margin-top:8px">Kingdom Crash ${GAME_VERSION}. Игра работает без интернета и ничего никуда не отправляет.</div>`;
   showModal(IMG('gear', 22) + 'Настройки', b, UI.S ? null : btn('closemodal', 'Закрыть', 'gold') + (hasSave() ? btn('askdrop', 'Удалить сохранение') : ''), { kind: 'settings', keep, back: UI.S ? 'menu' : '' });
 }

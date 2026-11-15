@@ -89,7 +89,7 @@ const CMD = { archer: { n: 'Воевода', of: 'лучников', ico: 'bow' 
 const DAY = 120; // секунд игрового времени в одних сутках (2 минуты)
 const CLAIM_DAYS = 3; // дней на формирование претензии
 const DIFF = { easy: { n: 'Лёгкая', mult: 0.8, think: 5.5 }, normal: { n: 'Средняя', mult: 1.0, think: 3.2 }, hard: { n: 'Сложная', mult: 1.25, think: 1.8 } };
-const GAME_VERSION = '2.4.0';
+const GAME_VERSION = '2.5.0';
 const MAPTYPES = ['continent', 'continents', 'islands', 'lakes', 'random'];
 const CAP_MIN = 10.5; // минимальное расстояние между столицами
 const SEA_MIN = 10; // меньший водоём — пруд: порт у него не строят
@@ -535,14 +535,17 @@ HF.militia = function (c, x, y, col) {
 // житель: позы — i (стоит), w0/w1 (шаг), k0/k1 (работа), t (беседа)
 HF.folk = function (c, x, y, col, cls) {
   cls = cls || 'i';
-  const walk = cls[0] === 'w', work = cls[0] === 'k', talk = cls === 't';
+  const walk = cls[0] === 'w', work = cls[0] === 'k', talk = cls === 't', dance = cls[0] === 'd';
   const sw = walk ? (cls === 'w0' ? 1 : -1) : 0;
   const hair = ['#6a4a2a', '#3a2a1a', '#8a6a3a', '#5a3a2a'][(x + y + col.length) & 3];
   R_(c, x + 4 + sw, y + 10, 2, 3, '#5a3a1a'); R_(c, x + 7 - sw, y + 10, 2, 3, '#4a2e14'); // ноги вразнобой
   R_(c, x + 3 + sw, y + 12, 3, 1, '#2a1808'); R_(c, x + 7 - sw, y + 12, 3, 1, '#2a1808');
   R_(c, x + 3, y + 5, 7, 5, col); R_(c, x + 3, y + 5, 7, 1, shadeC(col, 1.28)); // рубаха
   R_(c, x + 3, y + 8, 7, 1, shadeC(col, 0.72)); R_(c, x + 6, y + 5, 1, 5, shadeC(col, 0.88));
-  if (work) {
+  if (dance) {
+    R_(c, x + 2, y + 2 - (cls === 'd0' ? 1.5 : 0), 1.6, 3.4, SKIN); R_(c, x + 9.6, y + 2 - (cls === 'd1' ? 1.5 : 0), 1.6, 3.4, SKIN); // руки вверх — танец
+    R_(c, x + 1, y + 0.6 - (cls === 'd0' ? 1.5 : 0), 1.6, 1.6, SKIN); R_(c, x + 9.6, y + 0.6 - (cls === 'd1' ? 1.5 : 0), 1.6, 1.6, SKIN);
+  } else if (work) {
     R_(c, x + 10, y + 4 - (cls === 'k0' ? 2 : 0), 2, 3, SKIN); // рука с молотком
     R_(c, x + 11, y + 2 - (cls === 'k0' ? 2 : 0), 2, 2, '#7a4a1a');
     R_(c, x + 2, y + 6, 1, 3, shadeC(col, 0.85));

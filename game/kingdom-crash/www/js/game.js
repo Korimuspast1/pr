@@ -561,6 +561,11 @@ function folkSpots(S) {
   return sp;
 }
 function folkPick(S, f) {
+  if (S.fest && f.city === S.fest.city && frnd(S, f) < 0.5) { // праздник! идём танцевать к городу
+    const ang = frnd(S, f) * 6.2832, rad = 1 + frnd(S, f) * 2.2;
+    f.tx = S.fest.x + Math.cos(ang) * rad; f.ty = S.fest.y + Math.sin(ang) * rad;
+    f.tgo = 'dance'; f.act = 'walk'; return;
+  }
   const sp = (S._spots && (S._spots[f.city] || S._spots._all)) || null;
   if (!sp || !sp.length) { f.act = 'rest'; f.actT = 2 + frnd(S, f) * 5; return; }
   let t = sp[(frnd(S, f) * sp.length) | 0];
@@ -625,7 +630,7 @@ function tickFolk(S, dt) {
     if (f.act === 'walk') {
       const dx = f.tx - f.x, dy = f.ty - f.y, d = Math.hypot(dx, dy);
       if (d < 0.12) {
-        f.act = f.tgo === 'work' ? 'work' : 'rest'; f.actT = 6 + frnd(S, f) * 13;
+        f.act = f.tgo === 'work' ? 'work' : f.tgo === 'dance' ? 'dance' : 'rest'; f.actT = 6 + frnd(S, f) * 13;
         folkMeet(S, f);
       } else {
         const sp = Math.min(d, f.speed * dt), nx = f.x + dx / d * sp, ny = f.y + dy / d * sp;
@@ -763,7 +768,7 @@ const armyCap = a => a.sq.reduce((s, q) => s + sqMax(q.t), 0); // сколько
 const units = a => a.sq.reduce((s, q) => s + q.u, 0);
 function newArmy(S, owner, x, y, sq) { const a = { id: S.nid++, owner, x, y, sq, path: [], dest: null, st: 'idle', ship: null, maxU: sq.reduce((s, q) => s + q.u, 0), face: 1, boardPort: null }; S.armies.push(a); return a; }
 function armySpd(S, a) { let s = 9; for (const q of a.sq) s = Math.min(s, q.t === 'cmd' && q.cls === 'cav' ? 2.2 : q.t === 'cmd' ? SQ[q.cls].spd : SQ[q.t].spd); s *= MOVE_MULT; const i = Math.floor(a.y) * S.W + Math.floor(a.x); return s * TMULT[S.ter[i]] * (S.mm[i] === 1 ? 0.5 : 1); }
-function combo(a) { const t = new Set(a.sq.map(q => q.t).filter(x => x !== 'cmd')); return 1 + 0.08 * Math.max(0, t.size - 1); }
+function combo(a) { const t = new Set(a.sq.map(q => q.t).filter(x => x !== 'cmd')); return (1 + 0.08 * Math.max(0, t.size - 1)) * (a._bo > 0 ? 1.18 : 1); }
 function mergeNear(S, a) {
   if (a.ship) return 0; let n = 0;
   for (const b of S.armies.slice()) {
@@ -914,18 +919,34 @@ function millNear(S, b) { // рядом с фермой (вплотную) ст�
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const x = b.x + dx, y = b.y + dy; if (x < 0 || y < 0 || x >= S.W || y >= S.H) continue; const o = S.occ[y * S.W + x]; if (o < 0 || o >= 1000000) continue; const m = S.bmap.get(o); if (m && m.type === 'mill' && m.owner === b.owner) return true; }
   return false;
 }
-function farmRate(S, b, p) { return 0.7 * p.mult * (perk(p, 'farm') ? 1.3 : 1) * (millNear(S, b) ? 1.5 : 1); }
+function farmRate(S, b, p) { return 0.7 * p.mult * (perk(p, 'farm') ? 1.3 : 1) * (millNear(S, b) ? 1.5 : 1) * bldBoost(b); }
+/* ===== Улучшение зданий (до 3 уровня) ===== */
+function bldBoost(b) { return 1 + 0.3 * ((b.lvl || 1) - 1); }
+function upgCost(b) { const lvl = b.lvl || 1; return { gold: 70 * lvl, wood: 45 * lvl, iron: 18 * lvl }; }
+function upgradeBld(S, b) {
+  if (!b || b.owner !== 0) return 'Это не ваше здание';
+  if ((b.lvl || 1) >= 3) return 'Уже максимальный уровень';
+  if (b.type === 'wall' || b.type === 'moat' || b.type === 'gate') return 'Укрепления не улучшаются';
+  const c = upgCost(b), p = S.players[0];
+  for (const k in c) if (p.stock[k] < c[k]) return 'Не хватает ресурсов';
+  for (const k in c) p.stock[k] -= c[k];
+  b.lvl = (b.lvl || 1) + 1; b.mhp += 70; b.hp = Math.min(b.mhp, b.hp + 70);
+  S.toast.push({ title: 'Улучшение', text: BD[b.type].n + ' — уровень ' + b.lvl + '. Производство выше.', t: S.time, good: true, ev: 1 });
+  return null;
+}
+function cmdLvl(q) { return 1 + Math.min(2, Math.floor((q.xp || 0) / 300)); }
 function calcRates(S) {
   const n = S.players.length, ports = new Array(n).fill(0), markets = new Array(n).fill(0);
   for (const p of S.players) p.rate = { gold: 0, wood: 0, food: 0, iron: 0 };
   for (const c of S.cities) if (c.owner >= 0) { const p = S.players[c.owner], r = p.rate; r.gold += (0.6 + 0.45 * c.level) * (perk(p, 'gold') ? 1.25 : 1); r.food -= 0.1 * c.level; }
   for (const b of S.buildings) {
     if (b.owner < 0) continue; const p = S.players[b.owner], r = p.rate, m = p.mult;
+    const bb = bldBoost(b);
     if (b.type === 'farm') r.food += farmRate(S, b, p) * (sanOn(S, b.owner, 'food') ? 0.7 : 1);
-    else if (b.type === 'sawmill') { let f = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = b.x + dx, Y = b.y + dy; if (X >= 0 && Y >= 0 && X < S.W && Y < S.H && S.ter[Y * S.W + X] === TR.FOREST) f++; } r.wood += (0.45 + 0.08 * f) * m * (perk(p, 'wood') ? 1.3 : 1); }
-    else if (b.type === 'mine') { const v = 0.45 * m * (perk(p, 'mine') ? 1.3 : 1) * (b.res !== RES.GOLD && sanOn(S, b.owner, 'ore') ? 0.7 : 1); if (b.res === RES.GOLD) r.gold += v; else r.iron += v; }
-    else if (b.type === 'market') { r.gold += 0.7 * m; markets[b.owner]++; }
-    else if (b.type === 'port') { r.gold += 0.3 * m * (perk(p, 'sea') ? 3 : 1) * (sanOn(S, b.owner, 'ports') ? 0.5 : 1); ports[b.owner]++; }
+    else if (b.type === 'sawmill') { let f = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = b.x + dx, Y = b.y + dy; if (X >= 0 && Y >= 0 && X < S.W && Y < S.H && S.ter[Y * S.W + X] === TR.FOREST) f++; } r.wood += (0.45 + 0.08 * f) * m * bb * (perk(p, 'wood') ? 1.3 : 1); }
+    else if (b.type === 'mine') { const v = 0.45 * m * bb * (perk(p, 'mine') ? 1.3 : 1) * (b.res !== RES.GOLD && sanOn(S, b.owner, 'ore') ? 0.7 : 1); if (b.res === RES.GOLD) r.gold += v; else r.iron += v; }
+    else if (b.type === 'market') { r.gold += 0.7 * m * bb; markets[b.owner]++; }
+    else if (b.type === 'port') { r.gold += 0.3 * m * bb * (perk(p, 'sea') ? 3 : 1) * (sanOn(S, b.owner, 'ports') ? 0.5 : 1); ports[b.owner]++; }
   }
   for (const a of S.armies) { const r = S.players[a.owner].rate; r.food -= 0.12 * a.sq.length; r.gold -= 0.06 * a.sq.length; }
   // торговля: только между живыми державами; рынки её усиливают, пошлины делят доход
@@ -1279,8 +1300,72 @@ function tickDiplomacy(S) {
   // письма без ответа: срок вышел. Молчание в ответ на ультиматум — отказ
   for (const m of S.msgs) if (m.kind && !m.done && m.exp && S.time > m.exp) { m.done = true; m.late = true; if (m.kind === 'ult' && !dealError(S, m.from, 0, 'ult')) startWar(S, m.from, 0); }
 }
+/* ===== Торговые караваны: едут между городами, возят золото ===== */
+function crnd(S) { // свой поток случайности караванов: общий S.rnd не трогаем
+  S._cr = ((S._cr === undefined ? 1618033988 : S._cr) * 1664525 + 1013904223) >>> 0;
+  return S._cr / 4294967296;
+}
+function tickCars(S, dt) {
+  if (!S.cars) S.cars = [];
+  S.cT = (S.cT || 0) + dt;
+  if (S.cT > 6 && S.cars.length < 7 && S.players[0] && S.players[0].alive) {
+    S.cT = 0;
+    const mine = S.cities.filter(c => c.owner === 0);
+    if (mine.length >= 2 && crnd(S) < 0.8) {
+      const a = mine[(crnd(S) * mine.length) | 0];
+      const b = mine[(crnd(S) * mine.length) | 0];
+      if (a.id !== b.id) S.cars.push({ id: S.nid++, owner: 0, x: a.x + 1, y: a.y + 1.4, toX: b.x + 1, toY: b.y + 1.4, face: 1, gold: 26 + ((crnd(S) * 44) | 0) });
+    }
+  }
+  for (const car of S.cars.slice()) {
+    const dx = car.toX - car.x, dy = car.toY - car.y, d = Math.hypot(dx, dy);
+    if (d < 0.45) {
+      if (car.owner === 0) {
+        S.players[0].stock.gold += car.gold; S.players[0].earned += car.gold;
+        if (crnd(S) < 0.4) S.toast.push({ title: 'Караван прибыл', text: 'Торговцы из города в город привезли ' + car.gold + ' золота.', t: S.time, good: true, ev: 1 });
+      }
+      S.cars = S.cars.filter(q => q !== car);
+      continue;
+    }
+    const sp = 1.1 * dt;
+    car.x += dx / d * sp; car.y += dy / d * sp;
+    if (dx) car.face = dx > 0 ? 1 : -1;
+    for (const a of S.armies) {
+      if (a.ship || a.owner === car.owner || !atWar(S, a.owner, car.owner)) continue;
+      if (dist(a.x, a.y, car.x, car.y) < 1) {
+        S.players[a.owner].stock.gold += car.gold;
+        if (car.owner === 0) S.toast.push({ title: 'Караван разграблен!', text: 'Вражеские войска отобрали ' + car.gold + ' золота. Прикройте дороги.', t: S.time, bad: true, ev: 1 });
+        S.cars = S.cars.filter(q => q !== car);
+        break;
+      }
+    }
+  }
+}
+/* ===== Праздники и ярмарки: народ гуляет в городе ===== */
+function tickFest(S, dt) {
+  S.fT2 = (S.fT2 || 0) + dt;
+  if (S.fest) {
+    if (S.time > S.fest.until) S.fest = null;
+    else for (const f of S.folk || []) if (f.st === 'ok' && f.mood < 100 && Math.abs(f.x - S.fest.x) < 6 && Math.abs(f.y - S.fest.y) < 6) f.mood = Math.min(100, f.mood + dt * 0.4);
+    return;
+  }
+  if (S.fT2 < 20) return; S.fT2 = 0;
+  const mine = S.cities.filter(c => c.owner === 0);
+  if (mine.length && crnd(S) < 0.3) {
+    const c = mine[(crnd(S) * mine.length) | 0];
+    S.fest = { city: c.id, x: c.x + 1, y: c.y + 1.2, until: S.time + 55 };
+    S.toast.push({ title: 'Праздник в городе ' + c.name + '!', text: 'Народное гуляние: жители танцуют и веселятся. Настроение растёт.', t: S.time, good: true, ev: 1 });
+    if (typeof SND !== 'undefined' && SND.fest) SND.fest();
+    if (S.players[0] && S.players[0].alive) info(S, 0, 'Праздник', 'В городе ' + c.name + ' проходит ярмарка с танцами и фейерверком.', 'info');
+  }
+}
 function tick(S, dt) {
   if (S.over) return; S.time += dt; S.tk++;
+  tickCars(S, dt); tickFest(S, dt);
+  for (const a of S.armies) { // опыт полководцев и затихание «натиска»
+    if (a._bo) { a._bo -= dt; if (a._bo <= 0) a._bo = 0; }
+    if (a.fight) { const c2 = a.sq.find(q => q.t === 'cmd'); if (c2) c2.xp = (c2.xp || 0) + dt; }
+  }
   if (S.tk % 4 === 0) { calcRates(S); calcVision(S); }
   tickEcon(S, dt); tickProd(S, dt); tickMove(S, dt); tickCombat(S, dt); tickHospital(S, dt); tickCities(S, dt); tickShips(S, dt); tickTerr(S, dt); tickExpand(S, dt); tickFolk(S, dt);
   if (S.tk % 4 === 1) tickDiplomacy(S);
@@ -1340,7 +1425,7 @@ function _squad(q) {
   if (Array.isArray(q.s)) { for (const x of q.s) { if (s.length >= mx) break; const hp = _n(x && x.hp, 0, mhp, 0); if (hp > 0) s.push({ hp }); } }
   else { const k = _i(q.u, 0, mx, 0), h = _n(q.hp / Math.max(1, k), 0.1, mhp, mhp); for (let j = 0; j < k; j++) s.push({ hp: h }); }
   if (!s.length) return null;
-  const o = { t, u: 0, hp: 0, s, w: _i(q.w, 0, mx, 0) }; if (t === 'cmd') o.cls = CMD[q.cls] ? q.cls : 'light'; syncSq(o); return o;
+  const o = { t, u: 0, hp: 0, s, w: _i(q.w, 0, mx, 0) }; if (t === 'cmd') { o.cls = CMD[q.cls] ? q.cls : 'light'; o.xp = _n(q.xp, 0, 1e6, 0); } syncSq(o); return o;
 }
 function _path(l, W, H, ter, water) { // путь принимаем, только если каждая клетка проходима
   if (!Array.isArray(l) || l.length > 4000) return []; const o = [];
@@ -1393,7 +1478,7 @@ function restoreGame(d) {
   for (const b of d.buildings) {
     if (!b || typeof b !== 'object' || !BD[b.type]) _fail('здание'); const x = b.x | 0, y = b.y | 0; if (x !== b.x || y !== b.y || !(x >= 0 && y >= 0 && x < W && y < H) || S.occ[y * W + x] >= 0) _fail('место здания');
     const type = b.type, dd = BD[type], id = takeId(b.id), rc = RECIPES[type];
-    const o = { id, type, x, y, owner: pid(b.owner), recipe: rc ? (rc[b.recipe] ? b.recipe : Object.keys(rc)[0]) : null, busy: !!b.busy && !!rc, pt: _n(b.pt, 0, 1e4, 0), queue: [], status: '', res: res[y * W + x], t0: _n(b.t0, 0, 2e9, 0), hp: 0, mhp: 0, gar: null, wet: false, off: !!b.off, cd: _n(b.cd, 0, 2e9, 0), rt: _n(b.rt, 0, 10, 0) };
+    const o = { id, type, x, y, owner: pid(b.owner), recipe: rc ? (rc[b.recipe] ? b.recipe : Object.keys(rc)[0]) : null, busy: !!b.busy && !!rc, pt: _n(b.pt, 0, 1e4, 0), queue: [], status: '', res: res[y * W + x], t0: _n(b.t0, 0, 2e9, 0), hp: 0, mhp: 0, lvl: _i(b.lvl, 1, 3, 1), gar: null, wet: false, off: !!b.off, cd: _n(b.cd, 0, 2e9, 0), rt: _n(b.rt, 0, 10, 0) };
     if (dd.hp) { o.mhp = _n(b.mhp, 1, dd.hp * 2, dd.hp); o.hp = _n(b.hp, 1, o.mhp, o.mhp); }
     if (TRAIN_BLD[type] && Array.isArray(b.queue)) for (const q of b.queue.slice(0, 3)) { if (!q || !SQ[q.t] || SQ[q.t].bld !== type) continue; const e = { t: q.t, left: _n(q.left, 0, 1e4, SQ[q.t].t), total: _n(q.total, 1, 1e4, SQ[q.t].t) }; if (q.t === 'cmd') e.cls = CMD[q.cls] ? q.cls : 'light'; o.queue.push(e); }
     if (type === 'tower' && b.gar && o.owner >= 0) { const q = _squad(b.gar); if (q && q.t === 'archer') o.gar = q; }
@@ -1463,7 +1548,7 @@ function restoreGame(d) {
       g.x = Math.max(0, Math.min(W, f.x)); g.y = Math.max(0, Math.min(H, f.y)); g.face = f.face === -1 ? -1 : 1;
       g.act = f.act === 'walk' || f.act === 'work' || f.act === 'chat' ? f.act : 'rest';
       g.actT = Number.isFinite(f.actT) ? Math.max(0, Math.min(600, f.actT)) : 0;
-      g.tgo = f.tgo === 'work' ? 'work' : 'rest';
+      g.tgo = f.tgo === 'work' ? 'work' : f.tgo === 'dance' ? 'dance' : 'rest';
       g.speed = Number.isFinite(f.speed) && f.speed > 0.2 && f.speed < 2 ? f.speed : 0.9;
     }
     S.folk.push(g);
