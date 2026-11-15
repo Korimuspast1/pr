@@ -153,7 +153,7 @@ function updateHud() {
   // всплывающие заметки
   for (const t of S.toast.splice(0)) UI.toasts.push({ t, rt: now, dur: t.ev ? 5000 : 3000 });
   UI.toasts = UI.toasts.filter(q => now - q.rt < q.dur).slice(-2);
-  setHtml('toasts', UI.toasts.map(q => `<div class="toast ${q.t.bad ? 'bad' : q.t.good ? 'good' : ''}">${IMG(q.t.icon || (q.t.ev ? 'scroll' : 'flag'), 28)}<div><div class="tt">${esc(q.t.title)}</div><div class="ts">${esc(q.t.text)}</div></div><div class="bar"><i style="width:${Math.max(0, 100 - (now - q.rt) / q.dur * 100).toFixed(0)}%"></i></div></div>`).join(''));
+  if (!UI._swipe && !(UI._swipeOut > performance.now())) setHtml('toasts', UI.toasts.map(q => `<div class="toast ${q.t.bad ? 'bad' : q.t.good ? 'good' : ''}" data-rt="${q.rt}">${IMG(q.t.icon || (q.t.ev ? 'scroll' : 'flag'), 28)}<div><div class="tt">${esc(q.t.title)}</div><div class="ts">${esc(q.t.text)}</div></div><div class="bar"><i style="width:${Math.max(0, 100 - (now - q.rt) / q.dur * 100).toFixed(0)}%"></i></div></div>`).join(''));
   // армия несёт тяжёлые потери — спросить про отступление
   if (S.prompts && S.prompts.length && !UI.modal && !S.over) {
     const pr = S.prompts[0], a = S.armies.find(q => q.id === pr.id);
@@ -300,7 +300,7 @@ function sheetHtml(sh) {
       }
       if (b0.type === 'port') {
         b += `<div class="gd">+${(0.3 * p.mult * (perk(p, 'sea') ? 3 : 1)).toFixed(2)} золота/с. Порты усиливают торговые соглашения.</div>`;
-        b += `<div class="btns">${btn('ship:' + b0.id + ':trade', `${IMG('ship', 18)} Торговое судно`)}${btn('ship:' + b0.id + ':war', `${IMG('ship', 18)} Военное судно`)}</div><div class="dim">Торговое: ${needTxt(shipCost('trade', p), p)}<br>Военное (перевозит войска): ${needTxt(shipCost('war', p), p)}</div>`;
+        b += `<div class="btns">${btn('ship:' + b0.id + ':trade', `${IMG('ship', 18)} Торговое судно`)}${btn('ship:' + b0.id + ':war', `${IMG('ship', 18)} Военный`)}${btn('ship:' + b0.id + ':liner', `${IMG('ship', 18)} Линкор`)}</div><div class="dim">Торговое: ${needTxt(shipCost('trade', p), p)}<br>Военный (перевозит войска): ${needTxt(shipCost('war', p), p)}<br>Линкор (пушки, бомбардировка берега): ${needTxt(shipCost('liner', p), p)}</div>`;
         b += '<div class="dim">Чтобы погрузить армию, выберите её и нажмите на порт. Затем выберите корабль и укажите берег.</div>';
       }
       b += `<div class="btns">${btn('demo1:' + b0.id, 'Снести')}</div>`; return { title: d.n, body: b };
@@ -321,11 +321,15 @@ function sheetHtml(sh) {
     }
     case 'ship': {
       const s = S.ships.find(q => q.id === sh.id); if (!s) return null; const mine = s.owner === 0;
-      let b = `<div class="dim">${s.kind === 'war' ? 'Военное судно: перевозит войска, в боях не участвует.' : 'Торговое судно: возит товары между портами партнёров.'}</div>`;
-      if (!mine) return { title: (s.kind === 'war' ? 'Военный корабль' : 'Торговый корабль') + ': ' + esc(pname(S, s.owner)), body: b };
+      const knm = s.kind === 'liner' ? 'Линкор' : s.kind === 'war' ? 'Военный корабль' : 'Торговый корабль';
+      const kdesc = s.kind === 'liner' ? 'Линкор: три мачты и пороховые пушки. Топит вражеские суда и обстреливает порты, башни и ворота с моря. Перевозит войска.' : s.kind === 'war' ? 'Военное судно: перевозит войска и сражается в море пушками.' : 'Торговое судно: возит товары между портами партнёров.';
+      let b = `<div class="dim">${kdesc}</div>`;
+      const hpf = s.mhp ? Math.round(100 * (s.hp == null ? s.mhp : s.hp) / s.mhp) : 100;
+      b += `<div class="row">Прочность: <b class="${hpf > 55 ? 'gl' : hpf > 25 ? '' : 'bad'}">${s.hp == null ? s.mhp : Math.max(0, Math.round(s.hp))} / ${s.mhp}</b></div><div class="pb"><i style="width:${Math.max(0, Math.min(100, hpf))}%"></i></div>`;
+      if (!mine) return { title: knm + ': ' + esc(pname(S, s.owner)), body: b };
       b += `<div class="row">${s.cargo ? 'Груз: армия на борту' : 'Трюм пуст'} · ${s.path.length ? 'в пути' : 'стоит'}</div>`;
-      if (s.kind === 'war') b += `<div class="btns">${btn('unload', 'Высадить')}${btn('stopship', 'Стоять')}</div><div class="dim">Нажмите на воду или на берег, чтобы отправить корабль. Войска высадятся на указанный берег.</div>`; else b += '<div class="dim">Корабль плавает сам, если есть торговое соглашение с владельцем порта.</div>';
-      return { title: s.kind === 'war' ? 'Военный корабль' : 'Торговый корабль', body: b };
+      if (s.kind === 'war' || s.kind === 'liner') b += `<div class="btns">${btn('unload', 'Высадить')}${btn('stopship', 'Стоять')}</div><div class="dim">Нажмите на воду или на берег, чтобы отправить корабль. Войска высадятся на указанный берег.</div>`; else b += '<div class="dim">Корабль плавает сам, если есть торговое соглашение с владельцем порта.</div>';
+      return { title: knm, body: b };
     }
     case 'place': {
       const pl = RN.place; if (!pl) return null; const isC = pl.type === 'city', line = (pl.type === 'wall' || pl.type === 'moat'), name = isC ? 'Новый город' : BD[pl.type].n;
@@ -353,7 +357,7 @@ function listHtml(sh) {
     case 'barracks': title = 'Казармы'; b = blds('barracks', x => 'очередь: ' + x.queue.length, 'Постройте казармы во вкладке СТРОЙКА.'); break;
     case 'taverns': title = 'Таверны'; b = blds('tavern', x => (x.cd || 0) > S.time ? 'наёмники подойдут через ' + Math.ceil(x.cd - S.time) + ' с' : 'наёмники ждут', 'Таверн нет. Постройте таверну (СТРОЙКА, затем УКРЕПЛ.) — в ней нанимают отряды за золото.'); break;
     case 'ports': title = 'Порты'; b = blds('port', null, 'Портов нет. Порт строится на берегу моря.'); break;
-    case 'ships': title = 'Корабли'; { const l = S.ships.filter(x => x.owner === 0); b = l.length ? '<div class="list">' + l.map(x => `<div class="it">${IMG('ship', 24)}<div class="g">${x.kind === 'war' ? 'Военный' : 'Торговый'}<div class="dim">${x.cargo ? 'с войсками' : x.path.length ? 'в пути' : 'стоит'}</div></div>${btn('selship:' + x.id, 'Выбрать')}</div>`).join('') + '</div>' : '<div class="dim">Кораблей нет. Постройте их в порту.</div>'; } break;
+    case 'ships': title = 'Корабли'; { const l = S.ships.filter(x => x.owner === 0); b = l.length ? '<div class="list">' + l.map(x => `<div class="it">${IMG('ship', 24)}<div class="g">${x.kind === 'liner' ? 'Линкор' : x.kind === 'war' ? 'Военный' : 'Торговый'}<div class="dim">${x.cargo ? 'с войсками' : x.path.length ? 'в пути' : 'стоит'}</div></div>${btn('selship:' + x.id, 'Выбрать')}</div>`).join('') + '</div>' : '<div class="dim">Кораблей нет. Постройте их в порту.</div>'; } break;
     case 'stock': title = 'Склад'; b = STOCK_KEYS.map(k => `<div class="row sp"><span>${IMG(k, 22)} ${RNAME[k]}</span><b class="gl">${S.opts.sandbox ? INF() : Math.floor(p.stock[k])}</b></div>`).join('') + `<div class="dim">Предметов для отрядов на складе помещается не больше ${ITEM_CAP} каждого вида.</div>`; break;
     case 'dip': title = 'Дипломатия'; b = '<div class="list">' + S.players.filter(q => q.id !== 0).map(q => {
       const r = rel(S, 0, q.id), ci = claimInfo(S, 0, q.id), theirs = claimInfo(S, q.id, 0);
@@ -537,6 +541,8 @@ const ACT = {
 function recomputeAll() { calcRates(UI.S); calcScore(UI.S); }
 function refreshMenu() { $('contBtn').classList.toggle('hidden', !hasSave()); }
 document.addEventListener('click', e => {
+  const tst = e.target.closest ? e.target.closest('.toast') : null;
+  if (tst && tst.getAttribute('data-rt')) { dismissToast(tst.getAttribute('data-rt')); return; }
   const pln = e.target.closest ? e.target.closest('#plan') : null; if (pln) { SND.play('click'); planJump(); return; }
   const t = e.target.closest ? e.target.closest('[data-act]') : null; if (!t) return;
   const s = t.getAttribute('data-act'), i = s.indexOf(':'), n = i < 0 ? s : s.slice(0, i), a = i < 0 ? '' : s.slice(i + 1);
@@ -546,6 +552,46 @@ document.addEventListener('click', e => {
   try { ACT[n](a); } catch (err) { uiError(err); }
   if (UI.modal && UI.modal.kind === 'nat' && UI.natSel != null && NAT_ACTS[n]) showNatCard(UI.natSel);
 });
+/* свайп по сообщениям: убрать в ЛЮБУЮ сторону (и тап — тоже закрывает) */
+function dismissToast(rt) {
+  const n = UI.toasts.length;
+  UI.toasts = UI.toasts.filter(q => String(q.rt) !== String(rt));
+  return UI.toasts.length < n;
+}
+UI.dismissToast = dismissToast;
+(function () {
+  let el = null, rt = 0, x0 = 0, y0 = 0, dx = 0, dy = 0;
+  const TH = 46; // порог свайпа в пикселях — в любую сторону
+  document.addEventListener('pointerdown', e => {
+    const t = e.target && e.target.closest ? e.target.closest('.toast') : null;
+    if (!t) return;
+    el = t; rt = t.getAttribute('data-rt') || 0; x0 = e.clientX || 0; y0 = e.clientY || 0; dx = dy = 0;
+    UI._swipe = rt; t.style.transition = 'none';
+  });
+  document.addEventListener('pointermove', e => {
+    if (!el) return;
+    dx = (e.clientX || 0) - x0; dy = (e.clientY || 0) - y0;
+    el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    el.style.opacity = String(Math.max(0.25, 1 - Math.hypot(dx, dy) / 170));
+    if (e.cancelable) { try { e.preventDefault(); } catch (err) { } }
+  });
+  const swipeEnd = () => {
+    if (!el) return;
+    const t = el, d = Math.hypot(dx, dy); el = null; UI._swipe = 0;
+    if (d > TH) {
+      t.style.transition = 'transform .16s ease-out, opacity .16s';
+      t.style.transform = 'translate(' + (dx * 2.5) + 'px,' + (dy * 2.5) + 'px)';
+      t.style.opacity = '0';
+      dismissToast(rt);
+      UI._swipeOut = performance.now() + 200; // дать доиграть анимации вылета
+    } else {
+      t.style.transition = 'transform .16s, opacity .16s';
+      t.style.transform = ''; t.style.opacity = '';
+    }
+  };
+  document.addEventListener('pointerup', swipeEnd);
+  document.addEventListener('pointercancel', swipeEnd);
+})();
 $('mm').addEventListener('click', e => { const r = $('mm').getBoundingClientRect(), S = UI.S; if (S && r.width) centerOn((e.clientX - r.left) / r.width * S.W, (e.clientY - r.top) / r.height * S.H); });
 
 /* ----- нажатия на карту ----- */
@@ -573,7 +619,7 @@ UI.mapTap = function (tx, ty) {
   const hitOwnArmy = hit && hit.k === 'army' && S.armies.some(a => a.id === hit.id && a.owner === 0), hitOwnShip = hit && hit.k === 'ship' && S.ships.some(a => a.id === hit.id && a.owner === 0);
   const hitFolk = hit && hit.k === 'folk';
   if (ownA && !hitOwnArmy && !hitFolk) { const e = orderMove(S, ownA, tx, ty); if (e) say(e, false); return; }
-  if (ownS && ownS.kind === 'war' && !hitOwnShip && !hitFolk) { const e = orderShip(S, ownS, tx, ty); if (e) say(e, false); return; }
+  if (ownS && (ownS.kind === 'war' || ownS.kind === 'liner') && !hitOwnShip && !hitFolk) { const e = orderShip(S, ownS, tx, ty); if (e) say(e, false); return; }
   if (hit) selEntity(hit.k, hit.id); else closeSheet();
 };
 

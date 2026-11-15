@@ -58,6 +58,7 @@ const SQ = {
   cmd: { n: 'Полководец', rdy: 'готов', need: { iron: 30 }, gold: 250, food: 40, t: 60, hp: 160, atk: 3.2, spd: 1.3, range: 1.6, ico: 'cmd', cnt: 1, bld: 'academy' },
   cat: { n: 'Катапульта', rdy: 'готова', need: { wood: 120, iron: 40 }, gold: 60, food: 10, t: 40, hp: 120, atk: 1.5, spd: 0.8, range: 5.0, ico: 'cat', cnt: 1, siege: true, bld: 'siege' },
   ram: { n: 'Таран', rdy: 'готов', need: { wood: 150, iron: 20 }, gold: 50, food: 10, t: 35, hp: 220, atk: 2.5, spd: 1.0, range: 1.6, ico: 'ram', cnt: 1, siege: true, bld: 'siege' },
+  cannon: { n: 'Пороховая пушка', rdy: 'готова', need: { iron: 45 }, gold: 130, food: 15, t: 45, hp: 95, atk: 6.5, spd: 0.8, range: 5.2, ico: 'cannon', cnt: 1, siege: true, bld: 'siege', d: 'Дальний огонь из пороховой пушки: рвёт стены и строй. Боится конницы вблизи' },
   militia: { n: 'Ополчение', rdy: 'готово', need: {}, gold: 35, food: 25, t: 12, hp: 16, atk: 2.2, spd: 1.2, range: 1.6, ico: 'militia', bld: 'barracks', d: 'Дёшево и без оружия, но слабо' },
   archer: { n: 'Лучники', rdy: 'готовы', need: { bow: 10 }, gold: 40, food: 30, t: 20, hp: 20, atk: 3.2, spd: 1.2, range: 3.0, ico: 'bow', bld: 'barracks', d: 'Бьют издалека, сильны против лёгких рыцарей' },
   spear: { n: 'Копейщики', rdy: 'готовы', need: { spear: 10 }, gold: 50, food: 30, t: 22, hp: 32, atk: 3.4, spd: 1.2, range: 1.6, ico: 'spear', bld: 'barracks', d: 'Гроза конницы' },
@@ -78,6 +79,8 @@ MATCH.cat = { archer: 1, light: 1, heavy: 1, cav: 1 }; MATCH.ram = { archer: 0.5
 // копейщики — гроза конницы; ополчение слабее всех
 MATCH.spear = { archer: 1.0, light: 0.9, heavy: 0.8, cav: 1.7, spear: 1.0, militia: 1.3, cat: 1.2, ram: 1.0 };
 MATCH.militia = { archer: 0.9, light: 0.7, heavy: 0.5, cav: 0.7, spear: 0.8, militia: 1.0, cat: 1.1, ram: 0.8 };
+MATCH.cannon = { archer: 1.3, light: 1.1, heavy: 1.3, cav: 0.5, spear: 1.0, militia: 1.4, cat: 1.2, ram: 1.2, cannon: 1.0, cmd: 1.1 };
+MATCH.cav.cannon = 1.9; MATCH.light.cannon = 1.6; MATCH.archer.cannon = 0.8; MATCH.heavy.cannon = 0.9; MATCH.spear.cannon = 1.1; MATCH.militia.cannon = 0.7;
 MATCH.archer.spear = 1.2; MATCH.archer.militia = 1.3; MATCH.light.spear = 1.1; MATCH.light.militia = 1.4;
 MATCH.heavy.spear = 1.2; MATCH.heavy.militia = 1.5; MATCH.cav.spear = 0.6; MATCH.cav.militia = 1.5;
 const TMULT = [0, 0, 0.9, 1, 1, 0.7, 0.6, 0.35]; // скорость по местности
@@ -89,7 +92,7 @@ const CMD = { archer: { n: 'Воевода', of: 'лучников', ico: 'bow' 
 const DAY = 120; // секунд игрового времени в одних сутках (2 минуты)
 const CLAIM_DAYS = 3; // дней на формирование претензии
 const DIFF = { easy: { n: 'Лёгкая', mult: 0.8, think: 5.5 }, normal: { n: 'Средняя', mult: 1.0, think: 3.2 }, hard: { n: 'Сложная', mult: 1.25, think: 1.8 } };
-const GAME_VERSION = '2.5.0';
+const GAME_VERSION = '2.6.0';
 const MAPTYPES = ['continent', 'continents', 'islands', 'lakes', 'random'];
 const CAP_MIN = 10.5; // минимальное расстояние между столицами
 const SEA_MIN = 10; // меньший водоём — пруд: порт у него не строят
@@ -160,6 +163,7 @@ const ICONMAP = {
   t_pol: ['Y..Y..Y.', 'YY.YY.YY', 'YYYYYYYY', 'KYYYYYYK', 'KRYBYRYK', 'KYYYYYYK', 'KKKKKKKK', '........'],
   t_fleet: ['....W...', '...WWW..', '..WWWWW.', '....N...', 'NNNNNNNN', '.NNNNNN.', '..KKKK..', 'CCCCCCCC'],
   ship: ['....W...', '...WWW..', '..WWWWW.', '....N...', 'NNNNNNNN', '.NNNNNN.', '..KKKK..', '........'],
+  cannon: ['....KKKK', '..BBNNKK', 'BBBBNNK.', 'KKBBBK..', 'KWWK.K..', 'KWWKKKK.', 'KKKK..K.', '........'],
   cat: ['....KK..', '...KNNK.', '..KNK.K.', '.KNK..W.', 'KNNNNNNK', 'KnNNNNnK', '.KKgKKgK', '..K.KK.K'],
   ram: ['.RRRRRR.', 'RRRRRRRR', '.K.K.K.K', 'NNNNNNNG', 'nNNNNNGG', '.KgKK.KK', '..K.K...', '........'],
   cmd: ['.Y.Y.Y..', '.YYYYYY.', '.KYYYYK.', 'KYYRYYYK', '.KYYYYK.', '..KKKK..', '.RRKKRR.', '.R.KK.R.'],
@@ -427,6 +431,16 @@ HF.cat = function (c, x, y, col) {
   R_(c, x + 4, y + 7, 2, 1, '#5a3a1a'); R_(c, x + 6, y + 6, 2, 1, '#5a3a1a'); R_(c, x + 8, y + 5, 2, 1, '#5a3a1a'); R_(c, x + 10, y + 4, 2, 1, '#5a3a1a'); R_(c, x + 12, y + 3, 2, 1, '#5a3a1a'); R_(c, x + 14, y + 2, 2, 1, '#5a3a1a');
   R_(c, x + 15, y + 0, 4, 2, '#5a3a1a'); R_(c, x + 16, y - 1, 2, 2, '#a0a4ac'); R_(c, x + 1, y + 3, 3, 2, col); R_(c, x + 1, y + 3, 3, 1, shadeC(col, 1.35)); R_(c, x + 1, y + 3, 1, 5, '#4a3018');
 };
+HF.cannon = function (c, x, y, col) { // пороховая пушка: бронзовый ствол на лафете с колёсами
+  R_(c, x + 4, y + 11, 3, 4, '#5a3a1a'); R_(c, x + 13, y + 11, 3, 4, '#5a3a1a'); // стойки
+  R_(c, x + 2, y + 9, 3, 3, '#3a2a16'); R_(c, x + 15, y + 9, 3, 3, '#3a2a16'); // колёса
+  R_(c, x + 3, y + 10, 1, 1, '#c8a45a'); R_(c, x + 16, y + 10, 1, 1, '#c8a45a');
+  R_(c, x + 1, y + 6, 18, 4, '#7a5a2e'); R_(c, x + 1, y + 6, 18, 1, '#9a7a44'); // лафет
+  R_(c, x + 5, y + 3, 13, 4, '#b8862e'); R_(c, x + 5, y + 3, 13, 1, '#e8c465'); // бронзовый ствол
+  R_(c, x + 4, y + 2, 3, 6, '#8a6420'); R_(c, x + 17, y + 4, 3, 3, '#e8c465'); // казённик и дуло
+  R_(c, x + 19, y + 5, 1, 1, '#231a12');
+  R_(c, x + 8, y + 0, 2, 3, '#4a4a52'); // затравка
+};
 HF.ram = function (c, x, y, col) {
   R_(c, x + 3, y + 10, 4, 4, '#2a1a0c'); R_(c, x + 4, y + 11, 2, 2, '#6a4a2a'); R_(c, x + 14, y + 10, 4, 4, '#2a1a0c'); R_(c, x + 15, y + 11, 2, 2, '#6a4a2a');
   R_(c, x + 3, y + 4, 1, 7, '#5a3a1a'); R_(c, x + 17, y + 4, 1, 7, '#5a3a1a'); R_(c, x + 1, y + 1, 19, 4, col); R_(c, x + 1, y + 1, 19, 1, shadeC(col, 1.35)); R_(c, x + 1, y + 4, 19, 1, shadeC(col, 0.6)); for (let i = 3; i < 19; i += 3) R_(c, x + i, y + 2, 1, 2, shadeC(col, 0.75));
@@ -434,11 +448,21 @@ HF.ram = function (c, x, y, col) {
 };
 function shipSpriteCanvas(kind, col) { // 36 x 24
   const c = document.createElement('canvas'); c.width = 36; c.height = 24; const x = c.getContext('2d');
-  const hull = kind === 'war' ? '#3a2a20' : '#8a5a2b', hl = kind === 'war' ? '#5a4030' : '#b07840';
+  const hull = kind === 'liner' ? '#2c2422' : kind === 'war' ? '#3a2a20' : '#8a5a2b', hl = kind === 'liner' ? '#4a3c34' : kind === 'war' ? '#5a4030' : '#b07840';
   R_(x, 3, 17, 30, 3, hull); R_(x, 3, 17, 30, 1, hl); R_(x, 5, 20, 26, 2, shadeC(hull, 0.7)); R_(x, 2, 15, 3, 3, hull); R_(x, 31, 15, 3, 3, hull); R_(x, 33, 14, 2, 2, hl);
   for (let i = 0; i < 6; i++) R_(x, 6 + i * 5, 18, 1, 2, shadeC(hull, 0.6));
   R_(x, 17, 1, 1, 17, '#5a3a1a'); R_(x, 9, 6, 1, 11, '#5a3a1a');
-  if (kind === 'war') {
+  if (kind === 'liner') { // линкор: три мачты, тяжёлый корпус, пороховые пушки за бортом
+    R_(x, 2, 16, 32, 5, hull); R_(x, 2, 16, 32, 1, hl); R_(x, 4, 21, 28, 2, shadeC(hull, 0.65)); // корпус потяжелее
+    R_(x, 1, 13, 4, 4, hull); R_(x, 31, 13, 4, 4, hull); R_(x, 34, 12, 2, 2, hl);
+    R_(x, 17, 0, 1, 17, '#4a3018'); R_(x, 9, 3, 1, 14, '#4a3018'); R_(x, 25, 3, 1, 14, '#4a3018'); // три мачты
+    R_(x, 10, 4, 7, 9, col); R_(x, 10, 4, 7, 1, shadeC(col, 1.35)); R_(x, 18, 2, 6, 11, col); R_(x, 18, 2, 6, 1, shadeC(col, 1.35));
+    R_(x, 2, 7, 6, 9, col); R_(x, 2, 7, 6, 1, shadeC(col, 1.35));
+    R_(x, 19, 6, 3, 3, '#f2c230'); R_(x, 20, 5, 1, 5, '#f2c230'); // герб
+    for (let i = 0; i < 7; i++) R_(x, 4 + i * 4, 18, 2, 1, '#14100c'); // порты пушек
+    for (let i = 0; i < 7; i++) R_(x, 4 + i * 4, 15, 1, 1, '#8a8f98'); // стволы пушек
+    R_(x, 14, 0, 10, 2, col); R_(x, 15, 1, 8, 1, shadeC(col, 1.3));
+  } else if (kind === 'war') {
     R_(x, 12, 3, 12, 11, col); R_(x, 12, 3, 12, 1, shadeC(col, 1.35)); R_(x, 12, 13, 12, 1, shadeC(col, 0.65)); R_(x, 16, 6, 4, 4, '#f2c230'); R_(x, 17, 5, 2, 6, '#f2c230');
     R_(x, 3, 8, 6, 8, '#d8d0c0'); R_(x, 3, 8, 6, 1, '#fff'); R_(x, 3, 12, 6, 2, col); for (let i = 0; i < 6; i++) R_(x, 6 + i * 5, 15, 3, 2, col);
     R_(x, 18, 0, 6, 3, col); R_(x, 34, 17, 2, 1, '#8a8f98');

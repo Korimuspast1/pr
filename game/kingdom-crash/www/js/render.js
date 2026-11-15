@@ -200,6 +200,12 @@ function frame(S, now) {
       const a1 = pos(p), a2 = pos(Math.min(1, p + 0.04));
       if (p < 1) { c.save(); c.translate(a1[0], a1[1]); c.rotate(Math.atan2(a2[1] - a1[1], a2[0] - a1[0])); R_(c, -1.8, -0.2, 2.8, 0.4, '#e8dcc0'); R_(c, 1, -0.5, 0.9, 1, '#d8dee8'); R_(c, -1.9, -0.6, 0.7, 1.2, '#c04a3a'); c.restore(); }
       else { c.globalAlpha = 1 - (age - f.d) / 0.15; R_(c, a1[0] - 0.5, a1[1] - 0.5, 1, 1, '#fff'); R_(c, a1[0] - 1.2, a1[1], 0.5, 0.5, '#ffd870'); R_(c, a1[0] + 0.8, a1[1] - 0.8, 0.5, 0.5, '#ffd870'); c.globalAlpha = 1; }
+    } else if (f.k === 'cball') { // ядро пороховой пушки: дуга, дым, вспышка удара
+      const pr = Math.min(1, (S.time - f.t) / (f.d || 0.6)), arc = Math.sin(pr * Math.PI) * 2.2;
+      const cx = f.x0 + (f.x1 - f.x0) * pr, cy = f.y0 + (f.y1 - f.y0) * pr - arc;
+      R_(c, cx * TS - 1, cy * TS - 1, 2, 2, '#231a12'); R_(c, cx * TS - 0.5, cy * TS - 1.5, 1, 1, '#5a5a62');
+      if (pr > 0.15 && pr < 0.85) R_(c, cx * TS - 2, cy * TS - 2 + arc * 0.4, 1.4, 1.4, 'rgba(200,200,200,0.35)');
+      if (pr >= 0.97) { for (let k = 0; k < 6; k++) { const an = k / 6 * 6.28; R_(c, f.x1 * TS + Math.cos(an) * 3, f.y1 * TS + Math.sin(an) * 3, 1.6, 1.6, k % 2 ? '#ff9a3c' : '#ffd24a'); } }
     } else if (f.k === 'rock') {
       if (age > f.d + 0.5 || (!visibleAt(S, f.x1, f.y1) && !visibleAt(S, f.x0, f.y0))) continue; const p = Math.min(1, age / f.d), ah = 18, x = (f.x0 + (f.x1 - f.x0) * p) * TS, gy = (f.y0 + (f.y1 - f.y0) * p) * TS, y = gy - 2 - Math.sin(Math.PI * p) * ah;
       if (p < 1) { R_(c, x - 0.8, gy - 0.3, 1.6, 0.6, 'rgba(0,0,0,0.3)'); R_(c, x - 1, y - 1, 2, 2, '#6a6e78'); R_(c, x - 0.6, y - 0.8, 1, 1, '#a0a4ac'); }
@@ -365,7 +371,7 @@ function drawFolk(c, f, tm, isSel) {
   if (isSel) selBox(c, fx - 2.6, fy - 5.4, 5.2, 6.4, tm);
 }
 const FIGC = {};
-function figSprite(t, col, cls) { const k = t + col + (cls || ''); if (FIGC[k]) return FIGC[k]; if (t === 'cmd') { const c = newCv(20, 19); HF.cmd(c.getContext('2d'), 1, 4, col, cls); c._feet = 17; return FIGC[k] = c; } const big = t === 'cat' || t === 'ram', c = newCv(big ? 28 : 18, big ? 20 : 16); HF[t](c.getContext('2d'), big ? 3 : 1, big ? 3 : 1, col, cls); c._feet = big ? 17 : 14; return FIGC[k] = c; }
+function figSprite(t, col, cls) { const k = t + col + (cls || ''); if (FIGC[k]) return FIGC[k]; if (t === 'cmd') { const c = newCv(20, 19); HF.cmd(c.getContext('2d'), 1, 4, col, cls); c._feet = 17; return FIGC[k] = c; } const big = t === 'cat' || t === 'ram' || t === 'cannon', c = newCv(big ? 28 : 18, big ? 20 : 16); HF[t](c.getContext('2d'), big ? 3 : 1, big ? 3 : 1, col, cls); c._feet = big ? 17 : 14; return FIGC[k] = c; }
 function drawRoute(c, x0, y0, path, alpha, tm, col) {
   if (!path.length) return; const pts = [[x0 * TS, y0 * TS]]; for (const p of path) pts.push([(p.x + 0.5) * TS, (p.y + 0.5) * TS]);
   c.save(); c.globalAlpha = alpha; c.lineJoin = 'round'; c.lineCap = 'round';

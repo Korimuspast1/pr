@@ -142,6 +142,47 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok(ev('(() => { const S = UI.S; const f = S.folk.find(q => q.st === "ok" && q.x !== undefined && !S.folk.some(g => g !== q && g.st !== "dead" && g.x !== undefined && Math.hypot(g.x - q.x, g.y - q.y) < 0.8)); if (!f) return false; RN.sel = null; UI.mapTap(f.x + 0.03, f.y + 0.03); return RN.sel && RN.sel.k === "folk" && RN.sel.id === f.id; })()'), 'тап по жителю выбирает его');
   ok(/Казнить/.test(sheetText()), 'карточка жителя открылась прямо с карты');
   ok(ev('(() => { const S = UI.S; let n = 0; for (let i = 0; i < 1500; i++) { tick(S, 0.25); if (S.trails) n = Object.keys(S.trails).length; } return n; })()') >= 0, 'тропинки появляются при ходьбе');
+  // свайп-закрытие сообщений: тост убирается движением пальца в ЛЮБУЮ сторону (2.6.0)
+  ok(ev('typeof dismissToast') === 'function', 'dismissToast доступна');
+  const dirs = [[90, 0], [-90, 0], [0, 90], [0, -90], [70, -70]];
+  for (const d of dirs) {
+    const r = ev(`(() => {
+      if (!UI.S) return 'нет игры';
+      UI.toasts = [{ t: { title: 'Тест', text: 'свайп', ev: 1 }, rt: performance.now(), dur: 60000 }];
+      updateHud();
+      const el = document.querySelector('.toast[data-rt]');
+      if (!el) return 'нет тоста';
+      const rt = el.getAttribute('data-rt');
+      el.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 100 }));
+      document.dispatchEvent(new window.MouseEvent('pointermove', { bubbles: true, clientX: ${100 + d[0]}, clientY: ${100 + d[1]} }));
+      document.dispatchEvent(new window.MouseEvent('pointerup', { bubbles: true, clientX: ${100 + d[0]}, clientY: ${100 + d[1]} }));
+      if (UI.toasts.length !== 0) return 'остался';
+      UI._swipeOut = 0; updateHud();
+      return !document.querySelector('.toast[data-rt="' + rt + '"]') ? 'ok' : 'остался в DOM';
+    })()`);
+    ok(r === 'ok', 'тост убран свайпом ' + d[0] + ',' + d[1], r);
+  }
+  // короткое касание НЕ закрывает (меньше порога), тап по тосту — закрывает
+  const small = ev(`(() => {
+    if (!UI.S) return 'нет игры';
+    UI.toasts = [{ t: { title: 'Тест2', text: 'касание', ev: 1 }, rt: performance.now(), dur: 60000 }];
+    updateHud();
+    const el = document.querySelector('.toast[data-rt]');
+    if (!el) return 'нет тоста';
+    const rt = el.getAttribute('data-rt');
+    el.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 100 }));
+    document.dispatchEvent(new window.MouseEvent('pointermove', { bubbles: true, clientX: 106, clientY: 104 }));
+    document.dispatchEvent(new window.MouseEvent('pointerup', { bubbles: true, clientX: 106, clientY: 104 }));
+    const kept = UI.toasts.length === 1 && !!document.querySelector('.toast[data-rt="' + rt + '"]');
+    if (!kept) return 'малый свайп удалил тост';
+    el.dispatchEvent(new window.MouseEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 100 }));
+    document.dispatchEvent(new window.MouseEvent('pointerup', { bubbles: true, clientX: 100, clientY: 100 }));
+    el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, clientX: 100, clientY: 100 }));
+    if (UI.toasts.length !== 0) return 'тап не закрыл';
+    UI._swipeOut = 0; updateHud();
+    return !document.querySelector('.toast[data-rt="' + rt + '"]') ? 'ok' : 'тост висит в DOM';
+  })()`);
+  ok(small === 'ok', 'малый свайп не трогает, тап закрывает', small);
   ok(errs.length === 0, 'нет ошибок JS', errs.slice(0, 3).join(' | '));
 
   console.log('пройдено:', pass, 'провалено:', fail);

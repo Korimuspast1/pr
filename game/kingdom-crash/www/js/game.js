@@ -808,7 +808,7 @@ function moveTo(S, a, tx, ty) {
   const bo = S.occ[gy * S.W + gx]; if (bo >= 0 && bo < 1000000) { const b = bidx(S, bo); if (b && b.type === 'port' && b.owner === a.owner) a.boardPort = b.id; }
   return null;
 }
-const siegeReach = a => a.sq.every(q => q.t === 'cat') ? 5.2 : 3.0;
+const siegeReach = a => a.sq.every(q => q.t === 'cat' || q.t === 'cannon') ? 5.2 : 3.0;
 function adjTiles(S, a, b, r, ideal) { // проходимые клетки рядом с укреплением, ближайшие к армии
   const l = []; for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = b.x + dx, y = b.y + dy; if (!dx && !dy) continue; if (x < 0 || y < 0 || x >= S.W || y >= S.H) continue; const t = S.ter[y * S.W + x]; if (isWater(t) || t === TR.MOUNT || structBlockedFor(S, a.owner, x, y) || S.occ[y * S.W + x] >= 1000000) continue; l.push({ x, y, d: (ideal ? Math.abs(dist(x + 0.5, y + 0.5, b.x + 0.5, b.y + 0.5) - ideal) : Math.ceil(dist(x + 0.5, y + 0.5, b.x + 0.5, b.y + 0.5) - 0.01)) * 100 + dist(x + 0.5, y + 0.5, a.x, a.y) }); }
   return l.sort((p, q) => p.d - q.d);
@@ -852,13 +852,14 @@ function tickHospital(S, dt) {
 }
 
 /* ===== Корабли ===== */
-function shipCost(kind, p) { const c = kind === 'war' ? { wood: 120, gold: 100, iron: 30 } : { wood: 80, gold: 80 }; if (perk(p, 'sea')) for (const k in c) c[k] = Math.round(c[k] * 0.7); return c; }
+function shipCost(kind, p) { const c = kind === 'liner' ? { wood: 220, gold: 200, iron: 90 } : kind === 'war' ? { wood: 120, gold: 100, iron: 30 } : { wood: 80, gold: 80 }; if (perk(p, 'sea')) for (const k in c) c[k] = Math.round(c[k] * 0.7); return c; }
+const SHIP_HP = { trade: 160, war: 340, liner: 850 }, SHIP_DPS = { war: 26, liner: 72 }, SHIP_RANGE = { war: 3.6, liner: 5.6 };
 function buildShip(S, port, kind) {
-  if (!port || port.type !== 'port' || port.owner < 0 || (kind !== 'war' && kind !== 'trade')) return 'Нужен свой порт';
+  if (!port || port.type !== 'port' || port.owner < 0 || (kind !== 'war' && kind !== 'trade' && kind !== 'liner')) return 'Нужен свой порт';
   const p = S.players[port.owner], c = shipCost(kind, p); if (!canAfford(p, c)) return 'Не хватает ресурсов';
-  if (S.ships.filter(s => s.owner === port.owner && s.kind === kind).length >= (kind === 'war' ? 4 : 5)) return 'Достигнут предел судов';
+  if (S.ships.filter(s => s.owner === port.owner && s.kind === kind).length >= (kind === 'liner' ? 2 : kind === 'war' ? 4 : 5)) return 'Достигнут предел судов';
   const w = nearestWater(S, port.x, port.y, 3, null); if (!w) return 'Нет выхода в море';
-  pay(p, c); const sh = { id: S.nid++, owner: port.owner, kind, x: w.x + 0.5, y: w.y + 0.5, path: [], cargo: null, st: 'dock', home: port.id, landing: null, to: null, wait: 0, face: 1 }; S.ships.push(sh); p.flags.ship = 1; if (kind === 'war') p.flags.warship = 1; return null;
+  pay(p, c); const sh = { id: S.nid++, owner: port.owner, kind, x: w.x + 0.5, y: w.y + 0.5, path: [], cargo: null, st: 'dock', home: port.id, landing: null, to: null, wait: 0, face: 1, hp: SHIP_HP[kind] || 150, mhp: SHIP_HP[kind] || 150, cd: 0 }; S.ships.push(sh); p.flags.ship = 1; if (kind === 'war') p.flags.warship = 1; if (kind === 'liner') p.flags.liner = 1; return null;
 }
 function orderShip(S, sh, tx, ty) {
   if (!(tx >= 0 && ty >= 0 && tx < S.W && ty < S.H)) return 'Туда нельзя: край карты';
@@ -887,11 +888,51 @@ function shipDeliver(S, sh, p) { // торговое судно пришло в 
     if (h) { const sx = Math.floor(sh.x), sy = Math.floor(sh.y), w2 = nearestWater(S, h.x, h.y, 3, S.comp[sy * S.W + sx]), pp = w2 && astar(S, sx, sy, w2.x, w2.y, true); if (pp && pp.length) { sh.path = pp; sh.st = 'sail'; } }
   } else sh.leg = 'idle';
 }
+function shipFight(S, dt) { // морской бой: военные суда и линкоры бьют врагов пушками
+  for (const sh of S.ships) {
+    if (sh.kind === 'trade' || !SHIP_DPS[sh.kind]) continue;
+    if (sh.cd > 0) { sh.cd -= dt; continue; }
+    const rng = SHIP_RANGE[sh.kind], dps = SHIP_DPS[sh.kind];
+    let tg = null, td = 1e9;
+    for (const e of S.ships) if (e !== sh && atWar(S, sh.owner, e.owner)) { const d = dist(sh.x, sh.y, e.x, e.y); if (d < rng && d < td) { td = d; tg = e; } }
+    if (tg) {
+      sh.cd = sh.kind === 'liner' ? 2.2 : 1.3; sh.face = tg.x >= sh.x ? 1 : -1;
+      S.fx.push({ k: 'cball', x0: sh.x, y0: sh.y, x1: tg.x, y1: tg.y, t: S.time, d: 0.6 });
+      tg.hp = (tg.hp == null ? SHIP_HP[tg.kind] || 150 : tg.hp) - dps * sh.cd;
+      if (tg.hp <= 0) {
+        S.ships = S.ships.filter(q => q !== tg);
+        const nm = tg.kind === 'liner' ? 'линкор' : tg.kind === 'war' ? 'военный корабль' : 'торговое судно';
+        if (sh.owner === 0) { S.toast.push({ title: 'Морская победа', text: 'Наши пушки потопили ' + nm + ' врага.', t: S.time, good: true, ev: 1 }); info(S, 0, 'Морская победа', 'Вражеское судно потоплено.', 'info'); }
+        if (tg.owner === 0) { S.toast.push({ title: 'Судно потеряно', text: 'Враг потопил наше судно.', t: S.time, bad: true, ev: 1 }); info(S, 0, 'Судно потеряно', 'Враг потопил наше судно.', 'info'); }
+      }
+      continue;
+    }
+    if (sh.kind === 'liner') { // линкор обстреливает побережье: порты, башни, ворота
+      let bg = null, bd2 = 1e9;
+      for (const b of S.buildings) {
+        if (b.owner < 0 || b.owner === sh.owner || !atWar(S, sh.owner, b.owner)) continue;
+        if (b.type !== 'port' && b.type !== 'tower' && b.type !== 'gate') continue;
+        const d = dist(sh.x, sh.y, b.x + 0.5, b.y + 0.5);
+        if (d < 4.5 && d < bd2) { bd2 = d; bg = b; }
+      }
+      if (bg) {
+        sh.cd = 2.6; sh.face = bg.x + 0.5 >= sh.x ? 1 : -1;
+        S.fx.push({ k: 'cball', x0: sh.x, y0: sh.y, x1: bg.x + 0.5, y1: bg.y + 0.5, t: S.time, d: 0.7 });
+        bg.hp -= 55;
+        if (bg.hp <= 0) {
+          if (bg.owner === 0) S.toast.push({ title: 'Бомбардировка!', text: 'Линкор врага разрушил ' + (bg.type === 'port' ? 'порт' : bg.type === 'tower' ? 'башню' : 'ворота') + '.', t: S.time, bad: true, ev: 1 });
+          demolish(S, bg, sh.owner);
+        }
+      }
+    }
+  }
+}
 function tickShips(S, dt) {
+  shipFight(S, dt);
   for (const sh of S.ships) {
     const p = S.players[sh.owner];
     if (sh.path.length) {
-      const w = sh.path[0], dx = w.x + 0.5 - sh.x, dy = w.y + 0.5 - sh.y, d = Math.hypot(dx, dy), step = (sh.kind === 'war' ? 2.0 : 1.7) * dt;
+      const w = sh.path[0], dx = w.x + 0.5 - sh.x, dy = w.y + 0.5 - sh.y, d = Math.hypot(dx, dy), step = (sh.kind === 'liner' ? 1.9 : sh.kind === 'war' ? 2.0 : 1.7) * dt;
       if (d <= step) { sh.x = w.x + 0.5; sh.y = w.y + 0.5; sh.path.shift(); } else { sh.x += dx / d * step; sh.y += dy / d * step; } if (dx) sh.face = dx > 0 ? 1 : -1;
       if (!sh.path.length) {
         sh.st = 'dock';
@@ -1101,6 +1142,27 @@ function tickCombat(S, dt) {
       if (tg) { const cx = tg.x + 0.5, cy = tg.y + 0.5, d = Math.hypot(cx - s.x, cy - s.y); s.face = cx >= s.x ? 1 : -1;
         if (d > 0.9) { const bl = moveSoldier(S, s, cx, cy, st.spd * dt, o); if (bl && bl.owner !== o && atWar(S, o, bl.owner)) strike(bl, RAM_DPS[bl.type] || 20); } else strike(tg, RAM_DPS[tg.type] || 20); continue; }
     }
+    if (u.t === 'cannon') { // пороховая пушка: бьёт издалека войска и укрепления
+      let tgS = null, tgU = null;
+      if (e && ed <= st.range) tgU = e;
+      if (T && Math.hypot(T.x + 0.5 - s.x, T.y + 0.5 - s.y) <= st.range) tgS = T;
+      if (!tgS) { let bd2 = 1e9; for (const b of S.buildings) { if (b.owner < 0 || b.owner === o || !atWar(S, o, b.owner)) continue; if (b.type !== 'wall' && b.type !== 'gate' && b.type !== 'tower' && b.type !== 'port') continue; const d = Math.hypot(b.x + 0.5 - s.x, b.y + 0.5 - s.y); if (d <= st.range && d < bd2) { bd2 = d; tgS = b; } } }
+      const gx = tgU ? tgU.s.x : tgS ? tgS.x + 0.5 : null, gy = tgU ? tgU.s.y : tgS ? tgS.y + 0.5 : null;
+      if (!tgU && !tgS) { const goal = (e && ed <= 7) ? e.s : T ? { x: T.x + 0.5, y: T.y + 0.5 } : null; if (goal) { const gd = Math.hypot(goal.x - s.x, goal.y - s.y); if (gd > st.range * 0.8) moveSoldier(S, s, goal.x, goal.y, st.spd * dt, o); } else { const dx = sx - s.x, dy = sy - s.y, d = Math.hypot(dx, dy); if (d > 0.02) { const k = Math.min(1, st.spd * dt / d); s.x += dx * k; s.y += dy * k; } } continue; }
+      if (!s.cd || s.cd <= S.time) {
+        s.cd = S.time + 2.1 + S.rnd() * 0.4; s.atk = S.time;
+        s.face = gx >= s.x ? 1 : -1;
+        S.fx.push({ k: 'cball', x0: s.x, y0: s.y, x1: gx, y1: gy, t: S.time, d: 0.55 });
+        if (tgU) {
+          dm.push([tgU.s, st.atk * mm(u.t, tgU.tt) * defMult(S, tgU.a) * BAT * out * dfa(tgU), o, tgU.a, S.time + 0.55]);
+          for (const v of U) { if (v.a.owner === o || !atWar(S, o, v.a.owner)) continue; if (v.s !== tgU.s && Math.hypot(v.s.x - gx, v.s.y - gy) <= 0.9) dm.push([v.s, st.atk * 0.5 * mm(u.t, v.tt) * BAT * out, o, v.a, S.time + 0.55]); } // разрыв ядра
+        } else {
+          sdm.push([tgS, 36 * (1 - (s.mD || 0)) * out, o, S.time + 0.55]); // ядро рвёт укрепления
+          if (tgS.type === 'tower' && tgS.gar) for (const gs of tgS.gar.s) gdm.push([gs, 7, o, tgS, S.time + 0.55]);
+        }
+      }
+      continue;
+    }
     if (u.t === 'cat') {
       let tgS = null, tgU = null; if (e && ed <= st.range) tgU = e; else if (T && Math.hypot(T.x + 0.5 - s.x, T.y + 0.5 - s.y) <= st.range) tgS = T;
       const goal = tgU || tgS || (e && ed <= 6 ? { s: e.s } : T ? { s: { x: T.x + 0.5, y: T.y + 0.5 } } : null);
@@ -1166,7 +1228,7 @@ function arrive(S, a) { // армия дошла до цели
   if (a.boardPort != null) {
     const port = bidx(S, a.boardPort); a.boardPort = null;
     if (port && port.owner === a.owner) {
-      const sh = S.ships.find(s => s.owner === a.owner && s.kind === 'war' && !s.cargo && s.st === 'dock' && dist(s.x, s.y, port.x + 0.5, port.y + 0.5) < 4);
+      const sh = S.ships.find(s => s.owner === a.owner && (s.kind === 'war' || s.kind === 'liner') && !s.cargo && s.st === 'dock' && dist(s.x, s.y, port.x + 0.5, port.y + 0.5) < 4);
       if (sh) { sh.cargo = a.id; a.ship = sh.id; a.x = sh.x; a.y = sh.y; if (a.owner === 0) info(S, 0, 'Погрузка', 'Войска на борту. Выберите корабль и укажите берег.', 'info'); }
       else if (a.owner === 0) info(S, 0, 'Корабля нет', 'В порту нет свободного военного корабля — постройте его или дождитесь возвращения.', 'info');
     }
@@ -1516,10 +1578,10 @@ function restoreGame(d) {
   for (const s of rawShips) {
     const owner = pid(s.owner); if (owner < 0) continue; let x = _n(s.x, 0, W - 0.01, NaN), y = _n(s.y, 0, H - 0.01, NaN); if (!(x >= 0) || !(y >= 0)) continue;
     if (!isWater(ter[Math.floor(y) * W + Math.floor(x)])) { const p = nearestTile(S, x, y, true, 12); if (!p) continue; x = p.x + 0.5; y = p.y + 0.5; }
-    const id = takeId(s.id), o = { id, owner, kind: s.kind === 'war' ? 'war' : 'trade', x, y, path: _path(s.path, W, H, ter, true), cargo: null, st: 'dock', home: S.bmap.has(s.home) ? s.home : null, landing: null, to: S.bmap.has(s.to) ? s.to : null, wait: _n(s.wait, 0, 100, 0), face: s.face === -1 ? -1 : 1, leg: s.leg === 'out' || s.leg === 'back' ? s.leg : 'idle', len: _n(s.len, 0, 1e4, 0) };
+    const id = takeId(s.id), o = { id, owner, kind: s.kind === 'liner' ? 'liner' : s.kind === 'war' ? 'war' : 'trade', x, y, path: _path(s.path, W, H, ter, true), cargo: null, st: 'dock', home: S.bmap.has(s.home) ? s.home : null, landing: null, to: S.bmap.has(s.to) ? s.to : null, wait: _n(s.wait, 0, 100, 0), face: s.face === -1 ? -1 : 1, leg: s.leg === 'out' || s.leg === 'back' ? s.leg : 'idle', len: _n(s.len, 0, 1e4, 0), hp: _n(s.hp, 1, 9999, SHIP_HP[s.kind === 'liner' ? 'liner' : s.kind === 'war' ? 'war' : 'trade']), mhp: SHIP_HP[s.kind === 'liner' ? 'liner' : s.kind === 'war' ? 'war' : 'trade'], cd: 0 };
     if (o.path.length) o.st = 'sail';
     if (s.landing && s.landing.x >= 0 && s.landing.y >= 0 && s.landing.x < W && s.landing.y < H) o.landing = { x: s.landing.x | 0, y: s.landing.y | 0 };
-    const ca = armyById.get(s.cargo); if (ca && ca.ship === id && ca.owner === owner && o.kind === 'war') o.cargo = ca.id;
+    const ca = armyById.get(s.cargo); if (ca && ca.ship === id && ca.owner === owner && (o.kind === 'war' || o.kind === 'liner')) o.cargo = ca.id;
     S.ships.push(o);
   }
   { // армия «на корабле», которого нет, высаживается на ближайший берег
