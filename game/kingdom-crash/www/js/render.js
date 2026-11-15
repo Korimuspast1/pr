@@ -148,7 +148,12 @@ function frame(S, now) {
   }
   // маршруты: стрелка направления с учётом воды, гор и границ
   const sel = RN.sel;
-  for (const a of S.armies) { if (a.owner !== 0 || a.ship || !a.path.length) continue; const isSel = sel && sel.k === 'army' && sel.id === a.id; if (isSel || (a.st === 'move')) drawRoute(c, a.x, a.y, a.path, isSel ? 1 : 0.35, tm, '#ffe27a'); }
+  for (const a of S.armies) { if (a.owner !== 0 || a.ship) continue; const isSel = sel && sel.k === 'army' && sel.id === a.id; if (a.path.length) { if (isSel || (a.st === 'move')) drawRoute(c, a.x, a.y, a.path, isSel ? 1 : 0.35, tm, '#ffe27a'); }
+    if (a.wp && a.wp.length) { const tail = []; const last = a.path.length ? a.path[a.path.length - 1] : { x: Math.floor(a.x), y: Math.floor(a.y) }; tail.push({ x: last.x, y: last.y }); for (const w2 of a.wp) tail.push({ x: Math.floor(w2.x), y: Math.floor(w2.y) });
+      c.save(); c.globalAlpha = isSel ? 0.95 : 0.45; c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 2; c.setLineDash([2.4, 2.4]); c.beginPath(); tail.forEach((p, i) => { const px = (p.x + 0.5) * TS, py = (p.y + 0.5) * TS; if (i) c.lineTo(px, py); else c.moveTo(px, py); }); c.stroke();
+      c.strokeStyle = '#ffe27a'; c.lineWidth = 1.1; c.lineDashOffset = -tm * 6; c.beginPath(); tail.forEach((p, i) => { const px = (p.x + 0.5) * TS, py = (p.y + 0.5) * TS; if (i) c.lineTo(px, py); else c.moveTo(px, py); }); c.stroke(); c.setLineDash([]);
+      for (const w2 of a.wp) { const px = (w2.x + 0.5) * TS, py = (w2.y + 0.5) * TS; c.globalAlpha = isSel ? 1 : 0.6; c.fillStyle = 'rgba(0,0,0,0.65)'; c.beginPath(); c.arc(px, py, 2.6, 0, 6.3); c.fill(); c.fillStyle = '#ffe27a'; c.beginPath(); c.arc(px, py, 1.7, 0, 6.3); c.fill(); }
+      c.restore(); } }
   if (sel && sel.k === 'ship') { const a = S.ships.find(q => q.id === sel.id); if (a && a.path.length) drawRoute(c, a.x, a.y, a.path, 1, tm, '#bfe8ff'); }
   // корабли
   for (const sh of S.ships) {
@@ -214,6 +219,14 @@ function frame(S, now) {
       if (age < 0.45 && visibleAt(S, f.x, f.y)) { const q = age / 0.45, x = f.x * TS, y = f.y * TS; c.globalAlpha = 1 - q; for (let k = 0; k < 5; k++) R_(c, x + Math.cos(k * 1.3 + f.t * 3) * q * 3, y + Math.sin(k * 1.3 + f.t * 3) * q * 2 - q * 2, 0.7, 0.7, k % 2 ? '#b8b0a0' : '#8a5a2b'); R_(c, x - 1, y - 1, 2, 0.5, '#fff'); c.globalAlpha = 1; }
     } else if (f.k === 'rubble') {
       if (age < 25 && visibleAt(S, f.x, f.y)) { c.globalAlpha = Math.max(0, 1 - age / 25) * 0.9; const x = f.x * TS, y = f.y * TS; for (let k = 0; k < 7; k++) R_(c, x - 6 + hash(Math.floor(f.x), Math.floor(f.y), k) * 12, y - 3 + hash(Math.floor(f.x), Math.floor(f.y), k + 7) * 8, 1.6, 1.2, k % 2 ? '#8a8272' : '#6a6458'); c.globalAlpha = 1; }
+    } else if (f.k === 'cap') { // захват территории: кольцо во цвет нового владельца + искры
+      if (age < 2.6 && visibleAt(S, f.x, f.y)) { const q = age / 2.6, big = f.big ? 1.35 : 1, x = f.x * TS, y = f.y * TS, rr = (0.6 + q * 3.2) * big;
+        const col = (f.o != null && S.players[f.o] && S.players[f.o].col) ? S.players[f.o].col : '#ffffff';
+        c.globalAlpha = Math.max(0, 1 - q) * 0.9; c.strokeStyle = col; c.lineWidth = 2.4 - q * 1.6; c.beginPath(); c.arc(x, y, rr * TS, 0, 6.3); c.stroke();
+        c.globalAlpha = Math.max(0, 1 - q) * 0.5; c.lineWidth = 1.1; c.beginPath(); c.arc(x, y, Math.max(0.2, rr - 0.8) * TS, 0, 6.3); c.stroke();
+        for (let k = 0; k < 8; k++) { const an = k / 8 * 6.28 + f.t, d0 = rr * TS * (0.72 + hash(k, Math.floor(f.t * 10), 3) * 0.4); c.globalAlpha = Math.max(0, 1 - q) * 0.8; R_(c, x + Math.cos(an) * d0 - 0.7, y + Math.sin(an) * d0 * 0.82 - 0.7 - q * 6, 1.4, 1.4, k % 2 ? '#ffffff' : col); }
+        c.globalAlpha = 1;
+      }
     } else if (f.k === 'rip') { if (age < 9 && visibleAt(S, f.x, f.y)) { c.globalAlpha = Math.max(0, 1 - age / 9) * 0.85; const x = f.x * TS, y = f.y * TS; R_(c, x - 1.8, y - 0.5, 3.6, 1, '#3a1a1a'); R_(c, x - 1.5, y - 0.8, 3, 0.8, '#7a2a2a'); R_(c, x + 1.2, y - 1.2, 0.6, 0.6, '#d8d0c0'); c.globalAlpha = 1; }
     } else if (f.k === 'hit' && age < 0.32 && visibleAt(S, f.x, f.y)) {
       const q = age / 0.32, x = f.x * TS, y = f.y * TS - 2; c.globalAlpha = 1 - q; c.strokeStyle = '#fff'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(x - 1.5, y - 1.5); c.lineTo(x + 1.5, y + 1.5); c.moveTo(x + 1.5, y - 1.5); c.lineTo(x - 1.5, y + 1.5); c.stroke();

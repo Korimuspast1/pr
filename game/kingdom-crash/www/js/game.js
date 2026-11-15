@@ -177,7 +177,16 @@ function recomputeTerr(S) {
       if (ra < best[i]) { best[i] = ra; t[i] = c.owner; }
     }
   }
-  for (const b of S.buildings) { const o = t[b.y * W + b.x]; if (o !== -2 && o !== b.owner) { b.owner = o; b.busy = false; b.queue = []; b.gar = null; b.cd = 0; } }
+  { let gained = 0, lost = 0;
+    for (const b of S.buildings) { const o = t[b.y * W + b.x]; if (o !== -2 && o !== b.owner) { const was = b.owner; b.owner = o; b.busy = false; b.queue = []; b.gar = null; b.cd = 0;
+      S.fx.push({ k: 'cap', x: b.x + 0.5, y: b.y + 0.5, t: S.time, o });
+      if (was === 0) lost++; else if (o === 0) gained++; } }
+    if (gained || lost) { // чужие и наши постройки перешли под другой флаг — игрок должен видеть это
+      const title = lost ? 'Постройки захвачены!' : 'Постройки под нашим флагом';
+      const text = (gained ? 'Зданий перешло под наш контроль: ' + gained + '. ' : '') + (lost ? 'Зданий захватил враг: ' + lost + '.' : '');
+      S.toast.push({ title, text: text.trim(), bad: lost > 0, good: !lost, icon: 'flag', t: S.time });
+      if (lost) info(S, 0, 'Постройки захвачены!', text.trim(), 'war'); else info(S, 0, 'Территория растёт', text.trim(), 'info');
+    } }
   if (S.extra) for (const [i, o] of S.extra) { if (t[i] === -2) t[i] = o; else if (t[i] !== o) S.extra.delete(i); } // ручные захваты; устаревшие — очищаем
   S.dirtyT = true; S.sv = (S.sv || 0) + 1;
 }
@@ -766,7 +775,7 @@ function reapArmy(S, a, killer, wound) {
 }
 const armyCap = a => a.sq.reduce((s, q) => s + sqMax(q.t), 0); // сколько бойцов в армии при полных отрядах
 const units = a => a.sq.reduce((s, q) => s + q.u, 0);
-function newArmy(S, owner, x, y, sq) { const a = { id: S.nid++, owner, x, y, sq, path: [], dest: null, st: 'idle', ship: null, maxU: sq.reduce((s, q) => s + q.u, 0), face: 1, boardPort: null }; S.armies.push(a); return a; }
+function newArmy(S, owner, x, y, sq) { const a = { id: S.nid++, owner, x, y, sq, path: [], dest: null, st: 'idle', ship: null, maxU: sq.reduce((s, q) => s + q.u, 0), face: 1, boardPort: null, wp: [] }; S.armies.push(a); return a; }
 function armySpd(S, a) { let s = 9; for (const q of a.sq) s = Math.min(s, q.t === 'cmd' && q.cls === 'cav' ? 2.2 : q.t === 'cmd' ? SQ[q.cls].spd : SQ[q.t].spd); s *= MOVE_MULT; const i = Math.floor(a.y) * S.W + Math.floor(a.x); return s * TMULT[S.ter[i]] * (S.mm[i] === 1 ? 0.5 : 1); }
 function combo(a) { const t = new Set(a.sq.map(q => q.t).filter(x => x !== 'cmd')); return (1 + 0.08 * Math.max(0, t.size - 1)) * (a._bo > 0 ? 1.18 : 1); }
 function mergeNear(S, a) {
@@ -777,6 +786,28 @@ function mergeNear(S, a) {
   }
   if (n) S.players[a.owner].flags.army = 1; return n;
 }
+function mergeSameType(S, a) { // собрать отряды одного типа внутри армии в полные (лучники+лучники и т.п.)
+  if (a.ship) return 0;
+  const byType = new Map();
+  for (const q of a.sq) { if (q.t === 'cmd') continue; const l = byType.get(q.t); if (l) l.push(q); else byType.set(q.t, [q]); }
+  let done = 0;
+  for (const pair of byType) {
+    const t = pair[0], list = pair[1]; if (list.length < 2) continue;
+    const mx = sqMax(t), warriors = []; let wounded = 0;
+    for (const q of list) { for (const s of q.s) warriors.push(s); wounded += q.w || 0; }
+    const gU = warriors.length;
+    const compact = Math.ceil(gU / mx);
+    if (!(gU < list.length * mx || compact < list.length)) continue; // отряды и так полные и компактные
+    a.sq = a.sq.filter(q => q.t !== t);
+    const made = [];
+    for (let i = 0; i < gU; i += mx) { const nq = { t, u: 0, hp: 0, s: warriors.slice(i, i + mx), w: 0 }; syncSq(nq); made.push(nq); }
+    for (let i = 0; i < wounded && made.length; i++) made[i % made.length].w++; // раненых распределяем round-robin — никто не теряется
+    a.sq.push.apply(a.sq, made);
+    done++;
+  }
+  if (done) { a._sk = null; const p = S.players[a.owner]; if (p) p.flags.army = 1; }
+  return done; // число родов войск, которые удалось собрать
+}
 function splitArmy(S, a) {
   if (a.ship || a.sq.length < 2) return 0;
   const rest = a.sq.splice(1), spots = reachTiles(S, a.owner, Math.floor(a.x), Math.floor(a.y), rest.length, 4);
@@ -786,6 +817,7 @@ function splitArmy(S, a) {
 function orderMove(S, a, tx, ty) {
   if (a.ship) return 'Войска на корабле — управляйте кораблём';
   if (!(tx >= 0 && ty >= 0 && tx < S.W && ty < S.H)) return 'Туда нельзя: край карты';
+  a.wp = []; // новый приказ отменяет маршрут из точек
   a.retreat = false; // новый приказ отменяет отступление
   const gx0 = Math.floor(tx), gy0 = Math.floor(ty), gb = structAtTile(S, gx0, gy0);
   if (gb) {
@@ -808,6 +840,19 @@ function moveTo(S, a, tx, ty) {
   const bo = S.occ[gy * S.W + gx]; if (bo >= 0 && bo < 1000000) { const b = bidx(S, bo); if (b && b.type === 'port' && b.owner === a.owner) a.boardPort = b.id; }
   return null;
 }
+function orderWaypoint(S, a, tx, ty) { // точка маршрута: армия дойдёт до неё после текущего совета и предыдущих точек
+  if (a.ship) return 'Войска на корабле — управляйте кораблём';
+  if (!(tx >= 0 && ty >= 0 && tx < S.W && ty < S.H)) return 'Туда нельзя: край карты';
+  let gx = Math.floor(tx), gy = Math.floor(ty);
+  if (isWater(S.ter[gy * S.W + gx]) || S.ter[gy * S.W + gx] === TR.MOUNT) { const p = nearestTile(S, gx, gy, false, 3); if (!p) return 'Туда нельзя: горы или вода'; gx = p.x; gy = p.y; }
+  const busy = a.path.length > 0 || (a.wp && a.wp.length) > 0;
+  if (!busy) { a.wp = []; return moveTo(S, a, gx + 0.5, gy + 0.5); } // первая точка — как обычный приказ
+  const from = a.wp && a.wp.length ? a.wp[a.wp.length - 1] : (a.dest ? { x: a.dest.x, y: a.dest.y } : { x: Math.floor(a.x), y: Math.floor(a.y) });
+  if (S.comp[gy * S.W + gx] !== S.comp[from.y * S.W + from.x]) return 'Нет пути по суше от конца маршрута — нужен корабль';
+  if (blockedFor(S, a.owner, gx, gy)) return 'Чужая территория: объявите войну или запросите право прохода';
+  a.wp = a.wp || []; a.wp.push({ x: gx, y: gy });
+  return null;
+}
 const siegeReach = a => a.sq.every(q => q.t === 'cat' || q.t === 'cannon') ? 5.2 : 3.0;
 function adjTiles(S, a, b, r, ideal) { // проходимые клетки рядом с укреплением, ближайшие к армии
   const l = []; for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = b.x + dx, y = b.y + dy; if (!dx && !dy) continue; if (x < 0 || y < 0 || x >= S.W || y >= S.H) continue; const t = S.ter[y * S.W + x]; if (isWater(t) || t === TR.MOUNT || structBlockedFor(S, a.owner, x, y) || S.occ[y * S.W + x] >= 1000000) continue; l.push({ x, y, d: (ideal ? Math.abs(dist(x + 0.5, y + 0.5, b.x + 0.5, b.y + 0.5) - ideal) : Math.ceil(dist(x + 0.5, y + 0.5, b.x + 0.5, b.y + 0.5) - 0.01)) * 100 + dist(x + 0.5, y + 0.5, a.x, a.y) }); }
@@ -826,7 +871,7 @@ function orderGarrison(S, a, b) {
   for (const c of cand.slice(0, 4)) { const e = moveTo(S, a, c.x + 0.5, c.y + 0.5); if (!e) { a.garrison = b.id; a.siege = null; return null; } err = e; }
   return err;
 }
-function stopArmy(a) { a.path = []; a.dest = null; a.st = 'idle'; a.boardPort = null; a.siege = null; a.sg = false; a.garrison = null; a.retreat = false; a.arrived = false; }
+function stopArmy(a) { a.path = []; a.dest = null; a.st = 'idle'; a.boardPort = null; a.siege = null; a.sg = false; a.garrison = null; a.retreat = false; a.arrived = false; a.wp = []; }
 function nearestOwnCity(S, a) { let best = null, bd = 1e9; for (const c of S.cities) if (c.owner === a.owner) { const d = dist(a.x, a.y, c.x + 1, c.y + 1); if (d < bd && S.comp[(c.y) * S.W + c.x] === S.comp[Math.floor(a.y) * S.W + Math.floor(a.x)]) { bd = d; best = c; } } return best; }
 function nearestHospital(S, a) { let best = null, bd = 1e9; const cp = S.comp[Math.floor(a.y) * S.W + Math.floor(a.x)]; for (const b of S.buildings) if (b.type === 'hospital' && b.owner === a.owner) { const d = dist(a.x, a.y, b.x + 0.5, b.y + 0.5); if (d < bd && S.comp[b.y * S.W + b.x] === cp) { bd = d; best = b; } } return best; }
 function retreat(S, a) {
@@ -1242,7 +1287,18 @@ function tickMove(S, dt) {
       if (a.tres > 25 && !a.fight) { a.tres = 0; const was = a.retreat, e = retreat(S, a); if (!e && !was && a.owner === 0) info(S, 0, 'Отход армии', 'Армия покидает чужую территорию.', 'info'); }
     } else a.tres = 0;
     if (a.fight) continue;
-    if (!a.path.length) { if (a.arrived) { a.arrived = false; arrive(S, a); } else if (a.st === 'move') a.st = 'idle'; continue; }
+    if (!a.path.length) {
+      if (a.arrived) { a.arrived = false; arrive(S, a); } else if (a.st === 'move') a.st = 'idle';
+      if (a.wp && a.wp.length && !a.fight && !a.ship && a.sq.length && S.armies.indexOf(a) >= 0) { // идём к следующей точке маршрута
+        while (a.wp.length) {
+          const t0 = a.wp.shift();
+          const e = moveTo(S, a, t0.x + 0.5, t0.y + 0.5);
+          if (!e) break;
+          if (a.owner === 0) info(S, 0, 'Маршрут', 'Точка маршрута пропущена: ' + e, 'info');
+        }
+      }
+      continue;
+    }
     const w = a.path[0], cx0 = Math.floor(a.x), cy0 = Math.floor(a.y);
     if (structBlockedFor(S, a.owner, w.x, w.y)) { stopArmy(a); continue; }
     if (blockedFor(S, a.owner, w.x, w.y) && !blockedFor(S, a.owner, cx0, cy0)) { stopArmy(a); if (a.owner === 0) info(S, 0, 'Армия остановлена', 'Граница закрыта: нужна война или право прохода.', 'info'); continue; }
@@ -1281,6 +1337,9 @@ function flipCity(S, c, A) {
   if (c.level > 1) c.level--; if (old >= 0) c.radius = Math.max(3, c.radius * 0.7);
   addMsg(S, A, { type: 'info', title: 'Город захвачен!', text: c.name + ' теперь под вашим флагом.' });
   if (old >= 0) addMsg(S, old, { type: 'war', title: 'Город потерян!', text: pname(S, A) + ' захватил ' + c.name + '.' });
+  S.fx.push({ k: 'cap', x: c.x + 1, y: c.y + 1, t: S.time, o: A, big: 1 });
+  if (A === 0) S.toast.push({ title: 'Город захвачен!', text: c.name + ' теперь под вашим флагом.', good: true, icon: 'flag', t: S.time });
+  else if (old === 0) S.toast.push({ title: 'Город потерян!', text: pname(S, A) + ' захватил ' + c.name + '.', bad: true, icon: 'flag', t: S.time });
   recomputeTerr(S);
 }
 function tickTerr(S, dt) {
@@ -1568,7 +1627,8 @@ function restoreGame(d) {
     let x = _n(a.x, 0, W - 0.01, NaN), y = _n(a.y, 0, H - 0.01, NaN); if (!(x >= 0) || !(y >= 0)) _fail('место армии');
     const id = takeId(a.id), ship = a.ship != null && shipIds.has(a.ship) ? a.ship : null;
     if (ship == null) { const t = ter[Math.floor(y) * W + Math.floor(x)]; if (isWater(t) || t === TR.MOUNT) { const p = nearestTile(S, x, y, false, 12); if (!p) continue; x = p.x + 0.5; y = p.y + 0.5; } }
-    const o = { id, owner, x, y, sq, path: ship == null ? _path(a.path, W, H, ter, false) : [], dest: null, st: 'idle', ship, maxU: 1, face: a.face === -1 ? -1 : 1, boardPort: null, siege: null, sg: false, garrison: null, retreat: false, tres: _n(a.tres, 0, 100, 0), askT: _n(a.askT, 0, 2e9, 0) };
+    const wp = []; if (Array.isArray(a.wp)) for (const w2 of a.wp.slice(0, 16)) { const wx = Math.floor(_n(w2 && w2.x, 0, W - 1, -1)), wy = Math.floor(_n(w2 && w2.y, 0, H - 1, -1)); if (wx >= 0 && wy >= 0 && !isWater(ter[wy * W + wx]) && ter[wy * W + wx] !== TR.MOUNT) wp.push({ x: wx, y: wy }); }
+    const o = { id, owner, x, y, sq, path: ship == null ? _path(a.path, W, H, ter, false) : [], dest: null, st: 'idle', ship, maxU: 1, face: a.face === -1 ? -1 : 1, boardPort: null, siege: null, sg: false, garrison: null, retreat: false, tres: _n(a.tres, 0, 100, 0), askT: _n(a.askT, 0, 2e9, 0), wp };
     o.maxU = Math.max(units(o), _i(a.maxU, 1, 1000, 1)); if (o.path.length) { o.st = 'move'; o.retreat = !!a.retreat; }
     if (a.siege != null && S.bmap.has(a.siege)) o.siege = a.siege; if (a.boardPort != null && S.bmap.has(a.boardPort)) o.boardPort = a.boardPort; if (a.garrison != null && S.bmap.has(a.garrison)) o.garrison = a.garrison;
     S.armies.push(o);

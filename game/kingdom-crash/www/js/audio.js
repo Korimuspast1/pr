@@ -128,7 +128,7 @@ const SND = (() => {
       }
     }
   }
-  function startMusic() { if (timer || !ctx || !st.music) return; song = { s: (Math.random() * SONGS.length) | 0, t: ctx.currentTime + 0.5, i: 0, beat: 0, nb: 0, pass: 0 }; timer = setInterval(schedule, 250); schedule(); }
+  function startMusic() { if (timer || !ctx || !st.music || trPlay) return; song = { s: (Math.random() * SONGS.length) | 0, t: ctx.currentTime + 0.5, i: 0, beat: 0, nb: 0, pass: 0 }; timer = setInterval(schedule, 250); schedule(); }
   function next() { if (!song || !ctx) return; let ns = song.s; while (ns === song.s && SONGS.length > 1) ns = (Math.random() * SONGS.length) | 0; song.s = ns; song.i = 0; song.beat = 0; song.nb = 0; song.pass = 0; if (song.t > ctx.currentTime + 0.3) song.t = ctx.currentTime + 0.15; }
   function songName() { return song ? SONGS[song.s].n : ''; }
   function stopMusic() { if (timer) { clearInterval(timer); timer = 0; } song = null; }
@@ -155,7 +155,10 @@ const SND = (() => {
     if (!trEl && typeof window.Audio === 'function') {
       try {
         trEl = new window.Audio(); trEl.preload = 'none'; trEl.volume = 0.75;
-        trEl.addEventListener('ended', () => trackNext());
+        trEl.addEventListener('ended', () => { // песни не берутся сами: трек кончился — плеер ждёт явного «Слушать»/«Дальше»
+          trIdx = (trIdx + 1) % TRACKS.length; trPlay = false;
+          if (ready && st.music) startMusic(); // лютня подхватывает, если она включена
+        });
         trEl.addEventListener('error', () => { trPlay = false; });
       } catch (e) { trEl = null; }
     }
@@ -163,20 +166,23 @@ const SND = (() => {
   }
   function trackToggle() {
     const el = trackEl(); if (!el) return false;
-    if (trPlay) { try { el.pause(); } catch (e) {} trPlay = false; return false; }
+    if (trPlay) { try { el.pause(); } catch (e) {} trPlay = false; if (ready && st.music) startMusic(); return false; }
     try {
+      stopMusic(); // лютня уступает дорогу саундтреку — одновременно играет только одна музыка
       if (!el.src || el.src.indexOf(TRACKS[trIdx].src) < 0) el.src = TRACKS[trIdx].src;
-      const pr = el.play(); if (pr && pr.then) pr.catch(() => { trPlay = false; });
+      const pr = el.play(); if (pr && pr.then) pr.catch(() => { trPlay = false; if (ready && st.music) startMusic(); });
       trPlay = true;
-    } catch (e) { trPlay = false; }
+    } catch (e) { trPlay = false; if (ready && st.music) startMusic(); }
     return trPlay;
   }
   function trackNext() {
     trIdx = (trIdx + 1) % TRACKS.length;
     const el = trackEl(); if (!el) return;
     try {
+      stopMusic();
+      try { el.pause(); } catch (e) {}
       el.src = TRACKS[trIdx].src;
-      const pr = el.play(); if (pr && pr.then) pr.catch(() => { trPlay = false; });
+      const pr = el.play(); if (pr && pr.then) pr.catch(() => { trPlay = false; if (ready && st.music) startMusic(); });
       trPlay = true;
     } catch (e) { trPlay = false; }
   }

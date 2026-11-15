@@ -153,7 +153,7 @@ function updateHud() {
   // всплывающие заметки
   for (const t of S.toast.splice(0)) UI.toasts.push({ t, rt: now, dur: t.ev ? 5000 : 3000 });
   UI.toasts = UI.toasts.filter(q => now - q.rt < q.dur).slice(-2);
-  if (!UI._swipe && !(UI._swipeOut > performance.now())) setHtml('toasts', UI.toasts.map(q => `<div class="toast ${q.t.bad ? 'bad' : q.t.good ? 'good' : ''}" data-rt="${q.rt}">${IMG(q.t.icon || (q.t.ev ? 'scroll' : 'flag'), 28)}<div><div class="tt">${esc(q.t.title)}</div><div class="ts">${esc(q.t.text)}</div></div><div class="bar"><i style="width:${Math.max(0, 100 - (now - q.rt) / q.dur * 100).toFixed(0)}%"></i></div></div>`).join(''));
+  if (!UI._swipe && !(UI._swipeOut > performance.now())) setHtml('toasts', UI.toasts.map(q => `<div class="toast ${q.t.bad ? 'bad' : q.t.good ? 'good' : ''}" data-rt="${q.rt}">${IMG(q.t.icon || (q.t.ev ? 'scroll' : 'flag'), 28)}<div class="tx2"><div class="tt">${esc(q.t.title)}</div><div class="ts">${esc(q.t.text)}</div></div><div class="tx">✕</div><div class="bar"><i style="width:${Math.max(0, 100 - (now - q.rt) / q.dur * 100).toFixed(0)}%"></i></div></div>`).join(''));
   // армия несёт тяжёлые потери — спросить про отступление
   if (S.prompts && S.prompts.length && !UI.modal && !S.over) {
     const pr = S.prompts[0], a = S.armies.find(q => q.id === pr.id);
@@ -207,7 +207,7 @@ function planState() { const S = UI.S, p = me(); for (let i = 0; i < PLAN.length
 
 /* ----- окно выбранного объекта ----- */
 function setSheet(s) { UI.sheet = s; UI.sheetMin = false; UI.lastHtml = ''; renderSheet(true); const bd = $('sheet').querySelector('.bd'); if (bd) bd.scrollTop = 0; } // новое окно всегда открывается с начала
-function closeSheet() { const had = !!RN.place; UI.sheet = null; RN.place = null; RN.sel = null; renderSheet(true); if (had) renderTabs(); }
+function closeSheet() { const had = !!RN.place; UI.sheet = null; RN.place = null; RN.sel = null; UI.waypoint = null; renderSheet(true); if (had) renderTabs(); }
 function renderSheet(force) {
   const sh = UI.sheet, el = $('sheet'); if (!sh) { el.classList.add('hidden'); return; }
   const r = sheetHtml(sh); if (!r) { UI.sheet = null; el.classList.add('hidden'); if (RN.sel && sh.k !== 'place' && sh.k !== 'list') RN.sel = null; return; }
@@ -307,7 +307,15 @@ function sheetHtml(sh) {
     }
     case 'army': {
       const a = S.armies.find(q => q.id === sh.id); if (!a || (a.owner !== 0 && !canSee(S, a))) return null; const mine = a.owner === 0 || allied(S, 0, a.owner);
-      let b = `<div class="row chips">${sw(ownerCol(S, a.owner))}<span>${units(a)} воинов</span></div><div class="chips">` + a.sq.map(q => `<span class="chip">${IMG(SQ[q.t].ico, 18)}${q.u}<i style="width:${Math.round(100 * q.hp / (sqMax(q.t) * (q.t === 'cmd' ? SQ.cmd.hp : SQ[q.t].hp)))}%"></i></span>`).join('') + '</div>';
+      let b = `<div class="row chips">${sw(ownerCol(S, a.owner))}<span>${units(a)} воинов</span></div>`;
+      { const cmdChips = a.sq.filter(q => q.t === 'cmd').map(q => `<span class="chip">${IMG(SQ.cmd.ico, 18)}${q.u}<i style="width:${Math.round(100 * q.hp / (sqMax('cmd') * SQ.cmd.hp))}%"></i></span>`).join('');
+        const gm = new Map(), groups = [];
+        for (const q of a.sq) { if (q.t === 'cmd') continue; let g = gm.get(q.t); if (!g) { g = { t: q.t, u: 0, hp: 0, max: 0, n: 0, w: 0 }; gm.set(q.t, g); groups.push(g); } g.n++; g.u += q.u; g.hp += q.hp; g.max += sqMax(q.t) * SQ[q.t].hp; g.w += q.w || 0; }
+        const grpChips = groups.map(g => `<span class="chip grp" title="${esc(SQ[g.t].n)}: ${g.u} бойцов в ${g.n} отр.">${IMG(SQ[g.t].ico, 18)}${g.u}${g.n > 1 ? `<em class="sqn">×${g.n}</em>` : ''}<i style="width:${g.max > 0 ? Math.round(100 * g.hp / g.max) : 0}%"></i></span>`).join('');
+        b += `<div class="chips">${cmdChips}${grpChips}</div>`;
+        const needMerge = g => g.n > 1 && (g.u < g.n * sqMax(g.t) || Math.ceil(g.u / sqMax(g.t)) < g.n);
+        const canMerge = groups.some(needMerge);
+        if (canMerge && a.owner === 0 && !a.ship) b += `<div class="dim" style="margin-top:2px">Отряды одного типа можно собрать в полные: ${groups.filter(needMerge).map(g => esc(SQ[g.t].n)).join(', ')}</div>`; }
       { let w = 0; for (const q of a.sq) w += q.w || 0; if (w) b += `<div class="dim">Раненых можно вернуть в госпитале: ${w}</div>`; }
       { const cq = a.sq.find(z => z.t === 'cmd'); if (cq) {
         const lv = cmdLvl(cq), need = Math.max(0, 300 - ((cq.xp || 0) % 300));
@@ -316,7 +324,16 @@ function sheetHtml(sh) {
         if (a.owner === 0 && !a.ship) b += `<div class="btns">${btn('natisk:' + a.id, a._bo > 0 ? 'НАТИСК идёт!' : 'НАТИСК — урон +18% на 12 сек.', a._bo > 0 ? 'on' : 'gold')}</div>`;
       } }
       b += `<div class="dim">${a.ship ? 'На корабле' : a.retreat ? 'Отступает' : a.sg ? 'Осада укрепления' : a.fight ? 'В бою!' : a.st === 'move' ? 'В походе' : 'Ожидает'}${combo(a) > 1 ? ' · бонус рода войск +' + Math.round((combo(a) - 1) * 100) + '%' : ''}</div>`;
-      if (a.owner === 0 && !a.ship) b += `<div class="btns tiny">${btn('merge', IMG('merge', 16) + ' Объед.')}${btn('split', IMG('split', 16) + ' Разд.')}${btn('stop', 'Стоять')}${btn('retreat', 'Отступ.')}</div>`;
+      if (a.owner === 0 && !a.ship) {
+        const wpOn = UI.waypoint === a.id, wpN = (a.wp && a.wp.length) || 0;
+        const tg = {}; let canMerge = false;
+        for (const q of a.sq) { if (q.t === 'cmd') continue; (tg[q.t] = tg[q.t] || []).push(q); }
+        for (const t in tg) { const l = tg[t]; if (l.length < 2) continue; const u = l.reduce((s, q) => s + q.u, 0), mx = sqMax(t); if (u < l.length * mx || Math.ceil(u / mx) < l.length) canMerge = true; }
+        b += `<div class="btns tiny">${btn('merge', IMG('merge', 16) + ' Объед.')}${canMerge ? btn('mergesq:' + a.id, IMG('merge', 16) + ' Собрать отряды') : ''}${btn('split', IMG('split', 16) + ' Разд.')}${btn('stop', 'Стоять')}${btn('retreat', 'Отступ.')}</div>`;
+        b += `<div class="btns tiny">${btn('wp:' + a.id, (wpOn ? '✓ ' : '') + 'Маршрут: точки' + (wpOn ? ' (выбор)' : ''), wpOn ? 'on' : '')}${wpN ? btn('wpclear:' + a.id, '✕ убрать точки (' + wpN + ')') : ''}</div>`;
+        if (wpOn) b += `<div class="dim">Режим маршрута: нажимайте на карту — точки добавятся в путь армии. Она пройдёт их по очереди. Нажмите «Маршрут» ещё раз, чтобы закончить.</div>`;
+        else if (wpN) b += `<div class="dim">В маршруте точек: ${wpN}. Армия пройдёт их по порядку после текущего пути.</div>`;
+      }
       return { title: a.owner === 0 ? 'Армия' : mine ? 'Армия союзника' : 'Чужая армия: ' + esc(pname(S, a.owner)), body: b };
     }
     case 'ship': {
@@ -408,7 +425,7 @@ setInterval(() => { if (UI.S && UI.sheet && !UI.modal) renderSheet(); }, 300);
 
 /* ----- действия ----- */
 function say(t, ok) { if (!UI.S) return; UI.S.toast.push({ title: ok ? 'Готово' : 'Нельзя', text: t, t: UI.S.time, bad: !ok }); SND.play(ok ? 'ok' : 'err'); }
-function selEntity(k, id) { RN.sel = { k, id }; const had = !!RN.place; RN.place = null; if (k === 'folk') setSheet({ k: 'list', what: 'folkone', id: +id }); else setSheet({ k, id }); if (had) renderTabs(); }
+function selEntity(k, id) { RN.sel = { k, id }; const had = !!RN.place; RN.place = null; UI.waypoint = null; if (k === 'folk') setSheet({ k: 'list', what: 'folkone', id: +id }); else setSheet({ k, id }); if (had) renderTabs(); }
 function selArmy() { const s = RN.sel; if (s && s.k === 'army') { const a = UI.S.armies.find(q => q.id === s.id); if (a && a.owner === 0) return a; } return null; }
 const myBld = id => { const b = UI.S.buildings.find(q => q.id === +id); return b && b.owner === 0 ? b : null; }; // чужими зданиями управлять нельзя
 const myShip = () => { const s = RN.sel; if (!s || s.k !== 'ship') return null; const sh = UI.S.ships.find(q => q.id === s.id); return sh && sh.owner === 0 ? sh : null; };
@@ -474,6 +491,9 @@ const ACT = {
   demo1(id) { const b = myBld(id); if (!b) return; if (SET.confirm) confirmBox('Снести здание?', `${BD[b.type].n} будет снесено. Ресурсы не возвращаются${b.queue && b.queue.length ? ', очередь обучения пропадёт' : ''}.`, 'Снести', 'demo2:' + b.id); else ACT.demo2(id); },
   demo2(id) { const b = myBld(id); closeModal(); if (b) { demolish(UI.S, b); recomputeAll(); closeSheet(); say('Здание снесено', true); } },
   merge() { const a = selArmy(); if (!a) return say('Сначала выберите свою армию', false); if (a.ship) return say('Армия на корабле', false); const n = mergeNear(UI.S, a); say(n ? 'Отряды объединены' : 'Рядом нет своих армий (нужно подойти вплотную) или отрядов больше ' + MAX_SQ_ARMY, !!n); renderSheet(true); },
+  mergesq(id) { const S = UI.S, a = S.armies.find(q => q.id === +id); if (!a || a.owner !== 0) return say('Сначала выберите свою армию', false); if (a.ship) return say('Армия на корабле', false); const n = mergeSameType(S, a); say(n ? 'Отряды одного типа собраны в полные' : 'Отряды и так полные', !!n); renderSheet(true); },
+  wp(id) { const a = UI.S.armies.find(q => q.id === +id); if (!a || a.owner !== 0 || a.ship) return; UI.waypoint = UI.waypoint === a.id ? null : a.id; renderSheet(true); if (UI.waypoint) say('Режим маршрута: отмечайте точки на карте', true); },
+  wpclear(id) { const a = UI.S.armies.find(q => q.id === +id); if (!a || a.owner !== 0) return; a.wp = []; renderSheet(true); say('Точки маршрута убраны', true); },
   split() { const a = selArmy(); if (!a) return say('Сначала выберите свою армию', false); if (a.ship) return say('Армия на корабле', false); const n = splitArmy(UI.S, a); say(n ? 'Армия разделена' : 'В армии один отряд', !!n); },
   stop() { const a = selArmy(); if (!a) return say('Сначала выберите свою армию', false); stopArmy(a); },
   retreat() { const a = selArmy(); if (!a) return say('Сначала выберите свою армию', false); const e = retreat(UI.S, a); if (e) say(e, false); },
@@ -618,7 +638,7 @@ UI.mapTap = function (tx, ty) {
   const ownA = cur && cur.k === 'army' ? S.armies.find(a => a.id === cur.id && a.owner === 0) : null, ownS = cur && cur.k === 'ship' ? S.ships.find(a => a.id === cur.id && a.owner === 0) : null;
   const hitOwnArmy = hit && hit.k === 'army' && S.armies.some(a => a.id === hit.id && a.owner === 0), hitOwnShip = hit && hit.k === 'ship' && S.ships.some(a => a.id === hit.id && a.owner === 0);
   const hitFolk = hit && hit.k === 'folk';
-  if (ownA && !hitOwnArmy && !hitFolk) { const e = orderMove(S, ownA, tx, ty); if (e) say(e, false); return; }
+  if (ownA && !hitOwnArmy && !hitFolk) { const wpt = UI.waypoint === ownA.id; const e = wpt ? orderWaypoint(S, ownA, tx, ty) : orderMove(S, ownA, tx, ty); if (e) say(e, false); else if (wpt) { SND.play('click'); renderSheet(true); } return; }
   if (ownS && (ownS.kind === 'war' || ownS.kind === 'liner') && !hitOwnShip && !hitFolk) { const e = orderShip(S, ownS, tx, ty); if (e) say(e, false); return; }
   if (hit) selEntity(hit.k, hit.id); else closeSheet();
 };
@@ -629,7 +649,7 @@ const HOWTO = `<b class="gl">Цель.</b> Развивайте королевс
 <b class="gl">Навигация.</b> Внизу — вкладки: КАРТА, ГОРОД, СТРОЙКА, АРМИЯ, ПОЛИТ., ФЛОТ. У СТРОЙКИ есть 3 страницы (ПРОИЗВ. → УКРЕПЛ. → ОБЩЕЕ), между ними переключает кнопка с листом в правом нижнем углу панели. Не знаете, где что? Нажмите на свиток «План развития» сверху — игра сама откроет нужную вкладку и подсветит кнопку золотым.<br><br>
 <b class="gl">Стройка.</b> Вкладка СТРОЙКА: выберите здание и нажмите на подсвеченную клетку. Ферма — на лугу, лесопилка — в лесу, рудник — на залежи, порт — на берегу моря. Мельница вплотную к фермам даёт им +50% еды. Строить можно только в своих границах; границы растут со временем. Любое здание можно улучшить до 3 уровня — нажмите на него и выберите «Улучшить».<br><br>
 <b class="gl">Войска.</b> Мастерская делает луки и копья, кузня — мечи и доспехи, конюшня — коней. В казармах обучают отряды по 10 воинов. Ополчению оружие не нужно, но оно слабое. Копейщики бьют конницу, конница — лучников, тяжёлые рыцари — конницу, лучники — лёгких рыцарей. В таверне можно сразу нанять наёмников за золото.<br><br>
-<b class="gl">Армии.</b> Выберите армию и нажмите на карту — она пойдёт. Отряды, стоящие вплотную, можно объединить (до ${MAX_SQ_ARMY} отрядов). Разные рода войск в одной армии дают бонус. Новый приказ отменяет отступление.<br><br>
+<b class="gl">Армии.</b> Выберите армию и нажмите на карту — она пойдёт. Кнопка «Маршрут: точки» включает режим пути: нажатия на карте добавляются в маршрут, армия пройдёт их по очереди (точки видны на карте). «✕ убрать точки» чистит маршрут. Отряды, стоящие вплотную, можно объединить (до ${MAX_SQ_ARMY} отрядов), а «Собрать отряды» — слить ослабленные отряды одного типа (например, лучников или ополченцев) в полные. Разные рода войск в одной армии дают бонус. Новый приказ отменяет отступление.<br><br>
 <b class="gl">Захват.</b> Подведите армию к городу: поверх него появится сетка цвета захватчика. Когда сетка заполнится и армия удержит город, он ваш. Вольные (серые) города можно брать без объявления войны, но обороняются они крепко.<br><br>
 <b class="gl">Укрепления.</b> СТРОЙКА, затем УКРЕПЛ.: стены и ров строятся линией (нажмите две точки). Ров должен начинаться у воды. Башня вмещает отряд лучников: выберите армию и нажмите на башню. Ворота своих пропускают, врагов — нет. Осадная мастерская делает катапульты (бьют издалека) и тараны (быстро ломают стены и ворота).<br><br>
 <b class="gl">Полководцы.</b> Королевская академия — только одна. В ней обучают одного полководца: Воеводу (лучники), Капитана (лёгкие рыцари), Лорда-командора (тяжёлые рыцари) или Маршала (конница). Рядом с ним войска его вида бьют сильнее и получают меньше урона.<br><br>

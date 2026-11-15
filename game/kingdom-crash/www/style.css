@@ -86,10 +86,14 @@ b { font-weight: normal; }
 #toasts { position: absolute; left: 6px; right: 6px; top: calc(190px + var(--sat)); pointer-events: none; z-index: 3; }
 #hud > #toasts { pointer-events: none; }
 #hud.noplan #toasts { left: 76px; top: calc(120px + var(--sat)); }
-.toast { position: relative; display: flex; align-items: center; margin-bottom: 5px; padding: 6px 8px 10px; color: #3a2a16; background: #e2d0a4 url(img/parch.png); background-size: 64px 64px; image-rendering: pixelated;
-  box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px #c9b27c, 0 3px 0 rgba(0, 0, 0, .4); }
+.toast { position: relative; display: flex; align-items: center; margin-bottom: 5px; padding: 6px 30px 10px 8px; color: #3a2a16; background: #e2d0a4 url(img/parch.png); background-size: 64px 64px; image-rendering: pixelated;
+  box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px #c9b27c, 0 3px 0 rgba(0, 0, 0, .4);
+  pointer-events: auto; touch-action: none; cursor: pointer; }
 .toast img { margin-right: 8px; }
+.toast .tx2 { flex: 1 1 auto; min-width: 0; }
 .toast .tt { font-size: 16px; line-height: 18px; } .toast .ts { font-size: 14px; line-height: 16px; color: #5a4526; }
+.toast .tx { position: absolute; right: 6px; top: 5px; width: 22px; height: 22px; line-height: 20px; text-align: center; font-size: 15px; font-weight: bold; color: #5a4526; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(60,40,20,.45); background: rgba(255,250,230,.5); }
+.toast.bad .tx { color: #8a1c14; }
 .toast.bad .tt { color: #8a1c14; } .toast.good .tt { color: #2c6420; }
 .toast .bar { position: absolute; left: 5px; right: 5px; bottom: 4px; height: 3px; background: rgba(60, 40, 20, .25); } .toast .bar i { display: block; height: 100%; background: #8a1c14; }
 
@@ -147,6 +151,7 @@ b { font-weight: normal; }
 .chip { position: relative; display: inline-flex; align-items: center; padding: 2px 6px 6px; margin: 2px 4px 2px 0; background: #2a2724; box-shadow: inset 0 0 0 2px var(--ink); }
 .chip img { margin-right: 3px; }
 .chip i { position: absolute; left: 3px; bottom: 2px; height: 3px; background: #7dff7d; max-width: calc(100% - 6px); }
+.chip .sqn { font-size: 11px; font-style: normal; color: #e8d79a; margin-left: 3px; vertical-align: 2px; }
 .note { padding: 7px 10px 8px; margin: 6px 0; font-size: 14px; line-height: 17px; }
 
 /* ----- экраны ----- */
