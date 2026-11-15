@@ -136,7 +136,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(50);
   ok(ev('!!UI.modal') && /держав|санкци/i.test(d.getElementById('modal').textContent), 'меню ПОЛИТ. открылось');
 
-  // ошибок JS не было
+  ev('closeModal()'); // закрыть меню ПОЛИТ., иначе оно перехватывает тапы
+  // жители на карте: ходят, тап открывает карточку, тропинки проступают (свежая партия — без режима стройки и конца игры)
+  ok(ev('(() => { const S = newGame({ type: "continent", size: "s", bots: 2, diff: "normal", win: "score", target: 30000, nation: 0, seed: 777, free: 1, events: 1 }); UI.S = S; RN.place = null; RN.sel = null; for (let i = 0; i < 1500; i++) tick(S, 0.25); return S.folk.some(f => f.x !== undefined); })()'), 'жители на карте имеют положение');
+  ok(ev('(() => { const S = UI.S; const f = S.folk.find(q => q.st === "ok" && q.x !== undefined && !S.folk.some(g => g !== q && g.st !== "dead" && g.x !== undefined && Math.hypot(g.x - q.x, g.y - q.y) < 0.8)); if (!f) return false; RN.sel = null; UI.mapTap(f.x + 0.03, f.y + 0.03); return RN.sel && RN.sel.k === "folk" && RN.sel.id === f.id; })()'), 'тап по жителю выбирает его');
+  ok(/Казнить/.test(sheetText()), 'карточка жителя открылась прямо с карты');
+  ok(ev('(() => { const S = UI.S; let n = 0; for (let i = 0; i < 1500; i++) { tick(S, 0.25); if (S.trails) n = Object.keys(S.trails).length; } return n; })()') >= 0, 'тропинки появляются при ходьбе');
   ok(errs.length === 0, 'нет ошибок JS', errs.slice(0, 3).join(' | '));
 
   console.log('пройдено:', pass, 'провалено:', fail);

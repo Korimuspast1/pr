@@ -101,6 +101,17 @@ function frame(S, now) {
   c.setTransform(z, 0, 0, z, -cam.x * z, -cam.y * z); c.imageSmoothingEnabled = false;
   const vx0 = Math.max(0, Math.floor(cam.x / TS) - 1), vy0 = Math.max(0, Math.floor(cam.y / TS) - 1), vx1 = Math.min(S.W, Math.ceil((cam.x + RN.w / cam.z) / TS) + 1), vy1 = Math.min(S.H, Math.ceil((cam.y + RN.h / cam.z) / TS) + 1);
   TERR.draw(c, cam, z, RN.cv.width, RN.cv.height); c.imageSmoothingEnabled = false;
+  // тропинки: там, где ходят жители, земля плавно проступает крапинками (не квадратами)
+  if (S.trails) for (const k in S.trails) {
+    const v = S.trails[k]; if (v < 0.02) continue;
+    const ti = +k, tx2 = ti % S.W, ty2 = (ti / S.W) | 0;
+    if (tx2 < vx0 - 1 || tx2 > vx1 || ty2 < vy0 - 1 || ty2 > vy1) continue;
+    const n = v < 0.3 ? 2 : v < 0.62 ? 3 : 4;
+    for (let q = 0; q < n; q++) {
+      const hx = hash(tx2, ty2, q * 3 + 1), hy = hash(tx2, ty2, q * 3 + 2);
+      R_(c, tx2 * TS + hx * (TS - 3), ty2 * TS + hy * (TS - 3), 1 + (hash(tx2, ty2, q * 3 + 3) > 0.55 ? 1 : 0), 1, 'rgba(116,84,48,' + (0.14 + 0.5 * v).toFixed(2) + ')');
+    }
+  }
   // искры воды
   const tm = now / 1000;
   for (let y = vy0; y < vy1; y++) for (let x = vx0; x < vx1; x++) if (S.ter[y * S.W + x] <= 1 && hash(x, y, Math.floor(tm * 1.2) % 7) > 0.93) R_(c, x * TS + ((hash(x, y, 3) * 12) | 0), y * TS + ((hash(x, y, 4) * 12) | 0), 3, 1, 'rgba(255,255,255,0.55)');
@@ -114,8 +125,12 @@ function frame(S, now) {
   }
   // здания
   for (const b of S.buildings) { if (b.type !== 'moat' || b.x < vx0 - 1 || b.x > vx1 || b.y < vy0 - 1 || b.y > vy1) continue; c.drawImage(moatSprite(structMask(S, b), b.wet ? 1 : 0), b.x * TS, b.y * TS, TS, TS); if (b.wet) { const k = Math.floor(tm * 1.5 + b.id) % 5; if (k < 2) R_(c, b.x * TS + 3 + hash(b.x, b.y, k) * 8, b.y * TS + 3 + hash(b.x, b.y, k + 9) * 8, 2, 0.5, 'rgba(255,255,255,0.5)'); } }
-  const vis = []; for (const b of S.buildings) { if (b.type === 'moat' || b.x < vx0 - 1 || b.x > vx1 || b.y < vy0 - 1 || b.y > vy1) continue; vis.push(b); } vis.sort((p, q) => p.y - q.y || p.x - q.x);
-  for (const b of vis) {
+  const vis = []; for (const b of S.buildings) { if (b.type === 'moat' || b.x < vx0 - 1 || b.x > vx1 || b.y < vy0 - 1 || b.y > vy1) continue; vis.push({ y: b.y, x: b.x, b }); }
+  if (S.folk) for (const f of S.folk) { if (f.st === 'dead' || f.x === undefined || f.x < vx0 - 1 || f.x > vx1 || f.y < vy0 - 1 || f.y > vy1) continue; vis.push({ y: f.y, x: f.x, f }); }
+  vis.sort((p, q) => p.y - q.y || p.x - q.x);
+  for (const it of vis) {
+    if (it.f) { drawFolk(c, it.f, tm, RN.sel && RN.sel.k === 'folk' && RN.sel.id === it.f.id); continue; }
+    const b = it.b;
     const st = STRUCT[b.type];
     drawSpr(c, bldSprite(b, ownerCol(S, b.owner), st ? structMask(S, b) : 0), b.x * TS, b.y * TS);
     if (RN.cam.z >= 1.1) { TERR.over(c, b.x, b.y + 1); TERR.over(c, b.x - 1, b.y + 1); TERR.over(c, b.x + 1, b.y + 1); }
@@ -268,8 +283,24 @@ function animCity(c, ct, col, tm) {
   waveFlag(c, ox + 6 * H, oy + 32 * H, col, tm, sd); waveFlag(c, ox + 58 * H, oy + 32 * H, col, tm, sd + 1); if (!ct.isCap) waveFlag(c, ox + 32 * H, oy + 20 * H, col, tm, sd + 2);
   const n = Math.min(2, 1 + ct.level); for (let i = 0; i < n; i++) { const h = CITY_HS[i]; smoke(c, ox + (h[0] + 9) * H, oy + (32 + h[1] - 2) * H, tm, sd + i * 2.3, 0.7); }
 }
+const FOLK_COLS = ['#c65b3c', '#4a7ec7', '#7c4aad', '#c79a3a', '#3f9a6a', '#b0527a', '#6a7ab0', '#a8622c', '#d0784a', '#4c9aa8'];
+function drawFolk(c, f, tm, isSel) {
+  const w = f.act === 'walk', wk = f.act === 'work';
+  const ph = Math.floor(tm * (w ? 7 : 3) + f.id * 1.7) % 2;
+  const cls = f.act === 'chat' ? 't' : wk ? 'k' + ph : w ? 'w' + ph : 'i';
+  const by = w ? -Math.abs(Math.sin(tm * 7 + f.id * 1.7)) * 0.35 : 0;
+  const fx = f.x * TS, fy = f.y * TS + by;
+  drawFig(c, 'folk', FOLK_COLS[f.id % FOLK_COLS.length], fx, fy, f.face || 1, cls);
+  if (f.act === 'chat' && RN.cam.z >= 1.1) { // облачко разговора
+    const bob = Math.floor(tm * 2 + f.id) % 2;
+    R_(c, fx - 1.3, fy - 6.6 - bob * 0.35, 3.2, 2.3, '#fff');
+    R_(c, fx - 0.9, fy - 4.5 - bob * 0.35, 0.8, 0.9, '#fff');
+    for (let q = 0; q < 3; q++) R_(c, fx - 0.85 + q * 0.85, fy - 5.9 - bob * 0.35, 0.5, 0.5, '#14100c');
+  }
+  if (isSel) selBox(c, fx - 2.6, fy - 5.4, 5.2, 6.4, tm);
+}
 const FIGC = {};
-function figSprite(t, col, cls) { const k = t + col + (cls || ''); if (FIGC[k]) return FIGC[k]; if (t === 'cmd') { const c = newCv(20, 19); HF.cmd(c.getContext('2d'), 1, 4, col, cls); c._feet = 17; return FIGC[k] = c; } const big = t === 'cat' || t === 'ram', c = newCv(big ? 28 : 18, big ? 20 : 16); HF[t](c.getContext('2d'), big ? 3 : 1, big ? 3 : 1, col); c._feet = big ? 17 : 14; return FIGC[k] = c; }
+function figSprite(t, col, cls) { const k = t + col + (cls || ''); if (FIGC[k]) return FIGC[k]; if (t === 'cmd') { const c = newCv(20, 19); HF.cmd(c.getContext('2d'), 1, 4, col, cls); c._feet = 17; return FIGC[k] = c; } const big = t === 'cat' || t === 'ram', c = newCv(big ? 28 : 18, big ? 20 : 16); HF[t](c.getContext('2d'), big ? 3 : 1, big ? 3 : 1, col, cls); c._feet = big ? 17 : 14; return FIGC[k] = c; }
 function drawRoute(c, x0, y0, path, alpha, tm, col) {
   if (!path.length) return; const pts = [[x0 * TS, y0 * TS]]; for (const p of path) pts.push([(p.x + 0.5) * TS, (p.y + 0.5) * TS]);
   c.save(); c.globalAlpha = alpha; c.lineJoin = 'round'; c.lineCap = 'round';

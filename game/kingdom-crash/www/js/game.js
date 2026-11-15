@@ -520,7 +520,73 @@ const FOLK_LAST = ['Соколов', 'Орлов', 'Волков', 'Медвед
 const FOLK_JOBS = ['Фермер', 'Кузнец', 'Торговец', 'Ремесленник', 'Рыбак', 'Лесоруб', 'Шахтёр', 'Стражник', 'Пекарь', 'Гончар', 'Портной', 'Мельник', 'Лекарь', 'Скотник', 'Плотник'];
 function makeFolk(S, c) {
   const male = S.rnd() < 0.5;
-  return { id: S.nid++, name: (male ? FOLK_M : FOLK_F)[(S.rnd() * 20) | 0] + ' ' + FOLK_LAST[(S.rnd() * 20) | 0], age: 16 + ((S.rnd() * 42) | 0), job: FOLK_JOBS[(S.rnd() * FOLK_JOBS.length) | 0], city: c ? c.id : 0, st: 'ok', wealth: 10 + ((S.rnd() * 80) | 0), mood: 45 + ((S.rnd() * 50) | 0) };
+  const f = { id: S.nid++, name: (male ? FOLK_M : FOLK_F)[(S.rnd() * 20) | 0] + ' ' + FOLK_LAST[(S.rnd() * 20) | 0], age: 16 + ((S.rnd() * 42) | 0), job: FOLK_JOBS[(S.rnd() * FOLK_JOBS.length) | 0], city: c ? c.id : 0, st: 'ok', wealth: 10 + ((S.rnd() * 80) | 0), mood: 45 + ((S.rnd() * 50) | 0) };
+  // положение на карте и быт: жители ходят по округе, работают и беседуют (из id — поток S.rnd не трогаем)
+  f.x = (c ? c.x + 1 : 2) + (frnd2(f, 1) - 0.5) * 3;
+  f.y = (c ? c.y + 1 : 2) + (frnd2(f, 2) - 0.5) * 3;
+  f.face = frnd2(f, 3) < 0.5 ? -1 : 1;
+  f.act = 'rest'; f.actT = frnd2(f, 4) * 6; f.tx = null; f.ty = null; f.tgo = 'rest';
+  f.speed = 0.72 + frnd2(f, 5) * 0.36;
+  return f;
+}
+// личный генератор жителя: его быт не должен менять общий поток случайности игры
+function frnd(S, f) {
+  f._r = (((f._r === undefined ? Math.imul(f.id + 1, 2246822519) : f._r) * 1664525) + 1013904223) >>> 0;
+  return f._r / 4294967296;
+}
+function frnd2(f, k) { let h = (Math.imul(f.id + 1, 2654435761) ^ Math.imul(k, 40503)) >>> 0; h = Math.imul(h ^ h >>> 13, 1274126177) >>> 0; return ((h ^ h >>> 16) >>> 0) / 4294967296; }
+// тропинка: земля под ногами запоминается и плавно проступает
+function markTrail(S, x, y) {
+  if (!(x >= 0 && y >= 0 && x < S.W && y < S.H)) return;
+  if (!S.trails) S.trails = {};
+  const i = y * S.W + x;
+  S.trails[i] = Math.min(1, (S.trails[i] || 0) + 0.009);
+}
+// куда жителю пойти: дома, работа, рынок рядом с его городом
+function folkSpots(S) {
+  const sp = {};
+  for (const c of S.cities) if (c.owner === 0) sp[c.id] = [{ x: c.x + 1, y: c.y + 1.4, k: 'rest' }];
+  for (const b of S.buildings) {
+    if (b.owner !== 0) continue;
+    let best = null, bd = 1e9;
+    for (const c of S.cities) {
+      if (c.owner !== 0) continue;
+      const d = dist(b.x, b.y, c.x, c.y);
+      if (d < bd && d <= (c.radius || 3) + 7) { bd = d; best = c.id; }
+    }
+    if (best == null || !sp[best]) continue;
+    const work = b.type === 'farm' || b.type === 'sawmill' || b.type === 'mill' || b.type === 'mine' || b.type === 'market';
+    sp[best].push({ x: b.x + (b.w || 1) / 2, y: b.y + (b.h || 1) + 0.2, k: work ? 'work' : 'rest' });
+  }
+  return sp;
+}
+function folkPick(S, f) {
+  const sp = (S._spots && (S._spots[f.city] || S._spots._all)) || null;
+  if (!sp || !sp.length) { f.act = 'rest'; f.actT = 2 + frnd(S, f) * 5; return; }
+  let t = sp[(frnd(S, f) * sp.length) | 0];
+  for (let k = 0; k < 4; k++) {
+    const q = sp[(frnd(S, f) * sp.length) | 0];
+    t = q;
+    if (Math.hypot(q.x - f.x, q.y - f.y) > 1.6) break;
+  }
+  const ang = frnd(S, f) * 6.2832, rad = 0.6 + frnd(S, f) * 1.7; // точка у места, но не вплотную
+  f.tx = t.x + Math.cos(ang) * rad; f.ty = t.y + Math.sin(ang) * rad;
+  f.tgo = t.k; f.act = 'walk';
+}
+// беседа: житель встречает кого-то на месте и они здороваются
+function folkMeet(S, f) {
+  if (frnd(S, f) > 0.45) return;
+  let checks = 0;
+  for (const g of S.folk) {
+    if (++checks > 80) break;
+    if (g === f || g.st !== 'ok' || g.act === 'walk' || g.act === 'chat' || g._mate) continue;
+    if (Math.abs(g.x - f.x) < 1.15 && Math.abs(g.y - f.y) < 1.15) {
+      f.act = 'chat'; g.act = 'chat'; f._mate = g; g._mate = f;
+      f.actT = g.actT = 5 + frnd(S, f) * 6;
+      f.face = f.x <= g.x ? 1 : -1; g.face = -f.face;
+      return;
+    }
+  }
 }
 const FOLK_CAPS = { house: 60, farm: 24, market: 8, sawmill: 10, mill: 5 };
 function folkBuild(S, f) {
@@ -550,9 +616,43 @@ function tickFolk(S, dt) {
     if (f.st === 'dead') continue;
     f.age += dt / (DAY * 2); // два года за четверо суток
     if (f.age > 68 + (f.id % 20) && S.rnd() < 0.004) { f.st = 'dead'; if (S.players[0].alive) info(S, 0, 'Умер житель', f.name + ', ' + Math.round(f.age) + ' лет.', 'info'); }
+    if (f.st !== 'ok') continue;
+    if (f.x === undefined) { // старые сохранения: дать положение
+      const c0 = S.cities.find(q => q.id === f.city) || S.cities.find(q => q.owner === 0);
+      f.x = (c0 ? c0.x + 1 : 2) + (S.rnd() - 0.5) * 3; f.y = (c0 ? c0.y + 1 : 2) + (S.rnd() - 0.5) * 3;
+      f.face = 1; f.act = 'rest'; f.actT = frnd(S, f) * 5; f.speed = 0.72 + frnd(S, f) * 0.36;
+    }
+    if (f.act === 'walk') {
+      const dx = f.tx - f.x, dy = f.ty - f.y, d = Math.hypot(dx, dy);
+      if (d < 0.12) {
+        f.act = f.tgo === 'work' ? 'work' : 'rest'; f.actT = 6 + frnd(S, f) * 13;
+        folkMeet(S, f);
+      } else {
+        const sp = Math.min(d, f.speed * dt), nx = f.x + dx / d * sp, ny = f.y + dy / d * sp;
+        const i = (Math.floor(ny) * S.W + Math.floor(nx)) | 0;
+        if (nx > 0.5 && ny > 0.5 && nx < S.W - 0.5 && ny < S.H - 0.5 && !isWater(S.ter[i])) { f.x = nx; f.y = ny; }
+        else { f.tx = f.x + (frnd(S, f) - 0.5) * 2.5; f.ty = f.y + (frnd(S, f) - 0.5) * 2.5; } // огибаем воду
+        if (dx !== 0) f.face = dx > 0 ? 1 : -1;
+        markTrail(S, Math.floor(f.x), Math.floor(f.y));
+      }
+    } else {
+      f.actT -= dt;
+      if (f.act === 'chat') {
+        const m = f._mate;
+        if (!m || m.st !== 'ok') { f.act = 'rest'; f.actT = 2 + frnd(S, f) * 4; f._mate = null; }
+        else f.face = f.x <= m.x ? 1 : -1;
+      }
+      if (f.actT <= 0) {
+        const m = f._mate;
+        if (m) { m._mate = null; if (m.act === 'chat') { m.act = 'rest'; m.actT = 1 + frnd(S, f) * 4; } f._mate = null; }
+        if (frnd(S, f) < 0.78) folkPick(S, f); else { f.act = 'rest'; f.actT = 2 + frnd(S, f) * 5; }
+      }
+    }
   }
   if (S.fT < 12) return; S.fT = 0;
   const mine = S.cities.filter(c => c.owner === 0); if (!mine.length || !S.players[0].alive) return;
+  S._spots = folkSpots(S);
+  if (S.trails) for (const k in S.trails) { const v = S.trails[k] - 0.05; if (v <= 0.01) delete S.trails[k]; else S.trails[k] = v; } // тропинки зарастают
   const okN = S.folk.reduce((n, f) => n + (f.st === 'ok' ? 1 : 0), 0), cap = mine.length * 30 + 30;
   if (okN < cap && S.rnd() < 0.6) {
     const c = mine[(S.rnd() * mine.length) | 0], f = makeFolk(S, c);
@@ -1358,7 +1458,15 @@ function restoreGame(d) {
   if (Array.isArray(d.folk)) for (const f of d.folk.slice(0, 2000)) {
     if (!f || typeof f !== 'object' || !(f.id > 0) || ids.has(Math.floor(+f.id))) continue;
     const id = takeId(f.id), st = f.st === 'dead' ? 'dead' : f.st === 'prison' ? 'prison' : 'ok';
-    S.folk.push({ id, name: _s(f.name, 40) || 'Житель', age: _n(f.age, 0, 200, 20), job: _s(f.job, 24), city: _i(f.city, 0, 600, 0), st, wealth: _n(f.wealth, 0, 100, 20), mood: _n(f.mood, 0, 100, 60) });
+    const g = { id, name: _s(f.name, 40) || 'Житель', age: _n(f.age, 0, 200, 20), job: _s(f.job, 24), city: _i(f.city, 0, 600, 0), st, wealth: _n(f.wealth, 0, 100, 20), mood: _n(f.mood, 0, 100, 60) };
+    if (Number.isFinite(f.x) && Number.isFinite(f.y)) { // быт: положение и занятие
+      g.x = Math.max(0, Math.min(W, f.x)); g.y = Math.max(0, Math.min(H, f.y)); g.face = f.face === -1 ? -1 : 1;
+      g.act = f.act === 'walk' || f.act === 'work' || f.act === 'chat' ? f.act : 'rest';
+      g.actT = Number.isFinite(f.actT) ? Math.max(0, Math.min(600, f.actT)) : 0;
+      g.tgo = f.tgo === 'work' ? 'work' : 'rest';
+      g.speed = Number.isFinite(f.speed) && f.speed > 0.2 && f.speed < 2 ? f.speed : 0.9;
+    }
+    S.folk.push(g);
   }
   if (Array.isArray(d.extra)) for (const e of d.extra.slice(0, 4000)) { if (!Array.isArray(e)) continue; const i = Math.floor(+e[0]), o = Math.floor(+e[1]); if (i >= 0 && i < W * H && o === 0) S.extra.set(i, 0); }
   if (Array.isArray(d.sanctions)) for (const s of d.sanctions.slice(0, 200)) {

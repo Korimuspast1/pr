@@ -89,7 +89,7 @@ const CMD = { archer: { n: 'Воевода', of: 'лучников', ico: 'bow' 
 const DAY = 120; // секунд игрового времени в одних сутках (2 минуты)
 const CLAIM_DAYS = 3; // дней на формирование претензии
 const DIFF = { easy: { n: 'Лёгкая', mult: 0.8, think: 5.5 }, normal: { n: 'Средняя', mult: 1.0, think: 3.2 }, hard: { n: 'Сложная', mult: 1.25, think: 1.8 } };
-const GAME_VERSION = '2.3.0';
+const GAME_VERSION = '2.4.0';
 const MAPTYPES = ['continent', 'continents', 'islands', 'lakes', 'random'];
 const CAP_MIN = 10.5; // минимальное расстояние между столицами
 const SEA_MIN = 10; // меньший водоём — пруд: порт у него не строят
@@ -531,4 +531,28 @@ HF.militia = function (c, x, y, col) {
   R_(c, x + 3, y + 5, 7, 5, '#b89a6a'); R_(c, x + 3, y + 5, 7, 1, '#d0b488'); R_(c, x + 3, y + 8, 7, 1, '#5a3a1a'); R_(c, x + 3, y + 9, 7, 1, '#9a7e52'); R_(c, x + 5, y + 6, 3, 2, col);
   R_(c, x + 4, y + 1, 5, 4, SKIN); R_(c, x + 4, y, 5, 1, '#6a4a2a'); R_(c, x + 3, y + 1, 1, 2, '#6a4a2a'); R_(c, x + 7, y + 3, 1, 1, '#14100c'); R_(c, x + 4, y + 4, 4, 1, '#c9a47a');
   R_(c, x + 10, y + 1, 1, 11, '#8a5a2b'); R_(c, x + 9, y - 1, 1, 3, '#b8c4d4'); R_(c, x + 10, y, 1, 1, '#b8c4d4'); R_(c, x + 11, y - 1, 1, 3, '#b8c4d4'); R_(c, x + 9, y + 5, 2, 2, SKIN);
+};
+// житель: позы — i (стоит), w0/w1 (шаг), k0/k1 (работа), t (беседа)
+HF.folk = function (c, x, y, col, cls) {
+  cls = cls || 'i';
+  const walk = cls[0] === 'w', work = cls[0] === 'k', talk = cls === 't';
+  const sw = walk ? (cls === 'w0' ? 1 : -1) : 0;
+  const hair = ['#6a4a2a', '#3a2a1a', '#8a6a3a', '#5a3a2a'][(x + y + col.length) & 3];
+  R_(c, x + 4 + sw, y + 10, 2, 3, '#5a3a1a'); R_(c, x + 7 - sw, y + 10, 2, 3, '#4a2e14'); // ноги вразнобой
+  R_(c, x + 3 + sw, y + 12, 3, 1, '#2a1808'); R_(c, x + 7 - sw, y + 12, 3, 1, '#2a1808');
+  R_(c, x + 3, y + 5, 7, 5, col); R_(c, x + 3, y + 5, 7, 1, shadeC(col, 1.28)); // рубаха
+  R_(c, x + 3, y + 8, 7, 1, shadeC(col, 0.72)); R_(c, x + 6, y + 5, 1, 5, shadeC(col, 0.88));
+  if (work) {
+    R_(c, x + 10, y + 4 - (cls === 'k0' ? 2 : 0), 2, 3, SKIN); // рука с молотком
+    R_(c, x + 11, y + 2 - (cls === 'k0' ? 2 : 0), 2, 2, '#7a4a1a');
+    R_(c, x + 2, y + 6, 1, 3, shadeC(col, 0.85));
+  } else if (talk) {
+    R_(c, x + 10, y + 5, 2, 3, SKIN); R_(c, x + 11, y + 4, 1, 1, SKIN); // жестикулирует
+    R_(c, x + 2, y + 6, 1, 3, shadeC(col, 0.85));
+  } else {
+    R_(c, x + 2, y + 6 + sw, 1, 3, shadeC(col, 0.85)); R_(c, x + 10, y + 6 - sw, 1, 3, shadeC(col, 0.85)); // руки
+  }
+  R_(c, x + 4, y + 1, 5, 4, SKIN); R_(c, x + 4, y, 5, 2, hair); // голова
+  R_(c, x + 3, y + 1, 1, 2, hair); R_(c, x + 7, y + 3, 1, 1, '#14100c'); R_(c, x + 4, y + 4, 4, 1, '#c9a47a');
+  if (talk) R_(c, x + 6, y + 4, 1, 1, '#7a3020'); // рот открыт
 };

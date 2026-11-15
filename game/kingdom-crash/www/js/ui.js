@@ -371,7 +371,7 @@ setInterval(() => { if (UI.S && UI.sheet && !UI.modal) renderSheet(); }, 300);
 
 /* ----- действия ----- */
 function say(t, ok) { if (!UI.S) return; UI.S.toast.push({ title: ok ? 'Готово' : 'Нельзя', text: t, t: UI.S.time, bad: !ok }); SND.play(ok ? 'ok' : 'err'); }
-function selEntity(k, id) { RN.sel = { k, id }; const had = !!RN.place; RN.place = null; setSheet({ k, id }); if (had) renderTabs(); }
+function selEntity(k, id) { RN.sel = { k, id }; const had = !!RN.place; RN.place = null; if (k === 'folk') setSheet({ k: 'list', what: 'folkone', id: +id }); else setSheet({ k, id }); if (had) renderTabs(); }
 function selArmy() { const s = RN.sel; if (s && s.k === 'army') { const a = UI.S.armies.find(q => q.id === s.id); if (a && a.owner === 0) return a; } return null; }
 const myBld = id => { const b = UI.S.buildings.find(q => q.id === +id); return b && b.owner === 0 ? b : null; }; // чужими зданиями управлять нельзя
 const myShip = () => { const s = RN.sel; if (!s || s.k !== 'ship') return null; const sh = UI.S.ships.find(q => q.id === s.id); return sh && sh.owner === 0 ? sh : null; };
@@ -521,6 +521,7 @@ UI.mapTap = function (tx, ty) {
     renderSheet(true); return;
   }
   const pick = () => {
+    if (S.folk) { let fb = null, fd = 0.42; for (const f of S.folk) { if (f.st === 'dead' || f.x === undefined) continue; const d = dist(f.x, f.y, tx, ty); if (d < fd) { fd = d; fb = f; } } if (fb) return { k: 'folk', id: fb.id }; }
     const mg = markerHit(S, tx, ty);
     if (mg) { const cur = RN.sel, idx = cur && cur.k === 'army' ? mg.list.findIndex(q => q.id === cur.id) : -1, a = mg.list[(idx + 1) % mg.list.length]; return { k: 'army', id: a.id }; }
     let best = null, bd = 0.6;
@@ -533,8 +534,9 @@ UI.mapTap = function (tx, ty) {
   const hit = pick(), cur = RN.sel;
   const ownA = cur && cur.k === 'army' ? S.armies.find(a => a.id === cur.id && a.owner === 0) : null, ownS = cur && cur.k === 'ship' ? S.ships.find(a => a.id === cur.id && a.owner === 0) : null;
   const hitOwnArmy = hit && hit.k === 'army' && S.armies.some(a => a.id === hit.id && a.owner === 0), hitOwnShip = hit && hit.k === 'ship' && S.ships.some(a => a.id === hit.id && a.owner === 0);
-  if (ownA && !hitOwnArmy) { const e = orderMove(S, ownA, tx, ty); if (e) say(e, false); return; }
-  if (ownS && ownS.kind === 'war' && !hitOwnShip) { const e = orderShip(S, ownS, tx, ty); if (e) say(e, false); return; }
+  const hitFolk = hit && hit.k === 'folk';
+  if (ownA && !hitOwnArmy && !hitFolk) { const e = orderMove(S, ownA, tx, ty); if (e) say(e, false); return; }
+  if (ownS && ownS.kind === 'war' && !hitOwnShip && !hitFolk) { const e = orderShip(S, ownS, tx, ty); if (e) say(e, false); return; }
   if (hit) selEntity(hit.k, hit.id); else closeSheet();
 };
 
@@ -549,7 +551,7 @@ const HOWTO = `<b class="gl">Цель.</b> Развивайте королевс
 <b class="gl">Полководцы.</b> Королевская академия — только одна. В ней обучают одного полководца: Воеводу (лучники), Капитана (лёгкие рыцари), Лорда-командора (тяжёлые рыцари) или Маршала (конница). Рядом с ним войска его вида бьют сильнее и получают меньше урона.<br><br>
 <b class="gl">Море.</b> В порту стройте суда. Военное судно перевозит армию: выберите армию и нажмите на порт, затем выберите корабль и нажмите на берег.<br><br>
 <b class="gl">Политика.</b> Во вкладке ПОЛИТ. открывается меню: выберите страну и посмотрите её характеристики (мощь, города, отношение). Предъявляйте претензии, объявляйте войну, торгуйте. Раздел «Санкции» — как в Victoria 3: закрыть транзит, торговое эмбарго, пошлины, запрет оружия, конфискация казны и другие. Кнопка НАПАСТЬ во вкладке АРМИЯ объявляет войну выбранной стране сразу.
-<b class=<b class="gl">Жители и сохранение.</b> Кнопка ЖИТЕЛИ рядом с КАРТА показывает всех жителей провинции: они сами заселяются и строят дома, рынки и фермы. На жителя можно нажать и сделать с ним что-нибудь: казнить, отправить наёмников анонимно или посадить в тюрьму. Кнопка СОХРАН. открывает слоты сохранений — выбирайте, в какой слот сохранить и какой загрузить. Рядом поставленные башни соединяются стеной, в соединении можно сделать проход.
+<b class=<b class="gl">Жители и сохранение.</b> Кнопка ЖИТЕЛИ рядом с КАРТА показывает всех жителей провинции: они сами заселяются и строят дома, рынки и фермы. Жители ходят по округе: работают, отдыхают и беседуют между собой — нажмите на любого жителя прямо на карте, чтобы открыть его карточку. Там, где они ходят, плавно проступают тропинки. На жителя можно нажать и сделать с ним что-нибудь: казнить, отправить наёмников анонимно или посадить в тюрьму. Кнопка СОХРАН. открывает слоты сохранений — выбирайте, в какой слот сохранить и какой загрузить. Рядом поставленные башни соединяются стеной, в соединении можно сделать проход.
 <b class=<b class="gl">Державы и события.</b> У каждой державы своя особенность — она указана при выборе. Соперники развиваются сами, но постепенно. Время от времени случаются события: урожай, караван, пожар, ярмарка.`;
 function showModal(title, body, foot, o) {
   o = o || {}; const el = $('modal'), was = !el.classList.contains('hidden') && !!UI.modal;
