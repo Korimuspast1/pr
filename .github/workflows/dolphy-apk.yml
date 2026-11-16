@@ -53,7 +53,7 @@ jobs:
           WRAPPER="java -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain"
           $WRAPPER --no-daemon assembleRelease -x lintVitalRelease || $WRAPPER --no-daemon assembleDebug
 
-      - name: Split APK into chunks
+      - name: Collect APK
         run: |
           set -euo pipefail
           REL=$(find dolphy-src/app/build/outputs/apk/release -name '*.apk' 2>/dev/null | head -n 1 || true)
@@ -62,25 +62,22 @@ jobs:
           if [ -z "$APK" ]; then echo "No APK produced"; exit 1; fi
           echo "Built: $APK"
           ls -lh "$APK"
-          git rm -r --ignore-unmatch apk-chunks > /dev/null 2>&1 || true
-          rm -rf apk-chunks
-          mkdir -p apk-chunks
-          split -b 40m -d -a 3 "$APK" apk-chunks/part-
-          sha256sum "$APK" | awk '{print $1}' > apk-chunks/SHA256
-          basename "$APK" > apk-chunks/FILENAME
-          ls -la apk-chunks
+          mkdir -p release
+          rm -f release/*.apk
+          cp "$APK" "release/$(basename "$APK")"
+          ls -lh release/
 
-      - name: Publish chunks to branch
+      - name: Publish APK to branch
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f apk-chunks
+          git add -f release/*.apk
           if git diff --cached --quiet; then
             echo "No changes to publish"
             exit 0
           fi
-          git commit -m "ci: publish Dolphy APK chunks [skip ci]"
+          git commit -m "ci: publish Dolphy APK [skip ci]"
           for i in 1 2 3 4 5; do
             if git push origin HEAD:refs/heads/arena/a583a263-pr; then
               exit 0
