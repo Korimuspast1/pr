@@ -1,0 +1,181 @@
+name: Build QLoader
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-qloader.yml'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git tag or branch of skrimix/QLoader to compile'
+        required: true
+        default: 'v1.2.0'
+      release_tag:
+        description: 'Release tag in this repository (defaults to qloader-<ref>)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+env:
+  QLOADER_REPO: https://github.com/skrimix/QLoader.git
+  QLOADER_REF: ${{ github.event.inputs.ref || 'v1.2.0' }}
+
+jobs:
+  build-win-x64:
+    runs-on: windows-latest
+    steps:
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Clone skrimix/QLoader
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch $env:QLOADER_REF $env:QLOADER_REPO qloader
+          $sha = git -C qloader rev-parse HEAD
+          Write-Host "Checked out $env:QLOADER_REF ($sha)"
+
+      - name: Publish Release (win-x64)
+        shell: pwsh
+        run: |
+          Set-Location qloader/QSideloader
+          dotnet publish -c Release --self-contained true --runtime win-x64 -p:PublishSingleFile=true -o ..\out\win-x64
+
+      - name: Verify and pack win-x64
+        shell: pwsh
+        run: |
+          $outDir = "qloader/out/win-x64"
+          if (-not (Test-Path "$outDir/Loader.exe")) {
+            throw "Loader.exe was not produced!"
+          }
+          Get-ChildItem -Path $outDir -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          $archive = "dist/QLoader-$($env:QLOADER_REF)-win-x64.zip"
+          Compress-Archive -Path "$outDir\*" -DestinationPath $archive -Force
+          Get-Item $archive | Select-Object Name, Length
+
+      - name: Upload win-x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qloader-win-x64
+          path: dist/QLoader-*-win-x64.zip
+          if-no-files-found: error
+
+  build-unix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            ext: tar.gz
+          - rid: linux-arm64
+            ext: tar.gz
+          - rid: osx-x64
+            ext: zip
+    steps:
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Clone skrimix/QLoader
+        run: |
+          git clone --depth 1 --branch "$QLOADER_REF" "$QLOADER_REPO" qloader
+          echo "Checked out $QLOADER_REF ($(git -C qloader rev-parse HEAD))"
+
+      - name: Publish Release (${{ matrix.rid }})
+        run: |
+          cd qloader/QSideloader
+          dotnet publish -c Release --self-contained true --runtime "${{ matrix.rid }}" -p:PublishSingleFile=true -o "../out/${{ matrix.rid }}"
+
+      - name: Verify and pack ${{ matrix.rid }}
+        run: |
+          set -euo pipefail
+          RID="${{ matrix.rid }}"
+          OUT_DIR="qloader/out/$RID"
+          test -f "$OUT_DIR/Loader"
+          chmod +x "$OUT_DIR/Loader"
+          find "$OUT_DIR" -name '*.dylib' -exec chmod +x {} +
+          if [ -d "$OUT_DIR/tools" ]; then
+            chmod -R +x "$OUT_DIR/tools"
+          fi
+          ls -la "$OUT_DIR"
+          file "$OUT_DIR/Loader"
+
+          PKG_DIR="QLoader-${QLOADER_REF}-${RID}"
+          mkdir -p dist "staging/$PKG_DIR"
+          cp -a "$OUT_DIR/." "staging/$PKG_DIR/"
+
+          if [ "${{ matrix.ext }}" = "tar.gz" ]; then
+            tar -C staging -czf "dist/${PKG_DIR}.tar.gz" "$PKG_DIR"
+          else
+            command -v zip >/dev/null 2>&1 || (sudo apt-get update && sudo apt-get install -y zip)
+            (cd staging && zip -rq "../dist/${PKG_DIR}.zip" "$PKG_DIR")
+          fi
+          ls -lh dist/
+
+      - name: Upload ${{ matrix.rid }} artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qloader-${{ matrix.rid }}
+          path: dist/QLoader-*-${{ matrix.rid }}.*
+          if-no-files-found: error
+
+  publish-release:
+    needs: [build-win-x64, build-unix]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum QLoader-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          ls -lh
+
+      - name: Resolve upstream commit
+        id: upstream
+        run: |
+          SHA=$(git ls-remote "$QLOADER_REPO" "refs/tags/${QLOADER_REF}^{}" "refs/tags/${QLOADER_REF}" "refs/heads/${QLOADER_REF}" | tail -n 1 | awk '{print $1}')
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CUSTOM_TAG: ${{ github.event.inputs.release_tag }}
+          UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
+        run: |
+          set -euo pipefail
+          TAG="${CUSTOM_TAG:-qloader-${QLOADER_REF}}"
+          {
+            echo "Compiled release binaries of [skrimix/QLoader](https://github.com/skrimix/QLoader) (\`${QLOADER_REF}\`, commit \`${UPSTREAM_SHA}\`)."
+            echo ""
+            echo "Built with .NET 8 SDK (\`Release\`, \`--self-contained true\`, \`PublishSingleFile=true\`)."
+            echo ""
+            echo "### Assets"
+            echo "- \`QLoader-${QLOADER_REF}-win-x64.zip\` — Windows x64 (\`Loader.exe\`)"
+            echo "- \`QLoader-${QLOADER_REF}-linux-x64.tar.gz\` — Linux x64 (\`Loader\`)"
+            echo "- \`QLoader-${QLOADER_REF}-linux-arm64.tar.gz\` — Linux ARM64 (\`Loader\`)"
+            echo "- \`QLoader-${QLOADER_REF}-osx-x64.zip\` — macOS x64 (\`Loader\`)"
+            echo "- \`SHA256SUMS.txt\` — SHA-256 checksums"
+          } > release_notes.md
+
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber --repo "${{ github.repository }}"
+            gh release edit "$TAG" --title "QLoader ${QLOADER_REF}" --notes-file release_notes.md --repo "${{ github.repository }}"
+          else
+            gh release create "$TAG" dist/* \
+              --repo "${{ github.repository }}" \
+              --target "${{ github.sha }}" \
+              --title "QLoader ${QLOADER_REF}" \
+              --notes-file release_notes.md
+          fi
