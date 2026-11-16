@@ -62,9 +62,11 @@ jobs:
           if [ -z "$APK" ]; then echo "No APK produced"; exit 1; fi
           echo "Built: $APK"
           ls -lh "$APK"
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' dolphy-src/app/build.gradle.kts | head -n 1)
+          [ -n "$VERSION" ] || VERSION=latest
           mkdir -p release
           rm -f release/*.apk
-          cp "$APK" "release/$(basename "$APK")"
+          cp "$APK" "release/Dolphy-${VERSION}.apk"
           ls -lh release/
 
       - name: Publish APK to branch
