@@ -1,0 +1,803 @@
+diff --git a/app/src/main/java/com/droid/dolphy/network/MyCamEngine.kt b/app/src/main/java/com/droid/dolphy/network/MyCamEngine.kt
+index 62ea2c22..d02d2c24 100644
+--- a/app/src/main/java/com/droid/dolphy/network/MyCamEngine.kt
++++ b/app/src/main/java/com/droid/dolphy/network/MyCamEngine.kt
+@@ -66,6 +66,30 @@ object MyCamEngine {
+         Credentials("admin", "12345"),
+         Credentials("admin", "888888"),
+         Credentials("admin", "password"),
++        Credentials("admin", "12345678"),
++        Credentials("admin", "admin123"),
++        Credentials("admin", "111111"),
++        Credentials("admin", "000000"),
++        Credentials("admin", "999999"),
++        Credentials("admin", "666666"),
++        Credentials("root", "root"),
++        Credentials("root", "123456"),
++        Credentials("root", "admin"),
++        Credentials("root", "pass"),
++        Credentials("user", "user"),
++        Credentials("user", "123456"),
++        Credentials("guest", "guest"),
++        Credentials("", "admin"),
++        Credentials("", "123456"),
++        Credentials("", "888888"),
++        Credentials("supervisor", "supervisor"),
++        Credentials("service", "service"),
++        Credentials("camera", "camera"),
++        Credentials("hikvision", "12345"),
++        Credentials("admin", "hik12345"),
++        Credentials("admin", "1234"),
++        Credentials("admin", "abc123"),
++        Credentials("admin", "p@ssw0rd"),
+     )
+ 
+     private const val PORT_TIMEOUT_MS = 600
+diff --git a/app/src/main/java/com/droid/dolphy/network/NetworkDiagnosticHubScreen.kt b/app/src/main/java/com/droid/dolphy/network/NetworkDiagnosticHubScreen.kt
+index 7dfebdce..c6bff9d8 100644
+--- a/app/src/main/java/com/droid/dolphy/network/NetworkDiagnosticHubScreen.kt
++++ b/app/src/main/java/com/droid/dolphy/network/NetworkDiagnosticHubScreen.kt
+@@ -54,12 +54,17 @@ import androidx.compose.material.icons.filled.FlashOn
+ import androidx.compose.material.icons.filled.SettingsEthernet
+ import androidx.compose.material.icons.filled.Shield
+ import androidx.compose.material.icons.filled.WifiOff
++import androidx.compose.material.icons.filled.Edit
++import androidx.compose.material.icons.filled.Refresh
++import androidx.compose.material.icons.filled.FileUpload
++import androidx.compose.material.icons.filled.ContentCopy
+ import androidx.compose.material3.AlertDialog
+ import androidx.compose.material3.Button
+ import androidx.compose.material3.Checkbox
+ import androidx.compose.material3.CircularProgressIndicator
+ import androidx.compose.material3.LinearProgressIndicator
+ import androidx.compose.material3.FilledTonalButton
++import androidx.compose.material3.OutlinedTextField
+ import androidx.compose.material3.SwipeToDismissBox
+ import androidx.compose.material3.SwipeToDismissBoxValue
+ import androidx.compose.material3.rememberSwipeToDismissBoxState
+@@ -84,9 +89,11 @@ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+ import androidx.compose.ui.graphics.Color
+ import androidx.compose.ui.platform.LocalContext
++import androidx.compose.ui.platform.LocalClipboardManager
+ import androidx.compose.ui.platform.LocalHapticFeedback
+ import androidx.compose.ui.viewinterop.AndroidView
+ import androidx.compose.ui.res.stringResource
++import androidx.compose.ui.text.AnnotatedString
+ import androidx.compose.ui.text.font.FontWeight
+ import androidx.compose.ui.text.style.TextAlign
+ import androidx.compose.ui.unit.dp
+@@ -98,6 +105,7 @@ import androidx.lifecycle.LifecycleEventObserver
+ import androidx.lifecycle.compose.LocalLifecycleOwner
+ import androidx.navigation.NavController
+ import com.droid.dolphy.BlurHeaderBox
++import com.droid.dolphy.DolphyToast
+ import com.droid.dolphy.M3SegmentedListItem
+ import com.droid.dolphy.M3SegmentedListItemSpacing
+ import com.droid.dolphy.MaterialCard
+@@ -170,7 +178,88 @@ private data class HubLanHost(
+     val isSelf: Boolean = false,
+ )
+ 
+-private const val STOCK_GROUP_NAME = "Default passwords"
++private val STOCK_PASSWORD_GROUPS: List<Pair<String, List<String>>> = listOf(
++    "Default passwords" to listOf(
++        "12345678", "YJFJTGM2", "11111111", "00000000", "22222222", "33333333", "44444444", "55555555",
++        "66666666", "77777777", "88888888", "99999999", "qwertyui", "qwertzui", "qwertyuiop", "asdfghjk",
++        "password", "adminadmin", "87654321", "12344321", "00001111", "12312312", "11223344", "1234567890",
++        "netgear1", "linksys1", "dlink123", "tplink123", "admin123", "rootroot", "guest123",
++        "qwerty123", "12345qwerty", "admin", "root", "12345", "123456", "1234567",
++        "freewifi", "free_wifi", "freewifi123", "internet", "guestwifi", "publicwifi", "welcome",
++        "welcome123", "login123", "wifi1234", "accesspoint", "hotspot123", "openwifi", "starbucks",
++        "mcdonalds", "public_wifi", "internet123", "home_wifi", "my_wifi", "secure_wifi", "w12345678i", "12346789",
++    ),
++    "Router & modem defaults" to listOf(
++        "changeme123", "default123", "admin1234", "root12345", "router1234", "gateway123",
++        "wireless1", "internet1", "netgear123", "linksys123", "dlink1234", "tplink1234",
++        "huawei123", "zyxel1234", "sagemcom12", "technicolor1", "actiontec1", "comcast123",
++        "xfinity123", "verizon123", "attwifi123", "centurylink1", "spectrum123", "bellsouth1",
++        "frontier123", "telus1234", "rogers1234", "bigpond1", "optus1234", "openwrt123",
++        "ddwrt1234", "asuswifi1", "miwifi1234", "phicomm123", "tendawifi1", "totolink1",
++        "motorola1", "westell123", "2wire5678", "sercomm1", "epicrouter", "draytek123",
++        "adminmodem", "dslmodem1", "adslmodem1", "broadband1", "modemrouter", "voipphone1",
++        "password1", "changeme1", "defaultpass", "routeradmin", "gatewayadmin", "wirelesskey1",
++    ),
++    "Numeric patterns" to listOf(
++        "123456789", "987654321", "1122334455", "123123123", "147258369", "963852741",
++        "159357456", "753951456", "123454321", "11112222", "12341234", "10293847",
++        "56473829", "99998888", "88877766", "01234567", "76543210", "111111111",
++        "222222222", "1234567891", "3141592653", "2718281828", "6677889900", "111122223333",
++        "12345670", "60789123", "135792468", "864209753", "246813579", "9753186420",
++        "4455667788", "101010101", "121212121", "131313131", "100000001", "123456654321",
++        "909090909", "818181818", "727272727", "636363636", "545454545", "11223344",
++        "99887766", "55443322", "33221100", "1234567899", "11111112", "22222223",
++    ),
++    "Keyboard patterns" to listOf(
++        "qwertyuiop", "asdfghjkl", "1qaz2wsx", "qazwsxedc", "zaq12wsx", "1q2w3e4r",
++        "qweasd123", "qwerty1234", "1qazxsw2", "q1w2e3r4", "asdfghjkl1", "zxcvbnm123",
++        "poiuytrewq", "lkjhgfdsa", "qwertyasd", "qweasdzxc", "1qaz2wsx3edc", "zaq12wsxcde3",
++        "1234qwer", "qwer1234", "asdf1234", "zxcv1234", "qazwsx123", "1q2w3e4r5t",
++        "qweasd1234", "asdzxc123", "1234asdf", "qazxsw123", "zaq123edc", "qweasdqwe",
++        "1qaz@WSX", "qweASD123", "zxcvbnm!@#", "1q2w3e4r!Q", "asdfghjkl;", "qwerty123!",
++        "1qaz2wsx#E", "zaq12wsxCDE", "qweasdzxc123", "1qazxsw23edc", "poiuytrewq1", "asdfghjkl0",
++        "zxcvbnm098", "123456qwer", "qwerasdf123", "1qaz2wsx3edc4rfv", "zaq12wsx3edc",
++        "qweasd12345", "1q2w3e4r5t6y", "asdfghjkl123",
++    ),
++    "Common WPA passphrases" to listOf(
++        "iloveyou", "sunshine", "princess", "football", "superman", "batman123",
++        "monkey123", "dragon123", "master123", "shadow123", "michael1", "jordan123",
++        "trustno1", "starwars", "whatever", "freedom1", "letmein123", "password1",
++        "passw0rd1", "p@ssw0rd", "abc12345", "abcd1234", "aaaa1111", "abcdabcd",
++        "hunter123", "buster123", "soccer123", "harley123", "ranger123", "thomas123",
++        "robert123", "george123", "computer1", "secret123", "summer2025", "winter2025",
++        "spring2025", "autumn2025", "chocolate", "butterfly", "liverpool1", "arsenal123",
++        "barcelona1", "juventus1", "pokemon123", "minecraft1", "starwars1", "batman1234",
++        "iloveyou1", "sunshine1", "princess1", "football1", "superman1", "freedom123",
++        "welcome1234", "loveme123", "trustno123", "january1", "february1", "december1",
++    ),
++    "Years & dates" to listOf(
++        "19901990", "19911991", "19921992", "19931993", "19941994", "19951995",
++        "19961996", "19971997", "19981998", "19991999", "20002000", "20012001",
++        "20022002", "20032003", "20042004", "20052005", "20062006", "20072007",
++        "20082008", "20092009", "20102010", "20112011", "20122012", "20132013",
++        "20142014", "20152015", "20162016", "20172017", "20182018", "20192019",
++        "20202020", "20212021", "20222022", "20232023", "20242024", "20252025",
++        "20262026", "01011990", "01011995", "01012000", "01012005", "01012010",
++        "01012015", "01012020", "01012025", "31121990", "31122000", "31122010",
++        "31122020", "31122025", "15081995", "12052000", "08031990", "25121985",
++        "07091992", "20101988", "19801980", "19851985", "19751975", "19601960",
++    ),
++    "ISP & hotspots" to listOf(
++        "guestguest", "public123", "airportwifi", "hotelwifi1", "cafewifi123",
++        "wirelessguest", "freewifipass", "internetguest", "wifi123456", "hotspot1234",
++        "temppassword", "changemenow", "sharethewifi", "welcomewifi", "connect1234",
++        "getonline123", "mobilehotspot", "tethering123", "freenet123", "citywifi123",
++        "library123", "university1", "schoolwifi1", "airport1234", "trainwifi123",
++        "buswifi123", "mallwifi123", "hotelguest1", "resortwifi1", "campwifi123",
++        "marina1234", "harborwifi1", "guestaccess", "visitorwifi", "temporary1",
++        "passwordguest", "freepublic1", "openaccess1", "community1", "neighbor123",
++        "sharedwifi1", "everyone123", "internet1234", "surfwifi123", "browse1234",
++        "webwifi123", "online1234", "surfnet123", "hotspotguest", "wirelessshare",
++    ),
++)
++
++private val STOCK_GROUP_NAMES: Set<String> = STOCK_PASSWORD_GROUPS.map { it.first }.toSet()
+ 
+ @Serializable
+ private data class PasswordGroupDto(
+@@ -179,14 +268,27 @@ private data class PasswordGroupDto(
+     val selected: Boolean
+ )
+ 
+-private class PasswordGroup(val name: String) {
++private class PasswordGroup(initialName: String) {
++    var name by mutableStateOf(initialName)
+     var selected by mutableStateOf(true)
+     val passwords = mutableListOf<String>()
+-    val isImported: Boolean get() = name != STOCK_GROUP_NAME
++    val isImported: Boolean get() = name !in STOCK_GROUP_NAMES
+ 
+     fun allPasswords(): List<String> = passwords.toList()
+ }
+ 
++private fun wifiSecurityLabel(capabilities: String?): String {
++    val caps = capabilities.orEmpty()
++    return when {
++        caps.contains("WPA3") || caps.contains("SAE") -> "WPA3"
++        caps.contains("WPA2") || caps.contains("RSN") -> "WPA2"
++        caps.contains("WPA") -> "WPA"
++        caps.contains("WEP") -> "WEP"
++        caps.contains("OWE") -> "OWE"
++        else -> "Open"
++    }
++}
++
+ private fun getFileName(context: android.content.Context, uri: android.net.Uri): String {
+     var name = "Imported"
+     val cursor = context.contentResolver.query(uri, null, null, null, null)
+@@ -275,7 +377,10 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+     var foundPassword by remember { mutableStateOf("") }
+ 
+     var currentBrutePassword by remember { mutableStateOf("") }
++    var bruteAttemptIndex by remember { mutableIntStateOf(0) }
++    var bruteTotalAttempts by remember { mutableIntStateOf(0) }
+     var showPasswordDialog by remember { mutableStateOf(false) }
++    val clipboardManager = LocalClipboardManager.current
+     val lanHosts = remember { mutableStateListOf<HubLanHost>() }
+     var lanScanning by remember { mutableStateOf(false) }
+     var lanScanJob by remember { mutableStateOf<Job?>(null) }
+@@ -308,27 +413,19 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+         }
+     }
+ 
+-    val defaultPasswords = listOf(
+-        "12345678", "YJFJTGM2", "11111111", "00000000", "22222222", "33333333", "44444444", "55555555",
+-        "66666666", "77777777", "88888888", "99999999", "qwertyui", "qwertzui", "qwertyuiop", "asdfghjk",
+-        "password", "adminadmin", "87654321", "12344321", "00001111", "12312312", "11223344", "1234567890",
+-        "netgear1", "linksys1", "dlink123", "tplink123", "admin123", "rootroot", "guest123",
+-        "qwerty123", "12345qwerty", "admin", "root", "12345", "123456", "1234567",
+-        "freewifi", "free_wifi", "freewifi123", "internet", "guestwifi", "publicwifi", "welcome",
+-        "welcome123", "login123", "wifi1234", "accesspoint", "hotspot123", "openwifi", "starbucks",
+-        "mcdonalds", "public_wifi", "internet123", "home_wifi", "my_wifi", "secure_wifi", "w12345678i", "12346789"
+-    ).distinct()
+-
+     val passwordGroups = remember {
+         val loaded = loadGroups()
+-        if (loaded.isNotEmpty()) {
+-            mutableStateListOf<PasswordGroup>().apply { addAll(loaded) }
+-        } else {
+-            mutableStateListOf<PasswordGroup>().apply {
+-                add(PasswordGroup(STOCK_GROUP_NAME).apply {
+-                    passwords.addAll(defaultPasswords)
+-                })
++        val savedByName = loaded.associateBy { it.name }
++        mutableStateListOf<PasswordGroup>().apply {
++            STOCK_PASSWORD_GROUPS.forEach { (stockName, stockPasswords) ->
++                add(
++                    PasswordGroup(stockName).apply {
++                        passwords.addAll(stockPasswords)
++                        savedByName[stockName]?.let { saved -> selected = saved.selected }
++                    },
++                )
+             }
++            loaded.filter { it.name !in STOCK_GROUP_NAMES }.forEach { add(it) }
+         }
+     }
+ 
+@@ -351,13 +448,35 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+                     .filter { it.isNotBlank() }
+                     .distinct()
+                 if (imported.isNotEmpty()) {
+-                    val group = PasswordGroup(groupName)
+-                    group.passwords.addAll(imported)
+-                    passwordGroups.add(group)
++                    val existing = passwordGroups.find {
++                        it.isImported && it.name.equals(groupName, ignoreCase = true)
++                    }
++                    val targetName = if (existing != null) {
++                        val before = existing.passwords.toSet()
++                        existing.passwords.addAll(imported.filter { it !in before })
++                        existing.name
++                    } else {
++                        var candidate = groupName
++                        var suffix = 2
++                        while (passwordGroups.any { it.name.equals(candidate, ignoreCase = true) }) {
++                            candidate = "$groupName ($suffix)"
++                            suffix++
++                        }
++                        passwordGroups.add(PasswordGroup(candidate).apply {
++                            passwords.addAll(imported)
++                        })
++                        candidate
++                    }
+                     saveGroups(passwordGroups)
++                    DolphyToast.show(
++                        context.getString(R.string.wifi_import_done, imported.size, targetName),
++                    )
++                } else {
++                    DolphyToast.show(context.getString(R.string.wifi_import_empty))
+                 }
+             } catch (e: Exception) {
+                 appendLog("Import error: ${e.message}")
++                DolphyToast.show(context.getString(R.string.wifi_import_failed))
+             }
+         }
+     }
+@@ -955,6 +1074,15 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+         appendLog("Groups: ${selectedGroups.joinToString { it.name }}")
+         appendLog("Passwords to try: ${ordered.size} (${totalSelected - ordered.size} skipped, < 8 chars)")
+ 
++        bruteAttemptIndex = 0
++        bruteTotalAttempts = ordered.size
++
++        if (ordered.isEmpty()) {
++            appendLog("No valid passwords selected. Enable at least one group with passwords of 8+ chars.")
++            appendLog("Scan finished.")
++            return
++        }
++
+         bruteForceJob = scope.launch(Dispatchers.IO) {
+ 
+             withContext(Dispatchers.Main) {
+@@ -976,6 +1104,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+ 
+                 withContext(Dispatchers.Main) {
+                     currentBrutePassword = password
++                    bruteAttemptIndex = index + 1
+                     appendLog("[${index + 1}/${ordered.size}] Testing: $password")
+                 }
+ 
+@@ -1029,6 +1158,9 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+         sendLogs.clear()
+         bruteForceSuccess = false
+         foundPassword = ""
++        currentBrutePassword = ""
++        bruteAttemptIndex = 0
++        bruteTotalAttempts = 0
+         selectedTargetLabel = ""
+         lanHosts.clear()
+         lanScanning = false
+@@ -1110,6 +1242,9 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+         onBack = { navController.popBackStack() },
+         accentColor = MaterialTheme.colorScheme.primary,
+         actions = {
++            DolphyIconButton(onClick = { refreshNetworks() }) {
++                Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.network_hub_refresh), tint = MaterialTheme.colorScheme.primary)
++            }
+             DolphyIconButton(onClick = { showPasswordDialog = true }) {
+                 Icon(Icons.Filled.VpnKey, contentDescription = stringResource(R.string.wifi_brute_force_passwords), tint = MaterialTheme.colorScheme.primary)
+             }
+@@ -1178,9 +1313,42 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+                 verticalArrangement = Arrangement.spacedBy(M3SegmentedListItemSpacing),
+                 contentPadding = PaddingValues(bottom = 20.dp, top = 8.dp),
+             ) {
++                if (networks.isEmpty() && wifiPermissionsGranted && locationServicesEnabled) {
++                    item {
++                        Column(
++                            modifier = Modifier
++                                .fillMaxWidth()
++                                .padding(top = 48.dp, start = 24.dp, end = 24.dp),
++                            horizontalAlignment = Alignment.CenterHorizontally,
++                            verticalArrangement = Arrangement.spacedBy(8.dp)
++                        ) {
++                            Icon(
++                                Icons.Default.WifiOff,
++                                contentDescription = null,
++                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
++                                modifier = Modifier.size(40.dp)
++                            )
++                            Text(
++                                text = stringResource(R.string.network_hub_empty_title),
++                                style = MaterialTheme.typography.titleMedium,
++                                fontWeight = FontWeight.Bold
++                            )
++                            Text(
++                                text = stringResource(R.string.network_hub_empty_desc),
++                                style = MaterialTheme.typography.bodyMedium,
++                                color = MaterialTheme.colorScheme.onSurfaceVariant,
++                                textAlign = TextAlign.Center
++                            )
++                            com.droid.dolphy.AccentButton(onClick = { refreshNetworks() }) {
++                                Text(stringResource(R.string.network_hub_refresh))
++                            }
++                        }
++                    }
++                }
+                 m3SegmentedItems(networks.toList()) { index, count, network ->
+                     val active = network.isActive
+                     val tint = if (active) MaterialTheme.colorScheme.primary else Color(0xFFD32F2F)
++                    val security = wifiSecurityLabel(network.capabilities)
+                     M3SegmentedListItem(
+                         index = index,
+                         count = count,
+@@ -1188,7 +1356,7 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+                         supporting = if (active) {
+                             stringResource(R.string.network_hub_active_pinned)
+                         } else {
+-                            "${network.frequencyMhz} MHz • ${network.level} dBm"
++                            "${network.frequencyMhz} MHz • ${network.level} dBm • $security"
+                         },
+                         leadingIcon = Icons.Default.Wifi,
+                         leadingIconTint = tint,
+@@ -1560,13 +1728,26 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+                             )
+ 
+                             if (currentDialogStage == HubDialogStage.BruteForce) {
+-                                Text(
+-                                    text = stringResource(R.string.wifi_testing, currentBrutePassword),
+-                                    style = MaterialTheme.typography.titleMedium,
+-                                    color = MaterialTheme.colorScheme.primary,
+-                                    fontWeight = FontWeight.Bold
+-                                )
++                                Row(
++                                    modifier = Modifier.fillMaxWidth(),
++                                    horizontalArrangement = Arrangement.SpaceBetween,
++                                    verticalAlignment = Alignment.CenterVertically
++                                ) {
++                                    Text(
++                                        text = stringResource(R.string.wifi_testing, currentBrutePassword),
++                                        style = MaterialTheme.typography.titleMedium,
++                                        color = MaterialTheme.colorScheme.primary,
++                                        fontWeight = FontWeight.Bold,
++                                        modifier = Modifier.weight(1f)
++                                    )
++                                    Text(
++                                        text = stringResource(R.string.wifi_brute_progress, bruteAttemptIndex, bruteTotalAttempts),
++                                        style = MaterialTheme.typography.labelLarge,
++                                        color = MaterialTheme.colorScheme.onSurfaceVariant
++                                    )
++                                }
+                                 LinearProgressIndicator(
++                                    progress = if (bruteTotalAttempts > 0) bruteAttemptIndex / bruteTotalAttempts.toFloat() else 0f,
+                                     modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                                     color = MaterialTheme.colorScheme.primary
+                                 )
+@@ -1613,6 +1794,19 @@ fun NetworkDiagnosticHubScreen(navController: NavController) {
+                                             )
+                                         }
+                                     }
++                                    val copiedMessage = stringResource(R.string.wifi_password_copied)
++                                    com.droid.dolphy.AccentButton(onClick = {
++                                        clipboardManager.setText(AnnotatedString(foundPassword))
++                                        DolphyToast.show(copiedMessage)
++                                    }) {
++                                        Icon(
++                                            Icons.Filled.ContentCopy,
++                                            contentDescription = null,
++                                            modifier = Modifier.size(18.dp)
++                                        )
++                                        Spacer(modifier = Modifier.width(8.dp))
++                                        Text(stringResource(R.string.wifi_brute_copy))
++                                    }
+                                 }
+                             } else {
+                                 Text(
+@@ -2034,6 +2228,13 @@ private fun BrutePasswordDialog(
+     onDismiss: () -> Unit,
+     onSave: () -> Unit
+ ) {
++    var editingGroup by remember { mutableStateOf<PasswordGroup?>(null) }
++    var showEditor by remember { mutableStateOf(false) }
++
++    val selectedGroups = passwordGroups.count { it.selected }
++    val totalPasswords = passwordGroups.filter { it.selected }.sumOf { it.passwords.size }
++    val totalValid = passwordGroups.filter { it.selected }.sumOf { g -> g.passwords.count { it.length >= 8 } }
++
+     Dialog(
+         onDismissRequest = onDismiss,
+         properties = DialogProperties(dismissOnClickOutside = true)
+@@ -2051,15 +2252,22 @@ private fun BrutePasswordDialog(
+                 Row(
+                     modifier = Modifier.fillMaxWidth(),
+                     verticalAlignment = Alignment.CenterVertically,
+-                    horizontalArrangement = Arrangement.SpaceBetween
++                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                 ) {
+                     Text(
+                         text = stringResource(R.string.wifi_brute_force_passwords),
+                         style = MaterialTheme.typography.headlineSmall,
+-                        fontWeight = FontWeight.Bold
++                        fontWeight = FontWeight.Bold,
++                        modifier = Modifier.weight(1f)
+                     )
++                    DolphyIconButton(onClick = {
++                        editingGroup = null
++                        showEditor = true
++                    }) {
++                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.wifi_brute_new_group), tint = MaterialTheme.colorScheme.primary)
++                    }
+                     DolphyIconButton(onClick = onImport) {
+-                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.wifi_import_passwords), tint = MaterialTheme.colorScheme.primary)
++                        Icon(Icons.Filled.FileUpload, contentDescription = stringResource(R.string.wifi_import_passwords), tint = MaterialTheme.colorScheme.primary)
+                     }
+                 }
+ 
+@@ -2069,10 +2277,45 @@ private fun BrutePasswordDialog(
+                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                 )
+ 
++                Surface(
++                    modifier = Modifier.fillMaxWidth(),
++                    shape = RoundedCornerShape(12.dp),
++                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
++                ) {
++                    Row(
++                        modifier = Modifier
++                            .fillMaxWidth()
++                            .padding(horizontal = 12.dp, vertical = 8.dp),
++                        verticalAlignment = Alignment.CenterVertically,
++                        horizontalArrangement = Arrangement.SpaceBetween
++                    ) {
++                        Text(
++                            text = stringResource(R.string.wifi_brute_summary, selectedGroups, totalPasswords, totalValid),
++                            style = MaterialTheme.typography.labelMedium,
++                            color = MaterialTheme.colorScheme.onPrimaryContainer,
++                            fontWeight = FontWeight.SemiBold
++                        )
++                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
++                            TextButton(onClick = {
++                                passwordGroups.forEach { it.selected = true }
++                                onSave()
++                            }) {
++                                Text(stringResource(R.string.wifi_brute_select_all), style = MaterialTheme.typography.labelMedium)
++                            }
++                            TextButton(onClick = {
++                                passwordGroups.forEach { it.selected = false }
++                                onSave()
++                            }) {
++                                Text(stringResource(R.string.wifi_brute_select_none), style = MaterialTheme.typography.labelMedium)
++                            }
++                        }
++                    }
++                }
++
+                 Surface(
+                     modifier = Modifier
+                         .fillMaxWidth()
+-                        .height(240.dp),
++                        .height(300.dp),
+                     shape = RoundedCornerShape(12.dp),
+                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                 ) {
+@@ -2081,7 +2324,7 @@ private fun BrutePasswordDialog(
+                         contentPadding = PaddingValues(4.dp),
+                         verticalArrangement = Arrangement.spacedBy(4.dp)
+                     ) {
+-                        itemsIndexed(passwordGroups, key = { _, group -> group.name }) { index, group ->
++                        itemsIndexed(passwordGroups, key = { _, group -> group.name }) { _, group ->
+                             val count = group.passwords.size
+                             val validCount = group.passwords.count { it.length >= 8 }
+                             val canDismiss = group.isImported
+@@ -2089,7 +2332,7 @@ private fun BrutePasswordDialog(
+                             val dismissState = rememberSwipeToDismissBoxState(
+                                 confirmValueChange = { value ->
+                                     if (canDismiss && value == SwipeToDismissBoxValue.EndToStart) {
+-                                        passwordGroups.removeAt(index)
++                                        passwordGroups.remove(group)
+                                         onSave()
+                                         true
+                                     } else false
+@@ -2128,9 +2371,9 @@ private fun BrutePasswordDialog(
+                                     Row(
+                                         modifier = Modifier
+                                             .fillMaxWidth()
+-                                            .padding(12.dp),
++                                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                                         verticalAlignment = Alignment.CenterVertically,
+-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
++                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                     ) {
+                                         Checkbox(
+                                             checked = group.selected,
+@@ -2140,12 +2383,27 @@ private fun BrutePasswordDialog(
+                                             }
+                                         )
+                                         Column(modifier = Modifier.weight(1f)) {
+-                                            Text(
+-                                                text = group.name,
+-                                                style = MaterialTheme.typography.titleMedium,
+-                                                fontWeight = FontWeight.Bold,
+-                                                color = MaterialTheme.colorScheme.onSurface
+-                                            )
++                                            Row(
++                                                verticalAlignment = Alignment.CenterVertically,
++                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
++                                            ) {
++                                                Text(
++                                                    text = group.name,
++                                                    style = MaterialTheme.typography.titleSmall,
++                                                    fontWeight = FontWeight.Bold,
++                                                    color = MaterialTheme.colorScheme.onSurface,
++                                                    maxLines = 1
++                                                )
++                                                Text(
++                                                    text = stringResource(
++                                                        if (group.isImported) R.string.wifi_group_imported
++                                                        else R.string.wifi_group_built_in
++                                                    ),
++                                                    style = MaterialTheme.typography.labelSmall,
++                                                    color = if (group.isImported) MaterialTheme.colorScheme.primary
++                                                    else MaterialTheme.colorScheme.onSurfaceVariant
++                                                )
++                                            }
+                                             Text(
+                                                 text = stringResource(R.string.wifi_passwords_count, count, validCount),
+                                                 style = MaterialTheme.typography.bodySmall,
+@@ -2153,11 +2411,17 @@ private fun BrutePasswordDialog(
+                                             )
+                                         }
+                                         if (group.isImported) {
+-                                            Text(
+-                                                text = "imported",
+-                                                style = MaterialTheme.typography.labelSmall,
+-                                                color = MaterialTheme.colorScheme.primary
+-                                            )
++                                            DolphyIconButton(onClick = {
++                                                editingGroup = group
++                                                showEditor = true
++                                            }) {
++                                                Icon(
++                                                    Icons.Default.Edit,
++                                                    contentDescription = stringResource(R.string.wifi_brute_edit_group),
++                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
++                                                    modifier = Modifier.size(18.dp)
++                                                )
++                                            }
+                                         }
+                                     }
+                                 }
+@@ -2178,4 +2442,130 @@ private fun BrutePasswordDialog(
+             }
+         }
+     }
++
++    if (showEditor) {
++        PasswordGroupEditorDialog(
++            group = editingGroup,
++            existingNames = passwordGroups.map { it.name },
++            onCancel = { showEditor = false },
++            onSave = { name, lines ->
++                val parsed = lines.map { it.trim() }.filter { it.isNotBlank() }.distinct()
++                if (editingGroup == null) {
++                    passwordGroups.add(PasswordGroup(name).apply { passwords.addAll(parsed) })
++                } else {
++                    editingGroup?.let { group ->
++                        group.name = name
++                        group.passwords.clear()
++                        group.passwords.addAll(parsed)
++                    }
++                }
++                onSave()
++                showEditor = false
++            },
++            onDelete = editingGroup?.takeIf { it.isImported }?.let { target ->
++                {
++                    passwordGroups.remove(target)
++                    onSave()
++                    showEditor = false
++                }
++            }
++        )
++    }
++}
++
++@Composable
++private fun PasswordGroupEditorDialog(
++    group: PasswordGroup?,
++    existingNames: List<String>,
++    onCancel: () -> Unit,
++    onSave: (name: String, lines: List<String>) -> Unit,
++    onDelete: (() -> Unit)?,
++) {
++    var name by remember { mutableStateOf(group?.name ?: "") }
++    var text by remember { mutableStateOf(group?.passwords?.joinToString("\n") ?: "") }
++    var errorRes by remember { mutableStateOf<Int?>(null) }
++
++    Dialog(
++        onDismissRequest = onCancel,
++        properties = DialogProperties(dismissOnClickOutside = false)
++    ) {
++        Surface(
++            modifier = Modifier.fillMaxWidth(),
++            shape = RoundedCornerShape(28.dp),
++            color = MaterialTheme.colorScheme.surfaceContainerHighest,
++            tonalElevation = 8.dp
++        ) {
++            Column(
++                modifier = Modifier.padding(20.dp),
++                verticalArrangement = Arrangement.spacedBy(12.dp)
++            ) {
++                Text(
++                    text = stringResource(if (group == null) R.string.wifi_brute_new_group else R.string.wifi_brute_edit_group),
++                    style = MaterialTheme.typography.headlineSmall,
++                    fontWeight = FontWeight.Bold
++                )
++
++                OutlinedTextField(
++                    value = name,
++                    onValueChange = {
++                        name = it
++                        errorRes = null
++                    },
++                    label = { Text(stringResource(R.string.wifi_brute_group_name)) },
++                    singleLine = true,
++                    isError = errorRes != null,
++                    modifier = Modifier.fillMaxWidth()
++                )
++
++                OutlinedTextField(
++                    value = text,
++                    onValueChange = {
++                        text = it
++                        errorRes = null
++                    },
++                    label = { Text(stringResource(R.string.wifi_brute_passwords_hint)) },
++                    minLines = 6,
++                    maxLines = 10,
++                    modifier = Modifier.fillMaxWidth()
++                )
++
++                errorRes?.let {
++                    Text(
++                        text = stringResource(it),
++                        style = MaterialTheme.typography.bodySmall,
++                        color = MaterialTheme.colorScheme.error
++                    )
++                }
++
++                Row(
++                    modifier = Modifier.fillMaxWidth(),
++                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
++                    verticalAlignment = Alignment.CenterVertically
++                ) {
++                    if (onDelete != null) {
++                        com.droid.dolphy.AccentButton(onClick = onDelete) {
++                            Text(stringResource(R.string.cd_delete))
++                        }
++                    }
++                    Spacer(modifier = Modifier.weight(1f))
++                    com.droid.dolphy.AccentButton(onClick = onCancel) {
++                        Text(stringResource(R.string.cancel))
++                    }
++                    com.droid.dolphy.AccentButton(onClick = {
++                        val trimmed = name.trim()
++                        when {
++                            trimmed.isEmpty() -> errorRes = R.string.wifi_brute_error_name
++                            existingNames.any { it.equals(trimmed, ignoreCase = true) && it != group?.name } ->
++                                errorRes = R.string.wifi_brute_error_duplicate
++                            text.lines().map { it.trim() }.none { it.isNotBlank() } ->
++                                errorRes = R.string.wifi_brute_error_passwords
++                            else -> onSave(trimmed, text.lines())
++                        }
++                    }) {
++                        Text(stringResource(R.string.save))
++                    }
++                }
++            }
++        }
++    }
+ }
+diff --git a/app/src/main/res/values-ru/strings.xml b/app/src/main/res/values-ru/strings.xml
+index b90c900e..2e6d9557 100644
+--- a/app/src/main/res/values-ru/strings.xml
++++ b/app/src/main/res/values-ru/strings.xml
+@@ -976,6 +976,27 @@
+     <string name="wifi_brute_force_passwords">Пароли для Brute-Force</string>
+     <string name="wifi_brute_force_desc">Включите группы паролей для подбора. Порядок групп = порядок перебора.</string>
+     <string name="wifi_import_passwords">Импорт из .txt</string>
++    <string name="wifi_brute_summary">Групп: %1$d • паролей: %2$d • валидных: %3$d</string>
++    <string name="wifi_brute_select_all">Выбрать все</string>
++    <string name="wifi_brute_select_none">Снять все</string>
++    <string name="wifi_brute_new_group">Новая группа</string>
++    <string name="wifi_brute_edit_group">Редактировать группу</string>
++    <string name="wifi_brute_group_name">Название группы</string>
++    <string name="wifi_brute_passwords_hint">Пароли (по одному в строке)</string>
++    <string name="wifi_brute_error_name">Введите название группы</string>
++    <string name="wifi_brute_error_duplicate">Группа с таким названием уже есть</string>
++    <string name="wifi_brute_error_passwords">Добавьте хотя бы один пароль</string>
++    <string name="wifi_group_imported">импорт</string>
++    <string name="wifi_group_built_in">встроенные</string>
++    <string name="wifi_import_done">Импортировано паролей: %1$d в «%2$s»</string>
++    <string name="wifi_import_empty">В файле не найдено паролей</string>
++    <string name="wifi_import_failed">Ошибка импорта</string>
++    <string name="wifi_brute_progress">%1$d / %2$d</string>
++    <string name="wifi_brute_copy">Копировать пароль</string>
++    <string name="wifi_password_copied">Пароль скопирован</string>
++    <string name="network_hub_refresh">Обновить</string>
++    <string name="network_hub_empty_title">Сети не найдены</string>
++    <string name="network_hub_empty_desc">Убедитесь, что Wi‑Fi и геолокация включены, затем обновите список</string>
+     <string name="wifi_passwords_count">%1$d паролей • %2$d валидных (>= 8 символов)</string>
+     <string name="wifi_brute_force_active">Brute Force Active</string>
+     <string name="wifi_bruteforce_successful">Bruteforce успешен</string>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index ec7d1a05..6be3101f 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -974,6 +974,27 @@
+     <string name="wifi_brute_force_passwords">Passwords for Brute-Force</string>
+     <string name="wifi_brute_force_desc">Enable password groups for brute-forcing. Order = processing order.</string>
+     <string name="wifi_import_passwords">Import from .txt</string>
++    <string name="wifi_brute_summary">%1$d groups • %2$d passwords • %3$d valid</string>
++    <string name="wifi_brute_select_all">Select all</string>
++    <string name="wifi_brute_select_none">Select none</string>
++    <string name="wifi_brute_new_group">New group</string>
++    <string name="wifi_brute_edit_group">Edit group</string>
++    <string name="wifi_brute_group_name">Group name</string>
++    <string name="wifi_brute_passwords_hint">Passwords (one per line)</string>
++    <string name="wifi_brute_error_name">Enter a group name</string>
++    <string name="wifi_brute_error_duplicate">A group with this name already exists</string>
++    <string name="wifi_brute_error_passwords">Add at least one password</string>
++    <string name="wifi_group_imported">imported</string>
++    <string name="wifi_group_built_in">built-in</string>
++    <string name="wifi_import_done">Imported %1$d passwords into %2$s</string>
++    <string name="wifi_import_empty">No passwords found in file</string>
++    <string name="wifi_import_failed">Import failed</string>
++    <string name="wifi_brute_progress">%1$d / %2$d</string>
++    <string name="wifi_brute_copy">Copy password</string>
++    <string name="wifi_password_copied">Password copied</string>
++    <string name="network_hub_refresh">Refresh</string>
++    <string name="network_hub_empty_title">No networks found</string>
++    <string name="network_hub_empty_desc">Make sure Wi‑Fi and location are enabled, then refresh the list</string>
+     <string name="wifi_passwords_count">%1$d passwords • %2$d valid (>= 8 chars)</string>
+     <string name="wifi_brute_force_active">Brute Force Active</string>
+     <string name="wifi_bruteforce_successful">Bruteforce successful</string>
