@@ -1,0 +1,104 @@
+name: aemulator-apk
+
+# Собирает AEmulator (https://github.com/uxazu/aemulator) из исходников
+# и публикует подписанный APK как GitHub Release в этом репозитории.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Коммит/тег/ветка uxazu/aemulator"
+        default: "3b97ed5"
+  push:
+    paths:
+      - ".github/workflows/aemulator-apk.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aemulator-apk
+  cancel-in-progress: true
+
+env:
+  UPSTREAM_REF: ${{ github.event.inputs.ref || '3b97ed5' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Освобождаем место
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules || true
+          df -h /
+
+      - name: Клонируем uxazu/aemulator
+        run: |
+          git clone https://github.com/uxazu/aemulator.git src
+          cd src
+          git checkout "$UPSTREAM_REF"
+          git log -1 --oneline
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Ставим Android SDK 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Готовим проект (убираем Windows-путь к JDK, создаём ключ подписи)
+        working-directory: src
+        run: |
+          sed -i '/^org.gradle.java.home=/d' gradle.properties
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+          mkdir -p keystore
+          keytool -genkeypair -v -keystore keystore/release.jks -alias aemu \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass aemupass -keypass aemupass \
+            -dname "CN=AEmulator community build, O=Korimuspast1, C=PL"
+          cat > keystore.properties <<EOF
+          storeFile=keystore/release.jks
+          storePassword=aemupass
+          keyAlias=aemu
+          keyPassword=aemupass
+          EOF
+          sed -i 's/^ *//' keystore.properties
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Сборка APK
+        working-directory: src
+        run: ./gradlew --no-daemon --stacktrace :app:assembleStandardRelease
+
+      - name: Собираем артефакты
+        id: out
+        run: |
+          VER=$(grep -oP 'versionName = "\K[^"]+' src/app/build.gradle.kts)
+          SHA=$(git -C src rev-parse --short HEAD)
+          mkdir -p dist
+          APK=$(ls src/app/build/outputs/apk/standard/release/*.apk | head -1)
+          cp "$APK" "dist/AEmulator-$VER.apk"
+          ls -la dist
+          sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AEmulator-${{ steps.out.outputs.ver }}
+          path: dist/
+
+      - name: Публикуем релиз
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="aemulator-${{ steps.out.outputs.ver }}"
+          gh release delete "$TAG" -R "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create "$TAG" dist/* -R "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "AEmulator ${{ steps.out.outputs.ver }} (сборка из исходников)" \
+            --notes "Собрано из https://github.com/uxazu/aemulator @ ${{ steps.out.outputs.sha }} (flavor: standard, release, arm64-v8a, Android 8.0+). Подписано собственным ключом — не обновляется поверх официального APK, сначала удалите его."
