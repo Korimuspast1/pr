@@ -121,7 +121,7 @@ jobs:
           SHA=$(git -C src rev-parse --short HEAD)
           mkdir -p dist
           APK=$(ls src/app/build/outputs/apk/standard/release/*.apk | head -1)
-          cp "$APK" "dist/AEmulator-$VER-autofix.apk"
+          cp "$APK" "dist/AEmulator-$VER-autofix2.apk"
           ls -la dist
           sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
           echo "ver=$VER" >> "$GITHUB_OUTPUT"
@@ -136,7 +136,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="aemulator-${{ steps.out.outputs.ver }}-autofix"
+          TAG="aemulator-${{ steps.out.outputs.ver }}-autofix2"
           gh release delete "$TAG" -R "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
           gh release create "$TAG" dist/* -R "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
