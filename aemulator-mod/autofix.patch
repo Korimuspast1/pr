@@ -1,0 +1,556 @@
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index b1a931d..94746bb 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -5,6 +5,7 @@
+     <uses-permission android:name="android.permission.INTERNET" />
+     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+     <uses-permission android:name="android.permission.WAKE_LOCK" />
++    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+diff --git a/app/src/main/java/app/aemu/core/AutoFix.kt b/app/src/main/java/app/aemu/core/AutoFix.kt
+new file mode 100644
+index 0000000..a229874
+--- /dev/null
++++ b/app/src/main/java/app/aemu/core/AutoFix.kt
+@@ -0,0 +1,271 @@
++package app.aemu.core
++
++import android.app.ActivityManager
++import android.app.ApplicationExitInfo
++import android.content.ComponentCallbacks2
++import android.content.Context
++import android.os.Build
++import java.io.File
++
++/**
++ * Автоисправление проблем запуска.
++ *
++ *  - Перед запуском (preflight): смотрит, сколько у телефона свободной оперативной памяти и места, при нехватке
++ *    освобождает память (фоновые процессы других приложений, кэши) и подгоняет под телефон бюджет памяти гостя.
++ *  - Если прошлый запуск убила система из-за нехватки памяти (ApplicationExitInfo на 11+, или процесс исчез посреди
++ *    загрузки на 8–10) — сразу запускает с меньшим бюджетом памяти и в режиме малой памяти.
++ *  - После неудачного запуска (onFailure): по тексту ошибки и журналу гостя выбирает следующий шаг исправления
++ *    (меньше памяти, без hwui, без 32-битного обхода, программная отрисовка, старый движок 2.x, без JIT) и
++ *    перезапускает систему. Шаги не повторяются; после MAX_ATTEMPTS неудач подряд машина остаётся с ошибкой.
++ *  - Во время работы (trimLevel): когда телефону не хватает памяти, гость сам выгружает фоновые приложения.
++ */
++object AutoFix {
++    const val MAX_ATTEMPTS = 6
++    private const val PREFS = "autofix"
++
++    /** Одно исправление: новые настройки и человекочитаемое описание того, что изменено. */
++    data class Fix(val settings: VmSettings, val what: String)
++
++    private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
++
++    fun enabled(ctx: Context): Boolean = prefs(ctx).getBoolean("enabled", true)
++    fun setEnabled(ctx: Context, on: Boolean) { prefs(ctx).edit().putBoolean("enabled", on).commit() }
++
++    /** a start the user asked for (not an autofix restart): the attempts begin again */
++    fun resetAttempts(ctx: Context, id: String) { prefs(ctx).edit().remove("attempts_$id").remove("steps_$id").commit() }
++
++    // ------------------------------------------------------------------ память телефона
++
++    data class Mem(val totalMb: Long, val availMb: Long, val low: Boolean)
++
++    fun hostMem(ctx: Context): Mem {
++        val am = ctx.getSystemService(ActivityManager::class.java)
++        val mi = ActivityManager.MemoryInfo()
++        runCatching { am.getMemoryInfo(mi) }
++        val total = (mi.totalMem shr 20).takeIf { it > 0 } ?: readMeminfo("MemTotal:") ?: 8192L
++        val avail = (mi.availMem shr 20).takeIf { it > 0 } ?: readMeminfo("MemAvailable:") ?: total / 2
++        return Mem(total, avail, mi.lowMemory)
++    }
++
++    private fun readMeminfo(key: String): Long? = runCatching {
++        File("/proc/meminfo").useLines { l -> l.first { it.startsWith(key) } }.split(Regex("\\s+"))[1].toLong() / 1024
++    }.getOrNull()
++
++    /**
++     * Освобождает оперативную память телефона: просит систему выгрузить фоновые процессы других приложений
++     * (KILL_BACKGROUND_PROCESSES; на 14+ система разрешает это не везде — тогда шаг просто ничего не делает),
++     * чистит собственные кэши и запускает сборщик мусора. Возвращает, сколько МБ стало свободнее.
++     */
++    fun freeHostMemory(ctx: Context, log: (String) -> Unit): Long {
++        val before = hostMem(ctx).availMb
++        val am = ctx.getSystemService(ActivityManager::class.java)
++        var n = 0
++        runCatching {
++            val own = ctx.packageName
++            for (a in ctx.packageManager.getInstalledApplications(0)) {
++                if (a.packageName == own || a.packageName == "android") continue
++                runCatching { am.killBackgroundProcesses(a.packageName); n++ }
++            }
++        }
++        runCatching { ctx.cacheDir.listFiles()?.forEach { it.deleteRecursively() } }
++        System.gc(); Runtime.getRuntime().gc()
++        Thread.sleep(600)
++        val after = hostMem(ctx).availMb
++        val freed = (after - before).coerceAtLeast(0)
++        log("autofix: freed phone memory — background apps asked to unload ($n), caches cleared: free $before → $after MB")
++        return freed
++    }
++
++    // ------------------------------------------------------------------ бюджет памяти гостя
++
++    /** меньше этого прошивка этой версии не загрузится вообще */
++    fun minRamMb(api: Int): Int = when { api <= 10 -> 256; api <= 15 -> 384; api <= 19 -> 512; api <= 23 -> 768; api <= 28 -> 1024; else -> 1536 }
++
++    private fun round128(v: Long): Int = ((v / 128) * 128).toInt()
++
++    /** следующий, меньший бюджет памяти (или null, если уже на минимуме) */
++    private fun lowerRam(api: Int, s: VmSettings): Int? {
++        val cur = GuestRunner.guestRamMb(api, s.ramMb)
++        val min = minRamMb(api)
++        if (cur <= min) return null
++        return round128((cur * 0.7).toLong()).coerceAtLeast(min).takeIf { it < cur }
++    }
++
++    // ------------------------------------------------------------------ перед запуском
++
++    private fun marker(ctx: Context, id: String) = File(VmPaths(ctx, id).bin, ".autofix-booting")
++
++    /**
++     * Проверка перед загрузкой. Возвращает образ с поправленными настройками (и сохраняет их), если что-то поменялось.
++     * Быстрая: вызывается в onCreate, тяжёлую очистку памяти делает [freeIfLow] в потоке загрузки.
++     */
++    fun preflight(ctx: Context, img: GuestImage, log: (String) -> Unit): GuestImage {
++        if (!enabled(ctx)) return img
++        var s = img.settings
++        val notes = ArrayList<String>()
++
++        // 1. прошлую загрузку убила система за нехватку памяти?
++        if (killedForMemory(ctx, img.id)) {
++            val r = lowerRam(img.api, s)
++            s = s.copy(lowRam = true, fullDexopt = false, ramMb = r ?: s.ramMb.takeIf { it > 0 } ?: GuestRunner.guestRamMb(img.api, 0))
++            notes += "the phone killed the previous boot for lack of memory → guest RAM ${GuestRunner.guestRamMb(img.api, s.ramMb)} MB, low memory mode"
++        }
++
++        // 2. бюджет памяти должен помещаться в телефон
++        val m = hostMem(ctx)
++        val want = GuestRunner.guestRamMb(img.api, s.ramMb)
++        // запас для самого телефона, моста графики, транслятора и процессов хоста
++        val reserve = if (m.totalMb <= 4096) 1200L else 1600L
++        // доступно с учётом того, что фоновые приложения можно выгрузить
++        val fit = maxOf(m.availMb, m.totalMb / 3) - reserve
++        if (want > fit) {
++            val r = round128(fit).coerceAtLeast(minRamMb(img.api))
++            if (r < want) {
++                s = s.copy(ramMb = r)
++                notes += "guest RAM $want MB does not fit the phone (free ${m.availMb} of ${m.totalMb} MB) → $r MB"
++            }
++        }
++        if (!s.lowRam && (m.totalMb <= 4096 || m.availMb < 2000 || m.low)) {
++            s = s.copy(lowRam = true)
++            notes += "little free memory (${m.availMb} MB) → low memory mode"
++        }
++
++        // 3. место в памяти телефона
++        val free = runCatching { ImageStore.imagesDir(ctx).usableSpace shr 20 }.getOrDefault(Long.MAX_VALUE)
++        if (free < 1024) {
++            val freed = cleanStorage(ctx, img)
++            notes += "little storage left ($free MB) → cleared caches and old logs (+$freed MB)"
++        }
++
++        runCatching { marker(ctx, img.id).apply { parentFile?.mkdirs() }.writeText(System.currentTimeMillis().toString()) }
++        if (notes.isEmpty()) return img
++        notes.forEach { log("autofix: $it") }
++        ImageStore.update(ctx, img.id) { it.copy(settings = s) }
++        return img.copy(settings = s)
++    }
++
++    /** в потоке загрузки: освободить память телефона, если её мало для гостя */
++    fun freeIfLow(ctx: Context, img: GuestImage, log: (String) -> Unit) {
++        if (!enabled(ctx)) return
++        val m = hostMem(ctx)
++        val need = GuestRunner.guestRamMb(img.api, img.settings.ramMb) + 1200L
++        if (m.availMb < need || m.low) freeHostMemory(ctx, log)
++    }
++
++    private fun cleanStorage(ctx: Context, img: GuestImage): Long {
++        val before = ImageStore.imagesDir(ctx).usableSpace
++        runCatching { ctx.cacheDir.listFiles()?.forEach { it.deleteRecursively() } }
++        runCatching { ctx.externalCacheDir?.listFiles()?.forEach { it.deleteRecursively() } }
++        // журналы прошлых запусков и временные файлы импорта
++        runCatching {
++            ImageStore.imagesDir(ctx).listFiles()?.forEach { d ->
++                File(d, "run").listFiles()?.filter { it.isFile && it.name.endsWith(".log") && it.length() > (1L shl 20) }?.forEach { it.delete() }
++                d.listFiles()?.filter { it.isFile && it.name.endsWith(".tmp") }?.forEach { it.delete() }
++            }
++        }
++        // кэш гостя (/cache): там только загрузки и временные файлы, система пересоздаёт их сама
++        runCatching { File(VmPaths(ctx, img.id).root, "cache/download").listFiles()?.forEach { it.deleteRecursively() } }
++        return ((ImageStore.imagesDir(ctx).usableSpace - before) shr 20).coerceAtLeast(0)
++    }
++
++    /** прошлый процесс :vm убила система из-за нехватки памяти посреди загрузки */
++    private fun killedForMemory(ctx: Context, id: String): Boolean {
++        val mk = marker(ctx, id)
++        if (!mk.isFile) return false
++        val since = runCatching { mk.readText().trim().toLong() }.getOrDefault(0L)
++        mk.delete()
++        if (Build.VERSION.SDK_INT >= 30) {
++            val am = ctx.getSystemService(ActivityManager::class.java)
++            val reasons = runCatching { am.getHistoricalProcessExitReasons(ctx.packageName, 0, 16) }.getOrNull() ?: return false
++            return reasons.any { e ->
++                e.timestamp >= since && e.processName.endsWith(":vm") &&
++                    // lmkd kills show up as LOW_MEMORY, or (on many phones) as a plain SIGKILL from outside;
++                    // our own restarts clear the mark first, a swipe from recents is USER_REQUESTED
++                    (e.reason == ApplicationExitInfo.REASON_LOW_MEMORY || (e.reason == ApplicationExitInfo.REASON_SIGNALED && e.status == 9))
++            }
++        }
++        // 8–10: причину не узнать; процесс исчез посреди загрузки, а памяти и сейчас мало — считаем, что это она
++        return hostMem(ctx).let { it.availMb < 2500 || it.low }
++    }
++
++    /** система загрузилась: счётчик попыток и пометка «идёт загрузка» сбрасываются */
++    fun onBooted(ctx: Context, id: String) {
++        runCatching { marker(ctx, id).delete() }
++        prefs(ctx).edit().remove("attempts_$id").remove("steps_$id").commit()
++    }
++
++    /** машина остановлена штатно (или упала и это обрабатывает [onFailure]) */
++    fun clearMarker(ctx: Context, id: String) { runCatching { marker(ctx, id).delete() } }
++
++    fun attempts(ctx: Context, id: String): Int = prefs(ctx).getInt("attempts_$id", 0)
++
++    // ------------------------------------------------------------------ после неудачного запуска
++
++    /** ошибки, которые настройками не исправить */
++    private val UNFIXABLE = listOf("import the firmware again", "is not executable", "has no recovery installed", "not enough space")
++
++    private fun isMemory(failure: String, guestLog: String, m: Mem): Boolean {
++        val f = failure.lowercase()
++        return "code 137" in f || "out of memory" in f || "ran out of memory" in f || "outofmemory" in f || "enomem" in f ||
++            "cannot allocate memory" in f || "OutOfMemoryError" in guestLog || "Out of memory" in guestLog ||
++            "Cannot allocate memory" in guestLog || "mmap failed" in guestLog || m.low || m.availMb < 800
++    }
++
++    /**
++     * Выбирает следующее исправление для этой ошибки. null — исправлять нечего или попытки кончились.
++     * Сохраняет новые настройки образа и считает попытку.
++     */
++    fun onFailure(ctx: Context, img: GuestImage, failure: String, guestLog: String, log: (String) -> Unit): Fix? {
++        clearMarker(ctx, img.id)
++        if (!enabled(ctx)) return null
++        if (UNFIXABLE.any { failure.contains(it, ignoreCase = true) }) return null
++        val p = prefs(ctx)
++        val n = p.getInt("attempts_${img.id}", 0)
++        if (n >= MAX_ATTEMPTS) { log("autofix: $n attempts made, giving up"); return null }
++        val done = p.getStringSet("steps_${img.id}", emptySet())!!.toMutableSet()
++        val s = ImageStore.get(ctx, img.id)?.settings ?: img.settings
++        val m = hostMem(ctx)
++        val mem = isMemory(failure, guestLog, m)
++
++        // шаги по порядку: сначала самые безобидные; каждый применяется один раз (память — пока есть куда снижать)
++        val steps = ArrayList<Pair<String, () -> Fix?>>()
++        val ramStep: () -> Fix? = {
++            lowerRam(img.api, s)?.let { r ->
++                Fix(s.copy(ramMb = r, lowRam = true, fullDexopt = false), "guest RAM ${GuestRunner.guestRamMb(img.api, s.ramMb)} → $r MB, low memory mode")
++            }
++        }
++        if (mem) steps += "ram${s.ramMb}" to ramStep
++        if (s.native32) steps += "native32" to { Fix(s.copy(native32 = false), "32-bit hardware bypass off") }
++        if (mem && s.hwui && img.api < 21) steps += "hwui" to { Fix(s.copy(hwui = false), "hwui off (saves memory)") }
++        if (s.gpu) steps += "gpu" to { Fix(s.copy(gpu = false), "software rendering instead of the phone's GPU") }
++        if (img.api < 14 && !s.legacyEngine) steps += "legacy" to { Fix(s.copy(legacyEngine = true), "legacy 2.x engine") }
++        if (s.jit && img.runtime == "dalvik") steps += "jit" to { Fix(s.copy(jit = false), "Dalvik JIT off") }
++        if (s.fullDexopt) steps += "dexopt" to { Fix(s.copy(fullDexopt = false), "full compilation off") }
++        if (!mem) steps += "ram${s.ramMb}" to ramStep
++
++        for ((key, make) in steps) {
++            if (key in done) continue
++            val fix = make() ?: continue
++            done += key
++            p.edit().putInt("attempts_${img.id}", n + 1).putStringSet("steps_${img.id}", done).commit()
++            if (mem) freeHostMemory(ctx, log)
++            ImageStore.update(ctx, img.id) { it.copy(settings = fix.settings) }
++            log("autofix: attempt ${n + 1}/$MAX_ATTEMPTS — ${fix.what}")
++            return fix
++        }
++        log("autofix: nothing left to try for this error")
++        return null
++    }
++
++    // ------------------------------------------------------------------ во время работы
++
++    /** уровень onTrimMemory → сколько фоновых процессов гостя выгрузить (0 — ничего) */
++    @Suppress("DEPRECATION")
++    fun trimShare(level: Int): Float = when {
++        level >= ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> 1f
++        level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> 1f
++        level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> 0.5f
++        level >= ComponentCallbacks2.TRIM_MEMORY_MODERATE -> 0.5f
++        else -> 0f
++    }
++}
+diff --git a/app/src/main/java/app/aemu/core/GuestLmk.kt b/app/src/main/java/app/aemu/core/GuestLmk.kt
+index 85fc444..c175745 100644
+--- a/app/src/main/java/app/aemu/core/GuestLmk.kt
++++ b/app/src/main/java/app/aemu/core/GuestLmk.kt
+@@ -123,6 +123,28 @@ class GuestLmk(private val root: File, private val lowRam: Boolean, private val
+         } finally { runCatching { c.close() } }
+     }
+ 
++    /**
++     * The phone itself is short of memory (onTrimMemory): unload [share] of the guest's background (cached) apps at
++     * once, least important and biggest first, like the guest's own low memory killer would. Returns how many.
++     */
++    fun trim(share: Float): Int {
++        if (!running || share <= 0f) return 0
++        adj.keys.removeAll { !File("/proc/$it").exists() }
++        val cached = adj.filter { it.value >= CACHED }.keys
++        if (cached.isEmpty()) return 0
++        val sizes = cached.associateWith { rssMb(it) }
++        val order = cached.sortedWith(compareByDescending<Int> { adj[it] ?: 0 }.thenByDescending { sizes[it] ?: 0L })
++        val n = maxOf(1, (order.size * share).toInt()).coerceAtMost(order.size)
++        var freed = 0L
++        for (pid in order.take(n)) {
++            runCatching { Os.kill(pid, OsConstants.SIGKILL) }
++            adj.remove(pid); kills++
++            freed += (sizes[pid] ?: 0L).coerceAtLeast(0L)
++        }
++        log("memory: phone is short of memory, unloaded $n background apps of the guest (~$freed MB)")
++        return n
++    }
++
+     // ---------------------------------------------------------------- убийца
+ 
+     private fun memAvailableMb(): Long = runCatching {
+diff --git a/app/src/main/java/app/aemu/core/GuestVm.kt b/app/src/main/java/app/aemu/core/GuestVm.kt
+index 2d4984a..7ab92a7 100644
+--- a/app/src/main/java/app/aemu/core/GuestVm.kt
++++ b/app/src/main/java/app/aemu/core/GuestVm.kt
+@@ -89,7 +89,30 @@ class GuestVm(val ctx: Context, val img: GuestImage) {
+     fun lines(): List<String> = lines.toList()
+     fun onLog(l: (String) -> Unit) { listeners.add(l) }
+     fun onState(l: (State) -> Unit) { stateListeners.add(l) }
+-    private fun setState(s: State) { state = s; stateListeners.forEach { runCatching { it(s) } } }
++    private fun setState(s: State) {
++        state = s
++        // autofix: the "boot in progress" mark tells the next start that the phone killed this one mid-boot
++        if (!recoveryMode) when (s) {
++            State.RUNNING -> if (bootDoneAt > 0) AutoFix.onBooted(ctx, img.id)
++            State.STOPPED -> AutoFix.clearMarker(ctx, img.id)
++            else -> {}
++        }
++        stateListeners.forEach { runCatching { it(s) } }
++    }
++
++    /** the phone is short of memory: unload part of the guest's background apps (0..1 of them) */
++    fun trimMemory(share: Float): Int = lmk?.trim(share) ?: 0
++
++    /** the end of the guest's main log, for the autofix to recognise the cause of a failure */
++    fun guestLogTail(max: Int = 200_000): String = runCatching {
++        val f = File(paths.root, "dev/log/main")
++        val len = f.length()
++        java.io.RandomAccessFile(f, "r").use { r ->
++            val n = minOf(len, max.toLong()).toInt(); r.seek(len - n)
++            val b = ByteArray(n); r.readFully(b)
++            String(b, Charsets.ISO_8859_1)
++        }
++    }.getOrDefault("") + "\n" + lines.takeLast(200).joinToString("\n")
+ 
+     val props = PropService(paths, ::log)
+     /** ADB over the LAN, switched on from the VM menu */
+diff --git a/app/src/main/java/app/aemu/ui/AppSettingsActivity.kt b/app/src/main/java/app/aemu/ui/AppSettingsActivity.kt
+index 958ec6f..8f286ce 100644
+--- a/app/src/main/java/app/aemu/ui/AppSettingsActivity.kt
++++ b/app/src/main/java/app/aemu/ui/AppSettingsActivity.kt
+@@ -119,6 +119,7 @@ private fun AppSettings(onBack: () -> Unit, onRestyle: () -> Unit) {
+     var dynamic by remember { mutableStateOf(AppPrefs.dynamicColor(ctx)) }
+     val scope = rememberCoroutineScope()
+     var autoUpdates by remember { mutableStateOf(AppPrefs.autoCheckUpdates(ctx)) }
++    var autofix by remember { mutableStateOf(app.aemu.core.AutoFix.enabled(ctx)) }
+     var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
+     var downloadJob by remember { mutableStateOf<Job?>(null) }
+ 
+@@ -206,6 +207,15 @@ private fun AppSettings(onBack: () -> Unit, onRestyle: () -> Unit) {
+                 }
+             }
+ 
++            item {
++                Section(stringResource(R.string.autofix_section)) {
++                    Toggle(stringResource(R.string.autofix_toggle), stringResource(R.string.autofix_toggle_sub), autofix) {
++                        autofix = it
++                        app.aemu.core.AutoFix.setEnabled(ctx, it)
++                    }
++                }
++            }
++
+             item {
+                 Section(stringResource(R.string.as_appearance)) {
+                     Row_(Icons.Rounded.Translate, stringResource(R.string.as_language), langName) { langDialog = true }
+diff --git a/app/src/main/java/app/aemu/ui/VmActivity.kt b/app/src/main/java/app/aemu/ui/VmActivity.kt
+index 8d4be02..7677993 100644
+--- a/app/src/main/java/app/aemu/ui/VmActivity.kt
++++ b/app/src/main/java/app/aemu/ui/VmActivity.kt
+@@ -155,6 +155,9 @@ class VmActivity : ComponentActivity() {
+     private var led by mutableStateOf<app.aemu.core.Lights.Led?>(null)
+     /** this system's setting "Notification light" (the settings sheet changes it while the system runs) */
+     private var showLed by mutableStateOf(true)
++    /** autofix: what is being changed after a failed start ("" — nothing) */
++    private var autofixMsg by mutableStateOf("")
++    @Volatile private var autofixBusy = false
+     private var guestTopPx by mutableStateOf(0)
+     private val logLines = mutableStateListOf<String>()
+ 
+@@ -176,8 +179,15 @@ class VmActivity : ComponentActivity() {
+             restartProcess(img.id)
+             return
+         }
++        val recovery = intent.getBooleanExtra(EXTRA_RECOVERY, false)
++        if (intent.getBooleanExtra(EXTRA_FRESH, false)) { app.aemu.core.AutoFix.resetAttempts(this, img.id); intent.removeExtra(EXTRA_FRESH) }
+         vm = if (cur != null && cur.img.id == img.id) cur
+-            else GuestVm(applicationContext, img).also { it.recoveryMode = intent.getBooleanExtra(EXTRA_RECOVERY, false); VmHost.vm = it }
++            else {
++                // autofix: fit the guest into the phone's memory before it starts (and after the phone killed a boot)
++                val notes = ArrayList<String>()
++                val fixed = if (recovery) img else runCatching { app.aemu.core.AutoFix.preflight(this, img) { notes += it } }.getOrDefault(img)
++                GuestVm(applicationContext, fixed).also { v -> v.recoveryMode = recovery; VmHost.vm = v; notes.forEach { v.log(it) } }
++            }
+         vm.onPower = { reboot, reason -> runOnUiThread { if (reboot) rebootVm(reason == "recovery") else stopVm() } }
+         val s = vm.settings
+         showLed = s.showLed
+@@ -246,7 +256,7 @@ class VmActivity : ComponentActivity() {
+         vm.onFrame = { guest.rings++; guest.poke() }
+         state = vm.state
+         logLines.addAll(vm.lines().takeLast(200))
+-        vm.onState { st -> runOnUiThread { state = st } }
++        vm.onState { st -> runOnUiThread { state = st }; if (st == GuestVm.State.FAILED) autofix() }
+         vm.mic.onPermissionNeeded = { runOnUiThread { askMic.launch(android.Manifest.permission.RECORD_AUDIO) } }
+         vm.camera.onPermissionNeeded = { runOnUiThread { askCamera.launch(android.Manifest.permission.CAMERA) } }
+         led = vm.lights.current
+@@ -261,10 +271,45 @@ class VmActivity : ComponentActivity() {
+ 
+         registerShell()
+         if (vm.state == GuestVm.State.STOPPED || vm.state == GuestVm.State.FAILED) {
+-            thread(name = "vm-boot") { vm.boot() }
++            thread(name = "vm-boot") {
++                if (!vm.recoveryMode) runCatching { app.aemu.core.AutoFix.freeIfLow(applicationContext, vm.img, vm::log) }
++                vm.boot()
++            }
+         }
+     }
+ 
++    /**
++     * The start failed: pick the next fix (less memory, software rendering…), save it and boot again in a fresh :vm
++     * process (the GL bridge cannot come up twice in one). Gives up after AutoFix.MAX_ATTEMPTS tries in a row.
++     */
++    private fun autofix() {
++        if (vm.recoveryMode || autofixBusy) return
++        autofixBusy = true
++        thread(name = "vm-autofix") {
++            val fix = runCatching {
++                app.aemu.core.AutoFix.onFailure(applicationContext, vm.img, vm.failure ?: "", vm.guestLogTail(), vm::log)
++            }.onFailure { vm.log("autofix: ${it}") }.getOrNull()
++            if (fix == null) { autofixBusy = false; return@thread }
++            val n = app.aemu.core.AutoFix.attempts(applicationContext, vm.img.id)
++            runOnUiThread { autofixMsg = getString(R.string.autofix_running, fix.what, n, app.aemu.core.AutoFix.MAX_ATTEMPTS) }
++            Thread.sleep(2500)
++            runOnUiThread { rebootVm() }
++        }
++    }
++
++    override fun onTrimMemory(level: Int) {
++        super.onTrimMemory(level)
++        if (!::vm.isInitialized || vm.state != GuestVm.State.RUNNING) return
++        val share = app.aemu.core.AutoFix.trimShare(level)
++        if (share > 0f && app.aemu.core.AutoFix.enabled(this)) thread { vm.trimMemory(share) }
++    }
++
++    @Deprecated("Deprecated in Java")
++    override fun onLowMemory() {
++        super.onLowMemory()
++        if (::vm.isInitialized && vm.state == GuestVm.State.RUNNING && app.aemu.core.AutoFix.enabled(this)) thread { vm.trimMemory(1f) }
++    }
++
+     /** Отладка: adb shell am broadcast -a app.aemu.SHELL --es cmd "dumpsys power" → run/shell.out */
+     private var shellRx: android.content.BroadcastReceiver? = null
+     private fun registerShell() {
+@@ -937,10 +982,24 @@ class VmActivity : ComponentActivity() {
+             shape = MaterialTheme.shapes.extraLarge,
+         ) {
+             Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+-                if (state == GuestVm.State.FAILED) {
++                if (state == GuestVm.State.FAILED && autofixMsg.isNotEmpty()) {
++                    LoadingIndicator(Modifier.size(64.dp))
++                    Spacer(Modifier.height(16.dp))
++                    Text(stringResource(R.string.autofix_title), style = MaterialTheme.typography.titleLarge)
++                    Spacer(Modifier.height(8.dp))
++                    Text(autofixMsg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
++                    Spacer(Modifier.height(8.dp))
++                    Text(vm.failure ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
++                        maxLines = 3, overflow = TextOverflow.Ellipsis)
++                } else if (state == GuestVm.State.FAILED) {
+                     Text(stringResource(R.string.failed_start), style = MaterialTheme.typography.headlineSmall)
+                     Spacer(Modifier.height(8.dp))
+                     Text(vm.failure ?: "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
++                    if (app.aemu.core.AutoFix.attempts(this@VmActivity, vm.img.id) > 0) {
++                        Spacer(Modifier.height(8.dp))
++                        Text(stringResource(R.string.autofix_gave_up, app.aemu.core.AutoFix.attempts(this@VmActivity, vm.img.id)),
++                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
++                    }
+                     Spacer(Modifier.height(16.dp))
+                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                         OutlinedButton(onClick = { stopVm() }) { Text(stringResource(R.string.close)) }
+@@ -1100,8 +1159,10 @@ class VmActivity : ComponentActivity() {
+     companion object {
+         const val EXTRA_ID = "id"
+         const val EXTRA_RECOVERY = "recovery"
++        /** started by the user (not an autofix restart): the autofix attempts start over */
++        const val EXTRA_FRESH = "fresh"
+         fun start(ctx: Context, id: String, recovery: Boolean = false) {
+-            ctx.startActivity(Intent(ctx, VmActivity::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_RECOVERY, recovery)
++            ctx.startActivity(Intent(ctx, VmActivity::class.java).putExtra(EXTRA_ID, id).putExtra(EXTRA_RECOVERY, recovery).putExtra(EXTRA_FRESH, true)
+                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+         }
+     }
+diff --git a/app/src/main/res/values-ru/strings.xml b/app/src/main/res/values-ru/strings.xml
+index 933f27b..3001143 100644
+--- a/app/src/main/res/values-ru/strings.xml
++++ b/app/src/main/res/values-ru/strings.xml
+@@ -210,4 +210,10 @@
+     <string name="m_vnc_started">VNC: %1$s, пароль %2$s</string>
+     <string name="as_led">Световой индикатор</string>
+     <string name="as_led_sub">Показывать светодиод телефона-гостя над экраном</string>
++    <string name="autofix_title">Исправляю автоматически</string>
++    <string name="autofix_running">%1$s. Перезапуск… (попытка %2$d из %3$d)</string>
++    <string name="autofix_gave_up">Автоисправление попробовало %1$d изменений, но не помогло. Посмотрите журнал или спросите на форуме.</string>
++    <string name="autofix_section">Решение проблем</string>
++    <string name="autofix_toggle">Исправлять проблемы автоматически</string>
++    <string name="autofix_toggle_sub">Не хватает оперативной памяти, система падает при запуске — приложение само освободит память телефона, уменьшит память гостя, отключит то, что мешает, и запустит систему заново.</string>
+ </resources>
+diff --git a/app/src/main/res/values-uk/strings.xml b/app/src/main/res/values-uk/strings.xml
+index dee9343..b45291e 100644
+--- a/app/src/main/res/values-uk/strings.xml
++++ b/app/src/main/res/values-uk/strings.xml
+@@ -210,4 +210,10 @@
+     <string name="m_vnc">Запустити VNC-сервер</string>
+     <string name="m_vnc_stop">Зупинити VNC-сервер</string>
+     <string name="m_vnc_started">VNC: %1$s, пароль %2$s</string>
++    <string name="autofix_title">Виправляю автоматично</string>
++    <string name="autofix_running">%1$s. Перезапуск… (спроба %2$d з %3$d)</string>
++    <string name="autofix_gave_up">Автовиправлення спробувало %1$d змін, але не допомогло. Перегляньте журнал або запитайте на форумі.</string>
++    <string name="autofix_section">Вирішення проблем</string>
++    <string name="autofix_toggle">Виправляти проблеми автоматично</string>
++    <string name="autofix_toggle_sub">Не вистачає оперативної пам’яті, система падає під час запуску — застосунок сам звільнить пам’ять телефона, зменшить пам’ять гостя, вимкне те, що заважає, і запустить систему знову.</string>
+ </resources>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index bfaa5fc..9dd76b4 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -211,4 +211,10 @@
+     <string name="m_vnc_started">VNC: %1$s, password %2$s</string>
+     <string name="as_led">Notification light</string>
+     <string name="as_led_sub">Show the guest phone’s LED above its screen</string>
++    <string name="autofix_title">Fixing it automatically</string>
++    <string name="autofix_running">%1$s. Restarting… (attempt %2$d of %3$d)</string>
++    <string name="autofix_gave_up">Automatic fixing tried %1$d changes and did not help. Look at the log or ask on the forum.</string>
++    <string name="autofix_section">Troubleshooting</string>
++    <string name="autofix_toggle">Fix problems automatically</string>
++    <string name="autofix_toggle_sub">Not enough memory, crashes on start: the app frees phone memory, lowers the guest RAM, switches off what fails and starts the system again by itself.</string>
+ </resources>

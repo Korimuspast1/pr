@@ -11,6 +11,7 @@ on:
   push:
     paths:
       - ".github/workflows/aemulator-apk.yml"
+      - "aemulator-mod/**"
 
 permissions:
   contents: write
@@ -32,12 +33,25 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules || true
           df -h /
 
+      - uses: actions/checkout@v5
+        with:
+          path: mod
+
       - name: Клонируем uxazu/aemulator
         run: |
           git clone https://github.com/uxazu/aemulator.git src
           cd src
           git checkout "$UPSTREAM_REF"
           git log -1 --oneline
+
+      - name: Накладываем доработки (автоисправление проблем и т.п.)
+        working-directory: src
+        run: |
+          for p in ../mod/aemulator-mod/*.patch; do
+            echo "== $p"
+            git apply --whitespace=nowarn "$p"
+          done
+          git status --short
 
       - uses: actions/setup-java@v5
         with:
@@ -60,24 +74,39 @@ jobs:
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
 
-      - name: Готовим проект (убираем Windows-путь к JDK, создаём ключ подписи)
+      # ключ подписи должен быть одним и тем же от сборки к сборке, иначе обновление не встанет поверх:
+      # секрет AEMU_KEYSTORE_B64 (base64 от .jks, пароль aemupass, alias aemu), иначе ключ хранится в кэше Actions
+      - name: Ключ подписи из кэша
+        uses: actions/cache@v4
+        with:
+          path: keystore-cache
+          key: aemu-release-keystore-v1
+
+      - name: Готовим проект (убираем Windows-путь к JDK, подпись)
         working-directory: src
+        env:
+          KS_B64: ${{ secrets.AEMU_KEYSTORE_B64 }}
         run: |
           sed -i '/^org.gradle.java.home=/d' gradle.properties
           sed -i 's/\r$//' gradlew
           chmod +x gradlew
-          mkdir -p keystore
-          keytool -genkeypair -v -keystore keystore/release.jks -alias aemu \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass aemupass -keypass aemupass \
-            -dname "CN=AEmulator community build, O=Korimuspast1, C=PL"
-          cat > keystore.properties <<EOF
-          storeFile=keystore/release.jks
-          storePassword=aemupass
-          keyAlias=aemu
-          keyPassword=aemupass
-          EOF
-          sed -i 's/^ *//' keystore.properties
+          mkdir -p keystore ../keystore-cache
+          if [ -n "$KS_B64" ]; then
+            echo "ключ: из секрета"
+            echo "$KS_B64" | base64 -d > keystore/release.jks
+          elif [ -f ../keystore-cache/release.jks ]; then
+            echo "ключ: из кэша"
+            cp ../keystore-cache/release.jks keystore/release.jks
+          else
+            echo "ключ: новый"
+            keytool -genkeypair -v -keystore keystore/release.jks -alias aemu \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass aemupass -keypass aemupass \
+              -dname "CN=AEmulator community build, O=Korimuspast1, C=PL"
+            cp keystore/release.jks ../keystore-cache/release.jks
+          fi
+          keytool -list -v -keystore keystore/release.jks -storepass aemupass | grep -E "SHA256:" | head -1
+          printf 'storeFile=keystore/release.jks\nstorePassword=aemupass\nkeyAlias=aemu\nkeyPassword=aemupass\n' > keystore.properties
 
       - uses: gradle/actions/setup-gradle@v5
 
@@ -92,7 +121,7 @@ jobs:
           SHA=$(git -C src rev-parse --short HEAD)
           mkdir -p dist
           APK=$(ls src/app/build/outputs/apk/standard/release/*.apk | head -1)
-          cp "$APK" "dist/AEmulator-$VER.apk"
+          cp "$APK" "dist/AEmulator-$VER-autofix.apk"
           ls -la dist
           sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
           echo "ver=$VER" >> "$GITHUB_OUTPUT"
@@ -107,9 +136,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="aemulator-${{ steps.out.outputs.ver }}"
+          TAG="aemulator-${{ steps.out.outputs.ver }}-autofix"
           gh release delete "$TAG" -R "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
           gh release create "$TAG" dist/* -R "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "AEmulator ${{ steps.out.outputs.ver }} (сборка из исходников)" \
-            --notes "Собрано из https://github.com/uxazu/aemulator @ ${{ steps.out.outputs.sha }} (flavor: standard, release, arm64-v8a, Android 8.0+). Подписано собственным ключом — не обновляется поверх официального APK, сначала удалите его."
+            --title "AEmulator ${{ steps.out.outputs.ver }} + автоисправление проблем" \
+            --notes "Собрано из https://github.com/uxazu/aemulator @ ${{ steps.out.outputs.sha }} (flavor: standard, release, arm64-v8a, Android 8.0+) с доработками из aemulator-mod/: автоисправление нехватки памяти и сбоев запуска. Подписано собственным ключом — поверх официального APK не ставится, сначала удалите его."
