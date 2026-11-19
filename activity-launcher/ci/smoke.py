@@ -29,12 +29,35 @@ def shot(name):
     except Exception as e:
         print("screenshot failed", e)
         return
-    w = 300
-    im = im.resize((w, int(im.height * w / im.width)))
-    buf = io.BytesIO()
-    im.save(buf, "JPEG", quality=50)
-    b = base64.b64encode(buf.getvalue()).decode()
-    print(f"::notice title=shot-{API}-{name}::{b}")
+    w = 360
+    im = im.resize((w, int(im.height * w / im.width)), Image.LANCZOS)
+    q = 70
+    while True:
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=q)
+        b = base64.b64encode(buf.getvalue()).decode()
+        if len(b) < 64000 or q <= 20:
+            break
+        q -= 10
+    publish(f"shot-{API}-{name}", b)
+
+
+def publish(name, text):
+    """Store data in a check run (readable through the REST API)."""
+    import json, urllib.request
+    token = os.environ.get("GH_TOKEN")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    sha = os.environ.get("GITHUB_SHA")
+    if not token:
+        return
+    body = json.dumps({"name": name, "head_sha": sha, "status": "completed", "conclusion": "neutral",
+                       "output": {"title": name, "summary": "screenshot", "text": text}}).encode()
+    req = urllib.request.Request(f"https://api.github.com/repos/{repo}/check-runs", data=body, method="POST",
+                                 headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"})
+    try:
+        urllib.request.urlopen(req).read()
+    except Exception as e:
+        print("publish failed", e)
 
 
 def dump():
@@ -96,7 +119,11 @@ def main():
     shot("6-activities")
     tap_text("Apps")
     time.sleep(2)
-    if tap_text("Glass Launcher") or tap_text("Settings", contains=True, index=1):
+    tap_text("package / name")
+    sh("adb shell input text glass"); time.sleep(2)
+    sh("adb shell input keyevent 111"); time.sleep(1)
+    shot("6b-search")
+    if tap_text("Glass Launcher"):
         shot("7-package")
         tap_text("MainActivity", contains=True)
         shot("8-editor")

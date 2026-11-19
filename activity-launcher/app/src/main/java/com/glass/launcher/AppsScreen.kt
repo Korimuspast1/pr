@@ -76,7 +76,7 @@ fun AppsTopBar(haze: HazeState, nav: Nav, st: AppsState) {
     val count = Pkg.apps?.size
     GlassTopBar(
         haze,
-        title = tr("Installed packages", "Установленные пакеты"),
+        title = tr("Packages", "Пакеты"),
         subtitle = if (count != null) tr("$count apps", "$count приложений") else null,
     ) {
         GlassIconButton(Icons.Rounded.Add, tr("New intent", "Новый интент"), plain = true) {

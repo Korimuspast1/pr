@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  checks: write
 
 concurrency:
   group: glass-activity-launcher-${{ github.ref }}
@@ -93,6 +94,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         env:
           API: ${{ matrix.api }}
+          GH_TOKEN: ${{ github.token }}
         with:
           api-level: ${{ matrix.api }}
           arch: x86_64
