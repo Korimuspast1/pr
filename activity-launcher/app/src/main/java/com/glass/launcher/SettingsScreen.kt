@@ -138,7 +138,7 @@ fun SettingsScreen(nav: Nav) {
             GlassCard {
                 Text(tr("Theme", "Тема"), color = g.text, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     GlassChip(tr("System", "Системная"), Store.theme == "system", Icons.Rounded.PhoneAndroid) { Store.theme = "system" }
                     GlassChip(tr("Light", "Светлая"), Store.theme == "light", Icons.Rounded.LightMode) { Store.theme = "light" }
                     GlassChip(tr("Dark", "Тёмная"), Store.theme == "dark", Icons.Rounded.DarkMode) { Store.theme = "dark" }
@@ -254,7 +254,7 @@ fun SettingsScreen(nav: Nav) {
                 Spacer(Modifier.height(12.dp))
                 Text(tr("Start tab", "Стартовая вкладка"), color = g.text, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     names.forEachIndexed { i, n -> GlassChip(n, Store.startTab == i) { Store.startTab = i } }
                 }
             }
@@ -271,7 +271,7 @@ fun SettingsScreen(nav: Nav) {
             // ───────── language
             SectionTitle(tr("Language", "Язык"))
             GlassCard {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     GlassChip(tr("System", "Системный"), Store.lang == "system") { Store.lang = "system" }
                     GlassChip("English", Store.lang == "en") { Store.lang = "en" }
                     GlassChip("Русский", Store.lang == "ru") { Store.lang = "ru" }

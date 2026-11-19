@@ -158,6 +158,9 @@ def main():
         shot("9-editor-intent")
         sh("adb shell input keyevent 4"); time.sleep(2)
         sh("adb shell input keyevent 4"); time.sleep(2)
+    # make sure we are back on the main tabs
+    sh(f"adb shell am force-stop {PKG}"); time.sleep(1)
+    sh(f"adb shell am start -W -n {PKG}/com.glass.launcher.MainActivity"); time.sleep(6)
     tap_text("Favorites")
     shot("10-favorites")
     tap_text("Recents")

@@ -493,16 +493,18 @@ fun GlassTopBar(
             Spacer(Modifier.width(12.dp))
         }
         Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, color = g.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                if (pro && Store.PRO_ACTIVE) {
-                    Spacer(Modifier.width(8.dp))
-                    ProBadge()
+            Text(title, color = g.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle != null || (pro && Store.PRO_ACTIVE)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (pro && Store.PRO_ACTIVE) {
+                        ProBadge()
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    if (subtitle != null) {
+                        Text(subtitle, color = g.textDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
-            }
-            if (subtitle != null) {
-                Text(subtitle, color = g.textDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         actions()
