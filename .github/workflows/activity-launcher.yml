@@ -5,6 +5,8 @@ on:
     paths:
       - 'activity-launcher/**'
       - '.github/workflows/activity-launcher.yml'
+      - '!activity-launcher/screenshots/**'
+      - '!activity-launcher/README.md'
   workflow_dispatch:
 
 permissions:
