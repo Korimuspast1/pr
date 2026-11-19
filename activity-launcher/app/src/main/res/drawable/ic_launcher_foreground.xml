@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- glass pane -->
+    <path android:fillColor="#40FFFFFF" android:strokeColor="#CCFFFFFF" android:strokeWidth="1.5"
+        android:pathData="M38,30h32a6,6 0 0 1 6,6v36a6,6 0 0 1 -6,6h-32a6,6 0 0 1 -6,-6v-36a6,6 0 0 1 6,-6z" />
+    <!-- rocket body -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M54,36c4,3 6,8 6,14v9h-12v-9c0,-6 2,-11 6,-14z" />
+    <path android:fillColor="#FFB3C7FF"
+        android:pathData="M48,52l-4,6v4l4,-2zM60,52l4,6v4l-4,-2z" />
+    <path android:fillColor="#FF2A2F5C"
+        android:pathData="M54,46m-2.5,0a2.5,2.5 0 1 1 5,0a2.5,2.5 0 1 1 -5,0" />
+    <path android:fillColor="#FFFFC56E"
+        android:pathData="M51,61h6l-3,8z" />
+</vector>

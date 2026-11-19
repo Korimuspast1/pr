@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.Glass" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <color name="bg">#FFEEF1F8</color>
+    <color name="ic_bg">#FF2A2F5C</color>
+</resources>

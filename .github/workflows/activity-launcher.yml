@@ -1,0 +1,70 @@
+name: glass-activity-launcher
+
+on:
+  push:
+    paths:
+      - 'activity-launcher/**'
+      - '.github/workflows/activity-launcher.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: glass-activity-launcher-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: activity-launcher
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Build release APK
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace assembleRelease 2>&1 | tee /tmp/build.log
+
+      - name: Report build errors
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import re
+          lines = open('/tmp/build.log', errors='replace').read().splitlines()
+          keep = [l for l in lines if l.startswith('e: ') or 'error:' in l.lower() or 'What went wrong' in l
+                  or 'Could not' in l or 'FAILURE' in l or 'Unresolved' in l or '> ' in l[:6]]
+          msg = '\n'.join(keep[:150]) or '\n'.join(lines[-80:])
+          msg = msg.replace('%', '%25').replace('\r', '').replace('\n', '%0A')
+          print('::error title=build::' + msg[:60000])
+          PY
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          cp "$APK" GlassActivityLauncher.apk
+          TAG="glass-launcher-v1.0.${GITHUB_RUN_NUMBER}"
+          NOTES="Glass Activity Launcher — Liquid Glass UI, Android 5.0+ (API 21+). Built from ${GITHUB_SHA::7} on ${GITHUB_REF_NAME}."
+          gh release create "$TAG" GlassActivityLauncher.apk \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Glass Activity Launcher 1.0.${GITHUB_RUN_NUMBER}" --notes "$NOTES" --latest=false
+          echo "::notice title=apk::https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/GlassActivityLauncher.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GlassActivityLauncher
+          path: activity-launcher/GlassActivityLauncher.apk
