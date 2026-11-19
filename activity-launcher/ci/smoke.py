@@ -20,8 +20,8 @@ def esc(s):
     return s.replace('%', '%25').replace('\r', '').replace('\n', '%0A')
 
 
-def shot(name):
-    time.sleep(1.5)
+def shot(name, delay=1.5):
+    time.sleep(delay)
     sh("adb shell screencap -p /sdcard/s.png")
     sh("adb pull /sdcard/s.png /tmp/s.png")
     try:
@@ -90,6 +90,32 @@ def tap_text(text, contains=False, index=0):
     return False
 
 
+def find(text):
+    xml = dump()
+    for tag in re.findall(r'<node [^>]*>', xml):
+        m = re.search(r'text="([^"]*)"', tag)
+        b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', tag)
+        if m and b and m.group(1) == text:
+            x1, y1, x2, y2 = map(int, b.groups())
+            return (x1 + x2) // 2, (y1 + y2) // 2
+    return None
+
+
+def drag_tabbar():
+    a = find("All")
+    r = find("Recents")
+    if not a or not r:
+        MISSING.append("tabbar"); return
+    y = a[1] - 20
+    # drag the droplet from "All" to "Recents" slowly and capture mid-drag
+    p = subprocess.Popen(f"adb shell input swipe {a[0]} {y} {r[0]} {y} 3000", shell=True)
+    time.sleep(1.3)
+    shot("12-drag-mid", delay=0)
+    p.wait()
+    time.sleep(2)
+    shot("13-drag-end")
+
+
 def crashed():
     log = sh("adb logcat -d -b crash")
     if "FATAL EXCEPTION" in log or "AndroidRuntime" in log:
@@ -136,6 +162,8 @@ def main():
     shot("10-favorites")
     tap_text("Recents")
     shot("11-recents")
+    tap_text("All")
+    drag_tabbar()
     c = crashed()
     pid = sh(f"adb shell pidof {PKG}").strip()
     if c:
