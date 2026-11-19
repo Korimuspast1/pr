@@ -202,7 +202,16 @@ private fun rememberClock(enabled: Boolean): Float {
 @Composable
 fun LiquidBackground(modifier: Modifier = Modifier) {
     val g = glass
-    val t = rememberClock(Store.animatedBg)
+    val ctx = LocalContext.current
+    // Respect the system "remove animations" accessibility setting.
+    val reduceMotion = remember {
+        try {
+            android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+        } catch (e: Throwable) {
+            false
+        }
+    }
+    val t = rememberClock(Store.animatedBg && !reduceMotion)
     Box(
         modifier
             .fillMaxSize()

@@ -5,6 +5,7 @@ import base64, io, os, re, subprocess, sys, time
 from PIL import Image
 
 PKG = "com.glass.activitylauncher"
+MISSING = []
 API = os.environ.get("API", "?")
 
 
@@ -20,9 +21,11 @@ def esc(s):
 
 
 def shot(name):
-    raw = subprocess.run("adb exec-out screencap -p", shell=True, capture_output=True).stdout
+    time.sleep(1.5)
+    sh("adb shell screencap -p /sdcard/s.png")
+    sh("adb pull /sdcard/s.png /tmp/s.png")
     try:
-        im = Image.open(io.BytesIO(raw)).convert("RGB")
+        im = Image.open("/tmp/s.png").convert("RGB")
     except Exception as e:
         print("screenshot failed", e)
         return
@@ -42,7 +45,15 @@ def dump():
 def tap_text(text, contains=False, index=0):
     for _ in range(3):
         xml = dump()
-        nodes = re.findall(r'<node [^>]*?(?:text|content-desc)="([^"]*)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml)
+        nodes = []
+        for tag in re.findall(r'<node [^>]*>', xml):
+            b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', tag)
+            if not b:
+                continue
+            for attr in ("text", "content-desc"):
+                m = re.search(attr + r'="([^"]*)"', tag)
+                if m and m.group(1):
+                    nodes.append((m.group(1),) + b.groups())
         hits = [n for n in nodes if (text in n[0] if contains else n[0] == text)]
         if len(hits) > index:
             t, x1, y1, x2, y2 = hits[index]
@@ -51,7 +62,8 @@ def tap_text(text, contains=False, index=0):
             time.sleep(2.5)
             return True
         time.sleep(2)
-    print(f"::warning title=tap-{API}::text not found: {text}")
+    print(f"tap: text not found: {text}")
+    MISSING.append(text)
     return False
 
 
@@ -70,7 +82,6 @@ def main():
     time.sleep(15)
     shot("1-apps")
     # open a package
-    sh("adb shell input keyevent 4"); time.sleep(1)
     tap_text("Settings")
     shot("2-settings")
     sh("adb shell input swipe 500 1600 500 400 300"); time.sleep(1.5)
@@ -103,7 +114,7 @@ def main():
     if c:
         print("::error title=crash-" + API + "::" + esc(c[:30000]))
         sys.exit(1)
-    print(f"::notice title=ok-{API}::no crash, pid={pid}")
+    print(f"::notice title=ok-{API}::no crash, pid={pid}, missing taps={MISSING}")
 
 
 if __name__ == "__main__":
