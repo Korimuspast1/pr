@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddHome
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Edit
@@ -48,7 +49,7 @@ import dev.chrisbanes.haze.HazeState
 @Composable
 fun FavoritesTopBar(haze: HazeState, nav: Nav) {
     GlassTopBar(
-        haze, tr("Favorites", "Избранное"),
+        haze, Store.titleFav.ifBlank { tr("Favorites", "Избранное") }, pro = true,
         subtitle = if (Store.favorites.isEmpty()) null else tr("${Store.favorites.size} shortcuts", "Ярлыков: ${Store.favorites.size}"),
     ) {
         GlassIconButton(Icons.Rounded.Settings, tr("Settings", "Настройки"), plain = true) { nav.push(Screen.Settings) }
@@ -87,7 +88,7 @@ fun FavoritesContent(nav: Nav, pad: PaddingValues) {
                     onClick = { nav.push(Screen.Editor(d)) },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        ShortcutIcon(d, 52.dp)
+                        ShortcutIcon(d, Store.iconSize.dp)
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -116,6 +117,12 @@ fun FavoritesContent(nav: Nav, pad: PaddingValues) {
                     if (i < Store.favorites.lastIndex) DropdownMenuItem(text = { Text(tr("Move down", "Ниже")) },
                         leadingIcon = { Icon(Icons.Rounded.ArrowDownward, null) },
                         onClick = { menu = false; Store.moveFavorite(i, i + 1) })
+                    DropdownMenuItem(text = { Text(tr("Duplicate", "Дублировать")) }, leadingIcon = { Icon(Icons.Rounded.ContentCopy, null) },
+                        onClick = {
+                            menu = false
+                            Store.favorites.add(i + 1, d.copy(id = java.util.UUID.randomUUID().toString(), name = d.displayName + " (2)"))
+                            Store.saveFavorites()
+                        })
                     DropdownMenuItem(text = { Text(tr("Remove", "Удалить")) }, leadingIcon = { Icon(Icons.Rounded.Delete, null) },
                         onClick = { menu = false; Store.removeFavorite(d) })
                 }
@@ -130,7 +137,7 @@ fun FavoritesContent(nav: Nav, pad: PaddingValues) {
 fun RecentsTopBar(haze: HazeState, nav: Nav) {
     var confirm by remember { mutableStateOf(false) }
     val g = glass
-    GlassTopBar(haze, tr("Recents", "Недавние"),
+    GlassTopBar(haze, Store.titleRecents.ifBlank { tr("Recents", "Недавние") }, pro = true,
         subtitle = if (!Store.historyEnabled) tr("History is off", "История выключена") else null) {
         if (Store.recents.isNotEmpty()) {
             GlassIconButton(Icons.Rounded.DeleteSweep, tr("Clear", "Очистить"), plain = true) { confirm = true }
@@ -172,7 +179,7 @@ fun RecentsContent(nav: Nav, pad: PaddingValues) {
                 onClick = { nav.push(Screen.Editor(d)) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    ShortcutIcon(d, 48.dp)
+                    ShortcutIcon(d, (Store.iconSize * 0.92f).dp)
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(d.displayName, color = g.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,

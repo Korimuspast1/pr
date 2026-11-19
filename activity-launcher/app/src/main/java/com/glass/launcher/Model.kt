@@ -8,7 +8,7 @@ data class Extra(val key: String = "", val type: String = "string", val value: S
     fun toJson(): JSONObject = JSONObject().put("key", key).put("type", type).put("value", value)
 
     companion object {
-        val TYPES = listOf("string", "int", "long", "bool", "float", "double", "uri")
+        val TYPES = listOf("string", "int", "long", "bool", "float", "double", "uri", "string[]", "int[]", "long[]", "float[]", "null")
         fun fromJson(o: JSONObject) = Extra(o.optString("key"), o.optString("type", "string"), o.optString("value"))
     }
 }
@@ -26,9 +26,11 @@ data class ShortcutData(
     val flags: Int = 0,
     val extras: List<Extra> = emptyList(),
     val root: Boolean = false,
+    /** activity | service | foreground | broadcast */
+    val target: String = "activity",
 ) {
     /** Identity used for favorites / recents de-duplication. */
-    fun key(): String = listOf(pkg, cls, action, data, mime, categories.joinToString(","), flags.toString(),
+    fun key(): String = listOf(target, pkg, cls, action, data, mime, categories.joinToString(","), flags.toString(),
         extras.joinToString(";") { "${it.type}:${it.key}=${it.value}" }).joinToString("|")
 
     val shortClass: String
@@ -43,6 +45,7 @@ data class ShortcutData(
         .put("categories", JSONArray(categories)).put("flags", flags)
         .put("extras", JSONArray().apply { extras.forEach { put(it.toJson()) } })
         .put("root", root)
+        .put("target", target)
 
     companion object {
         fun fromJson(o: JSONObject): ShortcutData {
@@ -61,6 +64,7 @@ data class ShortcutData(
                 flags = o.optInt("flags"),
                 extras = if (ex == null) emptyList() else List(ex.length()) { Extra.fromJson(ex.getJSONObject(it)) },
                 root = o.optBoolean("root"),
+                target = o.optString("target", "activity").ifBlank { "activity" },
             )
         }
     }

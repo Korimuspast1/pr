@@ -57,6 +57,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -65,6 +71,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -123,6 +135,7 @@ data class GlassColors(
     val highlight: Color,
     val blobs: List<Color>,
     val blur: Dp,
+    val refraction: Float = 0.6f,
 )
 
 val LocalGlass = staticCompositionLocalOf {
@@ -141,7 +154,9 @@ fun GlassTheme(content: @Composable () -> Unit) {
     }
     val ctx = LocalContext.current
     val dynamic = Store.accent < 0 && Build.VERSION.SDK_INT >= 31
-    val (a, b) = if (dynamic) {
+    val (a, b) = if (Store.accent == -2) {
+        Color(Store.customA) to Color(Store.customB)
+    } else if (dynamic) {
         val s = if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
         s.primary to s.tertiary
     } else {
@@ -153,20 +168,20 @@ fun GlassTheme(content: @Composable () -> Unit) {
         dark = true, accent = lerp(a, Color.White, .15f), accent2 = b,
         base = Color(0xFF070A14),
         text = Color(0xFFF4F6FF), textDim = Color(0xFFA3A9C2),
-        fill = Color.White.copy(alpha = 0.04f + 0.10f * op),
-        fillStrong = Color(0xFF1A1F33).copy(alpha = 0.55f + 0.35f * op),
-        stroke = Color.White.copy(alpha = 0.22f), highlight = Color.White.copy(alpha = 0.10f),
+        fill = Color.White.copy(alpha = 0.02f + 0.09f * op),
+        fillStrong = Color(0xFF1A1F33).copy(alpha = 0.18f + 0.55f * op),
+        stroke = Color.White.copy(alpha = 0.30f), highlight = Color.White.copy(alpha = 0.09f),
         blobs = listOf(a, b, lerp(a, b, .5f), Color(0xFF3B1E8C)),
-        blur = Store.blur.dp,
+        blur = Store.blur.dp, refraction = Store.refraction,
     ) else GlassColors(
         dark = false, accent = lerp(a, Color.Black, .08f), accent2 = b,
         base = Color(0xFFEFF2FA),
         text = Color(0xFF0E1222), textDim = Color(0xFF5B6178),
-        fill = Color.White.copy(alpha = 0.22f + 0.40f * op),
-        fillStrong = Color.White.copy(alpha = 0.55f + 0.35f * op),
-        stroke = Color.White.copy(alpha = 0.85f), highlight = Color.White.copy(alpha = 0.55f),
+        fill = Color.White.copy(alpha = 0.10f + 0.36f * op),
+        fillStrong = Color.White.copy(alpha = 0.20f + 0.55f * op),
+        stroke = Color.White.copy(alpha = 0.95f), highlight = Color.White.copy(alpha = 0.45f),
         blobs = listOf(a, b, lerp(a, b, .5f), Color(0xFFFFB86B)),
-        blur = Store.blur.dp,
+        blur = Store.blur.dp, refraction = Store.refraction,
     )
     val scheme = if (dark) darkColorScheme(
         primary = colors.accent, secondary = colors.accent2, tertiary = colors.accent2,
@@ -179,7 +194,11 @@ fun GlassTheme(content: @Composable () -> Unit) {
         surfaceVariant = Color(0xFFE3E7F3), onSurfaceVariant = colors.textDim,
         surfaceContainer = Color(0xFFF2F4FB), surfaceContainerHigh = Color(0xFFF7F8FD),
     )
-    CompositionLocalProvider(LocalGlass provides colors) {
+    val density = LocalDensity.current
+    CompositionLocalProvider(
+        LocalGlass provides colors,
+        LocalDensity provides Density(density.density, density.fontScale * Store.fontScale.coerceIn(0.7f, 1.5f)),
+    ) {
         MaterialTheme(colorScheme = scheme, content = content)
     }
 }
@@ -211,7 +230,32 @@ fun LiquidBackground(modifier: Modifier = Modifier) {
             false
         }
     }
-    val t = rememberClock(Store.animatedBg && !reduceMotion)
+    val mode = Store.bgMode
+    val t = rememberClock(Store.animatedBg && !reduceMotion && mode == "blobs")
+    if (mode == "image") {
+        val img = Wallpaper.bitmap(ctx)
+        if (img != null) {
+            Box(modifier.fillMaxSize().background(g.base)) {
+                Image(img, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                Box(Modifier.fillMaxSize().background(g.base.copy(alpha = Store.bgDim.coerceIn(0f, 0.9f))))
+            }
+            return
+        }
+    }
+    if (mode == "solid") {
+        Box(modifier.fillMaxSize().background(g.base))
+        return
+    }
+    if (mode == "gradient") {
+        Box(
+            modifier.fillMaxSize().background(g.base).background(
+                Brush.linearGradient(
+                    listOf(g.blobs[0].copy(alpha = .55f), g.blobs[2].copy(alpha = .35f), g.blobs[1].copy(alpha = .55f)),
+                ),
+            ),
+        )
+        return
+    }
     Box(
         modifier
             .fillMaxSize()
@@ -271,9 +315,9 @@ fun Modifier.liquidGlass(
             haze,
             style = HazeStyle(
                 backgroundColor = g.base,
-                tints = listOf(HazeTint(tint.copy(alpha = tint.alpha * 0.75f))),
+                tints = listOf(HazeTint(tint.copy(alpha = tint.alpha * 0.6f))),
                 blurRadius = g.blur,
-                noiseFactor = 0.06f,
+                noiseFactor = 0.035f,
                 fallbackTint = HazeTint(if (g.dark) Color(0xEE161B2D) else Color(0xEEF7F8FD)),
             ),
         )
@@ -288,25 +332,64 @@ fun Modifier.glassPane(g: GlassColors, shape: Shape, tint: Color = g.fill): Modi
     this.clip(shape).background(tint).glassRim(g, shape)
 
 fun Modifier.glassRim(g: GlassColors, shape: Shape): Modifier = this
+    // soft top sheen behind content
     .background(
         Brush.verticalGradient(
             0f to g.highlight,
-            0.45f to Color.Transparent,
-            1f to Color.White.copy(alpha = if (g.dark) 0.03f else 0.10f),
+            0.38f to Color.Transparent,
+            0.85f to Color.Transparent,
+            1f to Color.White.copy(alpha = if (g.dark) 0.04f else 0.14f),
         ),
     )
-    .border(
-        width = 1.dp,
-        brush = Brush.linearGradient(
-            listOf(
-                g.stroke,
-                g.stroke.copy(alpha = g.stroke.alpha * 0.15f),
-                g.stroke.copy(alpha = g.stroke.alpha * 0.10f),
-                g.stroke.copy(alpha = g.stroke.alpha * 0.55f),
+    // edge lighting drawn above content, like light bending through thick glass
+    .drawWithContent {
+        drawContent()
+        val outline = shape.createOutline(size, layoutDirection, this)
+        val r = g.refraction.coerceIn(0f, 1f)
+        val w = size.width
+        val h = size.height
+        // inner glow (only the inner half of the stroke is visible thanks to clip)
+        drawOutline(
+            outline,
+            brush = Brush.verticalGradient(
+                listOf(Color.White.copy(alpha = 0.22f * r), Color.White.copy(alpha = 0.02f * r), Color.White.copy(alpha = 0.12f * r)),
             ),
-        ),
-        shape = shape,
-    )
+            style = Stroke(width = 7.dp.toPx()),
+        )
+        // coloured caustic at the bottom edge
+        drawOutline(
+            outline,
+            brush = Brush.linearGradient(
+                0f to Color.Transparent,
+                0.65f to Color.Transparent,
+                1f to g.accent2.copy(alpha = 0.35f * r),
+                start = Offset(0f, 0f), end = Offset(w * 0.3f, h),
+            ),
+            style = Stroke(width = 2.5.dp.toPx()),
+        )
+        // specular rim: bright top-left, faint middle, light bottom-right
+        drawOutline(
+            outline,
+            brush = Brush.linearGradient(
+                0f to g.stroke,
+                0.28f to g.stroke.copy(alpha = g.stroke.alpha * 0.18f),
+                0.62f to g.stroke.copy(alpha = g.stroke.alpha * 0.06f),
+                1f to g.stroke.copy(alpha = g.stroke.alpha * (0.35f + 0.4f * r)),
+                start = Offset(0f, 0f), end = Offset(w, h),
+            ),
+            style = Stroke(width = 1.2.dp.toPx()),
+        )
+        // tiny specular highlight spot
+        if (r > 0f && h > 0f) {
+            drawCircle(
+                Brush.radialGradient(
+                    listOf(Color.White.copy(alpha = 0.35f * r), Color.Transparent),
+                    center = Offset(w * 0.18f, h * 0.08f), radius = minOf(w, h) * 0.55f,
+                ),
+                radius = minOf(w, h) * 0.55f, center = Offset(w * 0.18f, h * 0.08f),
+            )
+        }
+    }
 
 /** Squishy liquid press feedback. */
 @Composable
@@ -391,6 +474,7 @@ fun GlassTopBar(
     title: String,
     subtitle: String? = null,
     onBack: (() -> Unit)? = null,
+    pro: Boolean = false,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val g = glass
@@ -399,7 +483,7 @@ fun GlassTopBar(
             .padding(top = statusTop() + 8.dp, start = 12.dp, end = 12.dp)
             .fillMaxWidth()
             .height(TopBarHeight - 8.dp)
-            .liquidGlass(g, RoundedCornerShape(28.dp), haze, elevation = 10.dp)
+            .liquidGlass(g, RoundedCornerShape((Store.cornerRadius + 2f).dp), haze, elevation = 10.dp)
             .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -409,8 +493,14 @@ fun GlassTopBar(
             Spacer(Modifier.width(12.dp))
         }
         Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
-            Text(title, color = g.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, color = g.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (pro && Store.PRO_ACTIVE) {
+                    Spacer(Modifier.width(8.dp))
+                    ProBadge()
+                }
+            }
             if (subtitle != null) {
                 Text(subtitle, color = g.textDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -422,48 +512,102 @@ fun GlassTopBar(
 data class NavItem(val label: String, val icon: ImageVector)
 
 @OptIn(ExperimentalFoundationApi::class)
-/** Floating capsule tab bar with a liquid, stretchy selection droplet. */
+/**
+ * Floating capsule tab bar with a liquid selection droplet.
+ * Tap a tab, or grab the droplet and drag it freely left/right – it follows the finger,
+ * stretches like liquid, lifts & magnifies while held and snaps to the nearest tab on release.
+ */
 @Composable
 fun GlassBottomBar(haze: HazeState, items: List<NavItem>, selected: Int, onSelect: (Int) -> Unit) {
     val g = glass
+    val scope = rememberCoroutineScope()
     val pos = remember { Animatable(selected.toFloat()) }
+    var dragging by remember { mutableStateOf(false) }
     LaunchedEffect(selected) {
-        pos.animateTo(selected.toFloat(), spring(dampingRatio = 0.62f, stiffness = 320f))
+        if (!dragging) pos.animateTo(selected.toFloat(), spring(dampingRatio = 0.62f, stiffness = 320f))
     }
     val haptic = LocalHapticFeedback.current
+    val currentSelected by rememberUpdatedState(selected)
+    val currentOnSelect by rememberUpdatedState(onSelect)
+    val lift by animateFloatAsState(if (dragging) 1f else 0f, spring(0.55f, 420f), label = "lift")
+    val n = items.size
     Box(
         Modifier
-            .padding(start = 28.dp, end = 28.dp, bottom = navBottom() + 14.dp)
+            .padding(start = 24.dp, end = 24.dp, bottom = navBottom() + 14.dp)
             .fillMaxWidth()
             .height(BottomBarHeight)
-            .liquidGlass(g, CircleShape, haze, elevation = 18.dp),
+            .liquidGlass(g, CircleShape, haze, tint = g.fill, elevation = 18.dp),
     ) {
         BoxWithConstraints(Modifier.fillMaxSize().padding(6.dp)) {
-            val itemW = maxWidth / items.size
+            val itemW = maxWidth / n
+            val itemWpx = constraints.maxWidth.toFloat() / n
             val v = abs(pos.velocity)
             val stretch = (v * 0.10f).coerceAtMost(0.35f)
+            // ---- drag surface
+            val dragModifier = Modifier.pointerInput(n, itemWpx) {
+                var lastIndex = -1
+                var p = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { o ->
+                        dragging = true
+                        p = (o.x / itemWpx - 0.5f).coerceIn(0f, n - 1f)
+                        lastIndex = (p + 0.5f).toInt().coerceIn(0, n - 1)
+                        scope.launch { pos.animateTo(p, spring(0.7f, 900f)) }
+                    },
+                    onHorizontalDrag = { change, dx ->
+                        change.consume()
+                        p = (p + dx / itemWpx).coerceIn(-0.15f, n - 0.85f)
+                        val target = p
+                        scope.launch { pos.snapTo(target) }
+                        val idx = (p + 0.5f).toInt().coerceIn(0, n - 1)
+                        if (idx != lastIndex) {
+                            lastIndex = idx
+                            if (Store.haptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
+                    },
+                    onDragEnd = {
+                        val target = (p + 0.5f).toInt().coerceIn(0, n - 1)
+                        dragging = false
+                        scope.launch { pos.animateTo(target.toFloat(), spring(dampingRatio = 0.55f, stiffness = 380f)) }
+                        if (target != currentSelected) currentOnSelect(target)
+                    },
+                    onDragCancel = {
+                        dragging = false
+                        scope.launch { pos.animateTo(currentSelected.toFloat(), spring(0.6f, 380f)) }
+                    },
+                )
+            }
+            // ---- droplet
             Box(
                 Modifier
                     .offset(x = itemW * pos.value)
                     .width(itemW)
                     .fillMaxHeight()
                     .graphicsLayer {
-                        scaleX = 1f + stretch
-                        scaleY = 1f - stretch * 0.35f
+                        val lifted = 1f + 0.18f * lift
+                        scaleX = (1f + stretch) * lifted
+                        scaleY = (1f - stretch * 0.35f) * (1f + 0.22f * lift)
+                        shadowElevation = 12f * lift
+                        shape = CircleShape
+                        clip = false
                     }
                     .clip(CircleShape)
                     .background(
                         Brush.verticalGradient(
-                            listOf(g.accent.copy(alpha = if (g.dark) .38f else .22f), g.accent2.copy(alpha = if (g.dark) .22f else .14f)),
+                            listOf(
+                                g.accent.copy(alpha = (if (g.dark) .34f else .20f) * (1f - 0.6f * lift)),
+                                g.accent2.copy(alpha = (if (g.dark) .20f else .12f) * (1f - 0.6f * lift)),
+                            ),
                         ),
                     )
-                    .glassRim(g, CircleShape),
+                    .background(Color.White.copy(alpha = (if (g.dark) 0.06f else 0.22f) * lift))
+                    .glassRim(g.copy(refraction = (g.refraction + 0.4f * lift).coerceAtMost(1f)), CircleShape),
             )
-            Row(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxSize().then(dragModifier)) {
                 items.forEachIndexed { i, item ->
-                    val sel = i == selected
+                    val proximity = (1f - abs(pos.value - i)).coerceIn(0f, 1f)
                     val source = remember { MutableInteractionSource() }
-                    val scale by animateFloatAsState(if (sel) 1.12f else 1f, spring(0.4f, Spring.StiffnessMediumLow), label = "tab")
+                    val scale = 1f + 0.12f * proximity + 0.14f * proximity * lift
                     Column(
                         Modifier
                             .weight(1f)
@@ -479,14 +623,16 @@ fun GlassBottomBar(haze: HazeState, items: List<NavItem>, selected: Int, onSelec
                     ) {
                         Icon(
                             item.icon, null,
-                            tint = if (sel) g.accent else g.textDim,
+                            tint = lerp(g.textDim, g.accent, proximity),
                             modifier = Modifier.size(24.dp).graphicsLayer { scaleX = scale; scaleY = scale },
                         )
-                        Text(
-                            item.label, fontSize = 11.sp,
-                            color = if (sel) g.text else g.textDim,
-                            fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium, maxLines = 1,
-                        )
+                        if (Store.navLabels) {
+                            Text(
+                                item.label, fontSize = 11.sp,
+                                color = lerp(g.textDim, g.text, proximity),
+                                fontWeight = if (proximity > 0.5f) FontWeight.Bold else FontWeight.Medium, maxLines = 1,
+                            )
+                        }
                     }
                 }
             }
@@ -521,7 +667,7 @@ fun GlassIconButton(
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(26.dp),
+    shape: Shape = RoundedCornerShape(Store.cornerRadius.dp),
     padding: PaddingValues = PaddingValues(16.dp),
     tint: Color? = null,
     onLongClick: (() -> Unit)? = null,
@@ -658,7 +804,7 @@ fun GlassField(
         Row(
             Modifier
                 .fillMaxWidth()
-                .glassPane(g, RoundedCornerShape(20.dp), g.fillStrong.copy(alpha = g.fillStrong.alpha * 0.7f))
+                .glassPane(g, RoundedCornerShape((Store.cornerRadius * 0.78f).dp), g.fillStrong.copy(alpha = g.fillStrong.alpha * 0.7f))
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -709,6 +855,7 @@ fun AppIcon(img: ImageBitmap?, size: Dp = 48.dp) {
 
 @Composable
 fun Badge(text: String, color: Color) {
+    if (!Store.showBadges) return
     Box(
         Modifier
             .clip(CircleShape)
@@ -736,5 +883,24 @@ fun EmptyState(icon: ImageVector, title: String, text: String) {
         Text(text, color = g.textDim, fontSize = 14.sp,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.align(Alignment.CenterHorizontally).widthIn(max = 320.dp))
+    }
+}
+
+/** Gradient "PRO ∞" pill. */
+@Composable
+fun ProBadge(big: Boolean = false) {
+    val g = glass
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(Brush.linearGradient(listOf(Color(0xFFFFC94D), Color(0xFFFF7A59), Color(0xFFB45CFF))))
+            .glassRim(g.copy(stroke = Color.White.copy(alpha = .8f), highlight = Color.White.copy(alpha = .4f)), CircleShape)
+            .padding(horizontal = if (big) 14.dp else 8.dp, vertical = if (big) 5.dp else 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            if (big) "PRO  ∞" else "PRO ∞", color = Color.White, fontWeight = FontWeight.Black,
+            fontSize = if (big) 15.sp else 10.sp, letterSpacing = 0.5.sp, maxLines = 1,
+        )
     }
 }

@@ -76,7 +76,8 @@ fun AppsTopBar(haze: HazeState, nav: Nav, st: AppsState) {
     val count = Pkg.apps?.size
     GlassTopBar(
         haze,
-        title = tr("Packages", "Пакеты"),
+        title = Store.titleApps.ifBlank { tr("Packages", "Пакеты") },
+        pro = true,
         subtitle = if (count != null) tr("$count apps", "$count приложений") else null,
     ) {
         GlassIconButton(Icons.Rounded.Add, tr("New intent", "Новый интент"), plain = true) {
@@ -269,7 +270,7 @@ fun AppRow(nav: Nav, app: AppEntry) {
             onClick = { nav.push(Screen.Package(app.pkg)) },
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AppIcon(rememberIcon(app.pkg), if (compact) 40.dp else 52.dp)
+                AppIcon(rememberIcon(app.pkg), (if (compact) Store.iconSize * 0.78f else Store.iconSize).dp)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -285,7 +286,7 @@ fun AppRow(nav: Nav, app: AppEntry) {
                     Text(app.pkg, color = g.textDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Spacer(Modifier.width(8.dp))
-                Text("${app.activityCount}", color = g.accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                if (Store.showCounts) Text("${app.activityCount}", color = g.accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -312,7 +313,7 @@ fun ActivityRow(nav: Nav, a: ActEntry, showApp: Boolean = false, action: String?
         onClick = { nav.push(Screen.Editor(data())) },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            AppIcon(rememberIcon(a.pkg, a.cls), 44.dp)
+            AppIcon(rememberIcon(a.pkg, a.cls), (Store.iconSize * 0.85f).dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -332,6 +332,12 @@ object Pkg {
     }
 
     fun iconFromResName(ctx: Context, name: String): Bitmap? {
+        if (name.startsWith("file://")) {
+            return try { android.graphics.BitmapFactory.decodeFile(name.removePrefix("file://")) } catch (e: Throwable) { null }
+        }
+        if (name.startsWith("app:")) {
+            return try { appIconDrawable(ctx, name.removePrefix("app:"), null)?.toBitmap(192, 192, Bitmap.Config.ARGB_8888) } catch (e: Throwable) { null }
+        }
         if (!name.contains(':')) return null
         val pkg = name.substringBefore(':')
         return try {

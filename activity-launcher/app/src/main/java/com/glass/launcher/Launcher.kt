@@ -76,7 +76,7 @@ object Launcher {
         }
         d.categories.filter { it.isNotBlank() }.forEach { i.addCategory(it.trim()) }
         if (i.action == null && i.component == null && i.`package` == null) i.action = Intent.ACTION_MAIN
-        i.addFlags(d.flags or Intent.FLAG_ACTIVITY_NEW_TASK)
+        i.addFlags(if (d.target == "activity") d.flags or Intent.FLAG_ACTIVITY_NEW_TASK else d.flags)
         for (e in d.extras) {
             if (e.key.isBlank()) continue
             when (e.type) {
@@ -86,17 +86,31 @@ object Launcher {
                 "float" -> e.value.trim().toFloatOrNull()?.let { i.putExtra(e.key, it) }
                 "double" -> e.value.trim().toDoubleOrNull()?.let { i.putExtra(e.key, it) }
                 "uri" -> i.putExtra(e.key, Uri.parse(e.value.trim()))
+                "string[]" -> i.putExtra(e.key, splitList(e.value).toTypedArray())
+                "int[]" -> i.putExtra(e.key, splitList(e.value).mapNotNull { it.toIntOrNull() }.toIntArray())
+                "long[]" -> i.putExtra(e.key, splitList(e.value).mapNotNull { it.toLongOrNull() }.toLongArray())
+                "float[]" -> i.putExtra(e.key, splitList(e.value).mapNotNull { it.toFloatOrNull() }.toFloatArray())
+                "null" -> i.putExtra(e.key, null as String?)
                 else -> i.putExtra(e.key, e.value)
             }
         }
         return i
     }
 
+    private fun splitList(v: String) = v.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+
     private fun q(s: String) = "'" + s.replace("'", "'\\''") + "'"
 
     /** `am start ...` command line equivalent of the shortcut. */
     fun amCommand(d: ShortcutData): String {
-        val sb = StringBuilder("am start")
+        val sb = StringBuilder(
+            when (d.target) {
+                "service" -> "am startservice"
+                "foreground" -> "am start-foreground-service"
+                "broadcast" -> "am broadcast"
+                else -> "am start"
+            },
+        )
         if (d.action.isNotBlank()) sb.append(" -a ").append(q(d.action.trim()))
         if (d.data.isNotBlank()) sb.append(" -d ").append(q(d.data.trim()))
         if (d.mime.isNotBlank()) sb.append(" -t ").append(q(d.mime.trim()))
@@ -104,11 +118,16 @@ object Launcher {
         if (d.flags != 0) sb.append(" -f ").append(d.flags or Intent.FLAG_ACTIVITY_NEW_TASK)
         for (e in d.extras) {
             if (e.key.isBlank()) continue
+            if (e.type == "null") {
+                sb.append(" --esn ").append(q(e.key)); continue
+            }
             val opt = when (e.type) {
                 "int" -> "--ei"; "long" -> "--el"; "bool" -> "--ez"; "float" -> "--ef"
-                "double" -> "--ed"; "uri" -> "--eu"; else -> "--es"
+                "double" -> "--ed"; "uri" -> "--eu"; "string[]" -> "--esa"; "int[]" -> "--eia"
+                "long[]" -> "--ela"; "float[]" -> "--efa"; else -> "--es"
             }
-            sb.append(' ').append(opt).append(' ').append(q(e.key)).append(' ').append(q(e.value))
+            val value = if (e.type.endsWith("[]")) splitList(e.value).joinToString(",") else e.value
+            sb.append(' ').append(opt).append(' ').append(q(e.key)).append(' ').append(q(value))
         }
         if (d.pkg.isNotBlank() && d.cls.isNotBlank()) {
             val cls = if (d.cls.startsWith(".")) d.pkg + d.cls else d.cls
@@ -133,8 +152,15 @@ object Launcher {
             return LaunchResult.Error(ok)
         }
         return try {
-            ctx.startActivity(buildIntent(d))
+            val intent = buildIntent(d)
+            when (d.target) {
+                "service" -> if (ctx.startService(intent) == null) return LaunchResult.Error(tr("Service not found", "Сервис не найден"))
+                "foreground" -> androidx.core.content.ContextCompat.startForegroundService(ctx, intent)
+                "broadcast" -> ctx.sendBroadcast(intent)
+                else -> ctx.startActivity(intent)
+            }
             if (record) Store.addRecent(d)
+            if (d.target == "broadcast") toast(ctx, tr("Broadcast sent", "Broadcast отправлен"))
             LaunchResult.Ok
         } catch (e: SecurityException) {
             if (Store.rootFallback && launchRoot(d) == null) {
@@ -145,6 +171,8 @@ object Launcher {
             }
         } catch (e: ActivityNotFoundException) {
             LaunchResult.Error(tr("Activity not found", "Активити не найдена"))
+        } catch (e: IllegalStateException) {
+            LaunchResult.Error(tr("Not allowed to start service in background", "Нельзя запустить сервис в фоне") + ": " + (e.message ?: ""), canRoot = true)
         } catch (e: Throwable) {
             LaunchResult.Error(e.javaClass.simpleName + ": " + (e.message ?: ""))
         }

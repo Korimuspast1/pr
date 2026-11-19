@@ -72,11 +72,11 @@ class MainActivity : ComponentActivity() {
 fun Root() {
     val nav = remember { Nav() }
     val ctx = LocalContext.current
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(Store.startTab.coerceIn(0, 2)) }
     LaunchedEffect(Unit) { Pkg.load(ctx) }
 
     BackHandler(enabled = nav.stack.size > 1) { nav.pop() }
-    BackHandler(enabled = nav.stack.size == 1 && tab != 0) { tab = 0 }
+    BackHandler(enabled = nav.stack.size == 1 && tab != Store.startTab) { tab = Store.startTab.coerceIn(0, 2) }
 
     val entry = Entry(nav.stack.last(), nav.stack.size)
     AnimatedContent(
@@ -109,11 +109,13 @@ fun Root() {
 
 @Composable
 fun TabsHost(nav: Nav, tab: Int, onTab: (Int) -> Unit) {
-    val items = listOf(
+    val all = listOf(
         NavItem(tr("All", "Все"), Icons.Rounded.Search),
         NavItem(tr("Favorites", "Избранное"), Icons.Rounded.Favorite),
         NavItem(tr("Recents", "Недавние"), Icons.Rounded.History),
     )
+    val order = parseTabOrder(Store.tabOrder)
+    val items = order.map { all[it] }
     val appsState = remember { AppsState() }
     GlassScaffold(
         topBar = { haze ->
@@ -129,12 +131,12 @@ fun TabsHost(nav: Nav, tab: Int, onTab: (Int) -> Unit) {
                 }
             }
         },
-        bottomBar = { haze -> GlassBottomBar(haze, items, tab, onTab) },
+        bottomBar = { haze -> GlassBottomBar(haze, items, order.indexOf(tab).coerceAtLeast(0)) { onTab(order[it]) } },
     ) { pad ->
         AnimatedContent(
             targetState = tab,
             transitionSpec = {
-                val dir = if (targetState > initialState) 1 else -1
+                val dir = if (order.indexOf(targetState) > order.indexOf(initialState)) 1 else -1
                 val sp = spring<IntOffset>(dampingRatio = 0.9f, stiffness = 500f)
                 (slideInHorizontally(sp) { dir * it / 5 } + fadeIn()) togetherWith
                     (slideOutHorizontally(sp) { -dir * it / 5 } + fadeOut())
@@ -148,4 +150,10 @@ fun TabsHost(nav: Nav, tab: Int, onTab: (Int) -> Unit) {
             }
         }
     }
+}
+
+fun parseTabOrder(s: String): List<Int> {
+    val list = s.split(',').mapNotNull { it.trim().toIntOrNull() }.filter { it in 0..2 }.distinct().toMutableList()
+    for (i in 0..2) if (i !in list) list.add(i)
+    return list
 }

@@ -25,6 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Layers
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.rounded.AddHome
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Code
@@ -82,6 +87,23 @@ fun EditorScreen(nav: Nav, initial: ShortcutData) {
     }
     var actionMenu by remember { mutableStateOf(false) }
     var rootDialog by remember { mutableStateOf<String?>(null) }
+    var flagsText by remember { mutableStateOf(if (initial.flags == 0) "" else "0x" + Integer.toHexString(initial.flags)) }
+    var pickApp by remember { mutableStateOf(false) }
+    var pickActivity by remember { mutableStateOf(false) }
+    var pickIcon by remember { mutableStateOf(false) }
+    var pickIconApp by remember { mutableStateOf(false) }
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) scope.launch {
+            val path = withContext(Dispatchers.IO) {
+                Media.saveScaled(ctx, uri, "icons", "${d.id}_${System.currentTimeMillis()}.png", 192, true)
+            }
+            if (path != null) d = d.copy(icon = "file://$path") else Launcher.toast(ctx, tr("Could not load image", "Не удалось загрузить картинку"))
+        }
+    }
+    fun setFlags(f: Int) {
+        d = d.copy(flags = f)
+        flagsText = if (f == 0) "" else "0x" + Integer.toHexString(f)
+    }
     val fav = Store.isFavorite(d)
     val storedFav = Store.favorites.any { it.id == d.id }
 
@@ -145,9 +167,26 @@ fun EditorScreen(nav: Nav, initial: ShortcutData) {
 
             // ───────────── basic fields
             GlassField(tr("Name", "Название"), d.name, { d = d.copy(name = it) }, singleLine = true)
-            GlassField(tr("Package", "Пакет"), d.pkg, { d = d.copy(pkg = it) }, singleLine = true, placeholder = "com.example.app")
-            GlassField(tr("Class", "Класс"), d.cls, { d = d.copy(cls = it) }, placeholder = "com.example.app.MainActivity")
-            GlassField(tr("Icon", "Иконка"), d.icon, { d = d.copy(icon = it) }, placeholder = "package:mipmap/ic_launcher")
+            GlassField(tr("Package", "Пакет"), d.pkg, { d = d.copy(pkg = it) }, singleLine = true, placeholder = "com.example.app",
+                trailing = { GlassIconButton(Icons.Rounded.Apps, tr("Choose app", "Выбрать приложение"), plain = true, size = 32.dp) { pickApp = true } })
+            GlassField(tr("Class", "Класс"), d.cls, { d = d.copy(cls = it) }, placeholder = "com.example.app.MainActivity",
+                trailing = {
+                    GlassIconButton(Icons.Rounded.Layers, tr("Choose activity", "Выбрать активити"), plain = true, size = 32.dp) {
+                        if (d.pkg.isBlank()) pickApp = true else pickActivity = true
+                    }
+                })
+            GlassField(tr("Icon", "Иконка"), d.icon, { d = d.copy(icon = it) }, placeholder = "package:mipmap/ic_launcher",
+                trailing = { GlassIconButton(Icons.Rounded.Image, tr("Choose icon", "Выбрать иконку"), plain = true, size = 32.dp) { pickIcon = true } })
+
+            SectionTitle(tr("Launch type", "Тип запуска"))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    "activity" to tr("Activity", "Активити"),
+                    "service" to tr("Service", "Сервис"),
+                    "foreground" to tr("Foreground service", "Foreground-сервис"),
+                    "broadcast" to "Broadcast",
+                ).forEach { (k, label) -> GlassChip(label, d.target == k) { d = d.copy(target = k) } }
+            }
 
             // ───────────── advanced intent
             GlassCard(padding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), onClick = { advanced = !advanced }) {
@@ -195,11 +234,21 @@ fun EditorScreen(nav: Nav, initial: ShortcutData) {
                         }
                     }
 
-                    SectionTitle(tr("Flags", "Флаги") + "  (0x" + Integer.toHexString(d.flags) + ")")
+                    SectionTitle(tr("Flags", "Флаги"))
+                    GlassField(tr("Raw flags (hex or decimal)", "Флаги вручную (hex или число)"), flagsText, { txt ->
+                        flagsText = txt
+                        val t = txt.trim().lowercase()
+                        val v = when {
+                            t.isEmpty() -> 0L
+                            t.startsWith("0x") -> t.removePrefix("0x").toLongOrNull(16)
+                            else -> t.toLongOrNull()
+                        }
+                        if (v != null) d = d.copy(flags = v.toInt())
+                    }, singleLine = true, mono = true, placeholder = "0x10000000")
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Launcher.FLAGS.forEach { (name, f) ->
                             val on = d.flags and f != 0
-                            GlassChip(name, on) { d = d.copy(flags = if (on) d.flags and f.inv() else d.flags or f) }
+                            GlassChip(name, on) { setFlags(if (on) d.flags and f.inv() else d.flags or f) }
                         }
                     }
 
@@ -221,7 +270,7 @@ fun EditorScreen(nav: Nav, initial: ShortcutData) {
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            GlassField(tr("Value", "Значение"), e.value, { v -> d = d.copy(extras = d.extras.replace(i, e.copy(value = v))) },
+                            GlassField(tr("Value", "Значение") + if (e.type.endsWith("[]")) tr(" (comma separated)", " (через запятую)") else "", e.value, { v -> d = d.copy(extras = d.extras.replace(i, e.copy(value = v))) },
                                 mono = true)
                         }
                     }
@@ -279,6 +328,38 @@ fun EditorScreen(nav: Nav, initial: ShortcutData) {
                     Icon(Icons.Rounded.ContentCopy, null, tint = g.textDim, modifier = Modifier.size(18.dp))
                 }
             }
+        }
+    }
+
+    if (pickApp) {
+        AppPickerDialog(onDismiss = { pickApp = false }) { a ->
+            pickApp = false
+            d = d.copy(pkg = a.pkg, name = if (d.name.isBlank()) a.label else d.name)
+            pickActivity = true
+        }
+    }
+    if (pickActivity && d.pkg.isNotBlank()) {
+        ActivityPickerDialog(d.pkg.trim(), onDismiss = { pickActivity = false }) { a ->
+            pickActivity = false
+            d = d.copy(cls = a.cls, name = a.label, icon = Pkg.iconResName(ctx, a.pkg, a.cls))
+        }
+    }
+    if (pickIcon) {
+        IconPickerDialog(
+            onDismiss = { pickIcon = false },
+            onActivityIcon = {
+                pickIcon = false
+                if (d.pkg.isNotBlank() && d.cls.isNotBlank()) d = d.copy(icon = Pkg.iconResName(ctx, d.pkg.trim(), d.cls.trim()))
+            },
+            onAppIcon = { pickIcon = false; pickIconApp = true },
+            onGallery = { pickIcon = false; galleryLauncher.launch("image/*") },
+            onClear = { pickIcon = false; d = d.copy(icon = "") },
+        )
+    }
+    if (pickIconApp) {
+        AppPickerDialog(tr("Take icon from…", "Взять иконку у…"), onDismiss = { pickIconApp = false }) { a ->
+            pickIconApp = false
+            d = d.copy(icon = "app:" + a.pkg)
         }
     }
 

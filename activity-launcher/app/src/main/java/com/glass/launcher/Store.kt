@@ -71,6 +71,28 @@ object Store {
     var dynamicShortcuts by PrefState("dynamic_shortcuts", true)
     var compactList by PrefState("compact", false)
 
+    // Deep customisation ("edit everything")
+    var customA by PrefState("custom_a", 0xFF3D7BFF.toInt())
+    var customB by PrefState("custom_b", 0xFFFF3D7F.toInt())
+    var bgMode by PrefState("bg_mode", "blobs")          // blobs | gradient | solid | image
+    var bgImage by PrefState("bg_image", "")
+    var bgDim by PrefState("bg_dim", 0.25f)
+    var cornerRadius by PrefState("corner", 26f)
+    var fontScale by PrefState("font_scale", 1f)
+    var iconSize by PrefState("icon_size", 52f)
+    var showBadges by PrefState("badges", true)
+    var showCounts by PrefState("counts", true)
+    var navLabels by PrefState("nav_labels", true)
+    var startTab by PrefState("start_tab", 0)
+    var tabOrder by PrefState("tab_order", "0,1,2")      // order of All / Favorites / Recents in the bar
+    var refraction by PrefState("refraction", 0.6f)     // strength of rim light / lens highlights
+    var titleApps by PrefState("title_apps", "")
+    var titleFav by PrefState("title_fav", "")
+    var titleRecents by PrefState("title_recents", "")
+
+    /** PRO is unlocked for everyone, forever. */
+    const val PRO_ACTIVE = true
+
     fun init(ctx: Context) {
         appContext = ctx.applicationContext
         prefs = ctx.getSharedPreferences("glass_launcher", Context.MODE_PRIVATE)
