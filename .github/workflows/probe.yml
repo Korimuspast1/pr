@@ -1,0 +1,20 @@
+name: probe-maven
+on:
+  push:
+    branches: ['arena/**']
+    paths: ['.github/workflows/probe.yml']
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: versions
+        run: |
+          G=https://dl.google.com/dl/android/maven2
+          for p in com/android/tools/build/gradle androidx/compose/compose-bom androidx/compose/material3/material3 androidx/activity/activity-compose androidx/core/core-ktx androidx/navigation/navigation-compose androidx/lifecycle/lifecycle-runtime-compose; do
+            echo "== $p"; curl -s $G/$p/maven-metadata.xml | grep -o '<version>[^<]*</version>' | sed 's/<[^>]*>//g' | tail -12 | tr '\n' ' '; echo
+          done
+          M=https://repo1.maven.org/maven2
+          for p in dev/chrisbanes/haze/haze org/jetbrains/kotlin/kotlin-gradle-plugin; do
+            echo "== $p"; curl -s $M/$p/maven-metadata.xml | grep -o '<version>[^<]*</version>' | sed 's/<[^>]*>//g' | tail -12 | tr '\n' ' '; echo
+          done
+          java -version 2>&1; echo ANDROID=$ANDROID_HOME; ls $ANDROID_HOME/platforms $ANDROID_HOME/build-tools
