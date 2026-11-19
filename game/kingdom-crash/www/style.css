@@ -251,3 +251,41 @@ b { font-weight: normal; }
 /* сообщения можно убрать свайпом в любую сторону */
 .toast { touch-action: none; cursor: pointer; }
 .toast:active { opacity: .92; }
+
+/* ===== 2.9.0: «мягкий камень» — единый мягкий свет на всё =====
+   Тёсаный камень остаётся, но углы скругляются, тени получают размытие,
+   экран становится чуть ярче и светлее. Текстуры и пиксель-арт на месте. */
+#cv { -webkit-filter: saturate(.74) brightness(1.08) contrast(.92); filter: saturate(.74) brightness(1.08) contrast(.92); }
+.px { border-radius: 5px;
+  box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 3px rgba(232, 196, 101, .45), inset 3px 3px 5px rgba(255, 230, 170, .2), inset -4px -4px 6px rgba(0, 0, 0, .36), 0 3px 0 rgba(0, 0, 0, .62), 0 7px 14px rgba(0, 0, 0, .38); }
+.px:hover { box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 3px var(--gold), inset 3px 3px 5px rgba(255, 230, 170, .24), inset -4px -4px 6px rgba(0, 0, 0, .36), 0 3px 0 rgba(0, 0, 0, .62), 0 0 12px rgba(232, 196, 101, .45), 0 8px 16px rgba(0, 0, 0, .4); }
+.px:active { box-shadow: inset 0 0 0 2px var(--ink), inset 4px 4px 7px rgba(0, 0, 0, .4), inset -3px -3px 5px rgba(255, 255, 255, .12), 0 1px 0 rgba(0, 0, 0, .62); }
+.px.on { box-shadow: inset 0 0 0 2px var(--ink), inset 4px 4px 6px rgba(255, 170, 150, .4), inset -4px -4px 6px rgba(60, 8, 4, .5), 0 3px 0 rgba(0, 0, 0, .62), 0 6px 12px rgba(0, 0, 0, .38); }
+.px.gold { box-shadow: inset 0 0 0 2px var(--ink), inset 3px 3px 5px rgba(255, 244, 190, .7), inset -4px -4px 6px rgba(90, 60, 10, .5), 0 3px 0 rgba(0, 0, 0, .62), 0 8px 16px rgba(0, 0, 0, .38); }
+.panel, #modal .box, #sheet, #loading .box { border-radius: 7px; }
+#modal .box, #loading .box { box-shadow: inset 0 0 0 3px var(--ink), inset 5px 5px 8px rgba(107, 90, 64, .85), inset -5px -5px 8px rgba(38, 30, 20, .85), inset 0 0 0 7px rgba(36, 28, 18, .65), 0 10px 22px rgba(0, 0, 0, .5); }
+.hd { border-radius: 5px 5px 0 0; }
+.parch { border-radius: 5px; box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px #c9b27c, 0 4px 10px rgba(0, 0, 0, .4); }
+#topbar { box-shadow: inset 0 -3px 0 var(--ink), inset 0 -6px 6px rgba(0, 0, 0, .3), 0 5px 12px rgba(0, 0, 0, .4); }
+#wx, #clock { border-radius: 5px; box-shadow: inset 0 0 0 2px var(--ink), inset 0 2px 3px rgba(0, 0, 0, .35), 0 2px 6px rgba(0, 0, 0, .3); }
+#flag { border-radius: 3px 3px 6px 6px; }
+#resbar { border-radius: 6px; box-shadow: inset 0 0 0 2px var(--ink), inset 0 3px 4px rgba(255, 255, 255, .14), inset 0 -3px 5px rgba(0, 0, 0, .3), 0 4px 10px rgba(0, 0, 0, .4); }
+#inboxBtn .lbl { letter-spacing: .5px; }
+#mm { border-radius: 6px; box-shadow: 0 0 0 3px var(--ink), 0 0 0 6px #8e887c, 0 0 0 8px var(--ink), 0 10px 20px rgba(0, 0, 0, .4); }
+#tabs button { border-radius: 6px 6px 0 0; box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 3px rgba(232, 196, 101, .3), inset 3px 3px 4px rgba(255, 255, 255, .12), inset -4px 0 5px rgba(0, 0, 0, .3); }
+#tabs button.on { box-shadow: inset 0 0 0 2px var(--ink), inset 0 7px 0 0 var(--gold), inset 0 9px 0 0 #7a5a20, inset 3px 3px 4px rgba(255, 255, 255, .18), inset -4px 0 5px rgba(0, 0, 0, .28), 0 -3px 10px rgba(232, 196, 101, .25); }
+#bar { box-shadow: inset 0 3px 0 var(--ink), inset 0 6px 6px rgba(255, 255, 255, .15), 0 -4px 12px rgba(0, 0, 0, .35); }
+#bar .bx { border-radius: 6px; box-shadow: inset 0 0 0 2px var(--ink), inset 4px 4px 6px rgba(0, 0, 0, .45), inset -3px -3px 5px rgba(255, 255, 255, .15); }
+#bar button.on .bx { box-shadow: inset 0 0 0 2px var(--ink), inset 4px 4px 5px rgba(0, 0, 0, .4), inset -3px -3px 5px rgba(255, 160, 140, .35), 0 0 10px rgba(232, 64, 44, .35); }
+#plan { border-radius: 6px; box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px var(--gold), 0 4px 10px rgba(0, 0, 0, .4), 0 0 14px rgba(232, 196, 101, .35); }
+.toast { border-radius: 6px; box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px #c9b27c, 0 4px 10px rgba(0, 0, 0, .42); }
+.list .it, .msg, .ach, .rec { border-radius: 5px; }
+.chip { border-radius: 5px; }
+.sw, .hp, .pb { border-radius: 3px; }
+#sheet { box-shadow: inset 0 0 0 3px var(--ink), inset 5px 5px 8px rgba(255, 255, 255, .06), inset -5px -5px 8px rgba(0, 0, 0, .35), 0 -6px 18px rgba(0, 0, 0, .5); }
+#sheet::after, #modal .box::after { opacity: .85; }
+.title div { text-shadow: 3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 6px 0 #000, 0 0 26px rgba(232, 196, 101, .3); }
+.sub { border-radius: 4px; }
+.seg .px { border-radius: 4px; }
+.ach.got, .msg.unread { border-radius: 5px; }
+::-webkit-scrollbar-thumb { border-radius: 3px; }

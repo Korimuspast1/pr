@@ -38,6 +38,22 @@ const TERR = (() => {
   const grain = (x, y) => { let h = Math.imul(x, 73856093) ^ Math.imul(y, 19349663); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) & 255) / 255; };
   const th = (x, y, k) => { let h = (Math.imul(x, 73856093) ^ Math.imul(y, 19349663) ^ Math.imul(k, 83492791)) >>> 0; h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
+  /* Кубическая интерполяция Кэтмулла-Рома по тайлам: убирает «плато» террас,
+     которые давал гладкий ступенчатый лерп — рельеф и берега становятся живыми */
+  const cl_ = (v, m) => v < 0 ? 0 : v > m ? m : v;
+  const crs = (p0, p1, p2, p3, t) => { const t2 = t * t, t3 = t2 * t; return 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - 3 * p2 + p3 - p0) * t3); };
+  const bicub = (T, tx, ty, fx0, fy0) => {
+    // W и H читаем в момент вызова: модуль грузится до init(), тогда они ещё 0
+    const W1_ = W - 1, H1_ = H - 1;
+    const xm1 = cl_(tx - 1, W1_), x0 = cl_(tx, W1_), x1 = cl_(tx + 1, W1_), x2 = cl_(tx + 2, W1_);
+    const ym1 = cl_(ty - 1, H1_) * W, y0 = cl_(ty, H1_) * W, y1 = cl_(ty + 1, H1_) * W, y2 = cl_(ty + 2, H1_) * W;
+    const r0 = crs(T[ym1 + xm1], T[ym1 + x0], T[ym1 + x1], T[ym1 + x2], fx0);
+    const r1 = crs(T[y0 + xm1], T[y0 + x0], T[y0 + x1], T[y0 + x2], fx0);
+    const r2 = crs(T[y1 + xm1], T[y1 + x0], T[y1 + x1], T[y1 + x2], fx0);
+    const r3 = crs(T[y2 + xm1], T[y2 + x0], T[y2 + x1], T[y2 + x2], fx0);
+    return crs(r0, r1, r2, r3, fy0);
+  };
+
   function fields() {
     const n = W * H, t = S.ter;
     if (!F || F.land.length !== n) F = { land: new Float32Array(n), deep: new Float32Array(n), hgt: new Float32Array(n), forest: new Float32Array(n), dry: new Float32Array(n), sand: new Float32Array(n) };
@@ -58,7 +74,7 @@ const TERR = (() => {
       const Y = y0 + (j - 1) * step, v = (Y + 0.5) * inv - 0.5, ty = Math.floor(v), fy0 = v - ty, fy = fy0 * fy0 * (3 - 2 * fy0), ra = (ty < 0 ? 0 : ty > H1 ? H1 : ty) * W, rb = (ty + 1 < 0 ? 0 : ty + 1 > H1 ? H1 : ty + 1) * W;
       for (let i = 0; i < hw; i++) {
         const X = x0 + (i - 1) * step, u = (X + 0.5) * inv - 0.5, tx = Math.floor(u), fx0 = u - tx, fx = fx0 * fx0 * (3 - 2 * fx0), ca = tx < 0 ? 0 : tx > W1 ? W1 : tx, cb = tx + 1 < 0 ? 0 : tx + 1 > W1 ? W1 : tx + 1;
-        const a = hgt[ra + ca], b = hgt[ra + cb], c = hgt[rb + ca], d = hgt[rb + cb]; let hv = a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+        let hv = bicub(hgt, tx, ty, fx0, fy0); if (hv < -0.25) hv = -0.25; else if (hv > 1.35) hv = 1.35;
         if (hv > 0.012) {
           const r = ns(NA, X * 0.42, Y * 0.42), rid = 1 - Math.abs(2 * r - 1), k = hv > 0.5 ? 1 : hv * 2;
           hv = hv * (0.66 + 0.62 * rid) + (ns(NB, X * 1.3, Y * 1.3) - 0.5) * 0.13 * k;
@@ -72,8 +88,7 @@ const TERR = (() => {
       const Y = y0 + j * step, v = (Y + 0.5) * inv - 0.5, ty = Math.floor(v), fy0 = v - ty, fy = fy0 * fy0 * (3 - 2 * fy0), ra = (ty < 0 ? 0 : ty > H1 ? H1 : ty) * W, rb = (ty + 1 < 0 ? 0 : ty + 1 > H1 ? H1 : ty + 1) * W;
       for (let i = 0; i < w; i++) {
         const X = x0 + i * step, u = (X + 0.5) * inv - 0.5, tx = Math.floor(u), fx0 = u - tx, fx = fx0 * fx0 * (3 - 2 * fx0), ca = tx < 0 ? 0 : tx > W1 ? W1 : tx, cb = tx + 1 < 0 ? 0 : tx + 1 > W1 ? W1 : tx + 1;
-        const i00 = ra + ca, i10 = ra + cb, i01 = rb + ca, i11 = rb + cb, fxy = fx * fy;
-        const bil = T => { const a = T[i00]; return a + (T[i10] - a) * fx + (T[i01] - a) * fy + (a - T[i10] - T[i01] + T[i11]) * fxy; };
+        const bil = T => bicub(T, tx, ty, fx0, fy0);
         const L = bil(land) + (ns(NA, X * 0.9 + 37, Y * 0.9 + 11) - 0.5) * 0.34, gr = grain(X, Y);
         let r, g, b;
         if (L < 0.5) { // ----- вода: глубина, волны, пена у берега
@@ -85,7 +100,7 @@ const TERR = (() => {
           if (wv2 > 0.62 && sh > 0.1) { r += 10; g += 12; b += 10; } // рябь
           if (sh < 0.045) { if (ns(NA, X * 1.7 + 5, Y * 1.7) + wv2 * 0.5 > 0.85) { r = 236; g = 246; b = 250; } else { r = 168; g = 216; b = 228; } } // пена
           else if (sh < 0.13) { const k = (0.13 - sh) / 0.085 * 0.8; r += (150 - r) * k; g += (212 - g) * k; b += (222 - b) * k; }
-          const m = 1 + (gr - 0.5) * 0.06; r *= m; g *= m; b *= m;
+          const m = 1 + (gr - 0.5) * 0.032; r *= m; g *= m; b *= m;
         } else { // ----- суша
           const k0 = (j + 1) * hw + i + 1, hv = hb[k0], sa = bil(sand) + (ns(NA, X * 0.8 + 90, Y * 0.8 + 50) - 0.5) * 0.4, big = ns(NB, X * 0.11, Y * 0.11);
           let li = 1 + (hb[k0 - 1] - hb[k0 + 1] + hb[k0 - hw] - hb[k0 + hw]) * LK; if (li < 0.52) li = 0.52; else if (li > 1.5) li = 1.5;
@@ -98,25 +113,25 @@ const TERR = (() => {
             const k = hv > 0.8 ? 1 : (hv - 0.5) / 0.3, lay = ns(NB, X * 0.9, Y * 2.6);
             r = 104 + 30 * k + 26 * lay; g = 102 + 28 * k + 24 * lay; b = 106 + 30 * k + 26 * lay;
             const bd = hv * 13 - Math.floor(hv * 13); if (bd < 0.18) li *= 0.8;
-            li += (gr - 0.5) * 0.16;
+            li += (gr - 0.5) * 0.09;
             if (hv > 0.8 && ns(NA, X * 2.3, Y * 2.3) > 0.52) { r = 228; g = 234; b = 244; } // языки снега
             if (hv < 0.62 && ns(NB, X * 1.4 + 9, Y * 1.4) > 0.55) { r += 22; g += 30; b += 12; }
           } else if (L < 0.59 || sa > 0.5) { // пляж: песок, рябь, галька
             const rip = ns(NB, X * 0.5, Y * 2.8);
             r = 228 + 14 * rip; g = 206 + 14 * rip; b = 150 + 12 * rip;
             if (L < 0.545) { r = 206; g = 184; b = 132; }
-            li += (gr - 0.5) * 0.12 + (ns(NA, X * 0.6 + 3, Y * 2.2) - 0.5) * 0.12;
-            if (gr > 0.99) { r = 148; g = 138; b = 118; li *= 0.9; }
-            else if (gr < 0.006 && L > 0.56) { r = 242; g = 232; b = 204; }
+            li += (gr - 0.5) * 0.06 + (ns(NA, X * 0.6 + 3, Y * 2.2) - 0.5) * 0.07;
+            if (gr > 0.993) { r = 152; g = 142; b = 122; li *= 0.93; }
+            else if (gr < 0.004 && L > 0.56) { r = 238; g = 228; b = 200; }
           } else {
             let dq = bil(dry) + (big - 0.5) * 0.7; dq = dq < 0 ? 0 : dq > 1 ? 1 : dq;
             r = 76 + 88 * dq; g = 152 + 26 * dq; b = 52 + 30 * dq; // сочный луг → сухая равнина
             let fo = (bil(forest) - 0.22) * 1.7; if (fo > 0) { if (fo > 1) fo = 1; fo *= 0.85; r += (46 - r) * fo; g += (96 - g) * fo; b += (44 - b) * fo; } // лесная подстилка
             if (hv > 0.1) { let k = (hv - 0.1) / 0.4; if (k > 1) k = 1; r += (138 - r) * k; g += (128 - g) * k; b += (82 - b) * k; if (hv > 0.36) { const q = (hv - 0.36) / 0.14; r += (116 - r) * q; g += (112 - g) * q; b += (104 - b) * q; } }
             const patch = ns(NB, X * 0.32 + 11, Y * 0.32 + 21);
-            li += (ns(NA, X * 0.5 + 7, Y * 0.5 + 3) - 0.5) * 0.15 + (gr - 0.5) * 0.08 + (patch - 0.5) * 0.12; // пёстрые поляны
+            li += (ns(NA, X * 0.33 + 7, Y * 0.33 + 3) - 0.5) * 0.15 + (gr - 0.5) * 0.028 + (patch - 0.5) * 0.16; // пёстрые поляны
             if (hv < 0.08 && fo <= 0) { // метёлки травы и редкие цветы
-              if (gr > 0.985) li *= 0.82; else if (gr < 0.012) li *= 1.16;
+              if (gr > 0.9935) li *= 0.9; else if (gr < 0.005) li *= 1.09;
               else if (dq < 0.5 && step === 1) { const fl = grain(X + 911, Y + 577); if (fl > 0.9972) { r = 250; g = 238; b = 168; li = 1; } else if (fl < 0.0022) { r = 238; g = 148; b = 188; li = 1; } else if (fl > 0.4988 && fl < 0.5010) { r = 248; g = 248; b = 242; li = 1; } else if (fl > 0.7495 && fl < 0.7506) { r = 240; g = 196; b = 90; li = 1; } }
             }
           }

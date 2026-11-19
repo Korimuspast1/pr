@@ -92,6 +92,10 @@ function clampCam() {
 }
 function centerOn(tx, ty) { RN.cam.x = tx * TS - RN.w / RN.cam.z / 2; RN.cam.y = ty * TS - RN.h / RN.cam.z / 2; clampCam(); }
 
+// мягкие радиальные спрайты, которые строятся один раз: свечение, тень облака, виньетка
+function makeGlow() { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d'); const g = c.createRadialGradient(32, 32, 2, 32, 32, 32); g.addColorStop(0, 'rgba(255,244,190,1)'); g.addColorStop(0.35, 'rgba(255,226,150,0.55)'); g.addColorStop(1, 'rgba(255,226,150,0)'); c.fillStyle = g; c.fillRect(0, 0, 64, 64); return cv; }
+function makeSoftBlob() { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const c = cv.getContext('2d'); const blob = (cx, cy, r, a) => { const g = c.createRadialGradient(cx, cy, r * 0.2, cx, cy, r); g.addColorStop(0, 'rgba(10,10,14,' + a + ')'); g.addColorStop(1, 'rgba(10,10,14,0)'); c.fillStyle = g; c.fillRect(0, 0, 128, 128); }; blob(64, 56, 52, 0.6); blob(42, 76, 36, 0.45); blob(88, 74, 34, 0.45); return cv; }
+function makeVignette() { const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d'); const g = c.createRadialGradient(128, 128, 96, 128, 128, 178); g.addColorStop(0, 'rgba(14,11,12,0)'); g.addColorStop(0.72, 'rgba(14,11,12,0.10)'); g.addColorStop(1, 'rgba(14,11,12,0.38)'); c.fillStyle = g; c.fillRect(0, 0, 256, 256); return cv; }
 function frame(S, now) {
   const c = RN.ctx, cam = RN.cam, z = cam.z * RN.dpr; c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false;
   c.fillStyle = '#10222f'; c.fillRect(0, 0, RN.cv.width, RN.cv.height);
@@ -109,12 +113,12 @@ function frame(S, now) {
     const n = v < 0.3 ? 2 : v < 0.62 ? 3 : 4;
     for (let q = 0; q < n; q++) {
       const hx = hash(tx2, ty2, q * 3 + 1), hy = hash(tx2, ty2, q * 3 + 2);
-      R_(c, tx2 * TS + hx * (TS - 3), ty2 * TS + hy * (TS - 3), 1 + (hash(tx2, ty2, q * 3 + 3) > 0.55 ? 1 : 0), 1, 'rgba(116,84,48,' + (0.14 + 0.5 * v).toFixed(2) + ')');
+      R_(c, tx2 * TS + hx * (TS - 3), ty2 * TS + hy * (TS - 3), 1 + (hash(tx2, ty2, q * 3 + 3) > 0.55 ? 1 : 0), 1, 'rgba(116,84,48,' + (0.09 + 0.3 * v).toFixed(2) + ')');
     }
   }
   // искры воды
   const tm = now / 1000;
-  for (let y = vy0; y < vy1; y++) for (let x = vx0; x < vx1; x++) if (S.ter[y * S.W + x] <= 1 && hash(x, y, Math.floor(tm * 1.2) % 7) > 0.93) R_(c, x * TS + ((hash(x, y, 3) * 12) | 0), y * TS + ((hash(x, y, 4) * 12) | 0), 3, 1, 'rgba(255,255,255,0.55)');
+  for (let y = vy0; y < vy1; y++) for (let x = vx0; x < vx1; x++) if (S.ter[y * S.W + x] <= 1 && hash(x, y, Math.floor(tm * 1.2) % 7) > 0.955) R_(c, x * TS + ((hash(x, y, 3) * 12) | 0), y * TS + ((hash(x, y, 4) * 12) | 0), 3, 1, 'rgba(255,255,255,0.4)');
   if (RN.showTerr) c.drawImage(RN.terrCv, 0, 0, S.W * TS, S.H * TS);
   // подсветка допустимых мест
   const pl = RN.place;
@@ -132,6 +136,7 @@ function frame(S, now) {
     if (it.f) { drawFolk(c, it.f, tm, RN.sel && RN.sel.k === 'folk' && RN.sel.id === it.f.id); continue; }
     const b = it.b;
     const st = STRUCT[b.type];
+    c.fillStyle = 'rgba(6,12,8,0.30)'; c.beginPath(); c.ellipse(b.x * TS + 8, b.y * TS + 13.6, 8.2, 2.9, 0, 0, 6.3); c.fill();
     drawSpr(c, bldSprite(b, ownerCol(S, b.owner), st ? structMask(S, b) : 0), b.x * TS, b.y * TS);
     if (RN.cam.z >= 1.1) { TERR.over(c, b.x, b.y + 1); TERR.over(c, b.x - 1, b.y + 1); TERR.over(c, b.x + 1, b.y + 1); }
     if (b.owner >= -1) animBuilding(c, b.type, b.x * TS, b.y * TS, ownerCol(S, b.owner), now / 1000, b.id, b.res, b);
@@ -143,6 +148,7 @@ function frame(S, now) {
   }
   // города
   for (const ct of S.cities) {
+    c.fillStyle = 'rgba(6,12,8,0.32)'; c.beginPath(); c.ellipse(ct.x * TS + 16, ct.y * TS + 17, 15.5, 4.4, 0, 0, 6.3); c.fill();
     drawSpr(c, citySprite(ct, ownerCol(S, ct.owner)), ct.x * TS, ct.y * TS - 14); animCity(c, ct, ownerCol(S, ct.owner), now / 1000);
     if (ct.cap) { const col = ownerCol(S, ct.cap.by), total = 64, filled = Math.floor(ct.cap.p * total); for (let i = 0; i < total; i++) { const gx = ct.x * TS + (i % 8) * 4, gy = ct.y * TS + ((i / 8) | 0) * 4; c.globalAlpha = i < filled ? 0.5 : 0.12; R_(c, gx, gy, 4, 4, col); c.globalAlpha = 0.55; c.strokeStyle = col; c.lineWidth = 0.4; c.strokeRect(gx + 0.2, gy + 0.2, 3.6, 3.6); } c.globalAlpha = 1; }
   }
@@ -311,10 +317,42 @@ function frame(S, now) {
         c.restore();
       }
     }
-    if (dark > 0.12) { c.globalAlpha = Math.min(1, dark * 1.3);
+    { // тени облаков: по земле медленно плывёт полутень
+      if (!RN.clShadow) RN.clShadow = makeSoftBlob();
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'multiply';
+      const W2 = RN.cv.width, H2 = RN.cv.height, period = W2 + 560;
+      for (let i = 0; i < 5; i++) {
+        const t = tm * (8 + i * 2.6);
+        const sx = ((hash(i, 4, 2) * period + t) % period) - 280;
+        const sy = (0.04 + hash(i, 9, 5) * 0.6) * H2 + Math.sin(tm * 0.13 + i * 1.4) * 14;
+        const sc = (0.5 + hash(i, 6, 8) * 0.65) * Math.max(W2, H2) * 0.46;
+        c.globalAlpha = 0.3; c.drawImage(RN.clShadow, sx - sc / 2, sy - sc * 0.33, sc, sc * 0.66);
+      }
+      c.restore(); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    }
+    if (dark > 0.12) { if (!RN.glow) RN.glow = makeGlow(); c.globalCompositeOperation = 'lighter'; for (const ct of S.cities) { const gs = 44 + ct.level * 12; c.globalAlpha = Math.min(0.6, dark * 0.55); c.drawImage(RN.glow, ct.x * TS + 16 - gs / 2, ct.y * TS + 2 - gs / 2, gs, gs); } c.globalCompositeOperation = 'source-over'; c.globalAlpha = Math.min(1, dark * 1.3);
       for (const ct of S.cities) { const ox = ct.x * TS, oy = ct.y * TS - 14; if (ct.x < vx0 - 3 || ct.x > vx1 || ct.y < vy0 - 3 || ct.y > vy1) continue; R_(c, ox + 14.5, oy + 27.5, 3, 3.5, '#ffd870'); const n = Math.min(6, 1 + ct.level); for (let i = 0; i < n; i++) { const h = CITY_HS[i]; R_(c, ox + (h[0] + 1.5) * 0.5, oy + (32 + h[1] + 6) * 0.5, 1, 1, '#ffd870'); R_(c, ox + (h[0] + 6.5) * 0.5, oy + (32 + h[1] + 6) * 0.5, 0.5, 1, '#ffb850'); } }
       for (const b of S.buildings) { if (b.x < vx0 - 1 || b.x > vx1 || b.y < vy0 - 1 || b.y > vy1) continue; if (b.type === 'forge') { c.globalAlpha = dark * 0.35; R_(c, b.x * TS - 2, b.y * TS + 3, 14, 12, '#ff9a3a'); c.globalAlpha = Math.min(1, dark * 1.3); } else if (b.type === 'barracks' || b.type === 'workshop' || b.type === 'stable' || b.type === 'port' || b.type === 'tavern' || b.type === 'mill') R_(c, b.x * TS + 7.5, b.y * TS + 9, 1, 1.5, '#ffd870'); }
       c.globalAlpha = 1; }
+  }
+  { // светлячки в тёплые сумерки и ночи (зимой холодно и темно — некогда)
+    const hrF = todHours(S) % 24, seasF = Math.floor(S.time / SEASON_LEN) % 4;
+    if ((hrF >= 19 || hrF < 5) && seasF !== 3) {
+      if (!RN.glow) RN.glow = makeGlow();
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 15; i++) {
+        const h1 = hash(i, 3, 11), h2 = hash(i, 9, 7), h3 = hash(i, 5, 13);
+        const drift = (i % 2 ? 1 : -1) * tm * 7;
+        const raw = h1 * (RN.cv.width + 120) + Math.sin(tm * 0.35 + i * 1.7) * 42 + drift;
+        const fx = ((raw % (RN.cv.width + 120)) + RN.cv.width + 120) % (RN.cv.width + 120) - 60;
+        const fy = RN.cv.height * (0.4 + h2 * 0.52) + Math.sin(tm * 0.55 + i * 2.3) * 18;
+        const fl = Math.pow(Math.sin(tm * (1.5 + h3) + i * 2.1) * 0.5 + 0.5, 2.2);
+        if (fl < 0.22) continue;
+        c.globalAlpha = fl * 0.8; c.drawImage(RN.glow, fx - 7, fy - 7, 14, 14);
+        c.globalAlpha = fl; c.fillStyle = '#f0ffb4'; c.fillRect(fx - 0.8, fy - 0.8, 1.6, 1.6);
+      }
+      c.restore(); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    }
   }
   // значки армий (экранное пространство, постоянный размер)
   c.setTransform(RN.dpr, 0, 0, RN.dpr, 0, 0); c.imageSmoothingEnabled = false;
@@ -330,9 +368,13 @@ function frame(S, now) {
   // подписи городов (экранное пространство)
   c.setTransform(RN.dpr, 0, 0, RN.dpr, 0, 0); c.font = '16px PixelRU, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
   if (cam.z >= 2) for (const ct of S.cities) {
-    const sx = (ct.x * TS + 16 - cam.x) * cam.z, sy = (ct.y * TS - 14 - cam.y) * cam.z; if (sx < -80 || sy < -30 || sx > RN.w + 80 || sy > RN.h + 30) continue;
+    let sx = (ct.x * TS + 16 - cam.x) * cam.z; const sy = (ct.y * TS - 14 - cam.y) * cam.z; if (sy < -30 || sy > RN.h + 30) continue; const halfN = c.measureText(ct.name).width / 2 + (ct.isCap ? 13 : 0) + 4; if (sx < -halfN || sx > RN.w + halfN) continue; sx = Math.max(halfN - 2, Math.min(RN.w - halfN + 2, sx));
     const nm = ct.name; c.lineWidth = 4; c.strokeStyle = '#14100c'; c.strokeText(nm, sx, sy); c.fillStyle = ct.owner < 0 ? '#d8d2c4' : '#fff'; c.fillText(nm, sx, sy);
     if (ct.isCap && ICON.star) c.drawImage(ICON.star, Math.round(sx + c.measureText(nm).width / 2 + 3), Math.round(sy - 10), 18, 18); // столица
+  }
+  { // виньетка: края уходят в сумерки, центр — в фокусе
+    if (!RN.vig) RN.vig = makeVignette();
+    c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(RN.vig, 0, 0, RN.cv.width, RN.cv.height); c.restore();
   }
 }
 function armyClusters(S) {
