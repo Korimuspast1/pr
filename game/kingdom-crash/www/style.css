@@ -55,6 +55,7 @@ b { font-weight: normal; }
 #nation { flex: 1; min-width: 0; font-size: 16px; color: #fff6dc; text-shadow: 2px 2px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #score { display: flex; align-items: center; color: var(--gold); text-shadow: 2px 2px 0 #000; white-space: nowrap; }
 #score img { margin-right: 3px; }
+#wx { color: #ffe9b0; font-size: 13px; white-space: nowrap; padding: 4px 6px 5px; background: rgba(0, 0, 0, .38); box-shadow: inset 0 0 0 2px var(--ink), inset 0 4px 0 0 rgba(0, 0, 0, .3); text-shadow: 1px 1px 0 #000; }
 #clock { color: #e9e1cb; font-size: 14px; white-space: nowrap; padding: 4px 6px 5px; background: rgba(0, 0, 0, .38); box-shadow: inset 0 0 0 2px var(--ink), inset 0 4px 0 0 rgba(0, 0, 0, .3); text-shadow: 1px 1px 0 #000; }
 #burger { width: 42px; height: 38px; padding: 0; flex: none; display: flex; align-items: center; justify-content: center; }
 

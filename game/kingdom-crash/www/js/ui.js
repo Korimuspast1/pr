@@ -98,9 +98,9 @@ function addRecord(S) {
 
 /* ----- нижняя панель ----- */
 const TABS = [['map', 'КАРТА', 't_map'], ['city', 'ГОРОДА', 't_city'], ['build', 'СТРОЙКА', 't_build'], ['army', 'АРМИЯ', 't_army'], ['pol', 'ПОЛИТ.', 't_pol'], ['fleet', 'ФЛОТ', 't_fleet']];
-const SHORT = { academy: 'АКАДЕМИЯ', siege: 'ОСАДНАЯ', wall: 'СТЕНА', tower: 'БАШНЯ', gate: 'ВОРОТА', moat: 'РОВ', hospital: 'ГОСПИТ.', farm: 'ФЕРМА', sawmill: 'ЛЕСОПИЛ.', mine: 'РУДНИК', barracks: 'КАЗАРМЫ', forge: 'КУЗНЯ', workshop: 'МАСТЕРСК.', stable: 'КОНЮШНЯ', market: 'РЫНОК', port: 'ПОРТ', mill: 'МЕЛЬНИЦА', tavern: 'ТАВЕРНА', prison: 'ТЮРЬМА' };
-const BUILD_PAGES = [['farm', 'sawmill', 'mine', 'mill', 'barracks', 'hospital', 'forge', 'workshop', 'stable'], ['wall', 'tower', 'gate', 'moat', 'siege', 'market', 'port', 'academy', 'tavern'], ['prison']];
-const BPAGE_LBL = ['ПРОИЗВ.', 'УКРЕПЛ.', 'ОБЩЕЕ'], BPAGE_ICO = ['B:farm', 'B:tower', 'B:prison'];
+const SHORT = { storehouse: 'СКЛАД', granary: 'АМБАР', townhall: 'РАТУША', embassy: 'ПОСОЛЬСТВО', academy: 'АКАДЕМИЯ', siege: 'ОСАДНАЯ', wall: 'СТЕНА', tower: 'БАШНЯ', gate: 'ВОРОТА', moat: 'РОВ', hospital: 'ГОСПИТ.', farm: 'ФЕРМА', sawmill: 'ЛЕСОПИЛ.', mine: 'РУДНИК', barracks: 'КАЗАРМЫ', forge: 'КУЗНЯ', workshop: 'МАСТЕРСК.', stable: 'КОНЮШНЯ', market: 'РЫНОК', port: 'ПОРТ', mill: 'МЕЛЬНИЦА', tavern: 'ТАВЕРНА', prison: 'ТЮРЬМА' };
+const BUILD_PAGES = [['farm', 'sawmill', 'mine', 'mill', 'barracks', 'hospital', 'forge', 'workshop', 'stable'], ['wall', 'tower', 'gate', 'moat', 'siege', 'market', 'port', 'academy', 'tavern'], ['prison', 'storehouse', 'granary', 'townhall', 'embassy']];
+const BPAGE_LBL = ['ПРОИЗВ.', 'УКРЕПЛ.', 'ГОРОД'], BPAGE_ICO = ['B:farm', 'B:tower', 'B:townhall'];
 const BAR = {
   map: [['center', 'ЦЕНТР', 'home'], ['mm', 'КАРТА', 't_map'], ['folk', 'ЖИТЕЛИ', 't_folk'], ['borders', 'ГРАНИЦЫ', 'flag'], ['stock', 'СКЛАД', 'iron'], ['save', 'СОХРАН.', 'scroll'], ['plan', 'ПЛАН', 'check'], ['rate', 'РЕЙТИНГ', 'trophy'], ['ach', 'НАГРАДЫ', 'star'], ['menu', 'МЕНЮ', 'menu']],
   city: [['cities', 'ГОРОДА', 't_city'], ['place:city', 'НОВЫЙ', 'flag'], ['upg', 'УЛУЧШ.', 't_build'], ['center', 'СТОЛИЦА', 'home']],
@@ -141,6 +141,10 @@ function updateHud() {
   const S = UI.S, p = me(), now = performance.now();
   if (UI.hud.col !== p.col) { UI.hud.col = p.col; $('flagc').style.background = p.col; }
   setText('nation', p.name); setText('scoreN', String(p.score)); setText('clock', gameClock(S.time));
+  { const wx = weather(S), seas = SEASONS[Math.floor(S.time / SEASON_LEN) % 4];
+    setText('wx', seas.ico + ' ' + seas.n + ' · ' + wx.ico + ' ' + wx.temp + '°');
+    const wEl = $('wx'); const wt = wx.n + ' · ' + wx.temp + '° · ' + wx.desc;
+    if (wEl && wEl.title !== wt) wEl.title = wt; }
   const sb = !!S.opts.sandbox; let h = '<div class="g4">';
   for (const k of ['gold', 'wood', 'food', 'iron']) { const v = p.rate[k]; h += `<div class="r">${IMG(k, 18)}<span class="${!sb && k === 'food' && p.stock[k] < 1 ? 'neg' : ''}">${sb ? INF() : fmt(p.stock[k])}</span>${sb ? '' : `<span class="rt ${v < 0 ? 'neg' : 'pos'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}</span>`}</div>`; }
   h += '</div><div class="g6">'; for (const k of ITEM_KEYS) h += `<div class="r">${IMG(k, 18)}${sb ? INF() : Math.floor(p.stock[k])}</div>`;
@@ -149,7 +153,7 @@ function updateHud() {
   // звук нового письма
   { const m = S.msgs[0], top = m ? m.id : 0;
     if (UI.seenMsg === undefined) UI.seenMsg = top;
-    else if (top !== UI.seenMsg) { UI.seenMsg = top; if (m) SND.play(m.type === 'war' ? (/потерян/.test(m.title) ? 'lost' : 'horn') : m.title === 'Город захвачен!' ? 'capture' : /готов/.test(m.title) ? 'ready' : 'msg'); } }
+    else if (top !== UI.seenMsg) { UI.seenMsg = top; if (m) SND.play(m.title === 'Молния!' ? 'thunder' : m.type === 'war' ? (/потерян/.test(m.title) ? 'lost' : 'horn') : m.title === 'Город захвачен!' ? 'capture' : /готов/.test(m.title) ? 'ready' : 'msg'); } }
   // всплывающие заметки
   for (const t of S.toast.splice(0)) UI.toasts.push({ t, rt: now, dur: t.ev ? 5000 : 3000 });
   UI.toasts = UI.toasts.filter(q => now - q.rt < q.dur).slice(-2);
@@ -252,9 +256,9 @@ function sheetHtml(sh) {
         b += b0.busy ? `<div class="gl">Производится: ${RNAME[r.out]} — ${Math.floor(100 * b0.pt / r.t)}% (ещё ${secs((r.t - b0.pt) / ps)}с)</div><div class="pb"><i style="width:${pct(100 * b0.pt / r.t)}%"></i></div>` : `<div class="${b0.off ? 'dim' : 'bad'}">${esc(b0.status || 'Ожидание ресурсов')}</div>`;
         if (b0.off && b0.busy) b += '<div class="dim">Это изделие доделают, новое начинать не будут.</div>';
         b += `<div class="btns">${btn('prod:' + b0.id, b0.off ? 'Возобновить производство' : 'Остановить производство')}</div>`;
-        const capN = Math.min(b0.stop || ITEM_CAP, ITEM_CAP);
+        const capN = b0.stop ? Math.min(b0.stop, p.itCap || ITEM_CAP) : (p.itCap || ITEM_CAP);
         b += `<div class="dim" style="margin-top:6px">Сколько изделий держать на складе (сейчас ${capN}). Достигнув предела, мастерская не тратит ресурсы — можно копить железо для второй кузницы.</div><div class="btns">` +
-          [5, 10, 20].map(n => btn(`stopset:${b0.id}:${n}`, String(n) + ' шт.', capN === n ? 'on' : '')).join('') + btn(`stopset:${b0.id}:0`, 'Без предела', !b0.stop ? 'on' : '') + '</div>';
+          [5, 10, 20].map(n => btn(`stopset:${b0.id}:${n}`, String(n) + ' шт.', capN === n ? 'on' : '')).join('') + btn(`stopset:${b0.id}:0`, 'Весь склад', !b0.stop ? 'on' : '') + '</div>';
       }
       if (STRUCT[b0.type]) b += hpLine(b0);
       if (b0.type === 'gate') b += '<div class="dim">Свои войска и союзники проходят, враги — нет, пока ворота не сломают.</div>';
@@ -375,7 +379,7 @@ function listHtml(sh) {
     case 'taverns': title = 'Таверны'; b = blds('tavern', x => (x.cd || 0) > S.time ? 'наёмники подойдут через ' + Math.ceil(x.cd - S.time) + ' с' : 'наёмники ждут', 'Таверн нет. Постройте таверну (СТРОЙКА, затем УКРЕПЛ.) — в ней нанимают отряды за золото.'); break;
     case 'ports': title = 'Порты'; b = blds('port', null, 'Портов нет. Порт строится на берегу моря.'); break;
     case 'ships': title = 'Корабли'; { const l = S.ships.filter(x => x.owner === 0); b = l.length ? '<div class="list">' + l.map(x => `<div class="it">${IMG('ship', 24)}<div class="g">${x.kind === 'liner' ? 'Линкор' : x.kind === 'war' ? 'Военный' : 'Торговый'}<div class="dim">${x.cargo ? 'с войсками' : x.path.length ? 'в пути' : 'стоит'}</div></div>${btn('selship:' + x.id, 'Выбрать')}</div>`).join('') + '</div>' : '<div class="dim">Кораблей нет. Постройте их в порту.</div>'; } break;
-    case 'stock': title = 'Склад'; b = STOCK_KEYS.map(k => `<div class="row sp"><span>${IMG(k, 22)} ${RNAME[k]}</span><b class="gl">${S.opts.sandbox ? INF() : Math.floor(p.stock[k])}</b></div>`).join('') + `<div class="dim">Предметов для отрядов на складе помещается не больше ${ITEM_CAP} каждого вида.</div>`; break;
+    case 'stock': title = 'Склад'; b = STOCK_KEYS.map(k => `<div class="row sp"><span>${IMG(k, 22)} ${RNAME[k]}</span><b class="gl">${S.opts.sandbox ? INF() : Math.floor(p.stock[k])}</b></div>`).join('') + `<div class="dim">Предметов для отрядов на складе помещается не больше ${p.itCap || ITEM_CAP} каждого вида.</div>`; break;
     case 'dip': title = 'Дипломатия'; b = '<div class="list">' + S.players.filter(q => q.id !== 0).map(q => {
       const r = rel(S, 0, q.id), ci = claimInfo(S, 0, q.id), theirs = claimInfo(S, q.id, 0);
       const st = r.st === 'war' ? '<span class="bad">ВОЙНА</span>' : r.ally ? '<span class="gd">союз</span>' : r.st === 'truce' ? '<span class="gl">перемирие</span>' : '<span class="gd">мир</span>';
@@ -656,7 +660,7 @@ const HOWTO = `<b class="gl">Цель.</b> Развивайте королевс
 <b class="gl">Море.</b> В порту стройте суда. Военное судно перевозит армию: выберите армию и нажмите на порт, затем выберите корабль и нажмите на берег.<br><br>
 <b class="gl">Политика.</b> Во вкладке ПОЛИТ. открывается меню: выберите страну и посмотрите её характеристики (мощь, города, отношение). Предъявляйте претензии, объявляйте войну, торгуйте. Раздел «Санкции» — как в Victoria 3: закрыть транзит, торговое эмбарго, пошлины, запрет оружия, конфискация казны и другие. Кнопка НАПАСТЬ во вкладке АРМИЯ объявляет войну выбранной стране сразу.
 <b class=<b class="gl">Жители и сохранение.</b> Кнопка ЖИТЕЛИ рядом с КАРТА показывает всех жителей провинции: они сами заселяются и строят дома, рынки и фермы. Жители ходят по округе: работают, отдыхают и беседуют между собой — нажмите на любого жителя прямо на карте, чтобы открыть его карточку. Там, где они ходят, плавно проступают тропинки. На жителя можно нажать и сделать с ним что-нибудь: казнить, отправить наёмников анонимно или посадить в тюрьму. Кнопка СОХРАН. открывает слоты сохранений — выбирайте, в какой слот сохранить и какой загрузить. Рядом поставленные башни соединяются стеной, в соединении можно сделать проход.
-<b class=<b class="gl">Державы и события.</b> У каждой державы своя особенность — она указана при выборе. Соперники развиваются сами, но постепенно. Время от времени случаются события: урожай, караван, пожар, ярмарка.<b class="gl">Королевство живёт.</b> Времена года и погода меняют вид карты. В городах проходят праздники с танцами и фейерверком. Между городами ездят торговые караваны с золотом — их могут ограбить враги, прикрывайте дороги. Полководцы набирают опыт в боях и растут в уровнях, а кнопка «НАТИСК» на время усиливает армию.<br><br>`;
+<b class=<b class="gl">Державы и события.</b> У каждой державы своя особенность — она указана при выборе. Соперники развиваются сами, но постепенно. Время от времени случаются события: урожай, караван, пожар, ярмарка.<b class="gl">Времена года и погода.</b> Год крутится: весна → лето → осень → зима (сезон длится 5 дней). У ферм летом +15% еды, осенью −15%, зимой они стоят. Погода меняется каждые пару часов и реально влияет на игру: дождь кормит фермы (+30%), но замедляет войска и стрельбу; туман сильно режет дальнобойность; гроза шлёт молнии в здания; снег и стужа тормозят армию; жара сушит поля; ветер сдувает стрелы. Чип в верхней панели показывает сезон, погоду и температуру — наведите на него, чтобы прочитать подробности.<br><br><b class="gl">Новые постройки.</b> Склад (+100 к лимиту предметов, можно несколько), Амбар (армии едят на 25% меньше), Ратуша (города дают +20% золота, одна), Посольство (торговля +30%, одно). Арбалетчики в казармах бьют бронебойными болтами по тяжёлой броне — нужен арбалет из мастерской.<br><br><b class="gl">Королевство живёт.</b> В городах проходят праздники с танцами и фейерверком. Между городами ездят торговые караваны с золотом — их могут ограбить враги, прикрывайте дороги. Полководцы набирают опыт в боях и растут в уровнях, а кнопка «НАТИСК» на время усиливает армию.<br><br>`;
 function showModal(title, body, foot, o) {
   o = o || {}; const el = $('modal'), was = !el.classList.contains('hidden') && !!UI.modal;
   const html = `<div class="box"><div class="hd"><div class="tt">${title}</div></div><div class="bd${o.flat ? ' flat' : ''}">${body}</div><div class="ft">${foot || btn('closemodal', 'Закрыть')}</div></div>`;

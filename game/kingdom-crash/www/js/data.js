@@ -16,11 +16,11 @@ const CITY_NAMES = ['Рокфорд', 'Белая Гавань', 'Тёмный �
   'Берёзовый Яр', 'Вересковая Пустошь', 'Ястребиный Утёс', 'Мельничный Ручей', 'Купеческая Пристань', 'Рудный Кряж', 'Лебяжье Озеро',
   'Зимний Перевал', 'Старая Крепость', 'Новый Торг', 'Львиные Врата', 'Тихий Дол', 'Гордая Скала', 'Монастырский Холм', 'Журавлиный Луг', 'Терновый Венец'];
 
-const STOCK_KEYS = ['gold', 'wood', 'food', 'iron', 'bow', 'spear', 'sword', 'armL', 'armH', 'horse'];
+const STOCK_KEYS = ['gold', 'wood', 'food', 'iron', 'bow', 'spear', 'sword', 'armL', 'armH', 'horse', 'xbow'];
 const ITEM_KEYS = STOCK_KEYS.slice(4); // предметы для отрядов
 const ITEM_CAP = 300; // предел склада предметов
-const RNAME = { gold: 'Золото', wood: 'Дерево', food: 'Еда', iron: 'Железо', bow: 'Луки', spear: 'Копья', sword: 'Мечи', armL: 'Лёгкие доспехи', armH: 'Тяжёлые доспехи', horse: 'Кони' };
-const RVAL = { gold: 1, wood: 0.6, food: 0.6, iron: 0.9, bow: 3, spear: 3, sword: 3, armL: 3, armH: 4, horse: 4 };
+const RNAME = { gold: 'Золото', wood: 'Дерево', food: 'Еда', iron: 'Железо', bow: 'Луки', spear: 'Копья', sword: 'Мечи', armL: 'Лёгкие доспехи', armH: 'Тяжёлые доспехи', horse: 'Кони', xbow: 'Арбалеты' };
+const RVAL = { gold: 1, wood: 0.6, food: 0.6, iron: 0.9, bow: 3, spear: 3, sword: 3, armL: 3, armH: 4, horse: 4, xbow: 4 };
 
 const BD = {
   farm: { n: 'Ферма', cost: { wood: 30, gold: 20 }, site: 'field', pts: 20, d: 'Даёт еду. Только на лугах и равнинах.' },
@@ -43,6 +43,10 @@ const BD = {
   port: { n: 'Порт', cost: { wood: 120, gold: 120, iron: 20 }, site: 'coast', pts: 50, d: 'Строит торговые и военные суда. Только на берегу моря или большого озера.' },
   house: { n: 'Дом', cost: { wood: 25, gold: 10 }, site: 'free', pts: 8, d: 'Дом жителей. Селяне селятся в провинции и сами строят дома, рынки и фермы.' },
   prison: { n: 'Тюрьма', cost: { wood: 50, gold: 60 }, site: 'free', pts: 10, d: '5 мест для заключённых на каждую тюрьму. Пока тюрьмы нет, жителей нельзя сажать.' },
+  storehouse: { n: 'Склад', cost: { wood: 60, gold: 50, iron: 10 }, site: 'free', pts: 25, d: 'Богатые закрома: +100 к лимиту предметов на складе. Можно строить несколько.' },
+  granary: { n: 'Амбар', cost: { wood: 90, gold: 70, food: 20 }, site: 'free', pts: 30, d: 'Запасы хлеба: ваши армии едят на 25% меньше.' },
+  townhall: { n: 'Ратуша', cost: { wood: 120, gold: 150 }, site: 'free', pts: 40, one: true, d: 'Сердце города: города приносят на 20% больше золота. Только одна.' },
+  embassy: { n: 'Посольство', cost: { wood: 100, gold: 180 }, site: 'free', pts: 35, one: true, d: 'Дипломатический дом: торговый доход на 30% выше. Только одно.' },
 };
 const TRAIN_BLD = { barracks: 1, siege: 1, academy: 1 }; // здания с очередью обучения
 const STRUCT = { wall: 1, tower: 1, gate: 1 };
@@ -51,7 +55,7 @@ const RAM_DPS = { wall: 28, gate: 40, tower: 24 }, CAT_DMG = { wall: 30, gate: 3
 // рецепты производства предметов
 const RECIPES = {
   forge: { sword: { out: 'sword', in: { iron: 2, wood: 1 }, t: 6 }, armL: { out: 'armL', in: { iron: 3 }, t: 6 }, armH: { out: 'armH', in: { iron: 6, gold: 2 }, t: 9 } },
-  workshop: { bow: { out: 'bow', in: { wood: 2 }, t: 4 }, spear: { out: 'spear', in: { wood: 2, iron: 1 }, t: 5 } },
+  workshop: { bow: { out: 'bow', in: { wood: 2 }, t: 4 }, spear: { out: 'spear', in: { wood: 2, iron: 1 }, t: 5 }, xbow: { out: 'xbow', in: { wood: 2, iron: 2 }, t: 7 } },
   stable: { horse: { out: 'horse', in: { food: 5, gold: 1 }, t: 8 } }
 };
 const SQ = {
@@ -60,6 +64,7 @@ const SQ = {
   ram: { n: 'Таран', rdy: 'готов', need: { wood: 150, iron: 20 }, gold: 50, food: 10, t: 35, hp: 220, atk: 2.5, spd: 1.0, range: 1.6, ico: 'ram', cnt: 1, siege: true, bld: 'siege' },
   cannon: { n: 'Пороховая пушка', rdy: 'готова', need: { iron: 45 }, gold: 130, food: 15, t: 45, hp: 95, atk: 6.5, spd: 0.8, range: 5.2, ico: 'cannon', cnt: 1, siege: true, bld: 'siege', d: 'Дальний огонь из пороховой пушки: рвёт стены и строй. Боится конницы вблизи' },
   militia: { n: 'Ополчение', rdy: 'готово', need: {}, gold: 35, food: 25, t: 12, hp: 16, atk: 2.2, spd: 1.2, range: 1.6, ico: 'militia', bld: 'barracks', d: 'Дёшево и без оружия, но слабо' },
+  xbow: { n: 'Арбалетчики', rdy: 'готовы', need: { xbow: 10 }, gold: 45, food: 30, t: 22, hp: 24, atk: 3.8, spd: 1.2, range: 3.7, ico: 'xbow', bld: 'barracks', d: 'Бронебойные болты: крепче лучников по тяжёлой броне' },
   archer: { n: 'Лучники', rdy: 'готовы', need: { bow: 10 }, gold: 40, food: 30, t: 20, hp: 20, atk: 3.2, spd: 1.2, range: 3.0, ico: 'bow', bld: 'barracks', d: 'Бьют издалека, сильны против лёгких рыцарей' },
   spear: { n: 'Копейщики', rdy: 'готовы', need: { spear: 10 }, gold: 50, food: 30, t: 22, hp: 32, atk: 3.4, spd: 1.2, range: 1.6, ico: 'spear', bld: 'barracks', d: 'Гроза конницы' },
   light: { n: 'Лёгкие рыцари', rdy: 'готовы', need: { sword: 10, armL: 10 }, gold: 60, food: 30, t: 25, hp: 35, atk: 3.5, spd: 1.4, range: 1.6, ico: 'armL', bld: 'barracks', d: 'Быстрая пехота, бьёт лучников' },
@@ -74,12 +79,13 @@ const MATCH = {
   cav: { archer: 1.7, light: 1.2, heavy: 0.6, cav: 1.0 }
 };
 const mm = (a, b) => { const r = MATCH[a]; return r && r[b] !== undefined ? r[b] : 1; };
-MATCH.archer.cat = 1.2; MATCH.archer.ram = 0.5; MATCH.light.cat = 1.3; MATCH.light.ram = 1.0; MATCH.heavy.cat = 1.2; MATCH.heavy.ram = 1.1; MATCH.cav.cat = 1.6; MATCH.cav.ram = 0.8;
+MATCH.archer.xbow = 0.9; MATCH.light.xbow = 1.15; MATCH.heavy.xbow = 0.75; MATCH.cav.xbow = 1.2; MATCH.archer.cat = 1.2; MATCH.archer.ram = 0.5; MATCH.light.cat = 1.3; MATCH.light.ram = 1.0; MATCH.heavy.cat = 1.2; MATCH.heavy.ram = 1.1; MATCH.cav.cat = 1.6; MATCH.cav.ram = 0.8;
 MATCH.cat = { archer: 1, light: 1, heavy: 1, cav: 1 }; MATCH.ram = { archer: 0.5, light: 0.5, heavy: 0.5, cav: 0.5 };
 // копейщики — гроза конницы; ополчение слабее всех
-MATCH.spear = { archer: 1.0, light: 0.9, heavy: 0.8, cav: 1.7, spear: 1.0, militia: 1.3, cat: 1.2, ram: 1.0 };
-MATCH.militia = { archer: 0.9, light: 0.7, heavy: 0.5, cav: 0.7, spear: 0.8, militia: 1.0, cat: 1.1, ram: 0.8 };
-MATCH.cannon = { archer: 1.3, light: 1.1, heavy: 1.3, cav: 0.5, spear: 1.0, militia: 1.4, cat: 1.2, ram: 1.2, cannon: 1.0, cmd: 1.1 };
+MATCH.xbow = { archer: 1.15, light: 1.2, heavy: 1.25, cav: 0.9, spear: 1.05, militia: 1.4, cat: 1.2, ram: 1.0, cannon: 0.9, xbow: 1.0, cmd: 1.0 };
+MATCH.spear = { archer: 1.0, light: 0.9, heavy: 0.8, cav: 1.7, spear: 1.0, militia: 1.3, cat: 1.2, ram: 1.0, xbow: 1.35 };
+MATCH.militia = { archer: 0.9, light: 0.7, heavy: 0.5, cav: 0.7, spear: 0.8, militia: 1.0, cat: 1.1, ram: 0.8, xbow: 1.25 };
+MATCH.cannon = { archer: 1.3, light: 1.1, heavy: 1.3, cav: 0.5, spear: 1.0, militia: 1.4, cat: 1.2, ram: 1.2, cannon: 1.0, cmd: 1.1, xbow: 1.25 };
 MATCH.cav.cannon = 1.9; MATCH.light.cannon = 1.6; MATCH.archer.cannon = 0.8; MATCH.heavy.cannon = 0.9; MATCH.spear.cannon = 1.1; MATCH.militia.cannon = 0.7;
 MATCH.archer.spear = 1.2; MATCH.archer.militia = 1.3; MATCH.light.spear = 1.1; MATCH.light.militia = 1.4;
 MATCH.heavy.spear = 1.2; MATCH.heavy.militia = 1.5; MATCH.cav.spear = 0.6; MATCH.cav.militia = 1.5;
@@ -92,7 +98,45 @@ const CMD = { archer: { n: 'Воевода', of: 'лучников', ico: 'bow' 
 const DAY = 120; // секунд игрового времени в одних сутках (2 минуты)
 const CLAIM_DAYS = 3; // дней на формирование претензии
 const DIFF = { easy: { n: 'Лёгкая', mult: 0.8, think: 5.5 }, normal: { n: 'Средняя', mult: 1.0, think: 3.2 }, hard: { n: 'Сложная', mult: 1.25, think: 1.8 } };
-const GAME_VERSION = '2.7.0';
+/* ===== Времена года и погода =====
+   Сезон меняется каждые 5 дней (SEASON_LEN). Погода детерминированно выбирается
+   из сезона и времени: одна и та же минута игры во всех загрузках даёт одну погоду,
+   поэтому ничего сохранять не нужно. цифры — веса выбора, 0-индексы сезонов в ok. */
+const SEASON_LEN = DAY * 5;
+const SEASONS = [
+  { id: 'spring', n: 'весна', ico: '🌸', farm: 1.0, temp: 11 },
+  { id: 'summer', n: 'лето',  ico: '☀️', farm: 1.15, temp: 23 },
+  { id: 'autumn', n: 'осень', ico: '🍂', farm: 0.85, temp: 9 },
+  { id: 'winter', n: 'зима',  ico: '❄️', farm: 0.35, temp: -6 },
+];
+const WEATHERS = [
+  { id: 'clear',  w: 22, n: 'ясно',        ico: '☀️',  lo: 9,  hi: 27, move: 1.05, farm: 1.0,  range: 1.0,  desc: 'Войска идут быстрее, +5% к скорости.',                  ok: [0,1,2,3] },
+  { id: 'partly', w: 16, n: 'переменная облачность', ico: '⛅', lo: 8, hi: 24, move: 1.0,  farm: 1.0,  range: 1.0,  desc: 'Обычная погода, без сюрпризов.',          ok: [0,1,2,3] },
+  { id: 'cloud',  w: 13, n: 'пасмурно',    ico: '☁️',  lo: 6,  hi: 19, move: 1.0,  farm: 1.0,  range: 1.0,  desc: 'Тучи низко висят, но осадков нет.',        ok: [0,1,2,3] },
+  { id: 'rain',   w: 12, n: 'дождь',       ico: '🌧️', lo: 5,  hi: 17, move: 0.85, farm: 1.3,  range: 0.9,  desc: 'Фермы +30% еды, войска на 15% медленнее, стрельба хуже.', ok: [0,1,2] },
+  { id: 'fog',    w: 7,  n: 'туман',       ico: '🌫️', lo: 4,  hi: 14, move: 0.9,  farm: 1.0,  range: 0.65, desc: 'Стрельба вдвое короче видимости — осторожно с засадой.', ok: [0,1,2,3] },
+  { id: 'wind',   w: 5,  n: 'сильный ветер', ico: '💨', lo: 3, hi: 18, move: 0.95, farm: 1.0,  range: 0.8,  desc: 'Стрелы сдувает: стрельба на 20% короче.',  ok: [0,1,2,3] },
+  { id: 'storm',  w: 5,  n: 'гроза',       ico: '⛈️', lo: 7,  hi: 20, move: 0.7,  farm: 1.15, range: 0.75, desc: 'Ливень и молнии: +15% еды с ферм, войска на 30% медленнее, молния бьёт в здания.', ok: [0,1,2] },
+  { id: 'heat',   w: 4,  n: 'аномальная жара', ico: '🔥', lo: 25, hi: 36, move: 0.95, farm: 0.55, range: 1.0, desc: 'Земля сохнет: фермы дают на 45% меньше еды.',     ok: [1] },
+  { id: 'snow',   w: 8,  n: 'снегопад',    ico: '❄️',  lo: -12, hi: 0, move: 0.75, farm: 0.15,  range: 0.9,  desc: 'Фермы в снегу молчат, войска на 25% медленнее.',  ok: [3] },
+  { id: 'frost',  w: 4,  n: 'лютая стужа', ico: '🥶',  lo: -25, hi: -10, move: 0.65, farm: 0.1,  range: 0.85, desc: 'Мороз сковывает: армия на 35% медленнее, фермы стоят.', ok: [3] },
+];
+/* погода за «кусок» игрового часа: детерминированно от семени партии и номера куска */
+function weatherOf(S) {
+  const season = Math.floor(S.time / SEASON_LEN) % 4;
+  const bucket = Math.floor(S.time / (DAY / 2.2)); // новые тучи примерно раз в четверть дня
+  const rnd = mulberry32(((S.seed ^ (bucket * 2654435761)) >>> 0) || 1);
+  const pool = WEATHERS.filter(w => w.ok.indexOf(season) >= 0);
+  let tw = 0; for (const w of pool) tw += w.w;
+  let r = rnd() * tw, pick = pool[0];
+  for (const w of pool) { r -= w.w; if (r <= 0) { pick = w; break; } }
+  const h = todHours(S);
+  const dayK = (Math.sin((h - 9) / 24 * 2 * Math.PI) + 1) / 2; // в 15:00 теплее всего
+  const temp = Math.round(pick.lo + (pick.hi - pick.lo) * dayK);
+  return Object.assign({ temp, season: SEASONS[season], seasonI: season }, pick);
+}
+function seasonOf(S) { return SEASONS[Math.floor(S.time / SEASON_LEN) % 4]; }
+const GAME_VERSION = '2.8.0';
 const MAPTYPES = ['continent', 'continents', 'islands', 'lakes', 'random'];
 const CAP_MIN = 10.5; // минимальное расстояние между столицами
 const SEA_MIN = 10; // меньший водоём — пруд: порт у него не строят
@@ -182,6 +226,8 @@ const ICONMAP = {
   split: ['........', 'WW.WW.WW', 'W.WWWW.W', 'W..WW..W', 'W.WWWW.W', 'WW.WW.WW', '........', '........'],
   skull: ['..KKKK..', '.KWWWWK.', 'KWKWWKWK', 'KWKWWKWK', '.KWWWWK.', '..KWKWK.', '..KKKKK.', '........'],
   flag: ['.NRRRR..', '.NRRRR..', '.NRRR...', '.NR.....', '.N......', '.N......', '.N......', 'KKKK....'],
+  xbow: ['S.S..S.S', 'SSS..SSS', '.SSSSSS.', '...SS...', '...NN...', '...NN...', '..NNN...', '........'],
+  bolt: ['...KK...', '..KYK...', '.KYYK...', 'KYYYK...', '.KYK....', '.KK.....', '.K......', '........'],
   spear: ['......SS', '.....SSS', '..RRNSS.', '..RRN...', '..NN....', '.NN.....', 'NN......', 'N.......'],
   militia: ['.S.S.S..', '.S.S.S..', '.SSSSS..', '...N....', '...N....', '...N....', '...N....', '...N....'],
   star: ['....Y....', '....Y....', '...YYY...', 'YYYYYYYYY', '.YYYYYYY.', '..YYYYY..', '..YYYYY..', '.YYY.YYY.', '.Y.....Y.'],
@@ -543,6 +589,41 @@ DRAW.prison = function (c, x, y, col) {
   R_(c, x + 12, y + 20, 8, 8, '#3a2410'); R_(c, x + 12, y + 20, 8, 1, '#8a8f98'); R_(c, x + 16, y + 23, 1, 2, '#f2c230');
   flag(c, x + 15, y - 1, col);
 };
+DRAW.storehouse = function (c, x, y, col) { // склад: сруб с большими воротами и ящиками
+  rrect(c, x + 2, y + 27, 28, 5, '#8a8f78', 2);
+  planks(c, x + 4, y + 13, 24, 15, '#8a5a2b');
+  gable(c, x + 2, y + 2, 28, 12, col);
+  R_(c, x + 2, y + 12, 28, 2, '#3a2410');
+  R_(c, x + 10, y + 18, 12, 10, '#4a3018'); R_(c, x + 10, y + 18, 12, 1, '#6a4a2a'); R_(c, x + 15, y + 18, 1, 10, '#2a1a0c');
+  R_(c, x + 3, y + 23, 5, 5, '#a8743a'); R_(c, x + 3, y + 23, 5, 1, '#c08a50'); R_(c, x + 24, y + 23, 5, 5, '#a8743a'); R_(c, x + 24, y + 23, 5, 1, '#c08a50');
+};
+DRAW.granary = function (c, x, y, col) { // амбар: глиняный, соломенная крыша
+  rrect(c, x + 2, y + 27, 28, 5, '#8a8f78', 2);
+  bricks(c, x + 7, y + 12, 18, 16, '#c9a86a');
+  gable(c, x + 5, y + 4, 22, 9, '#b8944a');
+  R_(c, x + 5, y + 11, 22, 2, col);
+  R_(c, x + 13, y + 20, 6, 8, '#5a3a1a'); R_(c, x + 13, y + 20, 6, 1, '#8a5a30');
+  win(c, x + 9, y + 15, 4, 3); win(c, x + 19, y + 15, 4, 3);
+};
+DRAW.townhall = function (c, x, y, col) { // ратуша: белокаменная, башня с флагом
+  rrect(c, x + 1, y + 27, 30, 5, '#8a8f78', 2);
+  bricks(c, x + 5, y + 14, 22, 14, '#b8b0a0');
+  bricks(c, x + 12, y + 4, 8, 11, '#a89f8f');
+  gable(c, x + 10, y + 1, 12, 5, col);
+  flag(c, x + 15, y + 0, col);
+  R_(c, x + 14, y + 19, 4, 9, '#3a2410'); win(c, x + 8, y + 17, 4, 4); win(c, x + 20, y + 17, 4, 4); win(c, x + 14, y + 8, 4, 4);
+};
+DRAW.embassy = function (c, x, y, col) { // посольство: штукатурный фасад, колонны
+  rrect(c, x + 2, y + 27, 28, 5, '#8a8f78', 2);
+  R_(c, x + 4, y + 15, 24, 13, '#e8dcc0');
+  tiles(c, x + 2, y + 8, 28, 8, '#7a5a8a');
+  R_(c, x + 2, y + 14, 28, 2, col);
+  R_(c, x + 4, y + 15, 2, 13, '#c9bfa4'); R_(c, x + 26, y + 15, 2, 13, '#c9bfa4');
+  R_(c, x + 13, y + 19, 6, 9, '#3a2410'); R_(c, x + 13, y + 19, 6, 1, '#5a3a1a');
+  win(c, x + 7, y + 17, 4, 4); win(c, x + 21, y + 17, 4, 4);
+  R_(c, x + 11, y + 17, 1, 9, '#f4f0e0'); R_(c, x + 20, y + 17, 1, 9, '#f4f0e0');
+  flag(c, x + 15, y + 2, col);
+};
 HF.spear = function (c, x, y, col) {
   R_(c, x + 4, y + 10, 2, 3, '#5a4a3a'); R_(c, x + 7, y + 10, 2, 3, '#5a4a3a'); R_(c, x + 3, y + 12, 3, 1, '#2a1808'); R_(c, x + 7, y + 12, 3, 1, '#2a1808');
   R_(c, x + 4, y + 5, 6, 5, '#8a6a3a'); R_(c, x + 4, y + 5, 6, 1, '#a8844a'); R_(c, x + 6, y + 5, 2, 5, col); R_(c, x + 4, y + 8, 6, 1, '#3a2410'); R_(c, x + 4, y + 9, 6, 1, '#6a4e2a');
@@ -557,6 +638,14 @@ HF.militia = function (c, x, y, col) {
   R_(c, x + 10, y + 1, 1, 11, '#8a5a2b'); R_(c, x + 9, y - 1, 1, 3, '#b8c4d4'); R_(c, x + 10, y, 1, 1, '#b8c4d4'); R_(c, x + 11, y - 1, 1, 3, '#b8c4d4'); R_(c, x + 9, y + 5, 2, 2, SKIN);
 };
 // житель: позы — i (стоит), w0/w1 (шаг), k0/k1 (работа), t (беседа)
+HF.xbow = function (c, x, y, col) { // арбалетчик: кольчуга, капюшон, стальной арбалет
+  R_(c, x + 4, y + 10, 2, 3, '#3a2a18'); R_(c, x + 7, y + 10, 2, 3, '#3a2a18'); R_(c, x + 3, y + 12, 3, 1, '#241608'); R_(c, x + 7, y + 12, 3, 1, '#241608');
+  R_(c, x + 2, y + 4, 2, 6, '#5a4a3a'); R_(c, x + 2, y + 3, 1, 1, '#cfd6de'); // колчан с болтами
+  R_(c, x + 3, y + 5, 7, 5, '#5a626e'); R_(c, x + 3, y + 5, 7, 1, '#7a8494'); R_(c, x + 3, y + 8, 7, 1, '#2a241c'); R_(c, x + 3, y + 9, 7, 1, '#3e444e'); // кольчуга
+  R_(c, x + 4, y + 1, 5, 4, SKIN); R_(c, x + 3, y, 7, 2, '#4a4038'); R_(c, x + 3, y + 2, 1, 3, '#4a4038'); R_(c, x + 7, y + 3, 1, 1, '#14100c'); R_(c, x + 4, y + 4, 4, 1, '#c9a47a'); // голова в капюшоне
+  R_(c, x + 9, y + 6, 4, 1, '#6a4a2a'); // приклад
+  R_(c, x + 11, y + 3, 1, 7, '#8a8f98'); R_(c, x + 12, y + 2, 1, 1, '#c8cdd4'); R_(c, x + 12, y + 10, 1, 1, '#c8cdd4'); R_(c, x + 10, y + 6, 2, 1, '#e8e8e8'); // дуга и болт
+};
 HF.folk = function (c, x, y, col, cls) {
   cls = cls || 'i';
   const walk = cls[0] === 'w', work = cls[0] === 'k', talk = cls === 't', dance = cls[0] === 'd';

@@ -26,7 +26,7 @@ function aiFindSite(S, p, type) {
   return cands[(S.rnd() * k) | 0];
 }
 function aiSquadStats(S, pid) {
-  const cnt = { archer: 0, light: 0, heavy: 0, cav: 0, spear: 0, militia: 0 };
+  const cnt = { archer: 0, light: 0, heavy: 0, cav: 0, spear: 0, militia: 0, xbow: 0 };
   for (const a of S.armies) if (a.owner === pid) for (const q of a.sq) if (cnt[q.t] !== undefined) cnt[q.t]++;
   for (const b of S.buildings) if (b.owner === pid && b.type === 'barracks') for (const q of b.queue) if (cnt[q.t] !== undefined) cnt[q.t]++;
   return cnt;
@@ -39,7 +39,7 @@ function aiThink(S, p) {
 
   // --- строительство
   const plan = [['farm', 2], ['sawmill', 2], ['mine', 2], ['barracks', 1], ['hospital', 1], ['workshop', 1], ['forge', 1], ['farm', 3], ['mill', 1], ['stable', 1], ['sawmill', 3], ['market', 1], ['academy', easy ? 0 : 1], ['mine', 3], ['house', 3],
-    ['barracks', 2], ['siege', easy ? 0 : 1], ['hospital', 1 + Math.floor(nc / 3)], ['forge', 2], ['farm', 3 + nc * 2], ['port', 1], ['workshop', 2], ['stable', 2], ['tavern', easy ? 0 : 1], ['sawmill', 3 + nc * 2], ['mine', 3 + nc], ['market', 1 + nc], ['mill', 1 + Math.floor(nc / 2)], ['house', 3 + nc * 2]];
+    ['granary', 1], ['barracks', 2], ['siege', easy ? 0 : 1], ['hospital', 1 + Math.floor(nc / 3)], ['forge', 2], ['townhall', easy ? 0 : 1], ['farm', 3 + nc * 2], ['port', 1], ['workshop', 2], ['stable', 2], ['storehouse', 1], ['embassy', easy ? 0 : 1], ['tavern', easy ? 0 : 1], ['sawmill', 3 + nc * 2], ['mine', 3 + nc], ['market', 1 + nc], ['mill', 1 + Math.floor(nc / 2)], ['house', 3 + nc * 2]];
   for (const [type, n] of plan) {
     if ((cnt[type] || 0) >= n) continue;
     if ((ai.fails[type] || 0) > 4) continue;
@@ -62,12 +62,12 @@ function aiThink(S, p) {
   for (const c of mine) if (c.level < 2 + (p.diff === 'hard' ? 2 : 1) && p.stock.gold > upgradeCost(c).gold + 200 && canAfford(p, upgradeCost(c))) { upgradeCity(S, c); break; }
 
   // --- что производить: то, чего на складе не хватает сильнее всего
-  const want2 = { forge: { sword: 20, armL: 15, armH: 12 }, workshop: { bow: 15, spear: 12 } };
+  const want2 = { forge: { sword: 20, armL: 15, armH: 12 }, workshop: { bow: 15, spear: 12, xbow: 8 } };
   for (const b of own) { const tgt = want2[b.type]; if (!tgt || b.busy) continue; let best = b.recipe, bd = -99; for (const k in tgt) { const d = tgt[k] - p.stock[k]; if (d > bd) { bd = d; best = k; } } b.recipe = best; }
 
   // --- обучение (число отрядов ограничено: иначе к концу партии их сотни)
-  const st = aiSquadStats(S, p.id), capSq = Math.min(5 + 3 * nc, 30), want = { archer: 3, light: 2.5, heavy: 2, cav: 2.5, spear: 2 };
-  let totSq = st.archer + st.light + st.heavy + st.cav + st.spear + st.militia;
+  const st = aiSquadStats(S, p.id), capSq = Math.min(5 + 3 * nc, 30), want = { archer: 3, light: 2.5, heavy: 2, cav: 2.5, spear: 2, xbow: 1.5 };
+  let totSq = st.archer + st.light + st.heavy + st.cav + st.spear + st.militia + st.xbow;
   for (const b of own) if (b.type === 'barracks' && b.queue.length < 2 && totSq < capSq) {
     const ord = Object.keys(want).sort((a, c) => st[a] / want[a] - st[c] / want[c]); let done = false;
     for (const t of ord) { if (enqueue(S, b, t) === null) { st[t]++; totSq++; done = true; break; } }

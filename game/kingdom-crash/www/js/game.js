@@ -329,6 +329,9 @@ function blockedFor(S, o, x, y) { const t = S.terr[y * S.W + x]; return t >= 0 &
 function passLeft(S, a, b) { const r = rel(S, a, b); return r.pass && r.pass[a] > S.time ? r.pass[a] - S.time : 0; }
 function allied(S, a, b) { return a >= 0 && b >= 0 && a !== b && !!rel(S, a, b).ally; }
 function todHours(S) { return (8 + (S.time / DAY) * 24) % 24; }
+/* погода за текущий тик (кэшируется, чтобы не гонять генератор по сто раз за тик) */
+function weather(S) { if (S._wxT !== S.tk) { S._wxT = S.tk; S._wx = weatherOf(S); } return S._wx; }
+function seasonFarm(S) { return SEASONS[Math.floor(S.time / SEASON_LEN) % 4].farm; }
 // зона видимости игрока: свои войска, города, здания, корабли и союзников
 function calcVision(S) {
   const v = []; const mine = o => o === 0 || allied(S, 0, o);
@@ -741,9 +744,13 @@ function tickExpand(S, dt) {
   if (S.over || !S.players[0].alive || S.extra.size >= 800) return;
   const W = S.W, H = S.H, t = S.terr, cand = [];
   for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
-    const i = y * W + x; if (t[i] !== -2 || S.extra.has(i)) continue;
+    const i = y * W + x; if (t[i] !== -2) continue;
     const tt = S.ter[i]; if (isWater(tt) || tt === TR.MOUNT) continue;
-    if (t[i - 1] === 0 || t[i + 1] === 0 || t[i - W] === 0 || t[i + W] === 0 || S.extra.get(i - 1) === 0 || S.extra.get(i + 1) === 0 || S.extra.get(i - W) === 0 || S.extra.get(i + W) === 0) cand.push(i);
+    // не дальше 6 клеток от наших городов/построек — иначе «пустые кромки» захватываются сами по себе
+    let near = false; for (let dy = -6; dy <= 6 && !near; dy++) for (let dx = -6; dx <= 6; dx++) { if (dx * dx + dy * dy > 40) continue; const o = (y + dy >= 0 && y + dy < H && x + dx >= 0 && x + dx < W) ? t[i + dy * W + dx] : -2; if (o === 0 || S.extra.get(i + dy * W + dx) === 0) { near = true; break; } }
+    if (!near) continue;
+    if (S.extra.has(i)) continue;
+    cand.push(i);
     if (cand.length > 400) break;
   }
   if (!cand.length) return;
@@ -776,7 +783,7 @@ function reapArmy(S, a, killer, wound) {
 const armyCap = a => a.sq.reduce((s, q) => s + sqMax(q.t), 0); // сколько бойцов в армии при полных отрядах
 const units = a => a.sq.reduce((s, q) => s + q.u, 0);
 function newArmy(S, owner, x, y, sq) { const a = { id: S.nid++, owner, x, y, sq, path: [], dest: null, st: 'idle', ship: null, maxU: sq.reduce((s, q) => s + q.u, 0), face: 1, boardPort: null, wp: [] }; S.armies.push(a); return a; }
-function armySpd(S, a) { let s = 9; for (const q of a.sq) s = Math.min(s, q.t === 'cmd' && q.cls === 'cav' ? 2.2 : q.t === 'cmd' ? SQ[q.cls].spd : SQ[q.t].spd); s *= MOVE_MULT; const i = Math.floor(a.y) * S.W + Math.floor(a.x); return s * TMULT[S.ter[i]] * (S.mm[i] === 1 ? 0.5 : 1); }
+function armySpd(S, a) { let s = 9; for (const q of a.sq) s = Math.min(s, q.t === 'cmd' && q.cls === 'cav' ? 2.2 : q.t === 'cmd' ? SQ[q.cls].spd : SQ[q.t].spd); s *= MOVE_MULT; const i = Math.floor(a.y) * S.W + Math.floor(a.x); return s * TMULT[S.ter[i]] * (S.mm[i] === 1 ? 0.5 : 1) * weather(S).move; }
 function combo(a) { const t = new Set(a.sq.map(q => q.t).filter(x => x !== 'cmd')); return (1 + 0.08 * Math.max(0, t.size - 1)) * (a._bo > 0 ? 1.18 : 1); }
 function mergeNear(S, a) {
   if (a.ship) return 0; let n = 0;
@@ -1005,7 +1012,7 @@ function millNear(S, b) { // рядом с фермой (вплотную) ст�
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const x = b.x + dx, y = b.y + dy; if (x < 0 || y < 0 || x >= S.W || y >= S.H) continue; const o = S.occ[y * S.W + x]; if (o < 0 || o >= 1000000) continue; const m = S.bmap.get(o); if (m && m.type === 'mill' && m.owner === b.owner) return true; }
   return false;
 }
-function farmRate(S, b, p) { return 0.7 * p.mult * (perk(p, 'farm') ? 1.3 : 1) * (millNear(S, b) ? 1.5 : 1) * bldBoost(b); }
+function farmRate(S, b, p) { return 0.7 * p.mult * (perk(p, 'farm') ? 1.3 : 1) * (millNear(S, b) ? 1.5 : 1) * bldBoost(b) * seasonFarm(S) * weather(S).farm; }
 /* ===== Улучшение зданий (до 3 уровня) ===== */
 function bldBoost(b) { return 1 + 0.3 * ((b.lvl || 1) - 1); }
 function upgCost(b) { const lvl = b.lvl || 1; return { gold: 70 * lvl, wood: 45 * lvl, iron: 18 * lvl }; }
@@ -1023,8 +1030,10 @@ function upgradeBld(S, b) {
 function cmdLvl(q) { return 1 + Math.min(2, Math.floor((q.xp || 0) / 300)); }
 function calcRates(S) {
   const n = S.players.length, ports = new Array(n).fill(0), markets = new Array(n).fill(0);
-  for (const p of S.players) p.rate = { gold: 0, wood: 0, food: 0, iron: 0 };
-  for (const c of S.cities) if (c.owner >= 0) { const p = S.players[c.owner], r = p.rate; r.gold += (0.6 + 0.45 * c.level) * (perk(p, 'gold') ? 1.25 : 1); r.food -= 0.1 * c.level; }
+  const townhall = new Array(n).fill(0), granary = new Array(n).fill(0), storehouse = new Array(n).fill(0), embassy = new Array(n).fill(0);
+  for (const b of S.buildings) if (b.owner >= 0) { if (b.type === 'townhall') townhall[b.owner] = 1; else if (b.type === 'granary') granary[b.owner] = 1; else if (b.type === 'storehouse') storehouse[b.owner]++; else if (b.type === 'embassy') embassy[b.owner] = 1; }
+  for (const p of S.players) { p.rate = { gold: 0, wood: 0, food: 0, iron: 0 }; p.itCap = ITEM_CAP + 100 * storehouse[p.id]; }
+  for (const c of S.cities) if (c.owner >= 0) { const p = S.players[c.owner], r = p.rate; r.gold += (0.6 + 0.45 * c.level) * (perk(p, 'gold') ? 1.25 : 1) * (townhall[c.owner] ? 1.2 : 1); r.food -= 0.1 * c.level; }
   for (const b of S.buildings) {
     if (b.owner < 0) continue; const p = S.players[b.owner], r = p.rate, m = p.mult;
     const bb = bldBoost(b);
@@ -1034,10 +1043,10 @@ function calcRates(S) {
     else if (b.type === 'market') { r.gold += 0.7 * m * bb; markets[b.owner]++; }
     else if (b.type === 'port') { r.gold += 0.3 * m * bb * (perk(p, 'sea') ? 3 : 1) * (sanOn(S, b.owner, 'ports') ? 0.5 : 1); ports[b.owner]++; }
   }
-  for (const a of S.armies) { const r = S.players[a.owner].rate; r.food -= 0.12 * a.sq.length; r.gold -= 0.06 * a.sq.length; }
+  for (const a of S.armies) { const r = S.players[a.owner].rate; r.food -= 0.12 * a.sq.length * (granary[a.owner] ? 0.75 : 1); r.gold -= 0.06 * a.sq.length; }
   // торговля: только между живыми державами; рынки её усиливают, пошлины делят доход
   for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (S.rel[i][j].trade && S.players[i].alive && S.players[j].alive) for (const k of [i, j]) {
-    let g = 0.5 + 0.25 * Math.min(ports[i], ports[j]) + 0.05 * Math.min(4, markets[k]);
+    let g = 0.5 + 0.25 * Math.min(ports[i], ports[j]) + 0.05 * Math.min(4, markets[k]); if (embassy[k]) g *= 1.3;
     for (const s of (S.sanctions || [])) if (s.k === 'tariff' && s.until > S.time && s.b === k && (s.a === i || s.a === j) && S.players[s.a].alive) { S.players[s.a].rate.gold += g * 0.5; g *= 0.5; break; }
     S.players[k].rate.gold += g;
   }
@@ -1049,7 +1058,7 @@ function tickEcon(S, dt) {
     for (const k in p.rate) { const v = p.rate[k] * dt; s[k] += v; if (v > 0) p.earned += v * RVAL[k]; if (s[k] < 0) s[k] = 0; }
     if (s.food <= 0.01) { for (const a of S.armies.slice()) if (a.owner === p.id) { for (const q of a.sq) for (const x of q.s) x.hp -= 0.15 * dt; reapArmy(S, a, -1, false); } if (S.time - p.lastFood > 70) { p.lastFood = S.time; addMsg(S, p.id, { type: 'econ', title: 'Голод!', text: 'Кончилась еда — войска слабеют. Стройте фермы.' }); } }
     if (s.gold <= 0.5 && S.time - p.lastGold > 90) { p.lastGold = S.time; addMsg(S, p.id, { type: 'econ', title: 'Казна пуста', text: 'Золота нет, расходы на армию не покрыты.' }); }
-    for (const k of ITEM_KEYS) if (s[k] > ITEM_CAP) s[k] = ITEM_CAP;
+    { const cap = p.itCap || ITEM_CAP; for (const k of ITEM_KEYS) if (s[k] > cap) s[k] = cap; }
   }
   if (S.opts.sandbox) { const s0 = S.players[0].stock; for (const k of STOCK_KEYS) s0[k] = 99999; }
 }
@@ -1074,7 +1083,7 @@ function tickProd(S, dt) {
     }
     if (rc) {
       const r = rc[b.recipe]; if (!r) continue;
-      const cap = Math.min(b.stop || ITEM_CAP, ITEM_CAP);
+      const cap = b.stop ? Math.min(b.stop, p.itCap || ITEM_CAP) : (p.itCap || ITEM_CAP);
       if (!b.busy) {
         if (b.off) b.status = 'Производство остановлено';
         else if (S.opts.sandbox && p.human) b.status = 'В песочнице склад бесконечен';
@@ -1182,6 +1191,7 @@ function tickCombat(S, dt) {
     let e = null, ed = 99; for (const v of U) { if (v.a.owner === o || !atWar(S, o, v.a.owner)) continue; const d = Math.hypot(v.s.x - s.x, v.s.y - s.y); if (d < ed) { ed = d; e = v; } }
     const T = a.siege != null ? bidx(S, a.siege) : null;
     const strike = (b, dps) => { sdm.push([b, dps * dt * (1 - (s.mD || 0)), o]); s.atk = S.time; bashFx(s, b); };
+    const rg = st.range >= 2.5 ? st.range * weather(S).range : st.range; // туман и ветер режут дальнобойность
     if (u.t === 'ram') {
       const tg = T || hostileStructNear(s, o, 5);
       if (tg) { const cx = tg.x + 0.5, cy = tg.y + 0.5, d = Math.hypot(cx - s.x, cy - s.y); s.face = cx >= s.x ? 1 : -1;
@@ -1189,11 +1199,11 @@ function tickCombat(S, dt) {
     }
     if (u.t === 'cannon') { // пороховая пушка: бьёт издалека войска и укрепления
       let tgS = null, tgU = null;
-      if (e && ed <= st.range) tgU = e;
-      if (T && Math.hypot(T.x + 0.5 - s.x, T.y + 0.5 - s.y) <= st.range) tgS = T;
-      if (!tgS) { let bd2 = 1e9; for (const b of S.buildings) { if (b.owner < 0 || b.owner === o || !atWar(S, o, b.owner)) continue; if (b.type !== 'wall' && b.type !== 'gate' && b.type !== 'tower' && b.type !== 'port') continue; const d = Math.hypot(b.x + 0.5 - s.x, b.y + 0.5 - s.y); if (d <= st.range && d < bd2) { bd2 = d; tgS = b; } } }
+      if (e && ed <= rg) tgU = e;
+      if (T && Math.hypot(T.x + 0.5 - s.x, T.y + 0.5 - s.y) <= rg) tgS = T;
+      if (!tgS) { let bd2 = 1e9; for (const b of S.buildings) { if (b.owner < 0 || b.owner === o || !atWar(S, o, b.owner)) continue; if (b.type !== 'wall' && b.type !== 'gate' && b.type !== 'tower' && b.type !== 'port') continue; const d = Math.hypot(b.x + 0.5 - s.x, b.y + 0.5 - s.y); if (d <= rg && d < bd2) { bd2 = d; tgS = b; } } }
       const gx = tgU ? tgU.s.x : tgS ? tgS.x + 0.5 : null, gy = tgU ? tgU.s.y : tgS ? tgS.y + 0.5 : null;
-      if (!tgU && !tgS) { const goal = (e && ed <= 7) ? e.s : T ? { x: T.x + 0.5, y: T.y + 0.5 } : null; if (goal) { const gd = Math.hypot(goal.x - s.x, goal.y - s.y); if (gd > st.range * 0.8) moveSoldier(S, s, goal.x, goal.y, st.spd * dt, o); } else { const dx = sx - s.x, dy = sy - s.y, d = Math.hypot(dx, dy); if (d > 0.02) { const k = Math.min(1, st.spd * dt / d); s.x += dx * k; s.y += dy * k; } } continue; }
+      if (!tgU && !tgS) { const goal = (e && ed <= 7) ? e.s : T ? { x: T.x + 0.5, y: T.y + 0.5 } : null; if (goal) { const gd = Math.hypot(goal.x - s.x, goal.y - s.y); if (gd > rg * 0.8) moveSoldier(S, s, goal.x, goal.y, st.spd * dt, o); } else { const dx = sx - s.x, dy = sy - s.y, d = Math.hypot(dx, dy); if (d > 0.02) { const k = Math.min(1, st.spd * dt / d); s.x += dx * k; s.y += dy * k; } } continue; }
       if (!s.cd || s.cd <= S.time) {
         s.cd = S.time + 2.1 + S.rnd() * 0.4; s.atk = S.time;
         s.face = gx >= s.x ? 1 : -1;
@@ -1209,9 +1219,9 @@ function tickCombat(S, dt) {
       continue;
     }
     if (u.t === 'cat') {
-      let tgS = null, tgU = null; if (e && ed <= st.range) tgU = e; else if (T && Math.hypot(T.x + 0.5 - s.x, T.y + 0.5 - s.y) <= st.range) tgS = T;
+      let tgS = null, tgU = null; if (e && ed <= rg) tgU = e; else if (T && Math.hypot(T.x + 0.5 - s.x, T.y + 0.5 - s.y) <= rg) tgS = T;
       const goal = tgU || tgS || (e && ed <= 6 ? { s: e.s } : T ? { s: { x: T.x + 0.5, y: T.y + 0.5 } } : null);
-      if (!tgU && !tgS) { if (goal) { const gd = Math.hypot(goal.s.x - s.x, goal.s.y - s.y); if (gd > st.range * 0.85) moveSoldier(S, s, goal.s.x, goal.s.y, st.spd * dt, o); } else { const dx = sx - s.x, dy = sy - s.y, d = Math.hypot(dx, dy); if (d > 0.02) { const k = Math.min(1, st.spd * dt / d); s.x += dx * k; s.y += dy * k; } } continue; }
+      if (!tgU && !tgS) { if (goal) { const gd = Math.hypot(goal.s.x - s.x, goal.s.y - s.y); if (gd > rg * 0.85) moveSoldier(S, s, goal.s.x, goal.s.y, st.spd * dt, o); } else { const dx = sx - s.x, dy = sy - s.y, d = Math.hypot(dx, dy); if (d > 0.02) { const k = Math.min(1, st.spd * dt / d); s.x += dx * k; s.y += dy * k; } } continue; }
       if (!s.cd || s.cd <= S.time) {
         s.cd = S.time + 3 + S.rnd() * 0.5; s.atk = S.time; const tx = tgU ? tgU.s.x : tgS.x + 0.5, ty = tgU ? tgU.s.y : tgS.y + 0.5; S.fx.push({ k: 'rock', x0: s.x, y0: s.y, x1: tx, y1: ty, t: S.time, d: 0.9 });
         if (tgU) { for (const v of U) { if (v.a.owner === o || !atWar(S, o, v.a.owner)) continue; if (Math.hypot(v.s.x - tx, v.s.y - ty) <= 0.85) dm.push([v.s, 24 * mm('cat', v.tt) * (v.tt === 'heavy' ? 0.75 : 1) * out, o, v.a, S.time + 0.9]); }
@@ -1221,7 +1231,7 @@ function tickCombat(S, dt) {
       continue;
     }
     // обычные бойцы
-    const reach = u.tt === 'archer' ? st.range * 0.9 : 0.3;
+    const reach = u.tt === 'archer' ? rg * 0.9 : 0.3;
     let twc = null, twd = 99;
     if (u.tt === 'archer') for (const tw of towers) if (atWar(S, o, tw.owner)) { const d = Math.hypot(tw.x + 0.5 - s.x, tw.y + 0.5 - s.y); if (d < twd) { twd = d; twc = tw; } }
     if (twc && twd <= reach && (!e || twd < ed)) { // лучник стреляет по гарнизону башни (защита +40%)
@@ -1377,6 +1387,21 @@ function checkVictory(S) {
   if (alive.length === 1 && S.players.length > 1) S.over = { winner: alive[0].id, why: 'Остался единственный правитель' };
 }
 
+/* Молния: во время грозы разряд может ударить в случайное здание (кроме стен/ворот/рва). Не разрушает — только ранит. */
+function lightningStrike(S) {
+  const cand = S.buildings.filter(b => b.type !== 'wall' && b.type !== 'gate' && b.type !== 'moat');
+  if (!cand.length) return;
+  const b = cand[(S.rnd() * cand.length) | 0];
+  const dmg = 8 + ((S.rnd() * 15) | 0);
+  b.hp = Math.max(1, (b.hp || 100) - dmg);
+  S.fx.push({ k: 'flash', t: S.time }, { k: 'hit', x: b.x + 0.5, y: b.y + 0.5, t: S.time });
+  if (b.owner === 0) {
+    const nm = BD[b.type] ? BD[b.type].n : 'здание';
+    addMsg(S, 0, { type: 'war', title: 'Молния!', text: 'Разряд ударил в «' + nm + '» (' + b.x + ',' + b.y + '): −' + dmg + ' прочности.' });
+    S.toast.push({ title: 'Молния!', text: nm + ' пострадал от грозы (−' + dmg + ')', t: S.time, bad: true, icon: 'bolt' });
+  } else if (b.owner > 0) { /* чужая гроза — пусть горит, но мы не обязаны знать */ }
+}
+
 /* ===== Главный шаг ===== */
 /* ===== События ===== */
 function capitalOf(S, pid) { return S.cities.find(c => c.owner === pid && c.isCap && c.home === pid) || S.cities.find(c => c.owner === pid); }
@@ -1393,7 +1418,14 @@ const EVENTS = [
   { id: 'fair', w: 2, choice: 1, cost: { gold: 80 }, title: 'Ярмарка', text: 'Купцы просят 80 золота на большую ярмарку. Соседи оценят гостеприимство — отношения со всеми станут теплее.', ok: S => S.players.length > 1,
     run(S, p) { for (const q of S.players) if (q.id !== p.id && q.alive) rel(S, p.id, q.id).op += 10; return 'Ярмарка удалась: соседи стали относиться к вам теплее.'; } },
   { id: 'mercs', w: 2, choice: 1, cost: { gold: 150 }, title: 'Вольный отряд', text: 'Бродячий отряд воинов предлагает службу за 150 золота.', ok: S => S.time > 200,
-    run(S, p, r) { const t = ['archer', 'light', 'spear'][(r() * 3) | 0], c = giftSquad(S, p, t); return c ? SQ[t].n + ' присягнули вам и ждут у города ' + c.name + '.' : ''; } }
+    run(S, p, r) { const t = ['archer', 'light', 'spear'][(r() * 3) | 0], c = giftSquad(S, p, t); return c ? SQ[t].n + ' присягнули вам и ждут у города ' + c.name + '.' : ''; } },
+  { id: 'bard', w: 2, good: 1, title: 'Странствующий бард', run(S, p, r) { const n = 30 + ((r() * 41) | 0); p.stock.gold += n; p.earned += n; return 'Бард прославил ваше королевство по тавернам: +' + n + ' золота в казне.'; } },
+  { id: 'artisans', w: 2, good: 1, title: 'Гильдия ремесленников', run(S, p) { p.stock.sword += 2; p.stock.armL += 1; const ic = p.itCap || ITEM_CAP; if (p.stock.sword > ic) p.stock.sword = ic; if (p.stock.armL > ic) p.stock.armL = ic; return 'Мастера оставили вам подарок: 2 меча и лёгкие доспехи.'; } },
+  { id: 'locusts', w: 2, title: 'Саранча', ok: (S, p) => p.stock.food > 100, run(S, p) { const n = Math.min(120, Math.max(15, Math.round(p.stock.food * 0.18))); p.stock.food = Math.max(0, p.stock.food - n); return 'Полчища саранчи погубили ' + n + ' еды на складах.'; } },
+  { id: 'refugees', w: 2, choice: 1, cost: { food: 40 }, title: 'Беженцы у ворот', text: 'У ворот толпа беженцев просит хлеба. Накрыть столы (40 еды)?', run(S, p) { p.stock.gold += 120; p.earned += 120; return 'Благодарные беженцы оставили 120 золота и остались в городе.'; } },
+  { id: 'plague', w: 1, title: 'Моровая язва', ok: (S, p) => S.armies.some(a => a.owner === p.id && a.sq.length), run(S, p) { let hurt = 0; for (const a of S.armies) if (a.owner === p.id) for (const q of a.sq) for (const u of q.s) { const d = Math.max(1, Math.ceil(SQ[q.t].hp * 0.08)); if (u.hp > d) u.hp -= d; hurt++; } return 'Болезнь косит армию: ' + hurt + ' воинов ослаблены (−8% здоровья). Помочь могут госпитали.'; } },
+  { id: 'comet', w: 1, good: 1, title: 'Комета в небе', run(S, p) { for (const q of S.players) if (q.alive && q.id !== p.id) rel(S, p.id, q.id).op += 6; return 'Знак с небес утихомирил всех: отношения с соседями теплеют (+6).'; } },
+  { id: 'preacher', w: 2, good: 1, title: 'Проповедник в столице', run(S, p, r) { const n = 20 + ((r() * 31) | 0); p.stock.gold += n; p.earned += n; return 'Сбор пожертвований в храме: +' + n + ' золота.'; } }
 ];
 function tickEvents(S) {
   for (const p of S.players) {
@@ -1490,6 +1522,7 @@ function tick(S, dt) {
   if (S.tk % 4 === 0) { calcRates(S); calcVision(S); }
   tickEcon(S, dt); tickProd(S, dt); tickMove(S, dt); tickCombat(S, dt); tickHospital(S, dt); tickCities(S, dt); tickShips(S, dt); tickTerr(S, dt); tickExpand(S, dt); tickFolk(S, dt);
   if (S.tk % 4 === 1) tickDiplomacy(S);
+  if (S.tk % 25 === 0 && weather(S).id === 'storm' && S.rnd() < 0.6) lightningStrike(S);
   if (S.tk % 8 === 0) { for (const p of S.players) if (!p.human && p.alive) aiThink(S, p); calcScore(S); checkVictory(S); }
   if (S.tk % 8 === 4 && S.opts.events && !S.opts.sandbox) tickEvents(S);
 }

@@ -261,24 +261,55 @@ function frame(S, now) {
       const r0 = tn[0] * 0.98, g0 = tn[1] * 0.95, b0 = tn[2] * 0.9, lum = 0.213 * r0 + 0.715 * g0 + 0.072 * b0, bo = v => Math.max(0, Math.min(255, lum + (v - lum) / 0.64)) | 0;
       c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'multiply'; c.fillStyle = `rgb(${bo(r0)},${bo(g0)},${bo(b0)})`; c.fillRect(0, 0, RN.cv.width, RN.cv.height); c.restore(); c.imageSmoothingEnabled = false;
     }
-    { // времена года и погода — только вид, на игру не влияет
-      const seas = Math.floor(S.time / (DAY * 10)) % 4; // весна-лето-осень-зима, каждые 10 игровых дней
+    { // времена года и погода — настоящая система: то же, что считают в игре
+      const seas = Math.floor(S.time / SEASON_LEN) % 4;
+      const wx = weather(S);
       c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
       c.globalCompositeOperation = 'multiply';
-      c.fillStyle = seas === 0 ? 'rgba(206,228,255,0.22)' : seas === 1 ? 'rgba(255,238,200,0.12)' : seas === 2 ? 'rgba(255,214,170,0.2)' : 'rgba(216,230,255,0.24)';
+      c.fillStyle = seas === 0 ? 'rgba(206,228,255,0.22)' : seas === 1 ? 'rgba(255,238,200,0.12)' : seas === 2 ? 'rgba(255,214,170,0.2)' : 'rgba(216,230,255,0.26)';
       c.fillRect(0, 0, RN.cv.width, RN.cv.height);
+      // погода тонирует сцену
+      if (wx.id === 'heat') { c.fillStyle = 'rgba(255,196,110,0.22)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); }
+      else if (wx.id === 'frost') { c.globalCompositeOperation = 'multiply'; c.fillStyle = 'rgba(178,206,255,0.34)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); c.globalCompositeOperation = 'multiply'; }
+      else if (wx.id === 'storm') { c.fillStyle = 'rgba(84,92,120,0.34)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); }
+      else if (wx.id === 'cloud') { c.fillStyle = 'rgba(150,158,170,0.16)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); }
+      else if (wx.id === 'rain') { c.fillStyle = 'rgba(96,108,132,0.2)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); }
+      else if (wx.id === 'snow') { c.fillStyle = 'rgba(226,236,250,0.2)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); }
       c.globalCompositeOperation = 'source-over';
-      const p = Math.sin(S.time * 0.21) * 0.5 + 0.5, W2 = RN.cv.width, H2 = RN.cv.height;
-      const snow = seas === 3 && p > 0.25, leaves = seas === 2 && p > 0.3, rain = seas === 0 && p > 0.55;
-      if (snow || leaves || rain) for (let i = 0; i < 70; i++) {
-        const h1 = hash(i, 7, 3), h2 = hash(i, 11, 5), h3 = hash(i, 3, 9);
-        const sx = ((h1 * W2 + (leaves ? tm * 46 + Math.sin(tm + i) * 14 : 0)) % (W2 + 16)) - 8;
-        const sy = ((h2 * H2 + tm * (snow ? 46 : leaves ? 120 : 470) * (0.65 + h3 * 0.7)) % (H2 + 16)) - 8;
-        if (snow) { c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(sx, sy, 2, 2); }
-        else if (leaves) { c.fillStyle = i % 3 ? 'rgba(214,148,52,0.8)' : 'rgba(178,96,38,0.8)'; c.fillRect(sx, sy, 2, 1.6); }
-        else { c.fillStyle = 'rgba(165,195,235,0.5)'; c.fillRect(sx, sy, 1, 6); }
+      const W2 = RN.cv.width, H2 = RN.cv.height;
+      const rain = wx.id === 'rain' || wx.id === 'storm', snow = wx.id === 'snow', leaves = seas === 2 && !rain && !snow && wx.id !== 'storm';
+      if (rain || snow || leaves) {
+        const n = wx.id === 'storm' ? 130 : 80;
+        for (let i = 0; i < n; i++) {
+          const h1 = hash(i, 7, 3), h2 = hash(i, 11, 5), h3 = hash(i, 3, 9);
+          const fall = snow ? 52 : leaves ? 130 : 480;
+          const sway = leaves ? 120 : rain ? 30 : 12;
+          const sx = ((h1 * (W2 + 60) + Math.sin(tm * 0.7 + i) * sway + (rain ? tm * 90 : 0)) % (W2 + 16)) - 8;
+          const sy = ((h2 * H2 + tm * fall * (0.65 + h3 * 0.7)) % (H2 + 16)) - 8;
+          if (snow) { c.fillStyle = 'rgba(255,255,255,0.9)'; c.fillRect(sx, sy, 2, 2); }
+          else if (leaves) { c.fillStyle = i % 3 ? 'rgba(214,148,52,0.8)' : 'rgba(178,96,38,0.8)'; c.fillRect(sx, sy, 2, 1.6); }
+          else { c.fillStyle = wx.id === 'storm' ? 'rgba(190,205,235,0.6)' : 'rgba(165,195,235,0.55)'; c.fillRect(sx, sy, 1, wx.id === 'storm' ? 8 : 6); }
+        }
+      }
+      // туман: молочная пелена поверх всего
+      if (wx.id === 'fog') { c.fillStyle = 'rgba(223,228,230,0.4)'; c.fillRect(0, 0, W2, H2); }
+      // гроза: вспышка молнии по событию 'flash' в S.fx
+      if (wx.id === 'storm') {
+        for (const f of S.fx) {
+          if (f.k !== 'flash') continue;
+          const age = S.time - f.t; if (age < 0 || age > 0.5) continue;
+          c.fillStyle = 'rgba(255,255,255,' + (0.75 * (1 - age / 0.5)).toFixed(3) + ')';
+          c.fillRect(0, 0, W2, H2);
+          break;
+        }
       }
       c.restore(); c.imageSmoothingEnabled = false;
+      // зимой у водоёмов — лёд: чуть осветляем клетки воды
+      if (seas === 3) {
+        c.save(); c.globalAlpha = 0.16; c.fillStyle = '#dceafa'; c.globalCompositeOperation = 'screen';
+        for (let y = vy0; y < vy1; y += 1) for (let x2 = vx0; x2 < vx1; x2 += 1) if (S.ter[y * S.W + x2] <= 1 && hash(x2, y, 17) > 0.45) R_(c, x2 * TS, y * TS, TS, TS, '#dceafa');
+        c.restore();
+      }
     }
     if (dark > 0.12) { c.globalAlpha = Math.min(1, dark * 1.3);
       for (const ct of S.cities) { const ox = ct.x * TS, oy = ct.y * TS - 14; if (ct.x < vx0 - 3 || ct.x > vx1 || ct.y < vy0 - 3 || ct.y > vy1) continue; R_(c, ox + 14.5, oy + 27.5, 3, 3.5, '#ffd870'); const n = Math.min(6, 1 + ct.level); for (let i = 0; i < n; i++) { const h = CITY_HS[i]; R_(c, ox + (h[0] + 1.5) * 0.5, oy + (32 + h[1] + 6) * 0.5, 1, 1, '#ffd870'); R_(c, ox + (h[0] + 6.5) * 0.5, oy + (32 + h[1] + 6) * 0.5, 0.5, 1, '#ffb850'); } }
