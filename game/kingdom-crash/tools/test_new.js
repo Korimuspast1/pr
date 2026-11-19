@@ -99,7 +99,8 @@ const defend = (S) => { // в длинных симуляциях игроку �
   const S = mk();
   defend(S);
   const t0 = S.extra.size;
-  run(S, 8000);
+  // партию можно доиграть до победы по очкам (ИИ добирает 30000 раньше): тогда рост границ честно останавливается — проверяем до конца партии
+  for (let i = 0; i < 4000 && !S.over; i++) G.tick(S, 0.25);
   ok(S.extra.size > t0, 'границы ползут в свободные земли', 'extra=' + S.extra.size);
   let claimed = 0;
   for (const [i, o] of S.extra) { if (S.terr[i] === o) claimed++; }

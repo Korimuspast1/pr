@@ -85,7 +85,7 @@ function newGame(o, tries) {
     const st = {}; STOCK_KEYS.forEach(k => st[k] = 0); Object.assign(st, { gold: 450, wood: 320, food: 260, iron: 120 });
     const diff = i === 0 ? 'normal' : (o.diff === 'mixed' ? ['easy', 'normal', 'hard'][(rnd() * 3) | 0] : o.diff);
     S.players.push({ id: i, name: PNAMES[order[i]], col: PCOL[order[i]], ci: order[i], perk: PERKS[order[i]].id, human: i === 0, diff, mult: DIFF[diff].mult, stock: st, rate: { gold: 0, wood: 0, food: 0, iron: 0 },
-      earned: 0, kills: 0, wins: 0, captured: 0, alive: true, ai: { next: 3 + i, fails: {}, failsAt: 0 }, flags: {}, eco: 0, mil: 0, score: 0, lastFood: -999, lastGold: -999, evAt: 150 + rnd() * 200 });
+      earned: 0, kills: 0, wins: 0, captured: 0, alive: true, ai: { next: 3 + i, fails: {}, failsAt: 0 }, flags: {}, eco: 0, mil: 0, score: 0, lastFood: -999, lastGold: -999, evAt: 150 + rnd() * 200, tax: i === 0 ? 10 : 8 + (i * 7) % 13, mood: 62 });
     S.rel[i] = [];
   }
   for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const r = { st: 'peace', op: ((rnd() * 40) | 0) - 20, truceUntil: 0, trade: false, warSince: 0, ally: false, cl: {}, pass: {}, cd: {} }; S.rel[i][j] = r; S.rel[j][i] = r; }
@@ -161,7 +161,7 @@ function ensureNearby(S, cx, cy, rnd) { // гарантируем минимум
   }
 }
 function addCity(S, x, y, owner, name, cap) {
-  const c = { id: S.cities.length, name, x, y, owner, level: 1, radius: 3, rr: 0, cap: null, isCap: !!cap, home: owner };
+  const c = { id: S.cities.length, name, x, y, owner, level: 1, radius: 3, rr: 0, cap: null, isCap: !!cap, home: owner, pop: 140 };
   S.cities.push(c); for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) S.occ[(y + dy) * S.W + x + dx] = 1000000 + c.id; return c;
 }
 function garrison(c) { return c.owner < 0 ? 60 + 40 * (c.level - 1) : 30 * c.level + (c.isCap ? 40 : 0); }
@@ -1012,6 +1012,9 @@ function millNear(S, b) { // рядом с фермой (вплотную) ст�
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const x = b.x + dx, y = b.y + dy; if (x < 0 || y < 0 || x >= S.W || y >= S.H) continue; const o = S.occ[y * S.W + x]; if (o < 0 || o >= 1000000) continue; const m = S.bmap.get(o); if (m && m.type === 'mill' && m.owner === b.owner) return true; }
   return false;
 }
+// сколько жителей вмещает город: размер + уровень + дома в радиусе 7 клеток
+function popCapOf(S, c) { let cap = 90 + c.level * 70; for (const b of S.buildings) if (b.type === 'house' && b.owner === c.owner) { const dx = b.x + 0.5 - (c.x + 1), dy = b.y + 0.5 - (c.y + 1); if (dx * dx + dy * dy < 49) cap += 30; } return cap; }
+function moodWord(m) { return m >= 72 ? 'народ доволен' : m >= 45 ? 'спокойствие, без восторгов' : 'народ ропщет'; }
 function farmRate(S, b, p) { return 0.7 * p.mult * (perk(p, 'farm') ? 1.3 : 1) * (millNear(S, b) ? 1.5 : 1) * bldBoost(b) * seasonFarm(S) * weather(S).farm; }
 /* ===== Улучшение зданий (до 3 уровня) ===== */
 function bldBoost(b) { return 1 + 0.3 * ((b.lvl || 1) - 1); }
@@ -1044,6 +1047,7 @@ function calcRates(S) {
     else if (b.type === 'port') { r.gold += 0.3 * m * bb * (perk(p, 'sea') ? 3 : 1) * (sanOn(S, b.owner, 'ports') ? 0.5 : 1); ports[b.owner]++; }
   }
   for (const a of S.armies) { const r = S.players[a.owner].rate; r.food -= 0.12 * a.sq.length * (granary[a.owner] ? 0.75 : 1); r.gold -= 0.06 * a.sq.length; }
+  for (const p of S.players) { let tp = 0; for (const c of S.cities) if (c.owner === p.id) tp += c.pop || 0; p.pop = tp; if (p.alive) { p.rate.food -= tp * POP_EAT; p.rate.gold += tp * (p.tax === undefined ? 10 : p.tax) * POP_TAX; } }
   // торговля: только между живыми державами; рынки её усиливают, пошлины делят доход
   for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (S.rel[i][j].trade && S.players[i].alive && S.players[j].alive) for (const k of [i, j]) {
     let g = 0.5 + 0.25 * Math.min(ports[i], ports[j]) + 0.05 * Math.min(4, markets[k]); if (embassy[k]) g *= 1.3;
@@ -1358,10 +1362,45 @@ function tickTerr(S, dt) {
   if (ch) recomputeTerr(S);
 }
 
+/* ===== Население и настроение =====
+   Жители живут в городах: растут при хорошем настроении и запасе места, еда их кормит,
+   налог даёт казне (с каждого жителя), но высокий налог злит народ. Война, голод,
+   скученность и отсутствие госпиталя валят настроение — а от него зависит прирост. */
+const POP_EAT = 0.00045, POP_TAX = 0.0006;
+function tickDemography(S, dt) {
+  S._demT = (S._demT || 0) + dt; if (S._demT < 2) return; const step = S._demT; S._demT = 0;
+  const warMask = new Array(S.players.length).fill(0);
+  for (let i = 0; i < S.players.length; i++) for (let j = i + 1; j < S.players.length; j++) if (atWar(S, i, j)) { warMask[i] = 1; warMask[j] = 1; }
+  for (const p of S.players) {
+    if (!p.alive) continue;
+    let m = 62; m += warMask[p.id] ? -12 : 6;
+    if (S.fest) m += 8;
+    const starving = p.rate.food < 0 && p.stock.food <= 0;
+    if (starving) m -= 26; else if (p.stock.food > 30 || p.rate.food >= 0) m += 6;
+    let capAll = 0, popAll = 0; for (const c of S.cities) if (c.owner === p.id) { popAll += c.pop || 0; capAll += popCapOf(S, c); }
+    p.capSum = capAll;
+    if (popAll > capAll) m -= 12; else if (popAll < capAll * 0.6) m += 6;
+    m -= ((p.tax === undefined ? 10 : p.tax) - 10) * 1.4;
+    if (S.buildings.some(b => b.owner === p.id && b.type === 'hospital')) m += 4;
+    m = Math.max(5, Math.min(100, m));
+    p.mood = p.mood === undefined ? m : p.mood + (m - p.mood) * Math.min(1, step * 0.09);
+  }
+  for (const c of S.cities) {
+    const p = c.owner >= 0 ? S.players[c.owner] : null;
+    if (p && !p.alive) continue;
+    const cap = popCapOf(S, c), mood = p ? p.mood : 55, foodOk = !p || p.stock.food > 0 || p.rate.food >= 0;
+    const room = Math.max(-0.6, Math.min(1, 1 - (c.pop || 0) / cap));
+    const rate = foodOk ? 0.0022 * (mood / 62) * room : -0.004;
+    c.pop = Math.max(20, Math.min(cap * 1.2, (c.pop || 140) * (1 + rate * step)));
+  }
+  const p0 = S.players[0];
+  if (p0 && p0.alive) { S.pT = (S.pT || 0) + step; if (S.pT >= DAY * 3) { S.pT = 0; info(S, 0, 'Перепись населения', 'В державе ' + Math.round(p0.pop || 0) + ' жителей (вместимость ' + Math.round(p0.capSum || 0) + '). Настроение: ' + moodWord(p0.mood || 50) + '.', 'info'); } }
+}
 /* ===== Очки и победа ===== */
 function calcScore(S) {
   for (const p of S.players) {
     let eco = 0; for (const b of S.buildings) if (b.owner === p.id) eco += BD[b.type].pts; for (const c of S.cities) if (c.owner === p.id) eco += 60 * c.level + (c.isCap ? 100 : 0);
+    for (const c of S.cities) if (c.owner === p.id) eco += Math.floor((c.pop || 0) / 25);
     eco += Math.floor(p.earned / 2);
     let mil = p.kills * 3 + p.wins * 120 + p.captured * 400; for (const a of S.armies) if (a.owner === p.id) mil += units(a) * 2;
     p.eco = Math.floor(eco); p.mil = Math.floor(mil); p.score = p.eco + p.mil;
@@ -1422,8 +1461,8 @@ const EVENTS = [
   { id: 'bard', w: 2, good: 1, title: 'Странствующий бард', run(S, p, r) { const n = 30 + ((r() * 41) | 0); p.stock.gold += n; p.earned += n; return 'Бард прославил ваше королевство по тавернам: +' + n + ' золота в казне.'; } },
   { id: 'artisans', w: 2, good: 1, title: 'Гильдия ремесленников', run(S, p) { p.stock.sword += 2; p.stock.armL += 1; const ic = p.itCap || ITEM_CAP; if (p.stock.sword > ic) p.stock.sword = ic; if (p.stock.armL > ic) p.stock.armL = ic; return 'Мастера оставили вам подарок: 2 меча и лёгкие доспехи.'; } },
   { id: 'locusts', w: 2, title: 'Саранча', ok: (S, p) => p.stock.food > 100, run(S, p) { const n = Math.min(120, Math.max(15, Math.round(p.stock.food * 0.18))); p.stock.food = Math.max(0, p.stock.food - n); return 'Полчища саранчи погубили ' + n + ' еды на складах.'; } },
-  { id: 'refugees', w: 2, choice: 1, cost: { food: 40 }, title: 'Беженцы у ворот', text: 'У ворот толпа беженцев просит хлеба. Накрыть столы (40 еды)?', run(S, p) { p.stock.gold += 120; p.earned += 120; return 'Благодарные беженцы оставили 120 золота и остались в городе.'; } },
-  { id: 'plague', w: 1, title: 'Моровая язва', ok: (S, p) => S.armies.some(a => a.owner === p.id && a.sq.length), run(S, p) { let hurt = 0; for (const a of S.armies) if (a.owner === p.id) for (const q of a.sq) for (const u of q.s) { const d = Math.max(1, Math.ceil(SQ[q.t].hp * 0.08)); if (u.hp > d) u.hp -= d; hurt++; } return 'Болезнь косит армию: ' + hurt + ' воинов ослаблены (−8% здоровья). Помочь могут госпитали.'; } },
+  { id: 'refugees', w: 2, choice: 1, cost: { food: 40 }, title: 'Беженцы у ворот', text: 'У ворот толпа беженцев просит хлеба. Накрыть столы (40 еды)?', run(S, p, r) { p.stock.gold += 120; p.earned += 120; let where = ''; const cs = S.cities.filter(c => c.owner === p.id); if (cs.length) { const c = cs[(r() * cs.length) | 0]; c.pop = Math.min(popCapOf(S, c) * 1.2, (c.pop || 0) + 45); where = ' 45 из них остались в городе ' + c.name + '.'; } return 'Благодарные беженцы оставили 120 золота.' + where; } },
+  { id: 'plague', w: 1, title: 'Моровая язва', ok: (S, p) => S.armies.some(a => a.owner === p.id && a.sq.length), run(S, p) { let hurt = 0; for (const a of S.armies) if (a.owner === p.id) for (const q of a.sq) for (const u of q.s) { const d = Math.max(1, Math.ceil(SQ[q.t].hp * 0.08)); if (u.hp > d) u.hp -= d; hurt++; } const hosp = S.buildings.some(b => b.owner === p.id && b.type === 'hospital'); for (const c of S.cities) if (c.owner === p.id) c.pop = Math.max(20, Math.round((c.pop || 140) * (hosp ? 0.94 : 0.88))); return 'Болезнь косит армию: ' + hurt + ' воинов ослаблены (−8% здоровья). Жители тоже болеют' + (hosp ? ', но госпитали смягчили мор (−6%).' : ' (−12% жителей — постройте госпиталь).'); } },
   { id: 'comet', w: 1, good: 1, title: 'Комета в небе', run(S, p) { for (const q of S.players) if (q.alive && q.id !== p.id) rel(S, p.id, q.id).op += 6; return 'Знак с небес утихомирил всех: отношения с соседями теплеют (+6).'; } },
   { id: 'preacher', w: 2, good: 1, title: 'Проповедник в столице', run(S, p, r) { const n = 20 + ((r() * 31) | 0); p.stock.gold += n; p.earned += n; return 'Сбор пожертвований в храме: +' + n + ' золота.'; } }
 ];
@@ -1514,7 +1553,7 @@ function tickFest(S, dt) {
 }
 function tick(S, dt) {
   if (S.over) return; S.time += dt; S.tk++;
-  tickCars(S, dt); tickFest(S, dt);
+  tickCars(S, dt); tickFest(S, dt); tickDemography(S, dt);
   for (const a of S.armies) { // опыт полководцев и затихание «натиска»
     if (a._bo) { a._bo -= dt; if (a._bo <= 0) a._bo = 0; }
     if (a.fight) { const c2 = a.sq.find(q => q.t === 'cmd'); if (c2) c2.xp = (c2.xp || 0) + dt; }
@@ -1607,7 +1646,7 @@ function restoreGame(d) {
     if (p.flags && typeof p.flags === 'object') for (const k in p.flags) if (/^[A-Za-z_]{1,20}$/.test(k) && p.flags[k]) fl[k] = 1;
     S.players.push({ id: i, name: PNAMES[ci], col: PCOL[ci], ci, perk: PERKS[ci].id, human: i === 0, diff, mult: DIFF[diff].mult, stock: st, rate: { gold: 0, wood: 0, food: 0, iron: 0 },
       earned: _n(p.earned, 0, 1e12, 0), kills: _i(p.kills, 0, 1e9, 0), wins: _i(p.wins, 0, 1e9, 0), captured: _i(p.captured, 0, 1e6, 0), alive: true, ai: { next: _n(p.ai && p.ai.next, 0, 1e9, 0), fails: {}, failsAt: 0 }, flags: fl,
-      eco: 0, mil: 0, score: 0, lastFood: _n(p.lastFood, -1e9, 1e9, -999), lastGold: _n(p.lastGold, -1e9, 1e9, -999), evAt: _n(p.evAt, 0, 1e9, time + 200) });
+      eco: 0, mil: 0, score: 0, lastFood: _n(p.lastFood, -1e9, 1e9, -999), lastGold: _n(p.lastGold, -1e9, 1e9, -999), evAt: _n(p.evAt, 0, 1e9, time + 200), tax: _n(p.tax, 0, 30, 10), mood: _n(p.mood, 5, 100, 62) });
     S.rel[i] = [];
   });
   for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const r = { st: 'peace', op: 0, truceUntil: 0, trade: false, warSince: 0, ally: false, cl: {}, pass: {}, cd: {} }; S.rel[i][j] = r; S.rel[j][i] = r; }
@@ -1624,7 +1663,7 @@ function restoreGame(d) {
     if (!c || typeof c !== 'object') _fail('город'); const x = c.x | 0, y = c.y | 0; if (x !== c.x || y !== c.y || x < 1 || y < 1 || x > W - 3 || y > H - 3) _fail('место города');
     for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) { const k = (y + dy) * W + x + dx; if (S.occ[k] >= 0 || isWater(ter[k])) _fail('место города'); S.occ[k] = 1000000 + i; }
     const owner = pid(c.owner); let cap = null; if (c.cap && typeof c.cap === 'object' && pid(c.cap.by) >= 0) cap = { by: pid(c.cap.by), p: _n(c.cap.p, 0, 1, 0), hold: _n(c.cap.hold, 0, 60, 0) };
-    S.cities.push({ id: i, name: _s(c.name, 28) || 'Город ' + (i + 1), x, y, owner, level: _i(c.level, 1, 5, 1), radius: _n(c.radius, 1, 30, 4), rr: 0, cap, isCap: !!c.isCap, home: pid(c.home), free: owner < 0 });
+    S.cities.push({ id: i, name: _s(c.name, 28) || 'Город ' + (i + 1), x, y, owner, level: _i(c.level, 1, 5, 1), radius: _n(c.radius, 1, 30, 4), rr: 0, cap, isCap: !!c.isCap, home: pid(c.home), free: owner < 0, pop: _n(c.pop, 20, 50000, 140) });
   });
   // здания
   if (!Array.isArray(d.buildings) || d.buildings.length > 20000) _fail('здания');

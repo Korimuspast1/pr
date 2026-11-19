@@ -71,8 +71,10 @@ const build = (S, type) => { for (let y = 0; y < S.H; y++) for (let x = 0; x < S
   const S = mk(); give(S);
   G.calcRates(S); const before = S.players[0].rate.gold;
   ok(build(S, 'townhall'), 'ратуша построена');
+  const p0 = S.players[0];
+  const cityGold = S.cities.reduce((n, c) => n + (c.owner === 0 ? (0.6 + 0.45 * c.level) * (G.perk(p0, 'gold') ? 1.25 : 1) : 0), 0);
   G.calcRates(S); const after = S.players[0].rate.gold;
-  ok(after > before * 1.15, 'после ратуши города дают на ~20% больше золота', 'до=' + before.toFixed(2) + ' после=' + after.toFixed(2));
+  ok(Math.abs((after - before) - cityGold * 0.2) < 1e-6, 'после ратуши именно городская часть золота выросла на 20%', 'Δ=' + (after - before).toFixed(3) + ' ожидалось ' + (cityGold * 0.2).toFixed(3));
 }
 
 // ===== Амбар: армия ест меньше =====
