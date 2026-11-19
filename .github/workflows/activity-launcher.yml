@@ -68,3 +68,36 @@ jobs:
         with:
           name: GlassActivityLauncher
           path: activity-launcher/GlassActivityLauncher.apk
+
+  smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [24, 34]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: GlassActivityLauncher
+          path: activity-launcher
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - run: pip install pillow
+      - name: Emulator smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          API: ${{ matrix.api }}
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: activity-launcher
+          script: python3 ci/smoke.py
