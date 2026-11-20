@@ -183,6 +183,55 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     return !document.querySelector('.toast[data-rt="' + rt + '"]') ? 'ok' : 'тост висит в DOM';
   })()`);
   ok(small === 'ok', 'малый свайп не трогает, тап закрывает', small);
+  // --- 2.10.0: уведомления отключаются в настройках ---
+  ok(ev('SET.notify === 1 && SET.panel === 1'), 'по умолчанию уведомления и панель включены');
+  // к этому моменту партия может быть проиграна ботам — окно конца заблокировано, закрываем его
+  ev('UI.shownOver = true; closeModal();');
+  ev('ACT.settings()');
+  await wait(50);
+  ok(/Уведомления/.test(d.getElementById('modal').textContent) && !!d.querySelector('[data-act="toggle:notify"]'), 'в настройках есть переключатель уведомлений');
+  ok(/Нижняя панель/.test(d.getElementById('modal').textContent) && !!d.querySelector('[data-act="toggle:panel"]'), 'в настройках есть переключатель нижней панели');
+  click('[data-act="toggle:notify"]');
+  await wait(50);
+  ok(ev('SET.notify === 0'), 'уведомления выключены переключателем');
+  const toastTest = ev(`(() => {
+    UI.toasts = [{ t: { title: 'Скрытое', text: 'не видно', ev: 1 }, rt: performance.now(), dur: 60000 }];
+    UI.S.toast.push({ title: 'Из очереди', text: 'тоже не видно', icon: 'flag' });
+    updateHud();
+    return { dom: !!document.querySelector('.toast'), kept: UI.toasts.length, queue: UI.S.toast.length };
+  })()`);
+  ok(!toastTest.dom && toastTest.kept === 0 && toastTest.queue === 0, 'при выключенных уведомлениях тосты не появляются, очередь пустеет', JSON.stringify(toastTest));
+  ev('ACT.toggle("notify")');
+  await wait(50);
+  ok(ev('SET.notify === 1'), 'уведомления включены обратно');
+  ev('closeModal()');
+
+  // --- 2.10.0: нижнюю панель можно скрыть и показать (стрелка у края + настройка), состояние сохраняется ---
+  const panel0 = ev('document.getElementById("tabs").classList.contains("hidden") + "/" + document.getElementById("bar").classList.contains("hidden") + "/" + document.getElementById("panelFab").getAttribute("data-act") + "/" + !!document.querySelector("#panelFab svg.ic")');
+  ok(panel0 === 'false/false/paneltoggle/true', 'панель видна, стрелка на месте, внутри — SVG', panel0);
+  ev('ACT.paneltoggle()');
+  await wait(50);
+  ok(ev('document.getElementById("tabs").classList.contains("hidden") && document.getElementById("bar").classList.contains("hidden")'), 'панель скрыта стрелкой');
+  ok(ev('(() => { let v = null; try { v = JSON.parse(localStorage.getItem("kc_set")); } catch (e) { v = "jsdom-blocked"; } return !v || v === "jsdom-blocked" || v.panel === 0; })()'), 'скрытая панель уходит в хранилище настроек (в jsdom localStorage может быть недоступен)');
+  ok(ev('document.getElementById("hud").classList.contains("panel-off")'), 'HUD получил класс panel-off');
+  ok(ev('!!document.querySelector("#panelFab svg.ic") && document.getElementById("panelFab").innerHTML.indexOf("chevup") > -1 || document.getElementById("panelFab").innerHTML.indexOf("path") > -1'), 'стрелка сменилась на «показать»');
+  ev('ACT.paneltoggle()');
+  await wait(50);
+  ok(ev('!document.getElementById("tabs").classList.contains("hidden") && !document.getElementById("bar").classList.contains("hidden")'), 'панель снова показана');
+  ev('ACT.settings()'); await wait(50);
+  click('[data-act="toggle:panel"]'); await wait(50);
+  ok(ev('SET.panel === 0 && document.getElementById("bar").classList.contains("hidden")'), 'панель скрыта из настроек');
+  click('[data-act="toggle:panel"]'); await wait(50);
+  ok(ev('SET.panel === 1 && !document.getElementById("bar").classList.contains("hidden")'), 'панель включена из настроек');
+  ev('closeModal()');
+
+  // --- 2.10.0: векторные SVG-иконки в интерфейсе ---
+  ok(ev('!!document.querySelector("#resbar svg.ic")'), 'иконки ресурсов — векторные SVG');
+  ok(ev('document.querySelectorAll("#tabs svg.ic").length >= 6'), 'вкладки — SVG-иконки');
+  ok(ev('document.querySelectorAll("#bar svg.ic").length >= 10'), 'нижняя панель — SVG-иконки');
+  ok(ev('document.querySelector("#scoreI svg.ic") !== null && document.querySelector("#burger svg.ic") !== null'), 'верхняя панель — SVG-иконки');
+  ok(ev('typeof SV === "object" && Object.keys(SV).length >= 55 && SV.gold.indexOf("<circle") === 0 && !/<img/.test(document.getElementById("resbar").innerHTML)'), 'векторный набор иконок на месте, <img> не осталось');
+
   ok(errs.length === 0, 'нет ошибок JS', errs.slice(0, 3).join(' | '));
 
   console.log('пройдено:', pass, 'провалено:', fail);

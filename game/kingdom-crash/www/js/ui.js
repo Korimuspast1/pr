@@ -14,7 +14,7 @@ const sw = col => `<span class="sw" style="background:${/^#[0-9a-fA-F]{6}$/.test
 const prodSpeed = p => p.mult * (perk(p, 'craft') ? 1.3 : 1), trainSpeed = p => p.mult * (perk(p, 'drill') ? 1.25 : 1);
 const secs = v => Math.max(0, Math.ceil(v));
 function uiError(e) { try { console.error(e); } catch (x) { /* консоли может не быть */ } if (UI.S) UI.S.toast.push({ title: 'Сбой', text: 'Действие не выполнено', t: UI.S.time, bad: true }); }
-const STAR = () => IMG('star', 16), INF = () => `<img class="ic" src="${ICONURL.inf || ''}" style="width:22px;height:16px" alt="">`;
+const STAR = () => IMG('star', 16), INF = () => IMG('inf', 18);
 
 /* Обновление разметки «на месте»: меняются только отличающиеся узлы. Кнопка под пальцем не пересоздаётся,
    поэтому нажатия не теряются, а прокрутка списков не сбрасывается (раньше панели перерисовывались целиком). */
@@ -44,9 +44,17 @@ const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 };
-const SET = { sfx: 1, music: 1, hints: 1, confirm: 1, ambient: 1 };
+const SET = { sfx: 1, music: 1, hints: 1, confirm: 1, ambient: 1, notify: 1, panel: 1 };
 { const s = store.get('kc_set'); if (s && typeof s === 'object') for (const k in SET) if (s[k] === 0 || s[k] === 1) SET[k] = s[k]; }
-function applySettings() { SND.set('sfx', SET.sfx); SND.set('music', SET.music); store.set('kc_set', SET); }
+function applySettings() { SND.set('sfx', SET.sfx); SND.set('music', SET.music); store.set('kc_set', SET); applyPanel(); }
+// нижняя панель (вкладки + кнопки действий) прячется и показывается:
+// кнопкой-стрелкой у правого края и переключателем в настройках
+function applyPanel() {
+  const on = !!SET.panel;
+  const t = $('tabs'), b = $('bar'); if (t) t.classList.toggle('hidden', !on); if (b) b.classList.toggle('hidden', !on);
+  const f = $('panelFab'); if (f) { f.innerHTML = IMG(on ? 'chevdn' : 'chevup', 26); f.setAttribute('aria-label', on ? 'Скрыть нижнюю панель' : 'Показать нижнюю панель'); f.title = on ? 'Скрыть панель' : 'Показать панель'; }
+  const hud = $('hud'); if (hud) hud.classList.toggle('panel-off', !on);
+}
 const cnt = (S, t) => { let n = 0; for (const b of S.buildings) if (b.owner === 0 && b.type === t) n++; return n; };
 const myCities = S => S.cities.filter(c => c.owner === 0);
 const ACH = [
@@ -158,10 +166,12 @@ function updateHud() {
   { const m = S.msgs[0], top = m ? m.id : 0;
     if (UI.seenMsg === undefined) UI.seenMsg = top;
     else if (top !== UI.seenMsg) { UI.seenMsg = top; if (m) SND.play(m.title === 'Молния!' ? 'thunder' : m.type === 'war' ? (/потерян/.test(m.title) ? 'lost' : 'horn') : m.title === 'Город захвачен!' ? 'capture' : /готов/.test(m.title) ? 'ready' : 'msg'); } }
-  // всплывающие заметки
-  for (const t of S.toast.splice(0)) UI.toasts.push({ t, rt: now, dur: t.ev ? 5000 : 3000 });
+  // всплывающие заметки (если уведомления выключены в настройках — тихо складываем в письма, не показывая)
+  const notifyOn = !!SET.notify;
+  for (const t of S.toast.splice(0)) if (notifyOn) UI.toasts.push({ t, rt: now, dur: t.ev ? 5000 : 3000 });
+  if (!notifyOn && UI.toasts.length) UI.toasts = [];
   UI.toasts = UI.toasts.filter(q => now - q.rt < q.dur).slice(-2);
-  if (!UI._swipe && !(UI._swipeOut > performance.now())) setHtml('toasts', UI.toasts.map(q => `<div class="toast ${q.t.bad ? 'bad' : q.t.good ? 'good' : ''}" data-rt="${q.rt}">${IMG(q.t.icon || (q.t.ev ? 'scroll' : 'flag'), 28)}<div class="tx2"><div class="tt">${esc(q.t.title)}</div><div class="ts">${esc(q.t.text)}</div></div><div class="tx">✕</div><div class="bar"><i style="width:${Math.max(0, 100 - (now - q.rt) / q.dur * 100).toFixed(0)}%"></i></div></div>`).join(''));
+  if (!UI._swipe && !(UI._swipeOut > performance.now())) setHtml('toasts', notifyOn ? UI.toasts.map(q => `<div class="toast ${q.t.bad ? 'bad' : q.t.good ? 'good' : ''}" data-rt="${q.rt}">${IMG(q.t.icon || (q.t.ev ? 'scroll' : 'flag'), 28)}<div class="tx2"><div class="tt">${esc(q.t.title)}</div><div class="ts">${esc(q.t.text)}</div></div><div class="tx">✕</div><div class="bar"><i style="width:${Math.max(0, 100 - (now - q.rt) / q.dur * 100).toFixed(0)}%"></i></div></div>`).join('') : '');
   // армия несёт тяжёлые потери — спросить про отступление
   if (S.prompts && S.prompts.length && !UI.modal && !S.over) {
     const pr = S.prompts[0], a = S.armies.find(q => q.id === pr.id);
@@ -547,6 +557,7 @@ const ACT = {
   howto() { showModal('Как играть', HOWTO, null, { back: UI.S ? 'menu' : '' }); },
   ach() { showAch(); }, records() { showRecords(); }, settings() { showSettings(); },
   toggle(k) { if (!Object.prototype.hasOwnProperty.call(SET, k)) return; SET[k] = SET[k] ? 0 : 1; applySettings(); if (k === 'ambient') { try { if (SET.ambient) SND.ambStart(); else SND.ambStop(); } catch (e) { } } showSettings(true); },
+  paneltoggle() { SET.panel = SET.panel ? 0 : 1; applySettings(); if (!SET.panel && UI.hud) { /* панель скрыта — игра продолжается */ } },
   upgbld(id) { const b = UI.S.buildings.find(q => q.id === +id); if (!b) return; const e2 = upgradeBld(UI.S, b); say(e2 || 'Здание улучшено', !e2); recomputeAll(); renderSheet(true); },
   natisk(id) { const a = UI.S.armies.find(q => q.id === +id); if (!a || a.owner !== 0) return; if (a._bo > 0) { say('Натиск уже идёт', false); return; } a._bo = 12; say('Натиск! Урон армии +18% на 12 секунд.', true); renderSheet(true); },
   asktomenu() { confirmBox('Выйти в главное меню?', 'Партия будет сохранена — её можно продолжить позже.', 'Выйти', 'tomenu', UI.S && !UI.S.over ? 'menu' : ''); },
@@ -708,7 +719,7 @@ function showRecords() {
 }
 function showSettings(keep) {
   const row = (k, name, hint) => `<div class="opt"><div>${name}<div class="dim">${hint}</div></div>${btn('toggle:' + k, SET[k] ? 'Вкл.' : 'Выкл.', SET[k] ? 'on' : '')}</div>`;
-  let b = row('sfx', 'Звуки', 'Щелчки, бой, сигналы') + row('music', 'Музыка', 'Лютня на фоне') + row('ambient', 'Звуки природы', 'Птицы, ветер и говор людей вокруг') + `<div class="opt"><div>Мелодия<div class="dim">${esc(SND.songName() || 'сменяется автоматически')}</div></div>${btn('song', 'Следующая')}</div>` + `<div class="opt"><div>Саундтрек<div class="dim">${esc(SND.trackName())}${SND.trackPlaying() ? ' · играет' : ''}</div></div>${btn('track', SND.trackPlaying() ? 'Стоп' : 'Слушать')}${btn('tracknext', 'Дальше')}</div>` + row('hints', 'Подсказки плана', 'Свиток с текущим шагом развития') + row('confirm', 'Спрашивать перед сносом', 'Защита от случайного нажатия');
+  let b = row('sfx', 'Звуки', 'Щелчки, бой, сигналы') + row('music', 'Музыка', 'Лютня на фоне') + row('ambient', 'Звуки природы', 'Птицы, ветер и говор людей вокруг') + row('notify', 'Уведомления', 'Всплывающие заметки о событиях') + row('panel', 'Нижняя панель', 'Вкладки и кнопки действий внизу экрана') + `<div class="opt"><div>Мелодия<div class="dim">${esc(SND.songName() || 'сменяется автоматически')}</div></div>${btn('song', 'Следующая')}</div>` + `<div class="opt"><div>Саундтрек<div class="dim">${esc(SND.trackName())}${SND.trackPlaying() ? ' · играет' : ''}</div></div>${btn('track', SND.trackPlaying() ? 'Стоп' : 'Слушать')}${btn('tracknext', 'Дальше')}</div>` + row('hints', 'Подсказки плана', 'Свиток с текущим шагом развития') + row('confirm', 'Спрашивать перед сносом', 'Защита от случайного нажатия');
   b += `<div class="dim" style="margin-top:8px">Kingdom Crash ${GAME_VERSION}. Игра работает без интернета и ничего никуда не отправляет.</div>`;
   showModal(IMG('gear', 22) + 'Настройки', b, UI.S ? null : btn('closemodal', 'Закрыть', 'gold') + (hasSave() ? btn('askdrop', 'Удалить сохранение') : ''), { kind: 'settings', keep, back: UI.S ? 'menu' : '' });
 }

@@ -98,7 +98,7 @@ function loop(now) {
 function saveNow() { const S = UI.S; if (S && !S.over) saveGame(S); }
 
 window.addEventListener('load', () => {
-  initIcons(); RN.cv = $('cv'); RN.ctx = RN.cv.getContext('2d'); resize(); initInput();
+  RN.cv = $('cv'); RN.ctx = RN.cv.getContext('2d'); resize(); initInput();
   window.addEventListener('resize', () => { resize(); clampCam(); });
   // значки в неизменяемой части страницы
   $('scoreI').innerHTML = IMG('medal', 22); $('inboxIc').innerHTML = IMG('mail', 28); $('burger').innerHTML = IMG('menu', 22);

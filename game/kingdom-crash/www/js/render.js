@@ -368,7 +368,7 @@ function frame(S, now) {
   if (cam.z >= 2) for (const ct of S.cities) {
     let sx = (ct.x * TS + 16 - cam.x) * cam.z; const sy = (ct.y * TS - 14 - cam.y) * cam.z; if (sy < -30 || sy > RN.h + 30) continue; const halfN = c.measureText(ct.name).width / 2 + (ct.isCap ? 13 : 0) + 4; if (sx < -halfN || sx > RN.w + halfN) continue; sx = Math.max(halfN - 2, Math.min(RN.w - halfN + 2, sx));
     const nm = ct.name; c.lineWidth = 4; c.strokeStyle = '#14100c'; c.strokeText(nm, sx, sy); c.fillStyle = ct.owner < 0 ? '#d8d2c4' : '#fff'; c.fillText(nm, sx, sy);
-    if (ct.isCap && ICON.star) c.drawImage(ICON.star, Math.round(sx + c.measureText(nm).width / 2 + 3), Math.round(sy - 10), 18, 18); // столица
+    if (ct.isCap) capStar(c, Math.round(sx + c.measureText(nm).width / 2 + 3), Math.round(sy - 9), 15); // столица
   }
   { // виньетка: края уходят в сумерки, центр — в фокусе
     if (!RN.vig) RN.vig = makeVignette();
@@ -461,6 +461,14 @@ function animCity(c, ct, col, tm) {
   const n = Math.min(2, 1 + ct.level); for (let i = 0; i < n; i++) { const h = CITY_HS[i]; smoke(c, ox + (h[0] + 9) * H, oy + (32 + h[1] - 2) * H, tm, sd + i * 2.3, 0.7); }
 }
 const FOLK_COLS = ['#c65b3c', '#4a7ec7', '#7c4aad', '#c79a3a', '#3f9a6a', '#b0527a', '#6a7ab0', '#a8622c', '#d0784a', '#4c9aa8'];
+function capStar(c, x, y, s) { // золотая звезда столицы (вектор, тот же стиль, что и в наборе иконок)
+  const R = s / 2, r = R * 0.44; c.save(); c.translate(x + R, y + R); c.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + i * (Math.PI * 2 / 5), a2 = a + Math.PI / 5;
+    c.lineTo(Math.cos(a) * R, Math.sin(a) * R); c.lineTo(Math.cos(a2) * r, Math.sin(a2) * r);
+  }
+  c.closePath(); c.fillStyle = '#f2c230'; c.strokeStyle = '#241a12'; c.lineWidth = 1.3; c.lineJoin = 'round'; c.fill(); c.stroke(); c.restore();
+}
 function drawFolk(c, f, tm, isSel) {
   const w = f.act === 'walk', wk = f.act === 'work', dn = f.act === 'dance';
   const ph = Math.floor(tm * (w ? 7 : dn ? 5 : 3) + f.id * 1.7) % 2;

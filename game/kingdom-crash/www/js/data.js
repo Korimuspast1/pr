@@ -186,90 +186,71 @@ function makeNoise(seed) {
   return (x, y, oct) => { oct = oct || 4; let s = 0, a = 1, f = 1, t = 0; for (let o = 0; o < oct; o++) { s += a * n2(x * f, y * f); t += a; a *= 0.5; f *= 2; } return s / t; };
 }
 
-/* ===== Пиксельные иконки ===== */
-const PAL = { K: '#1a1410', W: '#f4f0e0', G: '#8a8f98', g: '#555b66', Y: '#f2c230', y: '#b8861c', R: '#c93a2e', r: '#7d2018', B: '#3b6fe0', b: '#25408a', N: '#8a5a2b', n: '#5a3a1a', L: '#4aa83a', l: '#2b6a24', P: '#e8c49a', O: '#e8832e', C: '#6ad0e8', S: '#b8c4d4' };
-const ICONMAP = {
-  gold: ['..KKKK..', '.KYYYYK.', 'KYYyyYYK', 'KYyYYyYK', 'KYyYYyYK', 'KYYyyYYK', '.KYYYYK.', '..KKKK..'],
-  wood: ['........', '.KKKKKK.', 'KPPNNNNK', 'KPnNNnNK', '.KKKKKK.', 'KPPNNNNK', 'KPnNNnNK', '.KKKKKK.'],
-  food: ['..Y..Y..', '.YY.YY.Y', '.Y.YY.Y.', '..YYYY..', '..NNNN..', '...NN...', '...NN...', '...NN...'],
-  iron: ['........', '........', '..KKKKKK', '.KSSSSGK', 'KSSSGGgK', 'KGGGggKK', '.KKKKK..', '........'],
-  bow: ['..NNN...', '.N..W...', 'N...W...', 'N...W...', 'N...W...', 'N...W...', '.N..W...', '..NNN...'],
-  sword: ['......SS', '.....SSK', '....SSK.', '...SSK..', 'N.SSK...', '.NSK....', '.NNK....', 'NN.K....'],
-  armL: ['.KK..KK.', 'KLLKKLLK', 'KLLLLLLK', '.KLLLLK.', '..KLLK..', '..KLLK..', '..KLLK..', '..KKKK..'],
-  armH: ['..KKKK..', '.KSSSSK.', 'KSSSSSSK', 'KSKKKKSK', 'KSSGGSSK', 'KSGGGGSK', '.KGGGGK.', '..KKKK..'],
-  horse: ['..K.K...', '.KNNNK..', 'KNNnNNK.', 'KNNNNNNK', '.KNNNNPK', '..KNNNNK', '..KNNNK.', '...KKK..'],
-  medal: ['.R....B.', '..R..B..', '...RB...', '..KYYK..', '.KYyyYK.', '.KYyyYK.', '..KYYK..', '...KK...'],
-  mail: ['........', 'KKKKKKKK', 'KWKWWKWK', 'KWWKKWWK', 'KWWWWWWK', 'KWWWWWWK', 'KKKKKKKK', '........'],
-  t_map: ['........', '...W....', '..WGW...', '.WGGGW..', '.GGGGGGL', 'GGGgGGLL', 'KKKKKKKK', '........'],
-  t_city: ['K.K..K.K', 'KKK..KKK', 'KSKKKKSK', 'KSSSSSSK', 'KSKSSKSK', 'KSKSSKSK', 'KSSSSSSK', 'KKKKKKKK'],
-  t_build: ['.....SSS', '....SSSK', '...NSSK.', '..NN.K..', '.NN.....', 'NN......', 'N.......', '........'],
-  t_army: ['.S....S.', '.SS..SS.', '..SSSS..', '...SS...', '..SSSS..', '.NN..NN.', 'NN....NN', 'N......N'],
-  t_pol: ['Y..Y..Y.', 'YY.YY.YY', 'YYYYYYYY', 'KYYYYYYK', 'KRYBYRYK', 'KYYYYYYK', 'KKKKKKKK', '........'],
-  t_fleet: ['....W...', '...WWW..', '..WWWWW.', '....N...', 'NNNNNNNN', '.NNNNNN.', '..KKKK..', 'CCCCCCCC'],
-  ship: ['....W...', '...WWW..', '..WWWWW.', '....N...', 'NNNNNNNN', '.NNNNNN.', '..KKKK..', '........'],
-  cannon: ['....KKKK', '..BBNNKK', 'BBBBNNK.', 'KKBBBK..', 'KWWK.K..', 'KWWKKKK.', 'KKKK..K.', '........'],
-  cat: ['....KK..', '...KNNK.', '..KNK.K.', '.KNK..W.', 'KNNNNNNK', 'KnNNNNnK', '.KKgKKgK', '..K.KK.K'],
-  ram: ['.RRRRRR.', 'RRRRRRRR', '.K.K.K.K', 'NNNNNNNG', 'nNNNNNGG', '.KgKK.KK', '..K.K...', '........'],
-  cmd: ['.Y.Y.Y..', '.YYYYYY.', '.KYYYYK.', 'KYYRYYYK', '.KYYYYK.', '..KKKK..', '.RRKKRR.', '.R.KK.R.'],
-  menu: ['........', 'WWWWWWWW', '........', 'WWWWWWWW', '........', 'WWWWWWWW', '........', '........'],
-  pause: ['........', '.CC..CC.', '.CC..CC.', '.CC..CC.', '.CC..CC.', '.CC..CC.', '.CC..CC.', '........'],
-  hour: ['KKKKKKKK', '.KYYYYK.', '..KYYK..', '...KK...', '..KYYK..', '.KYYYYK.', 'KKKKKKKK', '........'],
-  trophy: ['KYYYYYYK', 'KYyYYyYK', 'KYyYYyYK', '.KYYYYK.', '..KYYK..', '...KK...', '..KYYK..', '.KKKKKK.'],
-  scroll: ['.KKKKKK.', 'KWWWWWWK', 'KWKKKKWK', 'KWWWWWWK', 'KWKKKKWK', 'KWWWWWWK', '.KKKKKK.', '........'],
-  globe: ['..KKKK..', '.KBBLBK.', 'KBLLBBBK', 'KBLLLBBK', 'KBBLLLBK', 'KBBBLBBK', '.KBBBBK.', '..KKKK..'],
-  cart: ['............', '..YYy.WWY...', '.YYYyWWWWy..', 'nNNNNNNNNNn.', 'nNNNNNNNNNnn', '.nnnnnnnnn.n', '..KKK..KKK..', '.KNNNK.KNNNK', '.KNKNK.KNKNK', '..KKK..KKK..'],
-  chart: ['........', 'K.......', 'K....R..', 'K..G.R..', 'K.GG.R.L', 'KGGGRRLL', 'KKKKKKKK', '........'],
-  eye: ['........', '..KKKK..', '.KWWWWK.', 'KWWOOWWK', '.KWWWWK.', '..KKKK..', '........', '........'],
-  stop: ['........', '.RRRRRR.', '.RRRRRR.', '.RRRRRR.', '.RRRRRR.', '.RRRRRR.', '.RRRRRR.', '........'],
-  home: ['...KK...', '..KRRK..', '.KRRRRK.', 'KRRRRRRK', '.KWWWWK.', '.KWKKWK.', '.KWKKWK.', '.KKKKKK.'],
-  merge: ['........', 'W..WW..W', 'WW.WW.WW', 'WWWWWWWW', 'WW.WW.WW', 'W..WW..W', '........', '........'],
-  split: ['........', 'WW.WW.WW', 'W.WWWW.W', 'W..WW..W', 'W.WWWW.W', 'WW.WW.WW', '........', '........'],
-  skull: ['..KKKK..', '.KWWWWK.', 'KWKWWKWK', 'KWKWWKWK', '.KWWWWK.', '..KWKWK.', '..KKKKK.', '........'],
-  flag: ['.NRRRR..', '.NRRRR..', '.NRRR...', '.NR.....', '.N......', '.N......', '.N......', 'KKKK....'],
-  xbow: ['S.S..S.S', 'SSS..SSS', '.SSSSSS.', '...SS...', '...NN...', '...NN...', '..NNN...', '........'],
-  bolt: ['...KK...', '..KYK...', '.KYYK...', 'KYYYK...', '.KYK....', '.KK.....', '.K......', '........'],
-  spear: ['......SS', '.....SSS', '..RRNSS.', '..RRN...', '..NN....', '.NN.....', 'NN......', 'N.......'],
-  militia: ['.S.S.S..', '.S.S.S..', '.SSSSS..', '...N....', '...N....', '...N....', '...N....', '...N....'],
-  star: ['....Y....', '....Y....', '...YYY...', 'YYYYYYYYY', '.YYYYYYY.', '..YYYYY..', '..YYYYY..', '.YYY.YYY.', '.Y.....Y.'],
-  check: ['........', '.......L', '......LL', 'L....LL.', 'LL..LL..', '.LLLL...', '..LL....', '........'],
-  gear: ['....S....', '.S.SSS.S.', '..SSSSS..', '.SSS.SSS.', 'SSS...SSS', '.SSS.SSS.', '..SSSSS..', '.S.SSS.S.', '....S....'],
-  note: ['..WWWWWW', '..W....W', '..W....W', '..W....W', '.WW...WW', 'WWW..WWW', 'WW...WW.', '........'],
-  snd: ['...W....', '..WW..W.', 'WWWW...W', 'WWWW.W.W', 'WWWW.W.W', 'WWWW...W', '..WW..W.', '...W....'],
-  lock: ['..GGGG..', '.G....G.', '.G....G.', 'YYYYYYYY', 'YYYKKYYY', 'YYYKKYYY', 'YYYYYYYY', '........'],
-  mug: ['.WWWWW..', '.WWWWW..', 'YYYYYYS.', 'YYYYY.S.', 'YYYYY.S.', 'YYYYYYS.', 'YYYYY...', 'NNNNN...'],
-  inf: ['..........', '.WW....WW.', 'W..W..W..W', 'W...WW...W', 'W..W..W..W', '.WW....WW.', '..........'],
-  x: ['W.....W', 'WW...WW', '.WW.WW.', '..WWW..', '.WW.WW.', 'WW...WW', 'W.....W'],
-  shield: ['RRRRBBBB', 'RRRRBBBB', 'RRRRBBBB', 'BBBBRRRR', 'BBBBRRRR', '.BBBRRR.', '..BBRR..', '...BR...'],
-  t_folk: ['..KKKK..', '.KPPPPK.', '.KPPPPK.', '..KPPK..', '.KRRRRK.', 'KRRRRRRK', 'KSRRRRSK', '.KKKKKK.'],
-  t_san: ['..KKKK..', '.KWWWWK.', 'KWWKKWWK', 'KWKKKKWK', 'KWWKKWWK', '.KWWWWK.', '..KKKK..', '...RR...'],
-  person: ['..KKK...', '..KPK...', '..KKK...', '.KRRRK..', 'KRRRRRK.', '.KRRRK..', '.KK.KK..', '.KK.KK..'],
-  prison: ['..KKKK..', '.KGGGGK.', 'KGWKGWGK', 'KGWKGWGK', 'KGGKKGGK', 'KGKKKKGK', 'KGGKKGGK', 'KKKKKKKK']
+/* ===== Иконки: векторный набор SVG =====
+   Единый стиль: тёмный контур (#241a12), тёплая «пергаментная» палитра,
+   жирные формы — читаются и в 18 px, и на большой кнопке меню. */
+const SV_INK = '#241a12';
+const svgSword = '<path d="M12 2.2 13.5 6.1v6.4h-3V6.1Z" fill="#cdd6e2" stroke="#241a12" stroke-width="1.4" stroke-linejoin="round"/><path d="M9.2 12.5h5.6" stroke="#241a12" stroke-width="2.1" stroke-linecap="round"/><rect x="10.8" y="12.5" width="2.4" height="5" rx="0.9" fill="#8a5a2b" stroke="#241a12" stroke-width="1.3"/><circle cx="12" cy="19.4" r="1.15" fill="#f2c230" stroke="#241a12" stroke-width="1.2"/>';
+const SV = {
+  gold: '<circle cx="12" cy="12" r="8.3" fill="#f2c230" stroke="#241a12" stroke-width="1.7"/><circle cx="12" cy="12" r="4.7" fill="none" stroke="#c08a1c" stroke-width="1.5"/><path d="M8.5 9.3a5.1 5.1 0 0 1 3-1.6" fill="none" stroke="#ffe9a0" stroke-width="1.6" stroke-linecap="round"/>',
+  wood: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"><rect x="2" y="13.5" width="12" height="6" rx="3" fill="#a06a35"/><rect x="10" y="13.5" width="12" height="6" rx="3" fill="#8a5a2b"/><rect x="6" y="7.4" width="12" height="6" rx="3" fill="#b57e47"/><circle cx="4.8" cy="16.5" r="1.15" fill="#d9b380" stroke-width="1.2"/><circle cx="12.8" cy="16.5" r="1.15" fill="#d9b380" stroke-width="1.2"/><circle cx="8.8" cy="10.4" r="1.15" fill="#eac894" stroke-width="1.2"/></g>',
+  food: '<g stroke="#241a12" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M12 21.5V5.5" fill="none" stroke-width="1.7"/><path d="M12 6.3C12 4 10.5 2.7 8.3 2.5c.3 2.1 1.7 3.4 3.7 3.8Z" fill="#e8c558"/><path d="M12 6.3c0-2.3 1.5-3.6 3.7-3.8-.3 2.1-1.7 3.4-3.7 3.8Z" fill="#f2d27a"/><path d="M12 11.3c0-2.3-1.5-3.6-3.7-3.8.3 2.1 1.7 3.4 3.7 3.8Z" fill="#e8c558"/><path d="M12 11.3c0-2.3 1.5-3.6 3.7-3.8-.3 2.1-1.7 3.4-3.7 3.8Z" fill="#f2d27a"/><path d="M12 16.3c0-2.3-1.5-3.6-3.7-3.8.3 2.1 1.7 3.4 3.7 3.8Z" fill="#e8c558"/><path d="M12 16.3c0-2.3 1.5-3.6 3.7-3.8-.3 2.1-1.7 3.4-3.7 3.8Z" fill="#f2d27a"/><path d="M12 21.3c0-2.3-1.5-3.6-3.7-3.8.3 2.1 1.7 3.4 3.7 3.8Z" fill="#e8c558"/><path d="M12 21.3c0-2.3 1.5-3.6 3.7-3.8-.3 2.1-1.7 3.4-3.7 3.8Z" fill="#f2d27a"/></g>',
+  iron: '<g stroke="#241a12" stroke-width="1.7" stroke-linejoin="round"><path d="M7 8.6h10l2.6 5.5a1.6 1.6 0 0 1-1.5 2.1H5.9a1.6 1.6 0 0 1-1.5-2.1Z" fill="#b8c4d4"/><path d="M7.7 10.7h8.6" stroke="#e8eef6" stroke-width="1.3" stroke-linecap="round"/></g>',
+  bow: '<g stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 3.2c6.2 3 6.2 14.6 0 17.6" fill="none" stroke="#8a5a2b" stroke-width="2.3"/><path d="M6.2 3.2v17.6" stroke="#d8d2c4" stroke-width="1.3" fill="none"/><path d="M4 12h12.5" stroke="#241a12" stroke-width="1.7" fill="none"/><path d="M13.2 8.7 17.2 12l-4 3.3" fill="none" stroke="#b8c4d4" stroke-width="1.8"/></g>',
+  sword: '<g transform="rotate(45 12 12)">' + svgSword + '</g>',
+  armL: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"><path d="M8.6 3.6h6.8l2.7 4.1-1.2 2 1.6 10a1.6 1.6 0 0 1-1.6 1.7H7.1a1.6 1.6 0 0 1-1.6-1.7l1.6-10-1.2-2Z" fill="#8a5a2b"/><path d="M9.2 7.6h5.6M8.3 12.2h7.4" stroke="#5a3a1a" stroke-width="1.4" fill="none"/><circle cx="12" cy="15.9" r="1.05" fill="#f2c230" stroke-width="1.1"/></g>',
+  armH: '<g stroke="#241a12" stroke-width="1.7" stroke-linejoin="round"><path d="M12 2.6c4.5 0 6.9 3 6.9 7.1V18a1.6 1.6 0 0 1-1.6 1.6H6.7A1.6 1.6 0 0 1 5.1 18V9.7c0-4.1 2.4-7.1 6.9-7.1Z" fill="#b8c4d4"/><path d="M5.1 10.7h13.8" stroke="#6a707c" stroke-width="1.5" fill="none"/><path d="M8.9 14.1h2M13.1 14.1h2" stroke-width="1.5" stroke-linecap="round"/><path d="M9.2 5.1c.9-.7 1.9-1 2.8-1" stroke="#e8eef6" stroke-width="1.3" fill="none" stroke-linecap="round"/></g>',
+  horse: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M15.9 3.1 13.2 5.3c-3.5.8-5.6 3.3-6.2 6.9l-2.5 5.4a1.5 1.5 0 0 0 2.1 1.8l3.1-1 1.3 3.2 2.3.5-1-3.6c2.6-.7 4.3-2.6 4.8-5.3l2-5.3c.5-1.9-.5-3.5-2.3-4.1Z" fill="#a06a35"/><circle cx="13.4" cy="8.7" r="0.7" fill="#241a12" stroke="none"/><path d="M14.3 5.4c-2.6.6-4.6 2.5-5.4 5" fill="none" stroke="#5a3a1a" stroke-width="1.3"/></g>',
+  medal: '<path d="M8.4 2.6H4.2l3 7.4" fill="#c93a2e" stroke="#241a12" stroke-width="1.5" stroke-linejoin="round"/><path d="M15.6 2.6h4.2l-3 7.4" fill="#3b6fe0" stroke="#241a12" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="14.4" r="6.3" fill="#f2c230" stroke="#241a12" stroke-width="1.7"/><path d="M12 11l1.14 2.3 2.53.37-1.83 1.79.43 2.53L12 17.46 9.73 18l.43-2.55-1.83-1.79 2.53-.37Z" fill="#b8861c"/>',
+  mail: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"><rect x="2.6" y="5.2" width="18.8" height="13.6" rx="1.9" fill="#ece0c4"/><path d="M3.8 7.2 12 13.4l8.2-6.2" fill="none"/></g><circle cx="12" cy="12.8" r="1.5" fill="#c93a2e" stroke="#241a12" stroke-width="1"/>',
+  t_map: '<g stroke="#241a12" stroke-width="1.5" stroke-linejoin="round"><path d="M9 4.4 3.6 6.3v13.2L9 17.6l6 1.9 5.4-1.9V4.4L15 6.3Z" fill="#ece0c4"/><path d="M9 4.4v13.2M15 6.3v12.2" stroke="#a89880" fill="none"/><path d="M6.2 9.6c2 1.2 2.4-1.2 4.4.2M12.6 13c1.6 1 2.2-.8 3 .6" fill="none" stroke="#8a5a2b" stroke-dasharray="1.5 1.6"/></g>',
+  t_city: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"><path d="M5 20v-9.4h2.3V7.4h2.4v3.2h4.6V7.4h2.4v3.2H19V20Z" fill="#a8adb8"/><path d="M10.2 20v-4.3a1.8 1.8 0 0 1 3.6 0V20Z" fill="#241a12"/><path d="M5 20h14" stroke-width="1.3"/></g>',
+  t_build: '<g transform="rotate(-45 12 12)" stroke="#241a12" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><rect x="9.3" y="9.6" width="5.4" height="11.6" rx="1.2" fill="#8a5a2b"/><path d="M4.8 4.6h14.4l-1.7 5.6H6.5Z" fill="#b8c4d4"/></g>',
+  t_army: '<g transform="rotate(45 12 12) scale(0.86) translate(1.9 1.9)">' + svgSword + '</g><g transform="rotate(-45 12 12) scale(0.86) translate(1.9 1.9)">' + svgSword + '</g>',
+  t_pol: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"><path d="M4.4 17.4 3 8.2l5.5 3.7L12 5l3.5 6.9L21 8.2l-1.4 9.2Z" fill="#f2c230"/><path d="M5.6 20.6h12.8" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="13" r="0.85" fill="#c93a2e" stroke="none"/><circle cx="7.3" cy="15.1" r="0.7" fill="#3b6fe0" stroke="none"/><circle cx="16.7" cy="15.1" r="0.7" fill="#3b6fe0" stroke="none"/></g>',
+  t_fleet: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M4.8 15.4h14.4l-2.2 4.3a1.6 1.6 0 0 1-1.4 1H8.4a1.6 1.6 0 0 1-1.4-1Z" fill="#8a5a2b"/><path d="M12 3.4v12.2" fill="none"/><path d="M12 4.7c3.5.7 5.4 3.4 5.9 7.3H12Z" fill="#ece0c4"/><path d="M11 6.6c-2.3.8-3.7 2.8-4.1 5.9H11Z" fill="#d8d2c4"/></g>',
+  ship: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M6 15.2h12l-1.8 3.7a1.4 1.4 0 0 1-1.2.9H9a1.4 1.4 0 0 1-1.2-.9Z" fill="#6b4423"/><path d="M12 5v10.4" fill="none"/><path d="M12 5.9 17 13.8h-5Z" fill="#ece0c4"/><path d="M11.1 7.6 8.2 13.4h2.9Z" fill="#d8d2c4"/></g>',
+  cannon: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3.2 13.9 16.6 7.3l1.9 3.9L5.1 17.8Z" fill="#3f4754"/><circle cx="7.6" cy="19" r="2.1" fill="#241a12"/><circle cx="7.6" cy="19" r="0.8" fill="#6a707c" stroke="none"/><circle cx="14.6" cy="17.2" r="2.1" fill="#241a12"/><circle cx="14.6" cy="17.2" r="0.8" fill="#6a707c" stroke="none"/><path d="M18.2 6.9 20.2 4.7" stroke="#e8832e" stroke-width="1.7"/></g>',
+  cat: '<g stroke="#241a12" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M6.6 9.4 5.4 4.7 9.7 7a12.8 12.8 0 0 1 4.6 0l4.3-2.3-1.2 4.7a7.4 7.4 0 0 1 1.9 4.7c0 3.6-2.8 5.9-7.3 5.9s-7.3-2.3-7.3-5.9a7.4 7.4 0 0 1 1.9-4.7Z" fill="#d98a3a"/><circle cx="9.3" cy="13.7" r="0.55" fill="#241a12" stroke="none"/><circle cx="14.7" cy="13.7" r="0.55" fill="#241a12" stroke="none"/><path d="M11.2 16.2 12 17l.8-.8" fill="none"/></g>',
+  ram: '<g stroke="#241a12" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M3.6 12.3h12.6" stroke="#6b4423" stroke-width="3.2" fill="none"/><path d="M13.2 10.2 19.2 12.3l-6 2.1Z" fill="#8f959e"/><path d="M6.8 13.6 5 18.2M12.4 13.6l1.8 4.6" fill="none"/><circle cx="4.4" cy="19.4" r="1.35" fill="#241a12"/><circle cx="15.4" cy="19.4" r="1.35" fill="#241a12"/></g>',
+  cmd: '<g stroke="#241a12" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M7 13.2a5.2 5.2 0 0 1 10 0v5.9H7Z" fill="#b8c4d4"/><path d="M7 15.5h10" stroke="#6a707c" stroke-width="1.3" fill="none"/><path d="M12.2 7.9c-.4-3.2.9-5 3.2-6-.6 2.1-.1 3.8 1.2 5.2Z" fill="#c93a2e"/><circle cx="12" cy="17.6" r="0.55" fill="#241a12" stroke="none"/></g>',
+  menu: '<g stroke="#ece0c4" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M4.5 6.6h15M4.5 12h15M4.5 17.4h15"/></g>',
+  pause: '<rect x="7" y="5" width="3.7" height="14" rx="1" fill="#e8c558" stroke="#241a12" stroke-width="1.5"/><rect x="13.3" y="5" width="3.7" height="14" rx="1" fill="#e8c558" stroke="#241a12" stroke-width="1.5"/>',
+  hour: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M6.4 3.5h11.2M6.4 20.5h11.2" fill="none" stroke-width="2.1"/><path d="M8 3.5c0 4.8 2.6 5.4 4 7.2-1.4 1.8-4 2.4-4 7.3M16 3.5c0 4.8-2.6 5.4-4 7.2 1.4 1.8 4 2.4 4 7.3" fill="rgba(138,208,232,0.18)"/><path d="M10.2 14.6h3.6L12 17Z" fill="#e8c558"/></g>',
+  trophy: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"><path d="M8 3.6h8v3.4a4 4 0 0 1-8 0Z" fill="#f2c230"/><path d="M8 5.4H5.3a3 3 0 0 0 3.1 3.6M16 5.4h2.7a3 3 0 0 1-3.1 3.6" fill="none" stroke-linecap="round"/><path d="M11 11h2v2.8h-2Z" fill="#c08a1c"/><path d="M9.4 17.2h5.2l.9 3.3H8.5Z" fill="#8a5a2b"/></g>',
+  scroll: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"><path d="M6 3.8h9.4L19 7.4v12.8H6Z" fill="#ece0c4"/><path d="M15.1 3.8v3.6H19" fill="#d8d2c4"/><path d="M9 10h6M9 13h6M9 16h4" stroke="#a89880" stroke-width="1.3" stroke-linecap="round"/></g>',
+  globe: '<g stroke="#241a12" stroke-width="1.6"><circle cx="12" cy="12" r="8.4" fill="#3b6fe0"/><ellipse cx="12" cy="12" rx="4.1" ry="8.4" fill="none" stroke-width="1.3"/><path d="M3.6 12h16.8" fill="none" stroke-width="1.3"/><path d="M5.2 7.6h13.6M5.2 16.4h13.6" fill="none" stroke-width="1.1"/></g>',
+  cart: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3.8 8.6h13.4l-1.7 6.2H6.2Z" fill="#8a5a2b"/><path d="M17.2 8.6l3-2.1" fill="none" stroke-width="2"/><path d="M6.6 11.6h8.2" stroke="#5a3a1a" stroke-width="1.2" fill="none"/><circle cx="8.1" cy="17.8" r="1.9" fill="#b8c4d4"/><circle cx="14.5" cy="17.8" r="1.9" fill="#b8c4d4"/></g>',
+  chart: '<g stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 4.5v15h15" fill="none" stroke="#241a12" stroke-width="1.9"/><path d="M8 15.5v-4M12 15.5v-7M16 15.5V7" stroke="#5ad04a" stroke-width="2.4"/></g>',
+  eye: '<path d="M2.5 12S6.6 6.4 12 6.4 21.5 12 21.5 12 17.4 17.6 12 17.6 2.5 12 2.5 12Z" fill="#ece0c4" stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.4" fill="#3b6fe0" stroke="#241a12" stroke-width="1.5"/><circle cx="12" cy="12" r="1.25" fill="#241a12"/>',
+  stop: '<path d="M9.2 2.9h5.6L19.1 7.2v5.6l-4.3 4.3H9.2L4.9 12.8V7.2Z" fill="#c93a2e" stroke="#241a12" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.9 10h6.2" stroke="#ece0c4" stroke-width="2.3" stroke-linecap="round"/>',
+  home: '<g stroke="#241a12" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M4.2 11.2 12 4.3l7.8 6.9" fill="none" stroke-width="2.2"/><path d="M6.6 9.7V20h10.8V9.7" fill="#a06a35"/><path d="M10.4 20v-4.8h3.2V20Z" fill="#241a12"/></g>',
+  merge: '<g stroke="#241a12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M4.5 5.8c5.8 0 6.4 6.2 13 6.2"/><path d="M4.5 18.2c5.8 0 6.4-6.2 13-6.2"/><path d="M14.4 8.9 18.4 12l-4 3.1"/></g>',
+  split: '<g stroke="#241a12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M4 12h6.4"/><path d="M10.4 12c4.8 0 4.3-6.3 9.6-6.3"/><path d="M10.4 12c4.8 0 4.3 6.3 9.6 6.3"/><path d="M17 2.9 20.6 5.7 17 8.5M17 15.5l3.6 2.8-3.6 2.8"/></g>',
+  skull: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.1a7.2 7.2 0 0 0-7.2 7.2c0 2.4 1.2 3.9 2.2 4.9v2.9a1.6 1.6 0 0 0 1.6 1.6h6.8a1.6 1.6 0 0 0 1.6-1.6v-2.9c1-1 2.2-2.5 2.2-4.9A7.2 7.2 0 0 0 12 3.1Z" fill="#ece0c4"/><circle cx="9.3" cy="11.5" r="1.35" fill="#241a12" stroke="none"/><circle cx="14.7" cy="11.5" r="1.35" fill="#241a12" stroke="none"/><path d="M10 19.7v-1.7M12 19.7v-1.7M14 19.7v-1.7" stroke-width="1.2" stroke-linecap="round"/></g>',
+  flag: '<path d="M6.4 21V3.6" stroke="#241a12" stroke-width="1.9" stroke-linecap="round"/><path d="M6.4 4.4c3.5-1.6 5.4 1.3 8.9.2 2-.6 3.4-.7 3.4-.7v9.4s-1.5.1-3.5.8c-3.5 1.1-5.5-1.9-8.8-.2Z" fill="#c93a2e" stroke="#241a12" stroke-width="1.5" stroke-linejoin="round"/>',
+  xbow: '<g stroke-linejoin="round" stroke-linecap="round"><path d="M3.6 7.2c5.6 1.7 11.2 1.7 16.8 0" fill="none" stroke="#8a5a2b" stroke-width="2.1"/><path d="M4.4 7v4.4M19.6 7v4.4" stroke="#241a12" stroke-width="1.3" fill="none"/><path d="M4.4 9.2h15.2" stroke="#d8d2c4" stroke-width="1.1" fill="none"/><path d="M12 9.2V21" stroke="#6b4423" stroke-width="2.4" fill="none"/><path d="M12 4.6v3" stroke="#b8c4d4" stroke-width="1.6" fill="none"/></g>',
+  bolt: '<path d="M13.5 2.4 6.3 13.3h4.7l-1.5 8.3 7.7-11h-4.7Z" fill="#ffd94a" stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"/>',
+  spear: '<g transform="rotate(45 12 12)" stroke="#241a12" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M12 8.6V22.6" stroke="#6b4423" stroke-width="2.2" fill="none"/><path d="M12 1.6 14.4 8.4H9.6Z" fill="#cdd6e2"/><path d="M9.6 8.4h4.8" fill="none"/></g>',
+  militia: '<g stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M12 10.6V22" stroke="#6b4423" stroke-width="2.3"/><path d="M6.3 2.6v3.4a5.7 5.7 0 0 0 11.4 0V2.6" stroke="#241a12" stroke-width="1.9"/><path d="M12 2.6v5.4" stroke="#241a12" stroke-width="1.9"/></g>',
+  star: '<path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.4 6.2 20.5l1.1-6.5L2.6 9.4l6.5-.9Z" fill="#f2c230" stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"/>',
+  check: '<path d="M4.6 12.6 10 18 19.5 5.8" fill="none" stroke="#241a12" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.6 12.6 10 18 19.5 5.8" fill="none" stroke="#5ad04a" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>',
+  gear: '<g fill="#a8adb8" stroke="#241a12" stroke-width="1.5" stroke-linejoin="round"><rect x="10.5" y="1.7" width="3" height="4.4" rx="0.9"/><rect x="10.5" y="1.7" width="3" height="4.4" rx="0.9" transform="rotate(45 12 12)"/><rect x="10.5" y="1.7" width="3" height="4.4" rx="0.9" transform="rotate(90 12 12)"/><rect x="10.5" y="1.7" width="3" height="4.4" rx="0.9" transform="rotate(135 12 12)"/><rect x="10.5" y="1.7" width="3" height="4.4" rx="0.9" transform="rotate(180 12 12)"/><rect x="10.5" y="1.7" width="3" height="4.4" rx="0.9" transform="rotate(225 12 12)"/><rect x="10.5" y="1.7" width="3" height="4.4" rx="0.9" transform="rotate(270 12 12)"/><rect x="10.5" y="1.7" width="3" height="4.4" rx="0.9" transform="rotate(315 12 12)"/><circle cx="12" cy="12" r="5.5"/></g><circle cx="12" cy="12" r="2" fill="#241a12"/>',
+  note: '<g stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 18.4V6L19 3.6v12.6" fill="none" stroke="#241a12" stroke-width="3"/><path d="M9.6 18.4V6L19 3.6v12.6" fill="none" stroke="#ece0c4" stroke-width="1.4"/><ellipse cx="7.1" cy="18.5" rx="2.5" ry="1.9" fill="#ece0c4" stroke="#241a12" stroke-width="1.4"/><ellipse cx="16.5" cy="16.3" rx="2.5" ry="1.9" fill="#ece0c4" stroke="#241a12" stroke-width="1.4"/></g>',
+  snd: '<path d="M4 9.6v4.8h3.4L13 18.8V5.2L7.4 9.6Z" fill="#ece0c4" stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"/><path d="M16.3 9.2a4.3 4.3 0 0 1 0 5.6M19 6.7a8 8 0 0 1 0 10.6" fill="none" stroke="#ece0c4" stroke-width="1.7" stroke-linecap="round"/>',
+  lock: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"><rect x="5" y="10.4" width="14" height="9.7" rx="1.9" fill="#c9a24a"/><path d="M8.2 10.4V8a3.8 3.8 0 0 1 7.6 0v2.4" fill="none" stroke-width="2"/><circle cx="12" cy="15.2" r="1.3" fill="#241a12" stroke="none"/></g>',
+  mug: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M6 8.2h10v10.7a1.9 1.9 0 0 1-1.9 1.9H7.9A1.9 1.9 0 0 1 6 18.9Z" fill="#e8a83a"/><path d="M16 10.2h2.1a2.5 2.5 0 0 1 0 5h-2.1" fill="none"/><path d="M6 8.2C5.3 5.9 7.7 5 8.7 6.4c.5-2 3.5-2.3 4.4-.6 1.5-1.1 3.7.5 3 2.4Z" fill="#f4f0e0"/><path d="M9.3 12.4v4.6M12.5 12.4v4.6" stroke="#c97f1e" stroke-width="1.3" fill="none"/></g>',
+  inf: '<path d="M12 12c-1.6-3.6-6.7-3.9-6.7 0s5.1 3.6 6.7 0c1.6 3.6 6.7 3.9 6.7 0s-5.1-3.6-6.7 0Z" fill="none" stroke="#ece0c4" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>',
+  x: '<path d="M6.2 6.2l11.6 11.6M17.8 6.2 6.2 17.8" stroke="#241a12" stroke-width="4.2" stroke-linecap="round" fill="none"/><path d="M6.2 6.2l11.6 11.6M17.8 6.2 6.2 17.8" stroke="#ece0c4" stroke-width="2.2" stroke-linecap="round" fill="none"/>',
+  shield: '<path d="M12 2.4 19.6 5.8v6.5c0 4.8-3.2 8-7.6 10.3-4.4-2.3-7.6-5.5-7.6-10.3V5.8Z" fill="#c93a2e" stroke="#241a12" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 2.4 19.6 5.8v6.5c0 4.8-3.2 8-7.6 10.3Z" fill="#3b6fe0" stroke="#241a12" stroke-width="1.3" stroke-linejoin="round"/><path d="M12 2.4v20.2" stroke="#241a12" stroke-width="1.2"/>',
+  t_folk: '<circle cx="12" cy="7.5" r="4" fill="#eec39a" stroke="#241a12" stroke-width="1.6"/><path d="M4.4 20.4c.8-4.4 4-6.5 7.6-6.5s6.8 2.1 7.6 6.5Z" fill="#c93a2e" stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"/>',
+  t_san: '<circle cx="12" cy="12" r="8.5" fill="#c93a2e" stroke="#241a12" stroke-width="1.7"/><path d="M6.1 6.1l11.8 11.8" stroke="#ece0c4" stroke-width="2.7" stroke-linecap="round"/>',
+  person: '<circle cx="12" cy="5.2" r="2.5" fill="#eec39a" stroke="#241a12" stroke-width="1.5"/><path d="M9.1 8.9h5.8l.9 7h-2.1l-.4 5.2h-3l-.4-5.2H8.2Z" fill="#3b6fe0" stroke="#241a12" stroke-width="1.5" stroke-linejoin="round"/>',
+  prison: '<g stroke="#241a12" stroke-width="1.6" stroke-linejoin="round"><rect x="4.4" y="4.4" width="15.2" height="15.2" rx="1.4" fill="#0d0f12"/><path d="M9.4 4.4v15.2M12 4.4v15.2M14.6 4.4v15.2" stroke="#a8adb8" stroke-width="1.6"/><rect x="4.4" y="4.4" width="15.2" height="15.2" rx="1.4" fill="none"/></g>',
+  chevup: '<path d="M6 14.6 12 8.6l6 6" fill="none" stroke="#ffd94a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  chevdn: '<path d="M6 9.4 12 15.4l6-6" fill="none" stroke="#ffd94a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
 };
-const ICON = {}, ICONURL = {};
-function initIcons() {
-  const hexRgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
-  for (const k in ICONMAP) {
-    const rows = ICONMAP[k], w = rows[0].length, h = rows.length, px = [];
-    for (let j = 0; j < h; j++) { px[j] = []; for (let i = 0; i < w; i++) { const ch = rows[j][i]; px[j][i] = (ch !== '.' && PAL[ch]) ? PAL[ch] : null; } }
-    const g = (i, j) => (i < 0 || j < 0 || i >= w || j >= h) ? null : px[j][i];
-    const W2 = w * 2 + 2, H2 = h * 2 + 2, out = []; for (let j = 0; j < H2; j++) out.push(new Array(W2).fill(null));
-    // Scale2x (EPX): сглаживание диагоналей
-    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-      const P = g(i, j); if (!P) continue; const A = g(i, j - 1), B = g(i + 1, j), C = g(i - 1, j), D = g(i, j + 1);
-      const e = [A === C && A !== D && C !== B ? A : P, A === B && A !== C && B !== D ? B : P, D === C && D !== B && C !== A ? C : P, D === B && D !== A && B !== C ? D : P];
-      out[2 * j + 1][2 * i + 1] = e[0] || P; out[2 * j + 1][2 * i + 2] = e[1] || P; out[2 * j + 2][2 * i + 1] = e[2] || P; out[2 * j + 2][2 * i + 2] = e[3] || P;
-    }
-    const c = document.createElement('canvas'); c.width = W2; c.height = H2; const x = c.getContext('2d'); const o = (i, j) => (i < 0 || j < 0 || i >= W2 || j >= H2) ? null : out[j][i];
-    for (let j = 0; j < H2; j++) for (let i = 0; i < W2; i++) {
-      const v = out[j][i];
-      if (!v) { if (o(i - 1, j) || o(i + 1, j) || o(i, j - 1) || o(i, j + 1)) { x.fillStyle = '#1a1410'; x.fillRect(i, j, 1, 1); } continue; }
-      let f = 1; if (!o(i, j - 1) || !o(i - 1, j)) f = 1.18; if (!o(i, j + 1) || !o(i + 1, j)) f = 0.82;
-      const r = hexRgb(v); x.fillStyle = `rgb(${Math.min(255, r[0] * f) | 0},${Math.min(255, r[1] * f) | 0},${Math.min(255, r[2] * f) | 0})`; x.fillRect(i, j, 1, 1);
-    }
-    ICON[k] = c; ICONURL[k] = c.toDataURL();
-  }
-}
-const IMG = (k, s) => `<img class="ic" src="${ICONURL[k] || ''}" style="width:${(s || 24)}px;height:${(s || 24)}px" alt="">`;
+const IMG = (k, s) => { const sz = s || 24; return `<svg class="ic" viewBox="0 0 24 24" width="${sz}" height="${sz}" aria-hidden="true">${SV[k] || SV.note}</svg>`; };
 
 /* ===== Спрайты зданий (рисуются прямоугольниками) ===== */
 const R_ = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
