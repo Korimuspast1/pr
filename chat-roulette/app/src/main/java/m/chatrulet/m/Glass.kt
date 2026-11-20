@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -426,7 +428,7 @@ fun GlassTopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
-            GlassIconButton(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowBack, backDesc, onClick = onBack, plain = true)
+            GlassIconButton(Icons.AutoMirrored.Rounded.ArrowBack, backDesc, onClick = onBack, plain = true)
         } else {
             Spacer(Modifier.width(12.dp))
         }

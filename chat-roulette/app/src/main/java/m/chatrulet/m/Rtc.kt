@@ -9,7 +9,6 @@ import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
 import org.webrtc.EglBase
-import org.webrtc.I420Buffer
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
 import org.webrtc.MediaStream
@@ -20,6 +19,7 @@ import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
 import org.webrtc.SurfaceTextureHelper
 import org.webrtc.VideoFrame
+import org.webrtc.VideoFrame.I420Buffer
 import org.webrtc.VideoProcessor
 import org.webrtc.VideoSink
 import org.webrtc.VideoSource
