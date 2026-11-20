@@ -10,7 +10,7 @@ const src = f => fs.readFileSync(path.join(root, f), 'utf8');
 
 // ===== Версия =====
 {
-  ok(G.GAME_VERSION === '2.9.0', 'GAME_VERSION = 2.9.0', G.GAME_VERSION);
+  ok(/^2\.9\.\d+$/.test(G.GAME_VERSION), 'GAME_VERSION 2.9.x (точную цифру держит test_v291.js)', G.GAME_VERSION);
 }
 
 // ===== Террейн: кубическая интерполяция вместо ступенчатой =====
