@@ -1,0 +1,12 @@
+1/6 ресурсы
+2/6 упаковка
+3/6 компиляция
+/home/runner/work/pr/pr/game/kingdom-crash/android/java/com/kingdomcrash/game/MainActivity.java:66: error: package R does not exist
+            showMessage(getString(R.string.no_webview));
+                                   ^
+/home/runner/work/pr/pr/game/kingdom-crash/android/java/com/kingdomcrash/game/MainActivity.java:129: error: package R does not exist
+                if (++restarts <= 2) startGame(); else showMessage(getString(R.string.no_webview));
+                                                                              ^
+Note: /home/runner/work/pr/pr/game/kingdom-crash/android/java/com/kingdomcrash/game/MainActivity.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+2 errors
