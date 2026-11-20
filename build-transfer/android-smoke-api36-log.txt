@@ -27,241 +27,1221 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeDebugResources
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
-> Task :app:processDebugMainManifest
 > Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
-> Task :app:processDebugManifestForPackage
 > Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugStartupProfile
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeExtDexDebug
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:mergeExtDexDebug
 > Task :app:compressDebugAssets
 > Task :app:extractDebugVersionControlInfo
 > Task :app:processDebugJavaRes NO-SOURCE
 > Task :app:collectDebugDependencies
 > Task :app:mergeDebugJavaResource
 > Task :app:sdkDebugDependencyData
-> Task :app:processDebugResources FAILED
+> Task :app:processDebugResources
 > Task :app:validateSigningDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795152697532.json
 
-FAILURE: Build failed with an exception.
+> Task :app:compileDebugJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
 
-* What went wrong:
-Execution failed for task ':app:processDebugResources'.
-> A failure occurred while executing com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$TaskAction
-   > Android resource linking failed
-     ERROR: /home/runner/work/pr/pr/visaroom/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml:3: AAPT: error: resource color/ic_launcher_bg (aka lav.visaroom.alav:color/ic_launcher_bg) not found.
-         
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:optimizeDebugResources
+> Task :app:mergeDexDebug
+> Task :app:compileDebugArtProfile
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795152834040.json
 
-* Try:
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights.
-> Get more help at https://help.gradle.org.
+BUILD SUCCESSFUL in 48s
+36 actionable tasks: 36 executed
+--- emulator smoke ---
+API=36 MODE=seeded APK=/home/runner/work/_temp/visaroom-debug.apk
+54184ff80f97efdf0e15b1c8ff234dafeca4e6850aa28bb84bc02b12bfd219fc  /home/runner/work/_temp/visaroom-debug.apk
+Performing Streamed Install
+Success
+install_status=0
+app_uid=10216
+--- package permissions before launch ---
+    pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    privatePkgFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    apexModuleName=null
+    requested permissions:
+      android.permission.POST_NOTIFICATIONS
+      android.permission.FOREGROUND_SERVICE
+      android.permission.RECEIVE_BOOT_COMPLETED
+      android.permission.INTERNET
+      android.permission.FOREGROUND_SERVICE_DATA_SYNC
+      android.permission.ACCESS_NETWORK_STATE
+      android.permission.RECORD_AUDIO
+    install permissions:
+      android.permission.FOREGROUND_SERVICE: granted=true
+      android.permission.RECEIVE_BOOT_COMPLETED: granted=true
+      android.permission.INTERNET: granted=true
+      android.permission.FOREGROUND_SERVICE_DATA_SYNC: granted=true
+      android.permission.ACCESS_NETWORK_STATE: granted=true
+    User 0: ceDataInode=352520 deDataInode=65888 installed=true hidden=false suspended=false distractionFlags=0 stopped=true notLaunched=true enabled=0 instant=false virtual=false quarantined=false
+--
+        /data/resource-cache/com.android.systemui-dynamic-BDV7.frro
+      legacy overlay paths:
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+      gids=[3003]
+      runtime permissions:
 
-* Exception is:
-org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:processDebugResources'.
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:130)
-	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:282)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:128)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
-	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
-	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
-	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
-	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
-	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
-	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:80)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
-Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$TaskAction
-	at org.gradle.workers.internal.DefaultWorkerExecutor$WorkItemExecution.waitForCompletion(DefaultWorkerExecutor.java:287)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.lambda$waitForItemsAndGatherFailures$2(DefaultAsyncWorkTracker.java:130)
-	at org.gradle.internal.Factories$1.create(Factories.java:31)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:336)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:319)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLock(DefaultWorkerLeaseService.java:324)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForItemsAndGatherFailures(DefaultAsyncWorkTracker.java:126)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForItemsAndGatherFailures(DefaultAsyncWorkTracker.java:92)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForAll(DefaultAsyncWorkTracker.java:78)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForCompletion(DefaultAsyncWorkTracker.java:66)
-	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:252)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:29)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:26)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:47)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.run(DefaultBuildOperationExecutor.java:68)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:229)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:212)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:195)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:162)
-	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:105)
-	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:44)
-	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:59)
-	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:56)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:56)
-	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:44)
-	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:41)
-	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:74)
-	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
-	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:50)
-	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:28)
-	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:67)
-	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:37)
-	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:61)
-	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:26)
-	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:67)
-	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:45)
-	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:40)
-	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:29)
-	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:189)
-	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$1(BuildCacheStep.java:75)
-	at org.gradle.internal.Either$Right.fold(Either.java:175)
-	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:62)
-	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:73)
-	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:48)
-	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:46)
-	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:35)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:76)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:54)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:54)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:36)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
-	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:49)
-	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:27)
-	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:71)
-	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:39)
-	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:65)
-	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:36)
-	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:106)
-	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:55)
-	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:64)
-	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:43)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.executeWithNonEmptySources(AbstractSkipEmptyWorkStep.java:125)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:56)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:36)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
-	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:36)
-	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:23)
-	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:75)
-	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:41)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$execute$0(AssignMutableWorkspaceStep.java:35)
-	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:289)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:31)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:22)
-	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
-	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
-	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
-	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
-	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:48)
-	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:35)
-	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:61)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:127)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
-	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
-	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
-	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
-	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
-	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
-	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:80)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
-Caused by: com.android.builder.internal.aapt.v2.Aapt2Exception: Android resource linking failed
-ERROR: /home/runner/work/pr/pr/visaroom/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml:3: AAPT: error: resource color/ic_launcher_bg (aka lav.visaroom.alav:color/ic_launcher_bg) not found.
+Queries:
+  system apps queryable: false
+  queries via forceQueryable:
+--- launch debug SmokeSeedActivity (saves a test session, then opens ChatsActivity) ---
+Starting: Intent { cmp=lav.visaroom.alav/.SmokeSeedActivity }
+Status: ok
+LaunchState: UNKNOWN (0)
+Activity: lav.visaroom.alav/.ChatsActivity
+WaitTime: 2663
+Complete
+pid_after_3s=
+--- early app-UID log ---
+--------- beginning of main
+11-20 05:36:27.475  2081  2081 I v.visaroom.alav: Using CollectorTypeCMC GC.
+11-20 05:36:27.486  2081  2081 W v.visaroom.alav: Unexpected CPU variant for x86: x86_64.
+11-20 05:36:27.486  2081  2081 W v.visaroom.alav: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, alderlake, default
+11-20 05:36:27.489  2081  2081 E v.visaroom.alav: Not starting debugger since process cannot load the jdwp agent.
+11-20 05:36:27.517  2081  2081 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-20 05:36:27.740  2081  2081 D CompatChangeReporter: Compat change id reported: 242716250; UID 10216; state: ENABLED
+11-20 05:36:27.803  2081  2081 D nativeloader: Configuring clns-9 for other apk /data/app/~~I9MSfW6bHVjoHZeJLfcHRQ==/lav.visaroom.alav-2jiHZhHbadIp38Ckc89ejw==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~I9MSfW6bHVjoHZeJLfcHRQ==/lav.visaroom.alav-2jiHZhHbadIp38Ckc89ejw==/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/lav.visaroom.alav
+11-20 05:36:27.827  2081  2081 I v.visaroom.alav: AssetManager2(0x770832aec938) locale list changing from [] to [en-US]
+11-20 05:36:27.863  2081  2081 V GraphicsEnvironment: Currently set values for:
+11-20 05:36:27.863  2081  2081 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-20 05:36:27.863  2081  2081 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-20 05:36:27.863  2081  2081 V GraphicsEnvironment: lav.visaroom.alav is not listed in per-application setting
+11-20 05:36:27.863  2081  2081 V GraphicsEnvironment: ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
+11-20 05:36:27.864  2081  2081 V GraphicsEnvironment: lav.visaroom.alav is not listed in ANGLE allowlist or settings, returning default
+11-20 05:36:27.864  2081  2081 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11-20 05:36:27.913  2081  2081 I v.visaroom.alav: AssetManager2(0x770832af2a18) locale list changing from [] to [en-US]
+--------- beginning of system
+11-20 05:36:27.922  2081  2102 I DisplayManager: Choreographer implicitly registered for the refresh rate.
+11-20 05:36:27.949  2081  2081 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
+11-20 05:36:28.082  2081  2081 I VisaroomSmoke: seed_saved=true uid_matches=true token_present=true
+11-20 05:36:28.139  2081  2102 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+11-20 05:36:28.140  2081  2102 I EGL_emulation: Opening libGLESv2_emulation.so
+11-20 05:36:28.167  2081  2081 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
+11-20 05:36:28.169  2081  2102 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+11-20 05:36:28.233  2081  2081 I v.visaroom.alav: AssetManager2(0x770832af1d98) locale list changing from [] to [en-US]
+11-20 05:36:28.310  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.310  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.311  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.311  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.311  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.312  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.312  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.313  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.313  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.313  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.315  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.316  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.316  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.316  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.316  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.316  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.317  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.317  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.317  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.317  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.317  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.318  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.318  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.318  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.319  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.319  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.319  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: Failed to execute the transaction: tId:1602527102 ClientTransaction{
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102   transactionItems=[
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102     LaunchActivityItem{activityToken=android.os.BinderProxy@c6be299,intent=Intent { flg=0x10008000 xflg=0x4 cmp=lav.visaroom.alav/.ChatsActivity },ident=10127066,info=ActivityInfo{ebf194d lav.visaroom.alav.ChatsActivity},curConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h683dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2476) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.64 fontWeightAdjustment=0},overrideConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h683dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2476) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.2 fontWeightAdjustment=0},deviceId=0,referrer=lav.visaroom.alav,procState=2,state=null,persistentState=null,pendingResults=null,pendingNewIntents=null,sceneTransitionInfo=null,profilerInfo=null,assistToken=android.os.BinderProxy@93dde76,shareableActivityToken=android.os.BinderProxy@e63dc77,activityWindowInfo=ActivityWindowInfo{isEmbedded=false, taskBounds=Rect(0, 0 - 1440, 2560), taskFragmentBounds=Rect(0, 0 - 1440, 2560)}}
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102     ResumeActivityItem{mActivityToken=android.os.BinderProxy@c6be299,procState=-1,isForward=true,shouldSendCompatFakeFocus=false}
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102     Target activity: lav.visaroom.alav.ChatsActivity
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102   ]
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102 }
+11-20 05:36:28.335  2081  2081 D AndroidRuntime: Shutting down VM
+--------- beginning of crash
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: FATAL EXCEPTION: main
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: Process: lav.visaroom.alav, PID: 2081
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4280)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4467)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:133)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:103)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2823)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:110)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:248)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:338)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:9067)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: Caused by: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettingsFolders(ChatsActivity.java:625)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettings(ChatsActivity.java:406)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.onCreate(ChatsActivity.java:158)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9155)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9133)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1521)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4262)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	... 13 more
+11-20 05:36:28.351  2081  2081 I Process : Sending signal. PID: 2081 SIG: 9
+--- early crash buffer ---
+--------- beginning of crash
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: FATAL EXCEPTION: main
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: Process: lav.visaroom.alav, PID: 2081
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4280)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4467)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:133)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:103)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2823)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:110)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:248)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:338)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:9067)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: Caused by: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettingsFolders(ChatsActivity.java:625)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettings(ChatsActivity.java:406)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.onCreate(ChatsActivity.java:158)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9155)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9133)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1521)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4262)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	... 13 more
+--- force MessageCheckJobService job 1101 ---
+pid_after_chats=
+--- activity state ---
+--- focused window ---
+--- visible UI hierarchy (text/package excerpts) ---
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="At a glance"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text="Fri, Nov 20"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Fri, Nov 20"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="Home"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text="Phone"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Phone"
+text="Messages"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Messages"
+text="Gmail"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Predicted app: Gmail"
+text="Chrome"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Chrome"
+text="Camera"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Camera"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="Google search"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="Google app"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="Voice search"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="Google Lens"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+--- JobScheduler state for visaroom ---
+      FORCE_ALL_CHANGED: count=0, total=0.0ms, avg=0.000ms, max calls/s=0 max dur/s=0.0ms max time=0.0ms
+      IS_UID_ACTIVE_CACHED: count=0, total=0.0ms, avg=0.000ms, max calls/s=0 max dur/s=0.0ms max time=0.0ms
+      IS_UID_ACTIVE_RAW: count=4, total=4.3ms, avg=1.073ms, max calls/s=1 max dur/s=4.0ms max time=4.0ms
+  
+  Stopped packages:
+    10216:lav.visaroom.alav=false
+    10214:com.google.android.providers.media.module=false
+    10209:com.google.android.ext.services=false
+    10208:com.google.android.permissioncontroller=false
+    10190:com.google.android.rkpdapp=false
+    10189:com.android.devicelockcontroller=false
+    10153:com.google.android.inputmethod.latin=false
+    10150:com.google.android.tts=false
+    10147:com.google.android.gms=false
+    10146:com.google.android.googlequicksearchbox=false
+    10144:com.google.android.as=false
+    10142:com.google.android.as.oss=false
+    10141:com.google.android.configupdater=false
+    10140:com.google.android.partnersetup=false
+    10138:com.google.android.apps.wellbeing=false
+    10135:com.google.android.dialer=false
+    10131:com.android.imsserviceentitlement=false
+    10105:com.android.providers.downloads=false
+    10104:com.google.android.documentsui=false
+    10099:com.android.providers.calendar=false
+    1073:com.google.android.networkstack=false
+    1000:com.android.settings=false
+    1000:com.android.providers.settings=false
+    1000:android=false
     
-	at com.android.builder.internal.aapt.v2.Aapt2Exception$Companion.create(Aapt2Exception.kt:45)
-	at com.android.builder.internal.aapt.v2.Aapt2Exception$Companion.create$default(Aapt2Exception.kt:33)
-	at com.android.build.gradle.internal.res.Aapt2ErrorUtils.rewriteException(Aapt2ErrorUtils.kt:262)
-	at com.android.build.gradle.internal.res.Aapt2ErrorUtils.rewriteLinkException(Aapt2ErrorUtils.kt:133)
-	at com.android.build.gradle.internal.res.Aapt2ProcessResourcesRunnableKt.processResources(Aapt2ProcessResourcesRunnable.kt:76)
-	at com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$Companion.invokeAaptForSplit(LinkApplicationAndroidResourcesTask.kt:941)
-	at com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$Companion.access$invokeAaptForSplit(LinkApplicationAndroidResourcesTask.kt:796)
-	at com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$TaskAction.run(LinkApplicationAndroidResourcesTask.kt:432)
-	at com.android.build.gradle.internal.profile.ProfileAwareWorkAction.execute(ProfileAwareWorkAction.kt:74)
-	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
-	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
-	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
-	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
-	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:187)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:120)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:162)
-	at org.gradle.internal.Factories$1.create(Factories.java:31)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:264)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:133)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:157)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:126)
-	... 2 more
+    ##u0a214/-500 from u0a214 active, exempted: com.google.android.providers.media.module [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a214/-200 from u0a214 active, exempted: com.google.android.providers.media.module [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    #androidx.work.systemjobscheduler:u0a214/0 from u0a214 active, exempted: com.google.android.providers.media.module [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a214/-300 from u0a214 active, exempted: com.google.android.providers.media.module [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+--
+    
+    TopAppTimer{<0>com.google.android.apps.nexuslauncher} started at 76888 (13075ms ago)
+      com.google.android.apps.nexuslauncher.NexusLauncherActivity
+    TopAppTimer{<0>com.google.android.googlesdksetup} NOT active
+    TopAppTimer{<0>com.google.android.gms} NOT active
+    TopAppTimer{<0>lav.visaroom.alav} NOT active
+    
+    Cached execution stats:
+      <0>com.google.android.ext.services
+        ACTIVE: expirationTime=86489963, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.googlequicksearchbox
+        ACTIVE: expirationTime=86468220, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.android.providers.downloads
+        EXEMPTED: expirationTime=86484517, allowedTimePerPeriodMs=1200000, windowSizeMs=2400000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.configupdater
+        ACTIVE: expirationTime=86489930, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.providers.media.module
+        ACTIVE: expirationTime=86478630, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>android
+        EXEMPTED: expirationTime=86443146, allowedTimePerPeriodMs=1200000, windowSizeMs=2400000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.as
+        ACTIVE: expirationTime=86486080, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.permissioncontroller
+        ACTIVE: expirationTime=86486752, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.android.providers.settings
+        ACTIVE: expirationTime=86443146, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+        EXEMPTED: expirationTime=86477291, allowedTimePerPeriodMs=1200000, windowSizeMs=2400000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.as.oss
+        ACTIVE: expirationTime=86486114, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.apps.wellbeing
+        ACTIVE: expirationTime=86468410, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.dialer
+        ACTIVE: expirationTime=86489917, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.networkstack
+--
+    EJ debits:
+      <0>com.google.android.googlequicksearchbox: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.android.providers.calendar: ShrinkableDebits { debit tally: 0, bucket: 6 }
+      <0>com.android.providers.downloads: ShrinkableDebits { debit tally: 0, bucket: 6 }
+      <0>com.google.android.providers.media.module: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>lav.visaroom.alav: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>android: ShrinkableDebits { debit tally: 0, bucket: 6 }
+      <0>com.google.android.as: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.permissioncontroller: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.android.providers.settings: ShrinkableDebits { debit tally: 0, bucket: 6 }
+      <0>com.google.android.as.oss: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.apps.wellbeing: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.gms: ShrinkableDebits { debit tally: 0, bucket: 6 }
+      <0>com.google.android.tts: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.googlesdksetup: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.apps.nexuslauncher: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.android.settings: ShrinkableDebits { debit tally: 0, bucket: 6 }
+      <0>com.google.android.inputmethod.latin: ShrinkableDebits { debit tally: 0, bucket: 0 }
+    
+    In quota alarms:
+      NOT WAITING
 
-
-BUILD FAILED in 30s
-26 actionable tasks: 26 executed
+ComponentController:
+  0-ComponentInfo{com.google.android.rkpdapp/androidx.work.impl.background.systemjob.SystemJobService}: com.google.android.rkpdapp
+  0-ComponentInfo{com.google.android.partnersetup/com.google.android.partnersetup.ClientIdJobService}: com.google.android.partnersetup
+  0-ComponentInfo{android/com.android.server.PruneInstantAppsJobService}: system
+  0-ComponentInfo{com.google.android.tts/androidx.work.impl.background.systemjob.SystemJobService}: com.google.android.tts
+  0-ComponentInfo{com.google.android.permissioncontroller/com.android.permissioncontroller.hibernation.HibernationJobService}: com.google.android.permissioncontroller
+  0-ComponentInfo{com.google.android.dialer/com.android.dialer.shortcuts.PeriodicJobService}: com.google.android.dialer
+  0-ComponentInfo{com.google.android.permissioncontroller/com.android.permissioncontroller.permission.service.PermissionEventCleanupJobService}: com.google.android.permissioncontroller
+  0-ComponentInfo{android/com.android.server.appsearch.contactsindexer.ContactsIndexerMaintenanceService}: system
+  0-ComponentInfo{com.google.android.configupdater/com.google.android.configupdater.MainJobService}: com.google.android.configupdater
+  0-ComponentInfo{android/com.android.server.camera.CameraStatsJobService}: system
+  0-ComponentInfo{com.google.android.ext.services/android.ext.services.common.AdServicesAppsearchDeleteJob}: com.google.android.ext.services
+--- final app-UID log ---
+--------- beginning of main
+11-20 05:36:27.475  2081  2081 I v.visaroom.alav: Using CollectorTypeCMC GC.
+11-20 05:36:27.486  2081  2081 W v.visaroom.alav: Unexpected CPU variant for x86: x86_64.
+11-20 05:36:27.486  2081  2081 W v.visaroom.alav: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, alderlake, default
+11-20 05:36:27.489  2081  2081 E v.visaroom.alav: Not starting debugger since process cannot load the jdwp agent.
+11-20 05:36:27.517  2081  2081 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-20 05:36:27.740  2081  2081 D CompatChangeReporter: Compat change id reported: 242716250; UID 10216; state: ENABLED
+11-20 05:36:27.803  2081  2081 D nativeloader: Configuring clns-9 for other apk /data/app/~~I9MSfW6bHVjoHZeJLfcHRQ==/lav.visaroom.alav-2jiHZhHbadIp38Ckc89ejw==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~I9MSfW6bHVjoHZeJLfcHRQ==/lav.visaroom.alav-2jiHZhHbadIp38Ckc89ejw==/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/lav.visaroom.alav
+11-20 05:36:27.827  2081  2081 I v.visaroom.alav: AssetManager2(0x770832aec938) locale list changing from [] to [en-US]
+11-20 05:36:27.863  2081  2081 V GraphicsEnvironment: Currently set values for:
+11-20 05:36:27.863  2081  2081 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-20 05:36:27.863  2081  2081 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-20 05:36:27.863  2081  2081 V GraphicsEnvironment: lav.visaroom.alav is not listed in per-application setting
+11-20 05:36:27.863  2081  2081 V GraphicsEnvironment: ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
+11-20 05:36:27.864  2081  2081 V GraphicsEnvironment: lav.visaroom.alav is not listed in ANGLE allowlist or settings, returning default
+11-20 05:36:27.864  2081  2081 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11-20 05:36:27.913  2081  2081 I v.visaroom.alav: AssetManager2(0x770832af2a18) locale list changing from [] to [en-US]
+--------- beginning of system
+11-20 05:36:27.922  2081  2102 I DisplayManager: Choreographer implicitly registered for the refresh rate.
+11-20 05:36:27.949  2081  2081 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
+11-20 05:36:28.082  2081  2081 I VisaroomSmoke: seed_saved=true uid_matches=true token_present=true
+11-20 05:36:28.139  2081  2102 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+11-20 05:36:28.140  2081  2102 I EGL_emulation: Opening libGLESv2_emulation.so
+11-20 05:36:28.167  2081  2081 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
+11-20 05:36:28.169  2081  2102 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+11-20 05:36:28.233  2081  2081 I v.visaroom.alav: AssetManager2(0x770832af1d98) locale list changing from [] to [en-US]
+11-20 05:36:28.310  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.310  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.311  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.311  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.311  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.312  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.312  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.313  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.313  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.313  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.315  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.316  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.316  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.316  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.316  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.316  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.317  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.317  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.317  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.317  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.317  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.318  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.318  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.318  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.319  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.319  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.319  2081  2081 W HWUI    : Image decoding logging dropped!
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: Failed to execute the transaction: tId:1602527102 ClientTransaction{
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102   transactionItems=[
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102     LaunchActivityItem{activityToken=android.os.BinderProxy@c6be299,intent=Intent { flg=0x10008000 xflg=0x4 cmp=lav.visaroom.alav/.ChatsActivity },ident=10127066,info=ActivityInfo{ebf194d lav.visaroom.alav.ChatsActivity},curConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h683dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2476) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.64 fontWeightAdjustment=0},overrideConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h683dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2476) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.2 fontWeightAdjustment=0},deviceId=0,referrer=lav.visaroom.alav,procState=2,state=null,persistentState=null,pendingResults=null,pendingNewIntents=null,sceneTransitionInfo=null,profilerInfo=null,assistToken=android.os.BinderProxy@93dde76,shareableActivityToken=android.os.BinderProxy@e63dc77,activityWindowInfo=ActivityWindowInfo{isEmbedded=false, taskBounds=Rect(0, 0 - 1440, 2560), taskFragmentBounds=Rect(0, 0 - 1440, 2560)}}
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102     ResumeActivityItem{mActivityToken=android.os.BinderProxy@c6be299,procState=-1,isForward=true,shouldSendCompatFakeFocus=false}
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102     Target activity: lav.visaroom.alav.ChatsActivity
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102   ]
+11-20 05:36:28.335  2081  2081 E TransactionExecutor: tId:1602527102 }
+11-20 05:36:28.335  2081  2081 D AndroidRuntime: Shutting down VM
+--------- beginning of crash
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: FATAL EXCEPTION: main
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: Process: lav.visaroom.alav, PID: 2081
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4280)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4467)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:133)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:103)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2823)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:110)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:248)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:338)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:9067)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: Caused by: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettingsFolders(ChatsActivity.java:625)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettings(ChatsActivity.java:406)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.onCreate(ChatsActivity.java:158)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9155)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9133)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1521)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4262)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	... 13 more
+11-20 05:36:28.351  2081  2081 I Process : Sending signal. PID: 2081 SIG: 9
+--- final crash buffer ---
+--------- beginning of crash
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: FATAL EXCEPTION: main
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: Process: lav.visaroom.alav, PID: 2081
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4280)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4467)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:133)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:103)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2823)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:110)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:248)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:338)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:9067)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: Caused by: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettingsFolders(ChatsActivity.java:625)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettings(ChatsActivity.java:406)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.onCreate(ChatsActivity.java:158)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9155)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9133)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1521)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4262)
+11-20 05:36:28.336  2081  2081 E AndroidRuntime: 	... 13 more
+--- filtered app-context extract ---
+11744-11-20 05:36:41.166  1647  2204 V Backup  : [CustomDownloadSchedulingIO] Flag to run custom backup downloads is off.
+11745-11-20 05:36:41.168  2535  2635 I VoiceDataDownloader: Getting pack name en-us-x-multi-locomel-r80
+11746-11-20 05:36:41.168  2535  2635 I VoiceDataDownloader: Adding pack en-us-x-multi-locomel-r80 to superpack.
+11747-11-20 05:36:41.168  2535  2635 I VoiceDataDownloader: Getting pack name en-us-x-blueginger-lemonbalm-r80
+11748-11-20 05:36:41.168  2535  2635 I VoiceDataDownloader: Adding pack en-us-x-blueginger-lemonbalm-r80 to superpack.
+11749-11-20 05:36:41.168  2535  2635 I VoiceDataDownloader: Syncing superpack en-us
+11750-11-20 05:36:41.169  2535  2637 I SP      : Registering en-us.80, url: null, constraints: *:*:*:*, flags: *, requested: 80, current: 80
+11751-11-20 05:36:41.175  2535  2637 I SP      : Syncing en-us (80) with slices: [{en-us-x-multi-r80, m:*:*:*}], metadata: false
+11752-11-20 05:36:41.186   647  1966 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+11753-11-20 05:36:41.187   647  1966 D PackageManager: Clear ephemeral installer activity
+11754-11-20 05:36:41.192   647  1241 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+11755-11-20 05:36:41.193   647  1241 D PackageManager: Clear ephemeral installer activity
+11756-11-20 05:36:41.196  1291  1313 W HWUI    : Image decoding logging dropped!
+11757-11-20 05:36:41.201   647  1964 D CompatChangeReporter: Compat change id reported: 297989574; UID 10140; state: ENABLED
+11758-11-20 05:36:41.205  2535  2637 I SP      : Fetching en-us:en-us-x-multi-r80 from assets with params: {m:*:*:*, *, p {absolute:0}}
+11759-11-20 05:36:41.205  1599  2315 I AiAiEcho: AppIndexer Package:[android] UserProfile:[0] Enabled:[true].
+11760-11-20 05:36:41.205  2535  2637 I SP      : GC for 'en-us' (10) with ttl of 0 ms took 0 ms (0/0/0)
+11761-11-20 05:36:41.206  1599  2315 I AiAiEcho: AppFetcherImplV2 updateApps package:[android], userId:[0], reason:[package is updated.].
+11762-11-20 05:36:41.206  2687  2687 V GraphicsEnvironment: Currently set values for:
+11763-11-20 05:36:41.207   647  2027 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = READ_SMS, mode = allow, callingUid = 1001, oldMode = allow
+11764-11-20 05:36:41.207   647   919 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = RECEIVE_SMS, mode = allow, callingUid = 1001, oldMode = allow
+11765-11-20 05:36:41.208  1647  2204 V Backup  : [G1ModuleInitIntentOperation] Running restore operation is disabled by flag
+11766-11-20 05:36:41.208  2535  2635 I VoiceDataManager: failed to download voice en-us
+11767-11-20 05:36:41.208  2535  2635 I VoiceDataManager: btk: Failed to sync packs (Reason=SYNC_PACK_FAILED)
+11768-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at btq.a(PG:61)
+11769-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at gtr.a(PG:18)
+11770-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at hsq.run(PG:37)
+11771-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+11772-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+11773-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at java.lang.Thread.run(Thread.java:1119)
+11774-11-20 05:36:41.208  2535  2635 I VoiceDataManager: Caused by: java.util.concurrent.CancellationException: Task was cancelled.
+11775-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at hqy.r(PG:33)
+11776-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at hqy.get(PG:3)
+11777-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at a.i(PG:2)
+11778-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at hku.ac(PG:10)
+11779-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	at hsq.run(PG:24)
+11780-11-20 05:36:41.208  2535  2635 I VoiceDataManager: 	... 3 more
+11781-11-20 05:36:41.211  2687  2687 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11782-11-20 05:36:41.212  2687  2687 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11783-11-20 05:36:41.212   647  2027 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = RECEIVE_WAP_PUSH, mode = allow, callingUid = 1001, oldMode = allow
+11784-11-20 05:36:41.215  2687  2687 V GraphicsEnvironment: com.google.android.packageinstaller is not listed in per-application setting
+11785-11-20 05:36:41.216  2687  2687 V GraphicsEnvironment: ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
+11786-11-20 05:36:41.216   647  2027 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+11787-11-20 05:36:41.226  2687  2687 V GraphicsEnvironment: com.google.android.packageinstaller is not listed in ANGLE allowlist or settings, returning default
+11788-11-20 05:36:41.227  2687  2687 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11789-11-20 05:36:41.232   647  2027 D PackageManager: Clear ephemeral installer activity
+11790-11-20 05:36:41.239  1291  1313 W HWUI    : Image decoding logging dropped!
+11791-11-20 05:36:41.246  2535  2635 I VoiceGenerator: Cache cleared
+11792-11-20 05:36:41.248  1021  1038 I HWUI    : Davey! duration=6100ms; Flags=0, FrameTimelineVsyncId=5006, IntendedVsync=67811126315, Vsync=72194459473, InputEventId=0, HandleInputStart=72208903007, AnimationStart=72208903648, PerformTraversalsStart=72448622997, DrawStart=72765257516, FrameDeadline=71027792853, FrameStartTime=72208705478, FrameInterval=16666666, WorkloadTarget=16666666, SyncQueued=72767489541, SyncStart=72767514297, IssueDrawCommandsStart=72776538487, SwapBuffers=73781829661, FrameCompleted=73911580865, DequeueBufferDuration=4027, QueueBufferDuration=7408335, GpuCompleted=73911241519, SwapBuffersCompleted=73911580865, DisplayPresentTime=0, CommandSubmissionCompleted=73781829661, 
+11793-11-20 05:36:41.253  1291  1313 W HWUI    : Image decoding logging dropped!
+11794:11-20 05:36:41.259  1599  2315 I AiAiEcho: AppIndexer Package:[lav.visaroom.alav] UserProfile:[0] Enabled:[true].
+11795:11-20 05:36:41.259  1599  2315 I AiAiEcho: AppFetcherImplV2 updateApps package:[lav.visaroom.alav], userId:[0], reason:[package is updated.].
+11796-11-20 05:36:41.276   647  1921 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+11797-11-20 05:36:41.282  1291  1313 W HWUI    : Image decoding logging dropped!
+11798-11-20 05:36:41.286   647  1921 D PackageManager: Clear ephemeral installer activity
+11799-11-20 05:36:41.289  1647  2225 I ChimeraConfigurator: Starting update, reason: 4 urgentFeatures: 
+11800-11-20 05:36:41.289  1291  1313 W HWUI    : Image decoding logging dropped!
+11801-11-20 05:36:41.295  1360  2078 W AsyncOperation: operation=CommitToConfigurationOperationCall, opStatusCode=29503 [CONTEXT service_id=51 ]
+11802-11-20 05:36:41.295  1360  2078 W AsyncOperation: OperationException[Status{statusCode=unknown status code: 29503, resolution=null}]
+11803-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at eedh.h(:com.google.android.gms@252635038@25.26.35 (260800-783060121):65)
+11804-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at eedh.f(:com.google.android.gms@252635038@25.26.35 (260800-783060121):17)
+11805-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at cheh.fI(:com.google.android.gms@252635038@25.26.35 (260800-783060121):1)
+11806-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at chel.run(:com.google.android.gms@252635038@25.26.35 (260800-783060121):128)
+11807-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at fyac.run(:com.google.android.gms@252635038@25.26.35 (260800-783060121):21)
+11808-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at azpj.c(:com.google.android.gms@252635038@25.26.35 (260800-783060121):50)
+11809-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at azpj.run(:com.google.android.gms@252635038@25.26.35 (260800-783060121):89)
+11810-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+11811-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+11812-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at azva.run(:com.google.android.gms@252635038@25.26.35 (260800-783060121):8)
+11813-11-20 05:36:41.295  1360  2078 W AsyncOperation: 	at java.lang.Thread.run(Thread.java:1119)
+11814-11-20 05:36:41.296  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: googledata.experiments.mobile.assistant.client_packages.component.soda_hotword.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11815-11-20 05:36:41.296  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: googledata.experiments.mobile.assistant.client_packages.component.soda_resourcemanager.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11816-11-20 05:36:41.296  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.libraries.search.assistant.invocation.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11817-11-20 05:36:41.296  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.search.assistant.mobile.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11818-11-20 05:36:41.297  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: googledata.experiments.mobile.assistant.client_packages.component.assistant_tng_interactor.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11819-11-20 05:36:41.297  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.search.assistant.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11820-11-20 05:36:41.297  1647  2207 I Backup  : [CallLogFlagSetter] Not enabling because user_full_data_backup_aware not set.
+11821-11-20 05:36:41.297  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.libraries.search.audio.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11822-11-20 05:36:41.297  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.search.fedora.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11823-11-20 05:36:41.298  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.search.googleapp_widgets.weather.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11824-11-20 05:36:41.298  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.search.hsi.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11825-11-20 05:36:41.298  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.gsa.pcp.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11826-11-20 05:36:41.298  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.search.policy#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11827-11-20 05:36:41.298  1647  2207 I SyncIntentOperation: Handling the intent: Intent { act=com.google.android.gms.chimera.container.CONTAINER_UPDATED xflg=0x4 pkg=com.google.android.gms cmp=com.google.android.gms/.chimera.GmsIntentOperationService }. [CONTEXT service_id=80 ]
+11828-11-20 05:36:41.298  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.search.readaloud#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11829-11-20 05:36:41.299  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.ar.sceneviewer.android.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11830-11-20 05:36:41.299  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.search.smartsetup#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11831-11-20 05:36:41.299  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.search.soundsearch.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11832-11-20 05:36:41.299  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.libraries.search.speech_tng.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11833-11-20 05:36:41.300  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.libraries.search.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11834-11-20 05:36:41.300  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.libraries.search.soda_apa.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11835-11-20 05:36:41.300  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: tiktok.directboot#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11836-11-20 05:36:41.300  1360  2078 W GetConfigSnapshotOp: Succeeded but not registered: tiktok.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11837-11-20 05:36:41.302   647  1245 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+11838-11-20 05:36:41.302   647  1245 D PackageManager: Clear ephemeral installer activity
+11839-11-20 05:36:41.309   647  1161 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+11840-11-20 05:36:41.309   647  1161 D PackageManager: Clear ephemeral installer activity
+11841-11-20 05:36:41.311  1291  1313 W HWUI    : Image decoding logging dropped!
+11842-11-20 05:36:41.316   647  1178 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = SEND_SMS, mode = allow, callingUid = 1001, oldMode = allow
+11843-11-20 05:36:41.316   647  1178 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = READ_CELL_BROADCASTS, mode = allow, callingUid = 1001, oldMode = allow
+11844-11-20 05:36:41.316  1182  1182 D SatelliteAccessController: Current default SMS app:ComponentInfo{com.google.android.apps.messaging/com.google.android.apps.messaging.shared.receiver.SmsDeliverReceiver}
+11845-11-20 05:36:41.316  1182  1182 D SatelliteController: getSelectedSatelliteSubId: subId=-1
+11846-11-20 05:36:41.316  1291  1313 W HWUI    : Image decoding logging dropped!
+11847-11-20 05:36:41.317  1182  1182 D SatelliteAccessController: supportedMsgApps:com.google.android.apps.messaging
+11848-11-20 05:36:41.319  1182  1182 D CarrierConfigLoader: Connected to config app: com.android.carrierconfig/.DefaultCarrierConfigService
+11849-11-20 05:36:41.319  1182  1182 I ImsExternalCallTracker: handleVideoCapabilitiesChanged : isVideoCapable = false
+11850-11-20 05:36:41.319  1182  1182 D ImsExternalCallTracker: refreshCallPullState
+11851-11-20 05:36:41.319  1182  1182 I Telephony: handleVideoCapabilitesChanged. Video capability - false
+11852-11-20 05:36:41.323  2550  2573 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.gmscompliance, using defaults.
+11853-11-20 05:36:41.323  2550  2573 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.droidguard, using defaults.
+11854-11-20 05:36:41.323  1647  2207 I SyncIntentOperation: Setting component enabled: com.google.android.gms.chromesync.sync.GcmBroadcastReceiver [CONTEXT service_id=80 ]
+11855-11-20 05:36:41.328  1647  2225 W ConfigurationContentLdr: ContentProvider query returned null cursor, using default values
+11856-11-20 05:36:41.335   647   919 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+11857-11-20 05:36:41.347  1360  2079 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.apps.search.googleapp_widgets.weather.device#com.google.android.googlequicksearchbox [CONTEXT service_id=51 ]
+11858-11-20 05:36:41.348   647   919 D PackageManager: Clear ephemeral installer activity
+11859-11-20 05:36:41.348  1182  1182 D Telephony: isEmergencyPreferredAccount: subId=1, activeData=-1
+11860-11-20 05:36:41.348  1182  1182 D Telephony: isEmergencyPreferredAccount: Device does not require preference.
+11861-11-20 05:36:41.351  1647  2422 I Auth.Api.Credentials: [WebauthnCredentialDataClient#subscribe()] Operation started. [CONTEXT service_id=68 ]
+11862-11-20 05:36:41.352  1021  1174 W AudioManager: attempt to call registerAudioRecordingCallback() on a previouslyregistered callback
+11863-11-20 05:36:41.353   647  1113 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.WALLET
+11864-11-20 05:36:41.354  1360  2399 I Dtdi    : [LifecycleService] Finished delegate init [CONTEXT service_id=312 ]
+11865-11-20 05:36:41.364  1360  2078 I .gms.persistent: AssetManager2(0x770832b00b18) locale list changing from [] to [en-US]
+11866-11-20 05:36:41.369   647   976 D ShortcutService: received package broadcast intent: Intent { act=android.intent.action.PACKAGE_CHANGED dat=package: flg=0x5000010 (has extras) }
+11867-11-20 05:36:41.369   647   976 D ShortcutService: changing package: android userId=0
+11868-11-20 05:36:41.380  1182  1182 W Telephony: registerMmTelCapabilityCallback: registration failed, no ImsService available. Exception: code: 1
+11869-11-20 05:36:41.388  1182  1182 I Telephony: isRttCurrentlySupported -- regular acct, hasVoiceAvailability: false
+11870-11-20 05:36:41.388  1182  1182 I Telephony:  isRttSupported: false
+11871-11-20 05:36:41.388  1182  1182 I Telephony:  alwaysAllowWhileRoaming: false
+11872-11-20 05:36:41.388  1182  1182 I Telephony:  isRoaming: false
+11873-11-20 05:36:41.388  1182  1182 I Telephony:  isOnWfc: false
+11874-11-20 05:36:41.420  1021  1021 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11875-11-20 05:36:41.421  1021  1021 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11876-11-20 05:36:41.424  1360  1360 D BoundBrokerSvc: onUnbind: Intent { act=com.android.trust.provider.SignificantPlaceProvider.BIND xflg=0x4 cmp=com.google.android.gms/.chimera.PersistentInternalBoundBrokerService }
+11877-11-20 05:36:41.426  2687  2687 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
+11878-11-20 05:36:41.436   647  1161 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+11879-11-20 05:36:41.436   647  1161 D PackageManager: Clear ephemeral installer activity
+11880-11-20 05:36:41.437   647   678 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10160, packageName = null, attributionTag = null, token = android.os.Binder@729c511, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+11881-11-20 05:36:41.443   647  1113 W SignedPackage: Cannot get ApplicationInfo for package: com.google.android.devicelockcontroller
+11882-11-20 05:36:41.446  1360  1360 D BoundBrokerSvc: onBind: Intent { act=com.android.trust.provider.SignificantPlaceProvider.BIND xflg=0x4 cmp=com.google.android.gms/.chimera.PersistentInternalBoundBrokerService }
+11883-11-20 05:36:41.446  1360  1360 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.android.trust.provider.SignificantPlaceProvider.BIND xflg=0x4 cmp=com.google.android.gms/.chimera.PersistentInternalBoundBrokerService }
+11884-11-20 05:36:41.446   450   450 D Zygote  : Forked child process 2735
+11885-11-20 05:36:41.448   647   679 I ActivityManager: Start proc 2735:com.android.chrome/u0a160 for broadcast {com.android.chrome/org.chromium.chrome.browser.browserservices.InstalledWebappBroadcastReceiver}
+11886-11-20 05:36:41.448   647   679 I ActivityManager: ProcessObserver broadcast disabled
+11887-11-20 05:36:41.461  2735  2735 I .android.chrome: Using CollectorTypeCMC GC.
+11888-11-20 05:36:41.462  2735  2735 W .android.chrome: Unexpected CPU variant for x86: x86_64.
+11889-11-20 05:36:41.462  2735  2735 W .android.chrome: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, alderlake, default
+11890-11-20 05:36:41.463  2735  2735 E .android.chrome: Not starting debugger since process cannot load the jdwp agent.
+11891-11-20 05:36:41.464  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b0f258) locale list changing from [] to [en-US]
+11892-11-20 05:36:41.464  2735  2735 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11893-11-20 05:36:41.467  1291  1313 W HWUI    : Image decoding logging dropped!
+11894-11-20 05:36:41.472  1291  1313 W HWUI    : Image decoding logging dropped!
+11895-11-20 05:36:41.472  1722  1929 E dimq    : (REDACTED) [SRM] [Hotword] Missing client file group %s
+11896-11-20 05:36:41.473  1722  1929 E dimq    : (REDACTED) [SRM] [Hotword] Missing client file group %s
+11897-11-20 05:36:41.473  1722  1929 W esse    : Mobserve config not initialized yet. Checking embedded resources and re-fetching.
+11898-11-20 05:36:41.473  1722  1929 I dimq    : (REDACTED) MDD.EmbeddedAssetManifestPopulator.refreshFileGroups(%s)
+11899-11-20 05:36:41.480  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b05c58) locale list changing from [] to [en-US]
+11900-11-20 05:36:41.482  1291  1313 W HWUI    : Image decoding logging dropped!
+11901-11-20 05:36:41.484  1647  2410 I Blockstore: [BlockstoreModuleInitIntentOperation] scheduleOneOffTaskIfAlreadyScheduled finished [CONTEXT service_id=258 ]
+11902-11-20 05:36:41.486  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.auth.blockstore
+11903-11-20 05:36:41.486  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.auth.blockstore, using defaults.
+11904-11-20 05:36:41.486  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.statementservice
+11905-11-20 05:36:41.486  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.statementservice, using defaults.
+11906-11-20 05:36:41.486  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.phenotype
+11907-11-20 05:36:41.486  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.phenotype, using defaults.
+11908-11-20 05:36:41.487  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.admob
+11909-11-20 05:36:41.487  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.admob, using defaults.
+11910-11-20 05:36:41.487  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.chromesync
+11911-11-20 05:36:41.487  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.chromesync, using defaults.
+11912-11-20 05:36:41.495  1291  1313 W HWUI    : Image decoding logging dropped!
+11913-11-20 05:36:41.499   447   478 I netd    : tetherGetStats() -> {[]} <0.26ms>
+11914-11-20 05:36:41.500  1647  2271 I Blockstore: [BlockstoreModuleInitIntentOperation] cloudRestoreSourceId cleared [CONTEXT service_id=258 ]
+11915-11-20 05:36:41.501  1291  1313 W HWUI    : Image decoding logging dropped!
+--
+11985-11-20 05:36:41.593  1722  2340 I acrf    : (REDACTED) Should stop hotword detection immediately - %b
+11986-11-20 05:36:41.595  1722  1887 I afwh    : (REDACTED) MDD returned a model config with build ID: %d
+11987-11-20 05:36:41.596  1722  1887 I afwh    : MDD failed to return a model config.
+11988-11-20 05:36:41.596  1722  1887 I dimq    : (REDACTED) Loading %s from MDD with name=%s version=%d BuildId= %d
+11989-11-20 05:36:41.597  1722  1887 I dimq    : (REDACTED) Loading %s from MDD with name=%s version=%d BuildId= %d
+11990-11-20 05:36:41.599   647  2026 I Telecom : PhoneAccountRegistrar: Modify account: [ComponentInfo{com.android.phone/com.android.services.telephony.TelephonyConnectionService}, 1, UserHandle{0}]: TSI.rPA(cap)@AGU🔒
+11991-11-20 05:36:41.612  2735  2735 W .android.chrome: Failed to find entry 'classes.dex': Entry not found
+11992-11-20 05:36:41.612  1722  1930 I blun    : (REDACTED) optInSettingStatus value %s.
+11993-11-20 05:36:41.612  1722  1930 W blun    : Failed to fetch account information.
+11994-11-20 05:36:41.613   647   976 D ShortcutService: received package broadcast intent: Intent { act=android.intent.action.PACKAGE_CHANGED dat=package: flg=0x5000010 (has extras) }
+11995:11-20 05:36:41.613   647   976 D ShortcutService: changing package: lav.visaroom.alav userId=0
+11996-11-20 05:36:41.614  1278  1278 D BatteryUsageBroadcastReceiver: onReceive:android.intent.action.BATTERY_LEVEL_CHANGED
+11997-11-20 05:36:41.620   647  2026 I Telecom : CallsManager: handlePhoneAccountChanged: phoneAccount=[[X] PhoneAccount: ComponentInfo{com.android.phone/com.android.services.telephony.TelephonyConnectionService}, 1, UserHandle{0} Capabilities: CallProvider MultiUser PlaceEmerg SimSub  Audio Routes: BESW Schemes: tel voicemail  Extras: Bundle[{android.telecom.extra.SUPPORTS_VIDEO_CALLING_FALLBACK=true}] GroupId: *** SC Restrictions: [ ]]: TSI.rPA(cap)@AGU🔒
+11998-11-20 05:36:41.621   647  2026 I Telecom : PhoneAccountRegistrar: getSimCallManager: SimCallManager for subId 1 queried, returning: null: TSI.rPA(cap)@AGU🔒
+11999-11-20 05:36:41.621   647  2026 I Telecom : PhoneAccountRegistrar: Notifying telephony of voice service override change for 1 SIMs, hasService = false: TSI.rPA(cap)@AGU🔒
+12000-11-20 05:36:41.621  2735  2735 D nativeloader: Configuring clns-9 for other apk /data/app/~~wcBh8946oufDhdHrKrO2KQ==/com.google.android.trichromelibrary_694313738-i6U7Yx29amvfaLBblhh4mg==/TrichromeLibrary.apk. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~Cv-CYNGA6p2ZZ-Gnv2JrzQ==/com.android.chrome-5GLfcUi70Bhg9cldMvQRLg==/lib/x86_64:/data/app/~~Cv-CYNGA6p2ZZ-Gnv2JrzQ==/com.android.chrome-5GLfcUi70Bhg9cldMvQRLg==/Chrome.apk!/lib/x86_64:/data/app/~~wcBh8946oufDhdHrKrO2KQ==/com.google.android.trichromelibrary_694313738-i6U7Yx29amvfaLBblhh4mg==/TrichromeLibrary.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.chrome
+12001-11-20 05:36:41.626  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b20558) locale list changing from [] to [en-US]
+12002-11-20 05:36:41.630  1633  1633 I faht    : (REDACTED) O received %s
+12003-11-20 05:36:41.632   647  1964 D MediaMetricsManagerService: failed to get player_metrics_app_blocklist from DeviceConfig
+12004-11-20 05:36:41.632   647  1964 V MediaMetricsManagerService: Logging level blocked: Failed to get PLAYER_METRICS_APP_BLOCKLIST.
+12005-11-20 05:36:41.632   647  1952 D MediaMetricsManagerService: failed to get player_metrics_app_blocklist from DeviceConfig
+12006-11-20 05:36:41.632   647  1952 V MediaMetricsManagerService: Logging level blocked: Failed to get PLAYER_METRICS_APP_BLOCKLIST.
+12007-11-20 05:36:41.637  1360  1365 W .gms.persistent: Suspending all threads took: 158.500ms
+12008-11-20 05:36:41.638  1647  2220 I Ads     : Parental control value is stale. Refreshing.
+12009-11-20 05:36:41.640  1647  2220 W Ads     : Play store is not installed or the service for parental controls is not available.
+12010-11-20 05:36:41.640  1182  1182 I PhoneInterfaceManager: setVoiceServiceStateOverride: subId=1, phone=Handler (com.android.internal.telephony.GsmCdmaPhone) {4f85123}, hasService=false, callingPackage=com.android.server.telecom
+12011-11-20 05:36:41.642  1466  1638 I DeviceStatusMonitor: DeviceStatusMonitor.handleBroadcast():123 onReceive() : Action = android.net.conn.CONNECTIVITY_CHANGE
+12012-11-20 05:36:41.642  1291  1313 W HWUI    : Image decoding logging dropped!
+12013-11-20 05:36:41.645  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b1d998) locale list changing from [] to [en-US]
+12014-11-20 05:36:41.646  1647  2220 I Ads     : Initialized AdMob in container 25.26.35 (260800-{{cl}})
+12015-11-20 05:36:41.647  1182  1182 V SimultaneousCallingTracker: Received EVENT 101
+12016-11-20 05:36:41.647  1182  1182 D SimultaneousCallingTracker: Ignoring updatePhoneMapAndSimultaneousCallSupportMap since device is not DSDA capable.
+12017-11-20 05:36:41.647   647  1964 I WifiService: getVerboseLoggingLevel uid=10144
+12018-11-20 05:36:41.652  1722  1887 I afwh    : (REDACTED) MDD returned a model config with build ID: %d
+12019-11-20 05:36:41.653  1722  1887 I afwh    : (REDACTED) Received value from MDD and updated PDS with Build ID: %d
+12020-11-20 05:36:41.654  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.constellation
+12021-11-20 05:36:41.654  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.constellation, using defaults.
+12022-11-20 05:36:41.656  1466  1638 I DeviceStatusMonitor: DeviceStatusMonitor.notifyIfNetworkChanged():180 notifyIfNetworkChanged: newState = NON_METERED, airplaneModeOn = false, notifyAnyway = false
+12023-11-20 05:36:41.657  1466  1638 I NetworkInfoNotification: NetworkInfoNotification$Listener.onReceive():107 onNetworkAvailable: networkState = NON_METERED, isAirplaneModeOn = false
+12024-11-20 05:36:41.657  1466  1638 I NetworkInfoNotification: NetworkInfoNotification$Listener.onReceive():107 onNetworkAvailable: networkState = NON_METERED, isAirplaneModeOn = false
+12025-11-20 05:36:41.657  1466  1638 I LatinImeEntryActivation: LatinImeActivationContentObserver.activeLanguagesHaveChanged():70 Active entries changed: [] -> {en-US}
+12026-11-20 05:36:41.658  1466  1638 I SuperDelight: SuperDelightManager.syncBundledLanguageModels():733 syncBundledLanguageModels(): clearing bundled_delight selection
+12027-11-20 05:36:41.658  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.adsidentity
+12028-11-20 05:36:41.658  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.adsidentity, using defaults.
+12029-11-20 05:36:41.659  1647  2708 I adservices: Schedule privacy sandbox mendel properties daily job
+12030-11-20 05:36:41.660   647  1004 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+12031-11-20 05:36:41.660   647  1004 D PackageManager: Clear ephemeral installer activity
+12032-11-20 05:36:41.663  1466  1638 I LmManager: LmManager.asyncUpdateEnabledLanguageModels():96 asyncUpdateEnabledLanguageModels()
+12033-11-20 05:36:41.663  1466  1638 I SuperDelight: SuperDelightManager.initializeOverridesSuperpacks():405 initializeOverridesSuperpacks()
+12034-11-20 05:36:41.664  1466  1638 I DelightKLPDownloader: DelightKLPDownloader.downloadKLPInternal():199 downloading KLP for en_US
+12035-11-20 05:36:41.664  1466  1638 I ManifestedDataDownloader: ManifestedDataDownloader.download():63 downloading manifest https://www.gstatic.com/android/keyboard/dictionarypack/2024111922/metadata.json-perlang/en-US.json?v=2025021100
+12036-11-20 05:36:41.664  1466  1466 I NetworkInfoNotification: NetworkInfoNotification$Listener.onReceive():107 onNetworkAvailable: networkState = NON_METERED, isAirplaneModeOn = false
+12037-11-20 05:36:41.664  1466  1466 I HandwritingOnlineSuperpacks: HandwritingOnlineSuperpacks$1.onNetworkAvailable():70 onNetworkAvailable
+12038-11-20 05:36:41.664  1466  1466 I HandwritingSuperpacks: HandwritingSuperpacks.register():273 register(): version '86', url 'https://dl.google.com/handwriting/models/handwriting_release.superpack_manifest.20231127.json' [ONLINE]
+12039-11-20 05:36:41.666  1360  2078 I HeterodyneSyncScheduler: Scheduling Phenotype for a PhenotypeSyncImmediately(6, com.google.android.libraries.search.googleapp.device#com.google.android.googlequicksearchbox) one off with window [1, 2] in seconds [CONTEXT service_id=51 ]
+12040-11-20 05:36:41.666  1466  1466 I NetworkInfoNotification: NetworkInfoNotification$Listener.onReceive():107 onNetworkAvailable: networkState = NON_METERED, isAirplaneModeOn = false
+12041-11-20 05:36:41.667  1291  1313 W HWUI    : Image decoding logging dropped!
+12042-11-20 05:36:41.679  1291  1313 I s.nexuslauncher: AssetManager2(0x770832aff538) locale list changing from [] to [en-US]
+12043-11-20 05:36:41.682  1647  1647 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS xflg=0x4 pkg=com.google.android.gms }
+12044-11-20 05:36:41.689  1722  1930 I dimq    : (REDACTED) [SRM] [Hotword] get hotword model config success, %d locales.
+12045-11-20 05:36:41.689   647  1921 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+12046-11-20 05:36:41.689   647  1921 D PackageManager: Clear ephemeral installer activity
+12047-11-20 05:36:41.695  1291  1313 W HWUI    : Image decoding logging dropped!
+12048-11-20 05:36:41.699  1647  1647 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS xflg=0x4 pkg=com.google.android.gms }
+12049-11-20 05:36:41.701  2550  2559 I DynamiteModule: Considering local module com.google.android.gms.cronet_dynamite:0 and remote module com.google.android.gms.cronet_dynamite:3611
+12050-11-20 05:36:41.701  2550  2559 I DynamiteModule: Selected remote version of com.google.android.gms.cronet_dynamite, version >= 3611
+12051-11-20 05:36:41.704  1722  1888 W aatb    : Failed to get weather_background_refresh_delay_seconds flag.
+12052-11-20 05:36:41.706  2735  2735 D nativeloader: Configuring clns-10 for other apk /data/app/~~Cv-CYNGA6p2ZZ-Gnv2JrzQ==/com.android.chrome-5GLfcUi70Bhg9cldMvQRLg==/Chrome.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~Cv-CYNGA6p2ZZ-Gnv2JrzQ==/com.android.chrome-5GLfcUi70Bhg9cldMvQRLg==/lib/x86_64:/data/app/~~Cv-CYNGA6p2ZZ-Gnv2JrzQ==/com.android.chrome-5GLfcUi70Bhg9cldMvQRLg==/Chrome.apk!/lib/x86_64:/data/app/~~wcBh8946oufDhdHrKrO2KQ==/com.google.android.trichromelibrary_694313738-i6U7Yx29amvfaLBblhh4mg==/TrichromeLibrary.apk!/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.chrome
+12053-11-20 05:36:41.706  1291  1313 W HWUI    : Image decoding logging dropped!
+12054-11-20 05:36:41.707  1722  1929 I dimq    : (REDACTED) [SRM] [Hotword] get hotword model config success, %d locales.
+12055-11-20 05:36:41.708  1722  1889 I afwh    : (REDACTED) MDD returned a model config with build ID: %d
+12056-11-20 05:36:41.708  1722  1889 I afwh    : (REDACTED) Received value from MDD and updated PDS with Build ID: %d
+12057-11-20 05:36:41.710  2735  2735 I .android.chrome: AssetManager2(0x770832aec938) locale list changing from [] to [en-US]
+12058-11-20 05:36:41.719   647  2026 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+12059-11-20 05:36:41.719   647  2026 D PackageManager: Clear ephemeral installer activity
+12060-11-20 05:36:41.720   647  1004 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+12061-11-20 05:36:41.720   647  1004 D PackageManager: Clear ephemeral installer activity
+12062-11-20 05:36:41.721  1722  2340 W achh    : Abort, client detached.
+12063-11-20 05:36:41.722   647  1964 V SafetySourceDataValidat: Package: com.google.android.gms has expected signature
+12064-11-20 05:36:41.722   647  1964 V SafetySourceDataValidat: Package: com.google.android.gms has expected signature
+12065-11-20 05:36:41.723  1291  1313 W HWUI    : Image decoding logging dropped!
+12066-11-20 05:36:41.723   647  1964 V SafetySourceDataValidat: Package: com.google.android.gms has expected signature
+12067-11-20 05:36:41.727   647  1004 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+12068-11-20 05:36:41.727   647  1004 D PackageManager: Clear ephemeral installer activity
+12069-11-20 05:36:41.730  1722  1893 I afwh    : (REDACTED) MDD returned a model config with build ID: %d
+12070-11-20 05:36:41.731  1722  1893 I afwh    : (REDACTED) MDD returned a model config with build ID: %d
+12071-11-20 05:36:41.731  1291  1313 W HWUI    : Image decoding logging dropped!
+12072-11-20 05:36:41.740   647  1004 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+12073-11-20 05:36:41.740   647  1004 D PackageManager: Clear ephemeral installer activity
+12074-11-20 05:36:41.745  1291  1313 W HWUI    : Image decoding logging dropped!
+12075-11-20 05:36:41.755  2735  2735 V GraphicsEnvironment: Currently set values for:
+12076-11-20 05:36:41.755  2735  2735 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+12077-11-20 05:36:41.755  2735  2735 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+12078-11-20 05:36:41.755  2735  2735 V GraphicsEnvironment: com.android.chrome is not listed in per-application setting
+12079-11-20 05:36:41.755  2735  2735 V GraphicsEnvironment: ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
+12080-11-20 05:36:41.755  2735  2735 V GraphicsEnvironment: com.android.chrome is not listed in ANGLE allowlist or settings, returning default
+12081-11-20 05:36:41.756  2735  2735 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+12082-11-20 05:36:41.756  1021  1021 D QSPanel : setUsingHorizontalLayout: false, true
+12083-11-20 05:36:41.756  1021  1021 D QSPanel : Reattaching media host: false, current com.android.systemui.qs.QSPanel{eee55b1 I.E...... ......ID 0,168-1328,1106 #7f0a06dc app:id/quick_settings_panel}, new com.android.systemui.qs.QSPanel{4d0b003 V.E...... ......I. 0,0-0,0 #7f0a06dc app:id/quick_settings_panel}
+12084-11-20 05:36:41.758  1647  2422 I Auth.Api.Credentials: [WebauthnCredentialDataClient#subscribe()] Operation succeeded with result: null. [CONTEXT service_id=68 ]
+12085-11-20 05:36:41.762  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.advancedprotection#com.google.android.gms
+12086-11-20 05:36:41.762  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.advancedprotection#com.google.android.gms, using defaults.
+12087-11-20 05:36:41.762  1291  1313 W HWUI    : Image decoding logging dropped!
+12088-11-20 05:36:41.763  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.analytics
+12089-11-20 05:36:41.763  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.analytics, using defaults.
+12090-11-20 05:36:41.765  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b09498) locale list changing from [] to [en-US]
+12091-11-20 05:36:41.765  2735  2735 I LoadedApk: No resource references to update in package com.google.android.trichromelibrary
+12092-11-20 05:36:41.765  1722  2446 I earchbox:search: AssetManager2(0x770832af1d98) locale list changing from [] to [en-US]
+12093-11-20 05:36:41.767  2550  2559 I id.gms.unstable: AssetManager2(0x770832af1d98) locale list changing from [] to [en-US]
+12094-11-20 05:36:41.768  2735  2735 I cr_SplitCompatApp: version=133.0.6943.137 (694313738) minSdkVersion=29 isBundle=false processName=com.android.chrome isIsolatedProcess=false
+12095-11-20 05:36:41.769  1291  1313 W HWUI    : Image decoding logging dropped!
+12096-11-20 05:36:41.769  1722  2436 I HotwordService: (REDACTED) Model ID: %s
+12097-11-20 05:36:41.770  1722  2436 I HotwordService: (REDACTED) hotwordModelLocation is null %b, locale is %s, re-mapped Chinese locale %s
+12098-11-20 05:36:41.772  1021  1021 D QSPanel : setUsingHorizontalLayout: false, true
+12099-11-20 05:36:41.772  1021  1021 D QSPanel : Reattaching media host: false, current com.android.systemui.qs.QSPanel{4d0b003 V.E...... ......I. 0,0-0,0 #7f0a06dc app:id/quick_settings_panel}, new com.android.systemui.qs.QSPanel{4d0b003 V.E...... ......I. 0,0-0,0 #7f0a06dc app:id/quick_settings_panel}
+12100-11-20 05:36:41.772  1021  1021 D QuickQSPanel: setUsingHorizontalLayout: false, true
+12101-11-20 05:36:41.772  1021  1021 D QuickQSPanel: Reattaching media host: false, current com.android.systemui.qs.QuickQSPanel{f4909e9 VFE...... ......ID 0,168-1328,252 #7f0a06da app:id/quick_qs_panel}, new com.android.systemui.qs.QuickQSPanel{9a4495f VFE...... ......I. 0,0-0,0 #7f0a06da app:id/quick_qs_panel}
+12102-11-20 05:36:41.772  2550  2559 I id.gms.unstable: AssetManager2(0x770832af3698) locale list changing from [] to [en-US]
+12103-11-20 05:36:41.781  1291  1313 W HWUI    : Image decoding logging dropped!
+12104-11-20 05:36:41.784   647  1921 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+12105-11-20 05:36:41.784   647  1921 D PackageManager: Clear ephemeral installer activity
+12106-11-20 05:36:41.793  1291  1313 W HWUI    : Image decoding logging dropped!
+12107-11-20 05:36:41.793  1182  1182 W AlarmManager: Unrecognized alarm listener com.android.internal.telephony.data.AutoDataSwitchController$$ExternalSyntheticLambda1@10b8fa9
+12108-11-20 05:36:41.795  1291  1313 W HWUI    : Image decoding logging dropped!
+12109-11-20 05:36:41.801   647  2026 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+12110-11-20 05:36:41.801   647  2026 D PackageManager: Clear ephemeral installer activity
+12111-11-20 05:36:41.804   647  2026 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+12112-11-20 05:36:41.804   647  2026 D PackageManager: Clear ephemeral installer activity
+12113-11-20 05:36:41.808  1722  1893 I afwh    : (REDACTED) MDD returned a model config with build ID: %d
+12114-11-20 05:36:41.808  1722  1893 I afwh    : (REDACTED) Received value from MDD and updated PDS with Build ID: %d
+12115-11-20 05:36:41.808  1722  1893 I afwh    : (REDACTED) Received value from MDD and updated PDS with Build ID: %d
+--
+16784-11-20 05:36:47.059   647  1213 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = SEND_SMS, mode = allow, callingUid = 1001, oldMode = allow
+16785-11-20 05:36:47.059   647  1213 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = READ_CELL_BROADCASTS, mode = allow, callingUid = 1001, oldMode = allow
+16786-11-20 05:36:47.059  1182  1182 D SatelliteAccessController: Current default SMS app:ComponentInfo{com.google.android.apps.messaging/com.google.android.apps.messaging.shared.receiver.SmsDeliverReceiver}
+16787-11-20 05:36:47.059  1182  1182 D SatelliteController: getSelectedSatelliteSubId: subId=-1
+16788-11-20 05:36:47.059   647   753 D ActivityManager: freezing 1219 com.android.bluetooth
+16789-11-20 05:36:47.060   647  2937 W HWUI    : Image decoding logging dropped!
+16790-11-20 05:36:47.061   647  2025 W system_server: Long monitor contention with owner binder:647_5 (994) at android.content.ComponentName com.android.server.am.ActivityManagerService.startService(android.app.IApplicationThread, android.content.Intent, java.lang.String, boolean, java.lang.String, java.lang.String, int, boolean, int, java.lang.String, java.lang.String)(ActivityManagerService.java:13756) waiters=2 in void com.android.server.am.ContentProviderHelper.removeContentProvider(android.os.IBinder, boolean) for 130ms
+16791-11-20 05:36:47.063  1291  1313 W AllAppsList: updatePackage: no Activities matched updated package, removing any AppInfo with package=android, user=UserHandle{0}
+16792-11-20 05:36:47.065  1182  1182 D SatelliteAccessController: supportedMsgApps:com.google.android.apps.messaging
+16793-11-20 05:36:47.065  1182  1182 D CarrierSvcBindHelper: onPackageModified: com.google.android.partnersetup
+16794:11-20 05:36:47.071  1291  1313 D PackageUpdatedTask: Package updated: mOp=UPDATE packages=[lav.visaroom.alav], user=UserHandle{0}
+16795-11-20 05:36:47.072  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b15c98) locale list changing from [] to [en-US]
+16796-11-20 05:36:47.076  1511  1597 I .apps.wellbeing: AssetManager2(0x770832af7518) locale list changing from [] to [en-US]
+16797-11-20 05:36:47.076   647   919 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+16798-11-20 05:36:47.076   647   919 D PackageManager: Clear ephemeral installer activity
+16799-11-20 05:36:47.083  1182  1182 D CarrierSvcBindHelper: No carrier app for: 0
+16800-11-20 05:36:47.088   647   664 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+16801-11-20 05:36:47.088   647   664 D PackageManager: Clear ephemeral installer activity
+16802-11-20 05:36:47.092  1360  1360 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.pseudonymous.service.START xflg=0x4 pkg=com.google.android.gms }
+16803-11-20 05:36:47.093   647   647 I NotificationService: Cannot find enqueued record for key: 0|android|13|PreBootBroadcaster|1000
+16804-11-20 05:36:47.095  1599  2159 W AiAiEcho: LyftNotificationParser Ridesharing ETA not enabled
+16805-11-20 05:36:47.095  1599  2159 I AiAiEcho: SmartspaceNotificationPredictor no parser can handle this notification or notification is invalid
+16806-11-20 05:36:47.099  2972  2972 D nativeloader: Configuring clns-shared-9 for other apk /apex/com.android.rkpd/priv-app/rkpdapp.google@360527520/rkpdapp.google.apk. target_sdk_version=35, uses_libraries=, library_path=/apex/com.android.rkpd/priv-app/rkpdapp.google@360527520/lib/x86_64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.rkpdapp:/apex/com.android.rkpd/priv-app/rkpdapp.google@360527520:/system/lib64:/system_ext/lib64
+16807-11-20 05:36:47.100  2972  2972 D nativeloader: InitApexLibraries:
+16808-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_adservices: libhpke_jni.so:libtflite_support_classifiers_native.so
+16809-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_appsearch: libicing.so
+16810-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_art: libartservice.so
+16811-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_bt: libbluetooth_jni.so
+16812-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_conscrypt: libjavacrypto.so
+16813-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_mediaprovider: libpdfclient.so
+16814-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_nfcservices: libnfc_nci_jni.so
+16815-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_ondevicepersonalization: libfcp_cpp_dep_jni.so:libfcp_hpke_jni.so
+16816-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_os_statsd: libstats_jni.so
+16817-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_tethering: libandroid_net_connectivity_com_android_net_module_util_jni.so:libframework-connectivity-jni.so:libframework-connectivity-tiramisu-jni.so:libmainlinecronet.133.0.6876.3.so:libservice-connectivity.so:libservice-thread-jni.so:stable_cronet_libcrypto.so:stable_cronet_libssl.so
+16818-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_uwb: libuwb_uci_jni_rust.so
+16819-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_virt: libvirtualizationservice_jni.so:libvirtualmachine_jni.so
+16820-11-20 05:36:47.100  2972  2972 D nativeloader:   com_android_wifi: libservice-wifi-jni.so
+16821-11-20 05:36:47.103  1291  1313 W HWUI    : Image decoding logging dropped!
+16822-11-20 05:36:47.103  1291  1313 D AlphabeticIndexCompat: computeSectionName: cs: visaroom sectionName: V
+16823-11-20 05:36:47.104  1291  1291 D AllAppsStore: setApps: apps.length=19
+16824-11-20 05:36:47.104  1291  1291 D AllAppsStore: notifyUpdate: notifying listeners
+16825-11-20 05:36:47.104  1291  1291 D ActivityAllAppsContainerView: onAppsUpdated; number of apps: 19
+16826-11-20 05:36:47.104  1291  1291 D ActivityAllAppsContainerView: rebindAdapters: force: false
+16827-11-20 05:36:47.104  1291  1291 D ActivityAllAppsContainerView: rebindAdapters: Not needed.
+16828-11-20 05:36:47.104  1291  1291 D StatsLog: LAUNCHER_ALLAPPS_COUNT
+16829-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: Clearing FastScrollerSections.
+16830-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: Adding apps with sections. HasPrivateApps: false
+16831-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: C with appInfoTitle: Calendar
+16832-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: D with appInfoTitle: Drive
+16833-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: F with appInfoTitle: Files
+16834-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: G with appInfoTitle: Gmail
+16835-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: M with appInfoTitle: Maps
+16836-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: P with appInfoTitle: Phone
+16837-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: S with appInfoTitle: Safety
+16838-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: T with appInfoTitle: TMoble
+16839-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: V with appInfoTitle: visaroom
+16840-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: Y with appInfoTitle: YouTube
+16841-11-20 05:36:47.104  1291  1291 D AlphabeticalAppsList: Adding FastScrollSection duplicate to scroll to the bottom.
+16842-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: Clearing FastScrollerSections.
+16843-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: Adding apps with sections. HasPrivateApps: false
+16844-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: C with appInfoTitle: Calendar
+16845-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: D with appInfoTitle: Drive
+16846-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: F with appInfoTitle: Files
+16847-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: G with appInfoTitle: Gmail
+16848-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: M with appInfoTitle: Maps
+16849-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: P with appInfoTitle: Phone
+16850-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: S with appInfoTitle: Safety
+16851-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: T with appInfoTitle: TMoble
+16852-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: V with appInfoTitle: visaroom
+16853-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: Y with appInfoTitle: YouTube
+16854-11-20 05:36:47.105  1291  1291 D AlphabeticalAppsList: Adding FastScrollSection duplicate to scroll to the bottom.
+16855-11-20 05:36:47.109   647  1159 I AppWidgetServiceImpl: getInstalledProvidersForProfiles() 0
+16856-11-20 05:36:47.115   647  2025 W ParceledListSlice: Element #26 is 19620 bytes.
+16857-11-20 05:36:47.115   647  2025 W ParceledListSlice: Element #27 is 19656 bytes.
+16858-11-20 05:36:47.119   647  1113 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.WALLET
+16859-11-20 05:36:47.119   647  2025 W ParceledListSlice: Element #28 is 19496 bytes.
+16860-11-20 05:36:47.119   647  2025 W ParceledListSlice: Element #29 is 19584 bytes.
+16861-11-20 05:36:47.119   647  2025 W ParceledListSlice: Element #30 is 19520 bytes.
+16862-11-20 05:36:47.120  1647  2220 W Backup  : [ComponentEnablerUtil] Unable to set component 'com.google.android.gms.backup.component.D2dMigrateFlowActivity' to enabled=false
+16863-11-20 05:36:47.124  2972  2972 D CompatChangeReporter: Compat change id reported: 202956589; UID 10190; state: ENABLED
+16864-11-20 05:36:47.127   647   647 I NotificationService: Cannot find enqueued record for key: 0|android|13|PreBootBroadcaster|1000
+16865-11-20 05:36:47.128  1291  1313 W HWUI    : Image decoding logging dropped!
+16866-11-20 05:36:47.131  1291  1313 W HWUI    : Image decoding logging dropped!
+16867-11-20 05:36:47.134  1291  1313 W HWUI    : Image decoding logging dropped!
+16868-11-20 05:36:47.138  1291  1313 W HWUI    : Image decoding logging dropped!
+16869-11-20 05:36:47.140   647   647 I NotificationService: Cannot find enqueued record for key: 0|android|13|PreBootBroadcaster|1000
+16870-11-20 05:36:47.141   647  1786 I AppWidgetServiceImpl: getAppWidgetIds() 0
+16871-11-20 05:36:47.141   647   664 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+16872-11-20 05:36:47.141   647   664 D PackageManager: Clear ephemeral installer activity
+16873-11-20 05:36:47.142  1291  1313 I s.nexuslauncher: AssetManager2(0x770832af3378) locale list changing from [] to [en-US]
+16874-11-20 05:36:47.144   647   647 W IPCThreadState: Sending oneway calls to frozen process.
+16875-11-20 05:36:47.144  1599  2319 I AiAiEcho: AppIndexer Package:[com.google.android.gms] UserProfile:[0] Enabled:[true].
+16876-11-20 05:36:47.144  1599  2319 I AiAiEcho: AppFetcherImplV2 updateApps package:[com.google.android.gms], userId:[0], reason:[package is updated.].
+16877-11-20 05:36:47.148  2913  2913 I RevelioTipsContentProvi: enter
+16878-11-20 05:36:47.148  2913  2913 I TidepodsRevelioTipsCont: enter
+16879-11-20 05:36:47.149  1291  1313 W HWUI    : Image decoding logging dropped!
+16880-11-20 05:36:47.152   647   926 D WifiClientModeImpl[41464:wlan0]: updateLinkLayerStatsRssiSpeedFrequencyCapabilities rssi=-50 TxLinkspeed=2 freq=2437 RxLinkSpeed=2
+16881-11-20 05:36:47.152   647   926 D WifiDataStall: tx tput in kbps: 37000
+16882-11-20 05:36:47.152   647   926 D WifiDataStall: rx tput in kbps: 37000
+16883-11-20 05:36:47.152   647   926 V WifiConfigManager: Updating scan detail cache freq=2437 BSSID=02:15:b2:00:00:01 RSSI=-50 for "AndroidWifi"NONE
+16884-11-20 05:36:47.152   647   926 D WifiThroughputPredictor:  utilization (LLS) 80 isBluetoothConnected: false final utilization: 80
+16885-11-20 05:36:47.152   647   926 D WifiThroughputPredictor:  BW: 0 RSSI: -50 Nss: 1 Mode: 1 symDur: 4000 snrDb 30 bitPerTone: 4500 rate: 54 throughput: 37
+16886-11-20 05:36:47.152   647   926 D WifiThroughputPredictor:  utilization (LLS) 80 isBluetoothConnected: false final utilization: 80
+16887-11-20 05:36:47.152   647   926 D WifiThroughputPredictor:  BW: 0 RSSI: -50 Nss: 1 Mode: 1 symDur: 4000 snrDb 30 bitPerTone: 4500 rate: 54 throughput: 37
+16888-11-20 05:36:47.153  1291  1313 W HWUI    : Image decoding logging dropped!
+16889-11-20 05:36:47.157  1291  1313 W HWUI    : Image decoding logging dropped!
+16890-11-20 05:36:47.157  2972  2972 I android.rkpdapp: AssetManager2(0x770832aef1d8) locale list changing from [] to [en-US]
+16891-11-20 05:36:47.159  1291  1313 W HWUI    : Image decoding logging dropped!
+16892-11-20 05:36:47.163   647   979 D BackgroundInstallControlService: Package event received: 0
+16893-11-20 05:36:47.163   647   926 D WifiThroughputPredictor:  utilization (LLS) 80 isBluetoothConnected: false final utilization: 80
+16894-11-20 05:36:47.163   647   926 D WifiThroughputPredictor:  BW: 0 RSSI: -50 Nss: 1 Mode: 1 symDur: 4000 snrDb 30 bitPerTone: 4500 rate: 54 throughput: 37
+16895-11-20 05:36:47.163   647   926 D WifiThroughputPredictor:  utilization (LLS) 80 isBluetoothConnected: false final utilization: 80
+16896-11-20 05:36:47.163   647   926 D WifiThroughputPredictor:  BW: 0 RSSI: -50 Nss: 1 Mode: 1 symDur: 4000 snrDb 30 bitPerTone: 4500 rate: 54 throughput: 37
+16897-11-20 05:36:47.163   647   926 D WifiScoreCard: BSSID update SIGNAL_POLL ID: 1459971989 SSID: "AndroidWifi", BSSID: 02:15:b2:00:00:01, MAC: 02:15:b2:00:00:00, IP: /10.0.2.16, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: legacy, RSSI: -50, Link speed: 2Mbps, Tx Link speed: 2Mbps, Max Supported Tx Link speed: 54Mbps, Rx Link speed: 2Mbps, Max Supported Rx Link speed: 54Mbps, Frequency: 2437MHz, Net ID: 0, Metered hint: false, score: 60, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none>"AndroidWifi"openMLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>
+16898-11-20 05:36:47.163   647   926 D WifiScoreCard: txRate: 25 txSpeed: 2
+16899-11-20 05:36:47.163   647   926 D WifiScoreCard: network update SIGNAL_POLL "AndroidWifi" ID: 1004216780 RSSI -50 txSpeed 2
+16900-11-20 05:36:47.163   647   926 D WifiClientModeImpl[41464:wlan0]:  ClientModeImpl$L2ConnectedState screen=on 1 0 "AndroidWifi" 02:15:b2:00:00:01 rssi=-50 f=2437 sc=60 link=2 tx=24.7, 0.0, 0.0 rx=83.9 bcn=0 [on:0 tx:0 rx:0 period:3134] from screen [on:0 period:-143322565] score=60
+16901-11-20 05:36:47.164  1722  1887 D WM-GreedyScheduler: Starting work for 8aa3e723-d956-4c03-956e-6fed4f695e9d
+16902-11-20 05:36:47.164  1291  1313 W HWUI    : Image decoding logging dropped!
+16903-11-20 05:36:47.166  1722  2727 W MendelPackageState: Shared storage file not found for googledata.experiments.mobile.assistant.client_packages.component.nlu_ff.user#com.google.android.googlequicksearchbox
+16904-11-20 05:36:47.168  1291  1313 W HWUI    : Image decoding logging dropped!
+16905-11-20 05:36:47.170   647   755 I RoleService: Granting default roles...
+16906-11-20 05:36:47.170  1722  2058 W MendelPackageState: Shared storage file not found for com.google.android.apps.search.pronunciationlearning#com.google.android.googlequicksearchbox
+16907-11-20 05:36:47.171  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b211d8) locale list changing from [] to [en-US]
+16908-11-20 05:36:47.173  1291  1313 W HWUI    : Image decoding logging dropped!
+16909-11-20 05:36:47.177  1291  1313 W HWUI    : Image decoding logging dropped!
+16910-11-20 05:36:47.179  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b0cff8) locale list changing from [] to [en-US]
+16911-11-20 05:36:47.179  1647  2220 V Backup  : [ComponentEnabler] Scheduling tasks.
+16912-11-20 05:36:47.179  1647  2220 V Backup  : [GmsBackupScheduler] Disabled, not scheduling.
+16913-11-20 05:36:47.180  1722  2582 W MendelPackageState: Shared storage file not found for com.google.android.apps.search.soundsearch.user#com.google.android.googlequicksearchbox
+16914-11-20 05:36:47.183  1291  1313 I s.nexuslauncher: AssetManager2(0x770832afbcf8) locale list changing from [] to [en-US]
+--
+18303-11-20 05:36:48.927  1647  2140 W GoogleHttpServiceClient: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+18304-11-20 05:36:48.927  1647  2140 W GoogleHttpServiceClient: 	at azva.run(:com.google.android.gms@252635038@25.26.35 (260800-783060121):8)
+18305-11-20 05:36:48.927  1647  2140 W GoogleHttpServiceClient: 	at java.lang.Thread.run(Thread.java:1119)
+18306-11-20 05:36:48.928   647   932 D ConnectivityService: [101 CELLULAR] EVENT_NETWORK_INFO_CHANGED, going from CONNECTING to CONNECTING
+18307-11-20 05:36:48.928   447   478 I netd    : networkCreate(NativeNetworkConfig{netId: 101, networkType: PHYSICAL, permission: 0, secure: false, vpnType: -1, excludeLocalRoutes: false}) <0.01ms>
+18308-11-20 05:36:48.929   447   478 I netd    : createNetworkCache(101) <0.06ms>
+18309-11-20 05:36:48.932  1291  1313 W HWUI    : Image decoding logging dropped!
+18310-11-20 05:36:48.933   647   932 D ConnectivityService: Setting DNS servers for network 101 to []
+18311-11-20 05:36:48.933   647   932 D DnsManager: sendDnsConfigurationForNetwork(ResolverParamsParcel{netId: 101, sampleValiditySeconds: 1800, successThreshold: 25, minSamples: 8, maxSamples: 64, baseTimeoutMsec: 0, retryCount: 0, servers: [], domains: [], tlsName: , tlsServers: [], tlsFingerprints: [], caCertificate: , tlsConnectTimeoutMs: 0, resolverOptions: null, transportTypes: [0], meteredNetwork: true, dohParams: null, interfaceNames: []})
+18312-11-20 05:36:48.934   447   478 I netd    : setResolverConfiguration(ResolverParamsParcel{netId: 101, sampleValiditySeconds: 1800, successThreshold: 25, minSamples: 8, maxSamples: 64, baseTimeoutMsec: 0, retryCount: 0, servers: [], domains: [], tlsName: , tlsServers: [], tlsFingerprints: [], caCertificate: , tlsConnectTimeoutMs: 0, resolverOptions: (null), transportTypes: [0], meteredNetwork: true, dohParams: (null), interfaceNames: []}) <0.04ms>
+18313:11-20 05:36:48.934   647  1213 D JobScheduler: executeRunCommand(): lav.visaroom.alav/null/0 1101 s=false f=true
+18314-11-20 05:36:48.935  3088  3088 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+18315-11-20 05:36:48.940  2913  3096 E ActivityThread: Failed to find provider info for androidx.car.app.connection
+18316-11-20 05:36:48.941  1093  3093 D NetworkMonitor/101: checkAndRenewResourceConfig: update captive portal https urls to [https://www.google.com/generate_204]
+18317-11-20 05:36:48.941  1093  3093 D NetworkMonitor/101: checkAndRenewResourceConfig: update captive portal http urls to [http://connectivitycheck.gstatic.com/generate_204]
+18318-11-20 05:36:48.941  1093  3093 D NetworkMonitor/101: checkAndRenewResourceConfig: update captive portal fallback urls to[http://www.google.com/gen_204, http://play.googleapis.com/generate_204]
+18319-11-20 05:36:48.941  1093  3093 D NetworkMonitor: Starting on network 101 with capport HTTPS URL [https://www.google.com/generate_204] and HTTP URL [http://connectivitycheck.gstatic.com/generate_204]
+18320-11-20 05:36:48.943  2913  2913 I DialerMainActivityStartupMonitor: com.android.dialer.startup.mainactivitystartup.MainActivityStartupMonitor.onApplicationCreated$lambda$0:32 mainActivityCreated: false
+18321-11-20 05:36:48.943  1291  1313 W HWUI    : Image decoding logging dropped!
+18322-11-20 05:36:48.945  1291  1313 W HWUI    : Image decoding logging dropped!
+18323-11-20 05:36:48.947  1647  2219 W ContextImpl: Failed to ensure /data/user/0/com.google.android.gsf/files: mkdir failed: ENOENT (No such file or directory)
+18324-11-20 05:36:48.953  1291  1313 W HWUI    : Image decoding logging dropped!
+18325-11-20 05:36:48.957  1722  1888 D WM-Processor: kug: processing WorkGenerationalId(workSpecId=8aa3e723-d956-4c03-956e-6fed4f695e9d, generation=0)
+18326-11-20 05:36:48.971   647  2067 D FileUtils: Rounded bytes from 4110614528 to 8000000000
+18327-11-20 05:36:48.972   647  1349 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18328-11-20 05:36:48.972   647  1349 D PackageManager: Clear ephemeral installer activity
+18329-11-20 05:36:48.975  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.tapandpay
+18330-11-20 05:36:48.975  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.tapandpay, using defaults.
+18331-11-20 05:36:48.976  2913  2913 W CarApp.Conn: Null response from content provider when checking connection to the car, treating as disconnected
+18332-11-20 05:36:48.981   647  1349 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18333-11-20 05:36:48.981   647  1349 D PackageManager: Clear ephemeral installer activity
+18334-11-20 05:36:48.987   647  1161 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18335-11-20 05:36:48.987   647  1161 D PackageManager: Clear ephemeral installer activity
+18336-11-20 05:36:48.991   647  1178 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18337-11-20 05:36:48.991   647  1178 D PackageManager: Clear ephemeral installer activity
+18338-11-20 05:36:48.999  2913  3046 I DialerAndroidAutoStatusLookupImpl: com.android.dialer.androidautostatuslookup.impl.AndroidAutoStatusLookupImpl.isAndroidAutoConnected:97 Android Auto connected in 0 mode [CONTEXT ratelimit_period="1 MINUTES" ]
+18339-11-20 05:36:49.001   647  1161 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18340-11-20 05:36:49.001   647  1161 D PackageManager: Clear ephemeral installer activity
+18341-11-20 05:36:49.002  3088  3088 D ApplicationLoaders: Returning zygote-cached class loader: /system/framework/org.apache.http.legacy.jar
+18342-11-20 05:36:49.004   647  2025 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18343-11-20 05:36:49.004   647  2025 D PackageManager: Clear ephemeral installer activity
+18344-11-20 05:36:49.005   647  2027 W ContextImpl: Calling a method in the system process without a qualified user: android.app.ContextImpl.sendBroadcastMultiplePermissions:1352 android.content.Context.sendBroadcastMultiplePermissions:2529 android.content.Context.sendBroadcastMultiplePermissions:2517 com.android.server.TelephonyRegistry.broadcastDataConnectionStateChanged:4378 com.android.server.TelephonyRegistry.notifyDataConnectionForSubscriber:2321 
+18345-11-20 05:36:49.008  3088  3088 D nativeloader: InitLlndkLibrariesProduct: libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libRS.so:libandroid_net.so:libapexsupport.so:libavf.so:libbinder_ndk.so:libc.so:libcgrouprc.so:libclang_rt.asan-x86_64-android.so:libcom.android.tethering.connectivity_native.so:libdl.so:libft2.so:liblog.so:libm.so:libmediandk.so:libnativewindow.so:libneuralnetworks.so:libselinux.so:libsync.so:libvendorsupport.so:libvndksupport.so:libvulkan.so
+18346-11-20 05:36:49.010  3088  3088 D nativeloader: Configuring product-clns-9 for unbundled product apk /product/app/Camera2/Camera2.apk. target_sdk_version=1000, uses_libraries=, library_path=/product/app/Camera2/lib/x86_64:/product/app/Camera2/Camera2.apk!/lib/x86_64:/product/lib64:/system/product/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.camera2:/product/lib64:/system/product/lib64
+18347-11-20 05:36:49.011  3088  3088 D nativeloader: InitVndkspLibrariesProduct: VNDK is deprecated with product
+18348-11-20 05:36:49.017   647  1213 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18349-11-20 05:36:49.017   647  1213 D PackageManager: Clear ephemeral installer activity
+18350-11-20 05:36:49.020  1511  1597 I .apps.wellbeing: AssetManager2(0x770832af58f8) locale list changing from [] to [en-US]
+18351-11-20 05:36:49.021   647  1213 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18352-11-20 05:36:49.026   647  1213 D PackageManager: Clear ephemeral installer activity
+18353-11-20 05:36:49.029   447   478 I netd    : tetherGetStats() -> {[]} <0.56ms>
+18354-11-20 05:36:49.032  3088  3088 I android.camera2: AssetManager2(0x770832aef1d8) locale list changing from [] to [en-US]
+18355-11-20 05:36:49.035   647   926 D WifiDataStall: Cellular Data: true
+18356-11-20 05:36:49.035   647   926 D MboOceController: Cell Data: true
+18357-11-20 05:36:49.054   647  1213 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18358-11-20 05:36:49.054   647  1213 D PackageManager: Clear ephemeral installer activity
+18359-11-20 05:36:49.061   447   478 I netd    : setNetworkAllowlist([NativeUidRangeConfig{netId: 101, uidRanges: [UidRangeParcel{start: 0, stop: 99999}], subPriority: 0}, NativeUidRangeConfig{netId: 100, uidRanges: [UidRangeParcel{start: 0, stop: 99999}], subPriority: 0}]) <0.01ms>
+18360-11-20 05:36:49.077  1182  1182 D CarrierSvcBindHelper: onPackageModified: com.google.android.gms.supervision
+18361-11-20 05:36:49.077   647   932 D ConnectivityService: Adding iface eth0 to network 101
+18362-11-20 05:36:49.078   447   478 I netd    : networkAddInterface(101, eth0) <1.03ms>
+18363-11-20 05:36:49.078   647  1213 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18364-11-20 05:36:49.078   647  1213 D PackageManager: Clear ephemeral installer activity
+18365-11-20 05:36:49.080   447   478 I netd    : wakeupAddInterface(eth0, 437197393933:eth0, -2147483648, -2147483648) <0.40ms>
+18366-11-20 05:36:49.082  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b08e58) locale list changing from [] to [en-US]
+18367-11-20 05:36:49.083   647  1213 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18368-11-20 05:36:49.083   647  1213 D PackageManager: Clear ephemeral installer activity
+18369-11-20 05:36:49.083  1182  1182 D CarrierSvcBindHelper: No carrier app for: 0
+18370-11-20 05:36:49.084  3088  3088 V GraphicsEnvironment: Currently set values for:
+18371-11-20 05:36:49.084  3088  3088 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+18372-11-20 05:36:49.084  3088  3088 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+18373-11-20 05:36:49.084  3088  3088 V GraphicsEnvironment: com.android.camera2 is not listed in per-application setting
+18374-11-20 05:36:49.084   447   478 I netd    : interfaceSetMtu(eth0, 1500) <0.11ms>
+18375-11-20 05:36:49.084  3088  3088 V GraphicsEnvironment: ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
+18376-11-20 05:36:49.084  3088  3088 V GraphicsEnvironment: com.android.camera2 is not listed in ANGLE allowlist or settings, returning default
+18377-11-20 05:36:49.084  3088  3088 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+18378-11-20 05:36:49.086   447   478 I netd    : networkAddRouteParcel(101, RouteInfoParcel{destination: 10.0.2.0/24, ifName: eth0, nextHop: , mtu: 0}) <0.13ms>
+18379-11-20 05:36:49.087  1291  1313 W HWUI    : Image decoding logging dropped!
+18380-11-20 05:36:49.089   647  2027 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18381-11-20 05:36:49.089   447   478 I netd    : networkAddRouteParcel(101, RouteInfoParcel{destination: 0.0.0.0/0, ifName: eth0, nextHop: 10.0.2.2, mtu: 1500}) <0.12ms>
+18382-11-20 05:36:49.089   647   932 D ConnectivityService: Setting DNS servers for network 101 to [/10.0.2.3]
+18383-11-20 05:36:49.089   647   932 D DnsManager: sendDnsConfigurationForNetwork(ResolverParamsParcel{netId: 101, sampleValiditySeconds: 1800, successThreshold: 25, minSamples: 8, maxSamples: 64, baseTimeoutMsec: 0, retryCount: 0, servers: [10.0.2.3], domains: [], tlsName: , tlsServers: [], tlsFingerprints: [], caCertificate: , tlsConnectTimeoutMs: 0, resolverOptions: null, transportTypes: [0], meteredNetwork: true, dohParams: null, interfaceNames: [eth0]})
+18384-11-20 05:36:49.090   447   478 I resolv  : resolv_set_nameservers: netid = 101, addr = 10.0.2.3
+18385-11-20 05:36:49.090   447   478 I netd    : setResolverConfiguration(ResolverParamsParcel{netId: 101, sampleValiditySeconds: 1800, successThreshold: 25, minSamples: 8, maxSamples: 64, baseTimeoutMsec: 0, retryCount: 0, servers: [10.0.2.3], domains: [], tlsName: , tlsServers: [], tlsFingerprints: [], caCertificate: , tlsConnectTimeoutMs: 0, resolverOptions: (null), transportTypes: [0], meteredNetwork: true, dohParams: (null), interfaceNames: [eth0]}) <0.10ms>
+18386-11-20 05:36:49.090   647  2027 D PackageManager: Clear ephemeral installer activity
+18387-11-20 05:36:49.094  1291  1313 W HWUI    : Image decoding logging dropped!
+18388-11-20 05:36:49.096  1182  1182 E SmsApplication: com.google.android.apps.messaging lost android:read_cell_broadcasts:  (fixing)
+18389-11-20 05:36:49.096   647  1213 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 10145, code = READ_CELL_BROADCASTS, mode = allow, callingUid = 1001, oldMode = allow
+18390-11-20 05:36:49.102  1647  1711 I fkev    : Shared storage file not found for com.google.android.gms.droidguard
+18391-11-20 05:36:49.102  1647  1711 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.droidguard, using defaults.
+18392-11-20 05:36:49.105  1647  2220 I EnterpriseLoader: [ConditionsChecker] ZT config not present. [CONTEXT service_id=225 ]
+18393-11-20 05:36:49.107  1647  2992 I EsimModuleInit: onHandleIntent action: com.google.android.chimera.IntentOperation.NEW_MODULE [CONTEXT service_id=333 ]
+18394-11-20 05:36:49.108  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b18218) locale list changing from [] to [en-US]
+18395-11-20 05:36:49.109  2913  3052 I DialerPhClient: com.google.android.libraries.phenotype.client.Phlogger.logInternal:49 Unable to retrieve flag snapshot for com.google.android.libraries.performance.primes#com.google.android.dialer, using defaults.
+18396-11-20 05:36:49.111  1291  1313 W HWUI    : Image decoding logging dropped!
+18397-11-20 05:36:49.112   647  1213 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = READ_SMS, mode = allow, callingUid = 1001, oldMode = allow
+18398-11-20 05:36:49.112   647  1214 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = RECEIVE_SMS, mode = allow, callingUid = 1001, oldMode = allow
+18399-11-20 05:36:49.112   647  2024 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = RECEIVE_WAP_PUSH, mode = allow, callingUid = 1001, oldMode = allow
+18400-11-20 05:36:49.112   647  2024 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = SEND_SMS, mode = allow, callingUid = 1001, oldMode = allow
+18401-11-20 05:36:49.113   647  2027 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 1001, code = READ_CELL_BROADCASTS, mode = allow, callingUid = 1001, oldMode = allow
+18402-11-20 05:36:49.120  1291  1313 W HWUI    : Image decoding logging dropped!
+18403-11-20 05:36:49.123  1291  1313 W HWUI    : Image decoding logging dropped!
+18404-11-20 05:36:49.124  1647  2986 W Conscrypt: Could not set socket write timeout: java.net.SocketException: Socket closed
+18405-11-20 05:36:49.124  1647  2986 W Conscrypt: 	at com.google.android.gms.org.conscrypt.Platform.setSocketWriteTimeout(:com.google.android.gms@252635038@25.26.35 (260800-783060121):204)
+18406-11-20 05:36:49.124  1647  2986 W Conscrypt: 	at com.google.android.gms.org.conscrypt.ConscryptFileDescriptorSocket.setSoWriteTimeout(:com.google.android.gms@252635038@25.26.35 (260800-783060121):4)
+18407-11-20 05:36:49.124   447   478 I netd    : tetherGetStats() -> {[]} <0.37ms>
+18408-11-20 05:36:49.127  3088  3088 V CAM_Profiler: [  0.000ms][ui] GUARD: CameraApp onCreate() - START
+18409-11-20 05:36:49.127  3088  3088 V CAM_Profiler: [  0.000ms][ui] GUARD: FirstRunDetector getTimeOfFirstRun - START
+18410-11-20 05:36:49.129  1291  1313 W HWUI    : Image decoding logging dropped!
+18411-11-20 05:36:49.130   647   932 D ConnectivityService: [101 CELLULAR] EVENT_NETWORK_INFO_CHANGED, going from CONNECTING to CONNECTED
+18412-11-20 05:36:49.131   647   932 W DnsManager: updatePrivateDns(101, PrivateDnsConfig{opportunistic:/[], dohName=, dohIps=[], dohPath=, dohPort=-1})
+18413-11-20 05:36:49.137  1291  1313 W HWUI    : Image decoding logging dropped!
+18414-11-20 05:36:49.140  1291  1313 I s.nexuslauncher: AssetManager2(0x770832b1a158) locale list changing from [] to [en-US]
+18415-11-20 05:36:49.142  1291  1313 W HWUI    : Image decoding logging dropped!
+18416-11-20 05:36:49.142   647   932 D ConnectivityService: Setting DNS servers for network 101 to [/10.0.2.3]
+18417-11-20 05:36:49.142   647   932 D DnsManager: sendDnsConfigurationForNetwork(ResolverParamsParcel{netId: 101, sampleValiditySeconds: 1800, successThreshold: 25, minSamples: 8, maxSamples: 64, baseTimeoutMsec: 0, retryCount: 0, servers: [10.0.2.3], domains: [], tlsName: , tlsServers: [10.0.2.3], tlsFingerprints: [], caCertificate: , tlsConnectTimeoutMs: 0, resolverOptions: null, transportTypes: [0], meteredNetwork: true, dohParams: null, interfaceNames: [eth0]})
+18418-11-20 05:36:49.142   447   478 I resolv  : setDoh: No suitable DoH server found
+18419-11-20 05:36:49.143   447   478 I netd    : setResolverConfiguration(ResolverParamsParcel{netId: 101, sampleValiditySeconds: 1800, successThreshold: 25, minSamples: 8, maxSamples: 64, baseTimeoutMsec: 0, retryCount: 0, servers: [10.0.2.3], domains: [], tlsName: , tlsServers: [10.0.2.3], tlsFingerprints: [], caCertificate: , tlsConnectTimeoutMs: 0, resolverOptions: (null), transportTypes: [0], meteredNetwork: true, dohParams: (null), interfaceNames: [eth0]}) <0.26ms>
+18420-11-20 05:36:49.143   447  3120 W resolv  : Validating DnsTlsServer {10.0.2.3/} with mark 0xf0065
+18421-11-20 05:36:49.143   447  3120 I resolv  : Connecting to {10.0.2.3/} with mark 0xf0065
+18422-11-20 05:36:49.144   447   469 E NetlinkEvent: NetlinkEvent::FindParam(): Parameter 'INTERFACE' not found
+18423-11-20 05:36:49.144   447   469 E NetlinkEvent: NetlinkEvent::FindParam(): Parameter 'STATE' not found
+18424-11-20 05:36:49.144   447   469 E NetlinkEvent: NetlinkEvent::FindParam(): Parameter 'TIME_NS' not found
+18425-11-20 05:36:49.144   447   469 E NetlinkEvent: NetlinkEvent::FindParam(): Parameter 'UID' not found
+18426-11-20 05:36:49.145  3088  3088 I CAM_Profiler: [ 18.064ms][ui] GUARD: FirstRunDetector getTimeOfFirstRun - [18.064ms] PreferenceManager.getDefaultSharedPreferences
+18427-11-20 05:36:49.145   447   478 I netd    : idletimerAddInterface(eth0, 10, 101) <1.80ms>
+18428-11-20 05:36:49.145   447  3120 I resolv  :  SSL_connect returned -1 with mark 0xf0065
+18429-11-20 05:36:49.145   447  3120 W resolv  : SSL_connect ssl error =5, mark 0xf0065: Connection refused
+18430-11-20 05:36:49.145   447  3120 W resolv  : TLS Handshake failed
+18431-11-20 05:36:49.147   447   480 I netd    : bandwidthSetInterfaceQuota(eth0, 9223372036854775807) <1.67ms>
+18432-11-20 05:36:49.147   447  3120 W resolv  : query failed
+18433-11-20 05:36:49.147   447  3120 W resolv  : validateDnsTlsServer returned 0 for {10.0.2.3/}
+--
+22698-11-20 05:36:54.757  1647  2416 W GmscoreIpa: Query failed: 8: Found no matching corpora for package [CONTEXT service_id=255 ]
+22699-11-20 05:36:54.771  1647  2911 I Icing   : Indexing com.google.android.gms-contacts_contact_id from com.google.android.gms
+22700-11-20 05:36:54.772  1647  2911 I Icing   : Indexing done com.google.android.gms-contacts_contact_id
+22701-11-20 05:36:54.772  1647  2911 I Icing   : Indexing com.google.android.gms-emails_data_id from com.google.android.gms
+22702-11-20 05:36:54.774  1647  2911 I Icing   : Indexing done com.google.android.gms-emails_data_id
+22703-11-20 05:36:54.774  1647  2911 I Icing   : Indexing com.google.android.gms-phones_data_id from com.google.android.gms
+22704-11-20 05:36:54.775  1647  2911 I Icing   : Indexing done com.google.android.gms-phones_data_id
+22705-11-20 05:36:54.775  1647  2911 I Icing   : Indexing com.google.android.gms-postals_data_id from com.google.android.gms
+22706-11-20 05:36:54.776  1647  2911 I Icing   : Indexing done com.google.android.gms-postals_data_id
+22707-11-20 05:36:54.777  1647  2911 I Icing   : Post-init done
+22708:11-20 05:36:54.777  1647  2911 I Icing   : doRemovePackageData lav.visaroom.alav
+22709-11-20 05:36:54.784  1511  1597 I .apps.wellbeing: AssetManager2(0x770832afeef8) locale list changing from [] to [en-US]
+22710-11-20 05:36:54.803  1511  1597 I .apps.wellbeing: AssetManager2(0x770832afdc38) locale list changing from [] to [en-US]
+22711-11-20 05:36:54.804  1511  1597 I .apps.wellbeing: AssetManager2(0x770832afc978) locale list changing from [] to [en-US]
+22712-11-20 05:36:54.806  1511  1597 I .apps.wellbeing: AssetManager2(0x770832b007f8) locale list changing from [] to [en-US]
+22713-11-20 05:36:54.807  1511  1597 I .apps.wellbeing: AssetManager2(0x770832afb6b8) locale list changing from [] to [en-US]
+22714-11-20 05:36:54.808  1511  1597 I .apps.wellbeing: AssetManager2(0x770832afbcf8) locale list changing from [] to [en-US]
+22715-11-20 05:36:54.809  1511  1597 I .apps.wellbeing: AssetManager2(0x770832afcfb8) locale list changing from [] to [en-US]
+22716-11-20 05:36:54.810  1511  1597 I .apps.wellbeing: AssetManager2(0x770832afd918) locale list changing from [] to [en-US]
+22717-11-20 05:36:54.818  1511  1597 I .apps.wellbeing: AssetManager2(0x770832afd2d8) locale list changing from [] to [en-US]
+22718-11-20 05:36:54.819  1722  1929 I esmq    : (REDACTED) [%s] No SpeakerId model found
+22719-11-20 05:36:54.836  1722  1930 I esrf    : (REDACTED) Confirming resource received for %s
+22720-11-20 05:36:54.836  1722  1930 I esqa    : (REDACTED) <<< [%s] Reading SodaResourceManager message with updated resourceIds: %s. Total set: %s
+22721-11-20 05:36:54.836  1722  1930 I esqa    : (REDACTED) <<< [%s] SodaResourceManager session emitted all requested resources: %s. Ok to terminate.
+22722-11-20 05:36:54.836  1722  1930 I esrf    : (REDACTED) HotwordInfo, locale = %s, hotword model location = %s, hotword model size = %d, hotword model id = %s
+22723-11-20 05:36:54.836  1722  1930 I esrf    : (REDACTED) %s: ResourceFuture finished
+22724-11-20 05:36:54.840  2913  3064 I DialerSystemCallLogDataSource: com.android.dialer.calllog.datasources.systemcalllog.SystemCallLogDataSource.handleInsertsAndUpdatesInternal:434 no results for CALL_IN_DIRECT_BOOT_MODE
+22725-11-20 05:36:54.842  3404  3404 I nect.controller: AssetManager2(0x770832aec938) locale list changing from [] to [en-US]
+22726-11-20 05:36:54.847  1360  1365 W .gms.persistent: Suspending all threads took: 45.130ms
+22727-11-20 05:36:54.849  3404  3404 V GraphicsEnvironment: Currently set values for:
+22728-11-20 05:36:54.850  3404  3404 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+22729-11-20 05:36:54.850  3404  3404 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+22730-11-20 05:36:54.850  3404  3404 V GraphicsEnvironment: com.google.android.healthconnect.controller is not listed in per-application setting
+22731-11-20 05:36:54.850  3404  3404 V GraphicsEnvironment: ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
+22732-11-20 05:36:54.850  3404  3404 V GraphicsEnvironment: com.google.android.healthconnect.controller is not listed in ANGLE allowlist or settings, returning default
+22733-11-20 05:36:54.850  3404  3404 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+22734-11-20 05:36:54.864  1647  3195 I GmsModuleFndr: Beginning GMS chimera module scan
+22735-11-20 05:36:54.880  1511  1612 W NotificationScheduler: <DWB> Cannot reschedule growth notification, not scheduled.
+22736-11-20 05:36:54.883   647  1952 W AlarmManager: Unrecognized alarm listener com.android.server.UiModeManagerService$$ExternalSyntheticLambda2@e96611b
+22737-11-20 05:36:54.900   647  1786 W OverlayManager: service 'idmap' died
+22738-11-20 05:36:54.902   647  1786 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22739-11-20 05:36:54.902   647  1786 D PackageManager: Clear ephemeral installer activity
+22740-11-20 05:36:54.902   647  1786 I AppsFilter: interaction: PackageSetting{4ad6b4a com.android.microdroid.empty_payload/10200} -> PackageSetting{d5a3f6 com.google.android.healthconnect.controller/10194} BLOCKED
+22741-11-20 05:36:54.903  2913  2913 I DialerLogcatLoggingBindings: com.android.dialer.logging.logcat.LogcatLoggingBindings.logImpression:47 Impression: VVM_UNBUNDLED_EVENT_RECEIVED
+22742-11-20 05:36:55.087     0     0 I init    : Sending signal 9 to service 'idmap2d' (pid 2884) process group...
+22743-11-20 05:36:55.095     0     0 I binder  : 647:704 ioctl 400c620e 7706b1f0ad6c returned -11
+22744-11-20 05:36:54.908   647  1952 D SafetySourceDataValidat: No cert check requested for package com.google.android.healthconnect.controller
+22745-11-20 05:36:54.920  1360  2158 W .gms.persistent: Weak pointer dereference blocked for 56 milliseconds.
+22746-11-20 05:36:54.920  2913  3087 I DialerVoicemailStatusDataMigration: com.android.dialer.voicemailstatus.dataservice.impl.VoicemailStatusDataMigration.migrate:81 no package status to migrate
+22747-11-20 05:36:54.921  2972  3389 V RkpdServerInterface: Network request completed successfully.
+22748-11-20 05:36:54.921  2972  3389 I RkpdPeriodicProvisioner: Total services found implementing IRPC: 1
+22749-11-20 05:36:54.922  2972  3389 I RkpdPeriodicProvisioner: Starting provisioning for com.android.rkpdapp.interfaces.SystemInterface{android.hardware.security.keymint.IRemotelyProvisionedComponent/default}
+22750-11-20 05:36:54.922  2972  3389 I RkpdKeyPoolStats: Sufficient keys are available, no CSR needed.
+22751-11-20 05:36:54.922  2972  3389 I RkpdKeyPoolStats: PoolStats{keysInUse=1, idealTotalSignedKeys=13, keysToGenerate=0, keysUnassigned=11}
+22752-11-20 05:36:54.922  2972  3389 I RkpdProvisioner: Requested number of keys for provisioning: 0
+22753-11-20 05:36:54.923  2972  3389 I RkpdPeriodicProvisioner: Logging atom metric for pool status, total: 12, numExpiring: 0, numUnassigned: 11
+22754-11-20 05:36:54.923  2972  3389 I RkpdPeriodicProvisioner: Successfully provisioned com.android.rkpdapp.interfaces.SystemInterface{android.hardware.security.keymint.IRemotelyProvisionedComponent/default}
+22755-11-20 05:36:54.926  2972  2995 I WM-WorkerWrapper: Worker result SUCCESS for Work [ id=b1510fbf-052a-481c-ab15-4d3d42106790, tags={ com.android.rkpdapp.provisioner.PeriodicProvisioner } ]
+22756-11-20 05:36:54.928  2972  2972 D WM-Processor: Processor b1510fbf-052a-481c-ab15-4d3d42106790 executed; reschedule = false
+22757-11-20 05:36:54.928  2972  2972 D WM-GreedyScheduler: Stopping tracking for WorkGenerationalId(workSpecId=b1510fbf-052a-481c-ab15-4d3d42106790, generation=0)
+22758-11-20 05:36:54.933  2972  2995 D WM-GreedyScheduler: Cancelling work ID b1510fbf-052a-481c-ab15-4d3d42106790
+22759-11-20 05:36:54.934  2972  2995 D WM-SystemJobScheduler: Scheduling work ID b1510fbf-052a-481c-ab15-4d3d42106790Job ID 2
+22760-11-20 05:36:54.939  2913  2940 I .android.dialer: Background concurrent mark compact GC freed 71MB AllocSpace bytes, 8(416KB) LOS objects, 49% free, 23MB/47MB, paused 286.362ms,13.095ms total 1.427s
+22761-11-20 05:36:54.941  2913  3016 I DialerVoicemailStatusDataMigration: com.android.dialer.voicemailstatus.dataservice.impl.VoicemailStatusDataMigration.cleanup:93 enter
+22762-11-20 05:36:54.941  2913  3016 I DialerSystemCallLogDataSource: com.android.dialer.calllog.datasources.systemcalllog.SystemCallLogDataSource.handleDeletes:722 found 0 call log entries to remove
+22763-11-20 05:36:54.941  2913  3016 I DialerSingletonScopedExternalsLogging: com.google.android.dialershared.externals.logging.SingletonScopedExternalsLogging.recordCallMethodInvocation:75 event: CONTENT_RESOLVER_DELETE, function parameters: [com.android.voicemail,content://com.android.voicemail/status,(source_package = ?)], return value: <empty>
+22764-11-20 05:36:54.942  1722  1887 I espo    : Injected full hotword model bytes into HotwordInfo.
+22765-11-20 05:36:54.948  2913  3087 I DialerSingletonScopedExternalsLogging: com.google.android.dialershared.externals.logging.SingletonScopedExternalsLogging.recordCallMethodInvocation:75 event: BROADCAST_RECEIVER, function parameters: [Broadcast to CachedTelephonyManager,2026-11-20 05:36:53.772], return value: <empty>
+22766-11-20 05:36:54.948  2913  3087 I DialerRefreshAnnotatedCallLogWorker: com.android.dialer.calllog.refresh.impl.RefreshAnnotatedCallLogWorker.rebuild:203 filling PhoneLookupDataSource
+22767-11-20 05:36:54.950  1511  1597 I .apps.wellbeing: AssetManager2(0x770832afe8b8) locale list changing from [] to [en-US]
+22768-11-20 05:36:55.144     0     0 I libprocessgroup: Removed cgroup /sys/fs/cgroup/system/uid_1000/pid_2884
+22769-11-20 05:36:55.148     0     0 I init    : Control message: Processed ctl.stop for 'idmap2d' from pid: 647 (system_server)
+22770-11-20 05:36:54.959   647   704 I ActivityManager: Killing 3404:com.google.android.healthconnect.controller/u0a194 (adj 0): change com.google.android.healthconnect.controller
+22771-11-20 05:36:54.971  1599  1919 I AiAiPeople: Pecan Pipeline (re)Initialized with 4 Labelers Loaded.
+22772-11-20 05:36:55.154     0     0 I init    : Service 'idmap2d' (pid 2884) received signal 9
+22773-11-20 05:36:55.160     0     0 I init    : Sending signal 9 to service 'idmap2d' (pid 2884) process group...
+22774-11-20 05:36:55.165     0     0 E libprocessgroup: Failed to write 1 to /sys/fs/cgroup/system/uid_1000/pid_2884/cgroup.kill: No such file or directory
+22775-11-20 05:36:54.977   450   450 I Zygote  : Process 3404 exited due to signal 9 (Killed)
+22776-11-20 05:36:55.170     0     0 E libprocessgroup: Failed to open /sys/fs/cgroup/system/uid_1000/pid_2884/cgroup.procs: No such file or directory
+22777-11-20 05:36:54.991   647   704 W IPCThreadState: Sending oneway calls to frozen process.
+22778-11-20 05:36:54.992   647   704 W IPCThreadState: Sending oneway calls to frozen process.
+22779-11-20 05:36:54.992  1511  1611 W JobInfo : Requested important-while-foreground flag for job13 is ignored and takes no effect
+22780-11-20 05:36:55.001  2972  3011 D WM-BrdcstRcvrCnstrntTrc: BatteryNotLowTracker: unregistering receiver
+22781-11-20 05:36:55.004  1599  2906 I AiAiEcho: Settings changed for uri: content://settings/secure/ui_night_mode
+22782-11-20 05:36:55.008  1599  2906 I AiAiEcho: Settings changed for uri: content://settings/secure/ui_night_mode_custom_type
+22783-11-20 05:36:55.009  1722  1929 W agxh    : No system LP found. Offline SODA ASR is unavailable and SODA init may fail.
+22784-11-20 05:36:55.009  1722  1929 I agxh    : (REDACTED) Resolved SODA resource dir for %s: %s
+22785-11-20 05:36:55.009  1599  1877 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+22786-11-20 05:36:55.010   647  1952 W system_server: Long monitor contention with owner PackageManager (704) at int com.android.server.am.ActivityManagerService$LocalService.broadcastIntent(android.content.Intent, android.content.IIntentReceiver, java.lang.String[], boolean, int, int[], java.util.function.BiFunction, android.os.Bundle)(ActivityManagerService.java:17255) waiters=0 in void com.android.server.am.BroadcastController.finishReceiver(android.os.IBinder, int, java.lang.String, android.os.Bundle, boolean, int) for 101ms
+22787-11-20 05:36:55.011  1647  3195 I ModuleSetResolution: Computing pending module set with APKs: [[AdsFdrDynamite.integ:250505301100000], [Cronetdynamite:252635260800], [Dynamiteloader:252635260000], [Dynamitemodulesa:252635260000], [Dynamitemodulesc:252635260000], [Googlecertificates:252635260000], [Mapsdynamite:252635260000], [Measurementdynamite:252635260000]]
+22788-11-20 05:36:55.015   647  1952 W ActivityManager: finishReceiver: no app for android.os.BinderProxy@c5ea090
+22789-11-20 05:36:55.015   647  1241 V ActivityManager: Got obituary of 3404:com.google.android.healthconnect.controller
+22790-11-20 05:36:55.016   647   961 I AppWidgetServiceImpl: Received broadcast: android.intent.action.PACKAGE_CHANGED on user 0
+22791-11-20 05:36:55.017  1722  1929 I dioz    : #enroll
+22792-11-20 05:36:55.017  1722  1929 I esrf    : (REDACTED) Confirming resource received for %s
+22793-11-20 05:36:55.017  1722  1929 I esqa    : (REDACTED) <<< [%s] Reading SodaResourceManager message with updated resourceIds: %s. Total set: %s
+22794-11-20 05:36:55.017  1722  1929 I esqa    : (REDACTED) <<< [%s] SodaResourceManager session emitted all requested resources: %s. Ok to terminate.
+22795-11-20 05:36:55.017  1722  1929 I esrf    : (REDACTED) %s: ResourceFuture finished
+22796-11-20 05:36:55.018  1599  1877 I AiAiEcho: EchoTargets: 
+22797-11-20 05:36:55.018  1599  1877 I AiAiEcho: Filtered by AiAi flag check: 
+22798-11-20 05:36:55.018  1599  1877 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+22799-11-20 05:36:55.018  1599  1877 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+22800-11-20 05:36:55.018  1599  1877 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+22801-11-20 05:36:55.018  1599  1877 I AiAiEcho: EchoTargets: 
+22802-11-20 05:36:55.018  1599  1877 I AiAiEcho: Filtered by AiAi flag check: 
+22803-11-20 05:36:55.018  1599  1877 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+22804-11-20 05:36:55.018  1599  1877 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+22805-11-20 05:36:55.018  1599  1877 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+22806-11-20 05:36:55.018  1599  1877 I AiAiEcho: EchoTargets: 
+22807-11-20 05:36:55.018  1599  1877 I AiAiEcho: Filtered by AiAi flag check: 
+22808-11-20 05:36:55.018  1599  1877 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+22809-11-20 05:36:55.019  1599  1877 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+22810-11-20 05:36:55.019  1599  1877 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+22811-11-20 05:36:55.019  1599  1877 I AiAiEcho: EchoTargets: 
+22812-11-20 05:36:55.019  1599  1877 I AiAiEcho: Filtered by AiAi flag check: 
+22813-11-20 05:36:55.019  1599  1877 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+22814-11-20 05:36:55.019  1599  1877 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+22815-11-20 05:36:55.026   647   775 V AccessibilityManagerService: onUserStateChangedLocked for userId: 0, forceUpdate: false
+22816-11-20 05:36:55.027   647   680 I libprocessgroup: Removed cgroup /sys/fs/cgroup/apps/uid_10194/pid_3404
+22817-11-20 05:36:55.027   647   775 W MagnificationConnectionManager: requestConnection duplicated request: connect=false, mConnectionState=DISCONNECTED
+22818-11-20 05:36:55.028  1182  1182 D CarrierSvcBindHelper: onPackageModified: com.google.android.healthconnect.controller
+22819-11-20 05:36:55.030  1511  1597 I .apps.wellbeing: AssetManager2(0x770832afb078) locale list changing from [] to [en-US]
+22820-11-20 05:36:55.032  1182  1459 I SatelliteAppTracker: onPackageModified : com.google.android.healthconnect.controller
+22821-11-20 05:36:55.032   647   976 D ShortcutService: received package broadcast intent: Intent { act=android.intent.action.PACKAGE_CHANGED dat=package: flg=0x45000010 (has extras) }
+22822-11-20 05:36:55.032   647   976 D ShortcutService: changing package: com.google.android.healthconnect.controller userId=0
+22823-11-20 05:36:55.040  1182  1182 D CarrierSvcBindHelper: No carrier app for: 0
+22824-11-20 05:36:55.041  2913  3046 I DialerLoggingConsentCheckerImpl: com.google.android.dialershared.logging.consent.impl.LoggingConsentCheckerImpl.getConsent:72 timer stop with success, timer present: false
+22825-11-20 05:36:55.042  1291  1313 D PackageUpdatedTask: Package updated: mOp=UPDATE packages=[com.google.android.healthconnect.controller], user=UserHandle{0}
+22826-11-20 05:36:55.043  1291  1313 W AllAppsList: updatePackage: no Activities matched updated package, removing any AppInfo with package=com.google.android.healthconnect.controller, user=UserHandle{0}
+22827-11-20 05:36:55.050  2972  3011 D WM-NetworkStateTracker: Unregistering network callback
+22828-11-20 05:36:55.050   647   678 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 1027, packageName = null, attributionTag = null, token = android.os.Binder@729c511, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+SMOKE_FAILED: process is not running
