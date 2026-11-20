@@ -59,8 +59,8 @@ for i in $(seq 1 10); do
   case "$F" in *$PKG*) break;; *) sleep 2;; esac
 done
 shot "kingdom-menu2"
-# «НОВАЯ ИГРА» — центр экрана, чуть выше середины
-adb shell input tap $((W/2)) $((H*52/100))
+# «НОВАЯ ИГРА» — большая кнопка в нижней части меню
+adb shell input tap $((W/2)) $((H*71/100))
 sleep 3
 shot "kingdom-create"
 
