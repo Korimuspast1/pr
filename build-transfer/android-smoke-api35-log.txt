@@ -23,245 +23,1321 @@ Daemon will be stopped at the end of the build
 > Task :app:checkDebugAarMetadata
 > Task :app:mapDebugSourceSetPaths
 > Task :app:generateDebugResources
-> Task :app:packageDebugResources
 > Task :app:mergeDebugResources
+> Task :app:packageDebugResources
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
 > Task :app:parseDebugLocalResources
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
 > Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugStartupProfile
 > Task :app:generateDebugAssets UP-TO-DATE
-> Task :app:mergeExtDexDebug
 > Task :app:mergeDebugAssets
-> Task :app:processDebugManifestForPackage
+> Task :app:mergeExtDexDebug
 > Task :app:compressDebugAssets
 > Task :app:extractDebugVersionControlInfo
 > Task :app:processDebugJavaRes NO-SOURCE
 > Task :app:collectDebugDependencies
 > Task :app:mergeDebugJavaResource
 > Task :app:sdkDebugDependencyData
-> Task :app:processDebugResources FAILED
+> Task :app:processDebugResources
 > Task :app:validateSigningDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795152709265.json
 
-FAILURE: Build failed with an exception.
+> Task :app:compileDebugJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
 
-* What went wrong:
-Execution failed for task ':app:processDebugResources'.
-> A failure occurred while executing com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$TaskAction
-   > Android resource linking failed
-     ERROR: /home/runner/work/pr/pr/visaroom/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml:3: AAPT: error: resource color/ic_launcher_bg (aka lav.visaroom.alav:color/ic_launcher_bg) not found.
-         
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:optimizeDebugResources
+> Task :app:mergeDexDebug
+> Task :app:compileDebugArtProfile
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795152817118.json
 
-* Try:
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights.
-> Get more help at https://help.gradle.org.
+BUILD SUCCESSFUL in 38s
+36 actionable tasks: 36 executed
+--- emulator smoke ---
+API=35 MODE=seeded APK=/home/runner/work/_temp/visaroom-debug.apk
+63dd7cf1251353ebc321152d485a8478fff7fa8683293fa74b29d3636f16beba  /home/runner/work/_temp/visaroom-debug.apk
+Performing Streamed Install
+Success
+install_status=0
+app_uid=10209
+--- package permissions before launch ---
+    pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    privatePkgFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    apexModuleName=null
+    requested permissions:
+      android.permission.POST_NOTIFICATIONS
+      android.permission.FOREGROUND_SERVICE
+      android.permission.RECEIVE_BOOT_COMPLETED
+      android.permission.INTERNET
+      android.permission.FOREGROUND_SERVICE_DATA_SYNC
+      android.permission.ACCESS_NETWORK_STATE
+      android.permission.RECORD_AUDIO
+    install permissions:
+      android.permission.FOREGROUND_SERVICE: granted=true
+      android.permission.RECEIVE_BOOT_COMPLETED: granted=true
+      android.permission.INTERNET: granted=true
+      android.permission.FOREGROUND_SERVICE_DATA_SYNC: granted=true
+      android.permission.ACCESS_NETWORK_STATE: granted=true
+    User 0: ceDataInode=352481 deDataInode=57702 installed=true hidden=false suspended=false distractionFlags=0 stopped=true notLaunched=true enabled=0 instant=false virtual=false quarantined=false
+--
+        /data/resource-cache/com.android.systemui-dynamic-yzMn.frro
+      legacy overlay paths:
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+      gids=[3003]
+      runtime permissions:
 
-* Exception is:
-org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:processDebugResources'.
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:130)
-	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:282)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:128)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
-	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
-	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
-	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
-	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
-	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
-	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:80)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
-Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$TaskAction
-	at org.gradle.workers.internal.DefaultWorkerExecutor$WorkItemExecution.waitForCompletion(DefaultWorkerExecutor.java:287)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.lambda$waitForItemsAndGatherFailures$2(DefaultAsyncWorkTracker.java:130)
-	at org.gradle.internal.Factories$1.create(Factories.java:31)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:336)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:319)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLock(DefaultWorkerLeaseService.java:324)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForItemsAndGatherFailures(DefaultAsyncWorkTracker.java:126)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForItemsAndGatherFailures(DefaultAsyncWorkTracker.java:92)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForAll(DefaultAsyncWorkTracker.java:78)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForCompletion(DefaultAsyncWorkTracker.java:66)
-	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:252)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:29)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:26)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:47)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.run(DefaultBuildOperationExecutor.java:68)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:229)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:212)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:195)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:162)
-	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:105)
-	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:44)
-	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:59)
-	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:56)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:56)
-	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:44)
-	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:41)
-	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:74)
-	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
-	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:50)
-	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:28)
-	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:67)
-	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:37)
-	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:61)
-	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:26)
-	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:67)
-	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:45)
-	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:40)
-	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:29)
-	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:189)
-	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$1(BuildCacheStep.java:75)
-	at org.gradle.internal.Either$Right.fold(Either.java:175)
-	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:62)
-	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:73)
-	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:48)
-	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:46)
-	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:35)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:76)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:54)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:54)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:36)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
-	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:49)
-	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:27)
-	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:71)
-	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:39)
-	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:65)
-	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:36)
-	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:106)
-	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:55)
-	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:64)
-	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:43)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.executeWithNonEmptySources(AbstractSkipEmptyWorkStep.java:125)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:56)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:36)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
-	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:36)
-	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:23)
-	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:75)
-	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:41)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$execute$0(AssignMutableWorkspaceStep.java:35)
-	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:289)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:31)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:22)
-	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
-	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
-	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
-	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
-	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:48)
-	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:35)
-	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:61)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:127)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
-	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
-	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
-	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
-	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
-	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
-	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:80)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
-Caused by: com.android.builder.internal.aapt.v2.Aapt2Exception: Android resource linking failed
-ERROR: /home/runner/work/pr/pr/visaroom/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml:3: AAPT: error: resource color/ic_launcher_bg (aka lav.visaroom.alav:color/ic_launcher_bg) not found.
+Queries:
+  system apps queryable: false
+  queries via forceQueryable:
+--- launch debug SmokeSeedActivity (saves a test session, then opens ChatsActivity) ---
+Starting: Intent { cmp=lav.visaroom.alav/.SmokeSeedActivity }
+Status: ok
+LaunchState: UNKNOWN (0)
+Activity: lav.visaroom.alav/.ChatsActivity
+WaitTime: 1453
+Complete
+pid_after_3s=
+--- early app-UID log ---
+--------- beginning of main
+11-20 05:35:35.908  2067  2067 I v.visaroom.alav: Using CollectorTypeCMC GC.
+11-20 05:35:35.911  2067  2067 W v.visaroom.alav: Unexpected CPU variant for x86: x86_64.
+11-20 05:35:35.911  2067  2067 W v.visaroom.alav: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, default
+11-20 05:35:35.912  2067  2067 E v.visaroom.alav: Not starting debugger since process cannot load the jdwp agent.
+11-20 05:35:35.925  2067  2067 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-20 05:35:36.007  2067  2067 D CompatChangeReporter: Compat change id reported: 242716250; UID 10209; state: ENABLED
+11-20 05:35:36.024  2067  2067 D nativeloader: Configuring clns-7 for other apk /data/app/~~1ukknyQWjrTlP4gvXpKVBw==/lav.visaroom.alav-El3Y7k_eKAPRyJYJxeC-8A==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~1ukknyQWjrTlP4gvXpKVBw==/lav.visaroom.alav-El3Y7k_eKAPRyJYJxeC-8A==/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/lav.visaroom.alav
+11-20 05:35:36.037  2067  2067 V GraphicsEnvironment: Currently set values for:
+11-20 05:35:36.037  2067  2067 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-20 05:35:36.037  2067  2067 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-20 05:35:36.037  2067  2067 V GraphicsEnvironment: Global.Settings values are invalid: number of packages: 0, number of values: 0
+11-20 05:35:36.037  2067  2067 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11-20 05:35:36.153  2067  2067 I VisaroomSmoke: seed_saved=true uid_matches=true token_present=true
+--------- beginning of system
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: Failed to execute the transaction: tId:965026270 ClientTransaction{
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270   transactionItems=[
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270     LaunchActivityItem{activityToken=android.os.BinderProxy@a021fad,intent=Intent { flg=0x10008000 cmp=lav.visaroom.alav/.ChatsActivity },ident=2442040,info=ActivityInfo{8140979 lav.visaroom.alav.ChatsActivity},curConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h707dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2476) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.53 fontWeightAdjustment=0},overrideConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h707dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2476) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.3 fontWeightAdjustment=0},deviceId=0,referrer=lav.visaroom.alav,procState=2,state=null,persistentState=null,pendingResults=null,pendingNewIntents=null,sceneTransitionInfo=null,profilerInfo=null,assistToken=android.os.BinderProxy@b9b1572,shareableActivityToken=android.os.BinderProxy@9bd0dc3,activityWindowInfo=ActivityWindowInfo{isEmbedded=false, taskBounds=Rect(0, 0 - 1440, 2560), taskFragmentBounds=Rect(0, 0 - 1440, 2560)}}
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270     ResumeActivityItem{mActivityToken=android.os.BinderProxy@a021fad,procState=-1,updateProcState=false,isForward=false,shouldSendCompatFakeFocus=false}
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270     Target activity: lav.visaroom.alav.ChatsActivity
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270   ]
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270 }
+11-20 05:35:36.326  2067  2067 D AndroidRuntime: Shutting down VM
+--------- beginning of crash
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: FATAL EXCEPTION: main
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: Process: lav.visaroom.alav, PID: 2067
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4048)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4235)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:112)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:174)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:109)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:81)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2636)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:107)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:232)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:317)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:8705)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:580)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:886)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: Caused by: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettingsFolders(ChatsActivity.java:625)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettings(ChatsActivity.java:406)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.onCreate(ChatsActivity.java:158)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9002)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:8980)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1526)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4030)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	... 13 more
+11-20 05:35:36.348  2067  2067 I Process : Sending signal. PID: 2067 SIG: 9
+--- early crash buffer ---
+--------- beginning of crash
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: FATAL EXCEPTION: main
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: Process: lav.visaroom.alav, PID: 2067
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4048)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4235)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:112)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:174)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:109)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:81)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2636)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:107)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:232)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:317)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:8705)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:580)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:886)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: Caused by: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettingsFolders(ChatsActivity.java:625)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettings(ChatsActivity.java:406)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.onCreate(ChatsActivity.java:158)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9002)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:8980)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1526)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4030)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	... 13 more
+--- force MessageCheckJobService job 1101 ---
+Running job [FORCED]
+pid_after_chats=3054
+--- activity state ---
+--- focused window ---
+--- visible UI hierarchy (text/package excerpts) ---
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="At a glance"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text="Fri, Nov 20"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Fri, Nov 20"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="Home"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text="Phone"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Phone"
+text="Messages"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Messages"
+text="Gmail"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Predicted app: Gmail"
+text="Chrome"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Chrome"
+text="Camera"
+package="com.google.android.apps.nexuslauncher"
+content-desc="Camera"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="Google search"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="Google app"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="Voice search"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc="Google Lens"
+text=""
+package="com.google.android.apps.nexuslauncher"
+content-desc=""
+--- JobScheduler state for visaroom ---
+      53081
+    <0>com.google.android.googlequicksearchbox::.schedulePersisted():
+      47355, 51202, 53381
+    <0>com.google.android.apps.safetyhub::.schedulePersisted():
+      57480, 57504
+    <0>lav.visaroom.alav::.schedulePersisted():
+      53889
+    <0>android::.schedulePersisted():
+      30330, 31669
+    <0>com.google.android.as::.schedulePersisted():
+      35280, 35437, 38056, 39041, 51338, 51341, 54072, 54531, 54574, 54657, 55031, 55049, 55090
+    <0>com.google.android.permissioncontroller::.schedulePersisted():
+      39580, 53666, 53730
+    <0>com.android.providers.settings::.schedulePersisted():
+      26387
+    <0>com.google.android.settings.intelligence::.schedulePersisted():
+      48204, 48205
+    <0>com.google.android.inputmethod.latin::.schedulePersisted():
+      31886, 31888, 32101, 32507, 34881, 45563
+  
+  Cached execution stats:
+    <0>com.google.android.ext.services::timeout-reg:
+      expirationTime=86453098, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.ext.services::.schedulePersisted():
+      expirationTime=113081, windowSizeMs=60000, countLimit=250, countInWindow=1, inQuotaTime=0
+    <0>com.google.android.ext.services::anr:
+      expirationTime=86453091, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.ext.services::timeout-total:
+      expirationTime=86453091, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.googlequicksearchbox::timeout-reg:
+      expirationTime=86435809, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.googlequicksearchbox::.schedulePersisted():
+      expirationTime=107355, windowSizeMs=60000, countLimit=250, countInWindow=3, inQuotaTime=0
+    <0>com.google.android.googlequicksearchbox::anr:
+--
+      expirationTime=117480, windowSizeMs=60000, countLimit=250, countInWindow=2, inQuotaTime=0
+    <0>com.google.android.apps.safetyhub::anr:
+      expirationTime=86457423, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.apps.safetyhub::timeout-total:
+      expirationTime=86457423, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>lav.visaroom.alav::timeout-reg:
+      expirationTime=86453891, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>lav.visaroom.alav::.schedulePersisted():
+      expirationTime=113889, windowSizeMs=60000, countLimit=250, countInWindow=1, inQuotaTime=0
+    <0>lav.visaroom.alav::anr:
+      expirationTime=86453891, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>lav.visaroom.alav::timeout-total:
+      expirationTime=86453891, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>android::timeout-reg:
+      expirationTime=86429145, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>android::.schedulePersisted():
+      expirationTime=90330, windowSizeMs=60000, countLimit=250, countInWindow=2, inQuotaTime=0
+    <0>android::anr:
+      expirationTime=86426945, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>android::timeout-total:
+      expirationTime=86426945, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.as::timeout-reg:
+      expirationTime=86433968, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.as::.schedulePersisted():
+      expirationTime=95280, windowSizeMs=60000, countLimit=250, countInWindow=13, inQuotaTime=0
+    <0>com.google.android.as::anr:
+      expirationTime=86433889, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.as::timeout-total:
+      expirationTime=86433889, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.permissioncontroller::timeout-reg:
+      expirationTime=86439943, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.permissioncontroller::.schedulePersisted():
+      expirationTime=99580, windowSizeMs=60000, countLimit=250, countInWindow=3, inQuotaTime=0
+    <0>com.google.android.permissioncontroller::anr:
+      expirationTime=86439583, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.permissioncontroller::timeout-total:
+      expirationTime=86439583, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>com.android.providers.settings::timeout-reg:
+      expirationTime=86429138, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.android.providers.settings::.schedulePersisted():
+--
+    Standby bucket: ACTIVE
+    Enqueue time: -10s453ms
+    Run time: earliest=+23h59m49s539ms, latest=none, original latest=none
+    Restricted due to: none.
+    Ready: false (job=false user=true !restricted=true !pending=true !active=true !backingup=true comp=true)
+  JOB #u0a209/1101: 5b8cc61 lav.visaroom.alav/.MessageCheckJobService
+    u0a209 tag=*job*/lav.visaroom.alav/.MessageCheckJobService
+    Source: uid=u0a209 user=0 pkg=lav.visaroom.alav
+    JobInfo:
+      Service: lav.visaroom.alav/.MessageCheckJobService
+      PERIODIC: interval=+15m0s0ms flex=+15m0s0ms
+      PERSISTED
+      Priority: 300 [DEFAULT]
+      Requires: charging=false batteryNotLow=false deviceIdle=false
+      Network type: NetworkRequest [ NONE id=0, [ Capabilities: INTERNET&TRUSTED&VALIDATED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10209 UnderlyingNetworks: Null] ]
+      Backoff: policy=1 initial=+30s0ms
+      Has early constraint
+      Has late constraint
+    Required constraints: TIMING_DELAY DEADLINE CONNECTIVITY FLEXIBILITY [0xd0200000]
+    Dynamic constraints:
+    Satisfied constraints: CONNECTIVITY FLEXIBILITY DEVICE_NOT_DOZING BACKGROUND_NOT_RESTRICTED WITHIN_QUOTA [0x13600000]
+    Unsatisfied constraints: TIMING_DELAY DEADLINE [0xc0000000]
+    Num Required Flexible constraints: 0
+    Num Dropped Flexible constraints: 0
+    Constraint history:
+      -7s573ms = FLEXIBILITY [0x200000]
+      -7s573ms = CONNECTIVITY FLEXIBILITY [0x10200000]
+      -7s573ms = CONNECTIVITY FLEXIBILITY BACKGROUND_NOT_RESTRICTED [0x10600000]
+      -7s573ms = CONNECTIVITY FLEXIBILITY DEVICE_NOT_DOZING BACKGROUND_NOT_RESTRICTED [0x12600000]
+      -7s573ms = CONNECTIVITY FLEXIBILITY DEVICE_NOT_DOZING BACKGROUND_NOT_RESTRICTED WITHIN_QUOTA [0x13600000]
+    Uid: active
+    Tracking: CONNECTIVITY TIME QUOTA
+    Implicit constraints:
+      readyNotDozing: true
+      readyNotRestrictedInBg: true
+      readyComponentEnabled: true
+    Started with foreground flag: false
+    Network: 100
+--
+  androidx.work.systemjobscheduler:u0a137/1000 from u0a137-> Num Required Constraints: 0, lifecycle=[2187118, (0%), 47667118]
+  #u0a136/310487677 from u0a136-> Num Required Constraints: 0, lifecycle=[21633889, (0%), 69753889]
+  #u0a200/4 from u0a200-> Num Required Constraints: 0, lifecycle=[77813661, (0%), 121733661]
+  
+  Job scores:
+    10209/lav.visaroom.alav: {-10s651ms=6}
+    10201/com.google.android.providers.media.module: {-30s28ms=3}
+    10200/com.google.android.permissioncontroller: {-24s611ms=6}
+    10195/com.google.android.devicelockcontroller: {-11s576ms=5}
+    10154/com.google.android.inputmethod.latin: {-32s436ms=12}
+    10144/com.google.android.gms: {-11s253ms=3}
+    10143/com.google.android.googlequicksearchbox: {-28s745ms=71}
+    10142/com.google.android.apps.wellbeing: {-18s316ms=16}
+    10140/com.google.android.settings.intelligence: {-16s194ms=24}
+    10138/com.android.imsserviceentitlement: {-12s345ms=3}
+    10137/com.google.android.apps.messaging: {-6s833ms=19}
+    10136/com.google.android.as: {-30s586ms=41}
+    10131/com.google.android.partnersetup: {-29s880ms=30}
+    10130/com.google.android.apps.safetyhub: {-7s117ms=18}
+    10101/com.android.providers.calendar: {-7s29ms=5}
+    1000/com.android.settings: {-12s817ms=3}
+    1000/com.android.providers.settings: {-35s416ms=3}
+    1000/android: {-35s409ms=3}
+  
+  Flexible Constraint Check alarms:
+    JobStatus{28e15bc #u0a165/0 com.google.android.tts/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10165 CHARGING IDLE satisfied:0x3600003 unsatisfied:0x4}: 7175644
+    JobStatus{9b0ae6d #u0a165/3 com.google.android.tts/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10165 CHARGING IDLE satisfied:0x3600003 unsatisfied:0x4}: 7175788
+    JobStatus{3cd11b3 #u0a136/6 com.google.android.as/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10136 CHARGING IDLE satisfied:0x3600003 unsatisfied:0x4}: 7998644
+    JobStatus{5fabf38 #u0a165/4 com.google.android.tts/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10165 NET CHARGING IDLE satisfied:0x13600003 unsatisfied:0x4}: 7175915
+    JobStatus{b02bc05 #u0a142/5 com.google.android.apps.wellbeing/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10142 URIS=[android.app.job.JobInfo$TriggerContentUri@d9b0aa70] satisfied:0x3600000 unsatisfied:0x4000000}: 7418519
+    JobStatus{997ed21 #u0a96/-101 com.android.providers.downloads/.MediaScanTriggerJob u=0 s=10096 CHARGING IDLE satisfied:0x3600003 unsatisfied:0x4}: 21633474
+    JobStatus{24d402a #u0a136/7 com.google.android.as/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10136 CHARGING IDLE satisfied:0x3600003 unsatisfied:0x4}: 7998670
+    JobStatus{6914d9e #u0a136/12 com.google.android.as/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10136 NET CHARGING IDLE satisfied:0x13600003 unsatisfied:0x4}: 9252516
+    JobStatus{a5a3d50 #u0a165/5 com.google.android.tts/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10165 NET CHARGING IDLE satisfied:0x13600003 unsatisfied:0x4}: 7175994
+--
+    JobStatus{dde5718 companion:1000/1 @companion@android/com.android.server.companion.association.InactiveAssociationsRemovalService u=0 s=1000 TIME=-34s716ms:+23h59m25s284ms CHARGING IDLE PERIODIC satisfied:0x83600003 unsatisfied:0x4}: 43229851
+    JobStatus{a26daef #u0a136/360265855 com.google.android.as/com.google.android.apps.miphone.aiai.smartrec.pixelsearch.cronjob.PixelSearchCronJobService u=0 s=10136 TIME=-26s674ms:+23h59m33s326ms CHARGING IDLE PERIODIC satisfied:0x83600003 unsatisfied:0x4}: 43237893
+    JobStatus{7c910bd #u0a136/16442 com.google.android.as/com.google.android.apps.miphone.aiai.common.superpacks.impl.AiAiPersistentDownloadJobService u=0 s=10136 TIME=+2h59m50s91ms:+3h59m50s91ms NET CHARGING IDLE PERIODIC PERSISTED satisfied:0x13600003 unsatisfied:0x80000004}: 34734658
+    JobStatus{d0f4b59 #u0a130/5 com.google.android.apps.safetyhub/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10130 TIME=+7h59m53s305ms:none satisfied:0x3600000 unsatisfied:0x80000000}: 51537872
+    JobStatus{fa181ee androidx.work.systemjobscheduler:u0a137/1000 @androidx.work.systemjobscheduler@com.google.android.apps.messaging/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10137 TIME=+35m22s551ms:none satisfied:0x3600000 unsatisfied:0x80000000}: 23787118
+    JobStatus{5b8cc61 #u0a209/1101 lav.visaroom.alav/.MessageCheckJobService u=0 s=10209 TIME=+29m49s322ms:+44m49s322ms NET PERIODIC PERSISTED satisfied:0x13600000 unsatisfied:0x80000000}: 23813889
+    JobStatus{b220ea9 #u0a136/3 com.google.android.as/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10136 TIME=+23h59m39s236ms:none CHARGING satisfied:0x3600003 unsatisfied:0x80000000}: 110143803
+    JobStatus{71ebec4 androidx.work.systemjobscheduler:u0a143/12 @androidx.work.systemjobscheduler@com.google.android.googlequicksearchbox/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10143 TIME=+6h11m46s401ms:none CHARGING satisfied:0x3600003 unsatisfied:0x80000000}: 46850968
+    JobStatus{e9d74e3 #u0a131/2 com.google.android.partnersetup/.PhenotypeJobService u=0 s=10131 TIME=-4s111ms:-4s111ms READY}: 22920456
+    JobStatus{1170d7a #u0a140/15 com.google.android.settings.intelligence/.modules.appsearchindexing.impl.AppSearchIndexUpdateJobService u=0 s=10140 READY}: 22919771
+    JobStatus{b2de845 #u0a136/485394179 com.google.android.as/com.google.android.apps.miphone.aiai.fedass.ekho.service.EkhoTtlService u=0 s=10136 TIME=+23h59m33s325ms:+1d23h59m33s325ms CHARGING PERIODIC satisfied:0x3600003 unsatisfied:0x80000000}: 129637892
+    JobStatus{d0de757 #1000/204561367 android/com.android.server.people.data.DataMaintenanceService u=0 s=1000 TIME=-13s50ms:+23h59m46s950ms IDLE PERIODIC satisfied:0x83600000 unsatisfied:0x4}: 43251517
+    JobStatus{4ddfb72 #u0a136/452416931 com.google.android.as/com.google.android.apps.miphone.aiai.echo.scheduler.EchoJobService u=0 s=10136 TIME=-30s543ms:+23h59m29s457ms IDLE PERIODIC satisfied:0x83600000 unsatisfied:0x4}: 43234024
+    JobStatus{70218ff #u0a136/11 com.google.android.as/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10136 NET CHARGING IDLE satisfied:0x13600003 unsatisfied:0x4}: 9252409
+    JobStatus{31f07a1 #u0a142/6 com.google.android.apps.wellbeing/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10142 TIME=+23h59m48s417ms:none satisfied:0x3600000 unsatisfied:0x80000000}: 108292984
+    JobStatus{1019c67 #1000/16942831 android/com.android.server.appsearch.contactsindexer.ContactsIndexerMaintenanceService u=0 s=1000 BATNOTLOW IDLE PERSISTED satisfied:0x3600002 unsatisfied:0x4}: 21811669
+    JobStatus{14cfbc3 #u0a136/486216969 com.google.android.as/com.google.android.apps.miphone.aiai.echo.scheduler.EchoJobService u=0 s=10136 TIME=-30s531ms:+23h59m29s469ms IDLE PERIODIC satisfied:0x83600000 unsatisfied:0x4}: 43234036
+    JobStatus{77b2192 #u0a196/27 com.google.android.ext.services/android.ext.services.common.AdServicesAppsearchDeleteJob u=0 s=10196 TIME=+6d15h35m48s522ms:+6d23h59m48s522ms NET PERIODIC PERSISTED satisfied:0x13600000 unsatisfied:0x80000000}: 596213091
+    JobStatus{4d5c9f1 #1000/13254266 android/com.android.server.camera.CameraStatsJobService u=0 s=1000 TIME=+23h59m25s135ms:none IDLE satisfied:0x3600000 unsatisfied:0x80000004}: 108209704
+    JobStatus{4b00f48 androidx.work.systemjobscheduler:u0a143/6 @androidx.work.systemjobscheduler@com.google.android.googlequicksearchbox/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10143 TIME=+19h59m42s693ms:none BATNOTLOW satisfied:0x3600002 unsatisfied:0x80000000}: 96527262
+    JobStatus{4f0a84e #u0a154/3 com.google.android.inputmethod.latin/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10154 TIME=+5h59m27s483ms:none IDLE satisfied:0x3600000 unsatisfied:0x80000004}: 43232052
+    JobStatus{4557316 #u0a165/1 com.google.android.tts/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10165 TIME=+1d6h13m40s405ms:none satisfied:0x3600000 unsatisfied:0x80000000}: 130484974
+    JobStatus{20f8684 #u0a165/2 com.google.android.tts/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10165 TIME=+6h13m40s506ms:none CHARGING satisfied:0x3600003 unsatisfied:0x80000000}: 44085075
+    JobStatus{c26288c VirtualizationSystemService:1000/1 @VirtualizationSystemService@android/com.android.system.virtualmachine.SecretkeeperJobService u=0 s=1000 TIME=-34s700ms:+23h59m25s300ms CHARGING IDLE PERIODIC satisfied:0x83600003 unsatisfied:0x4}: 43229869
+    JobStatus{61e1285 #u0a136/4 com.google.android.as/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10136 TIME=+23h59m37s924ms:none satisfied:0x3600000 unsatisfied:0x80000000}: 110142493
+    JobStatus{19cc96a #u0a140/1976 com.google.android.settings.intelligence/.modules.routines.impl.PruneDatabaseJobService u=0 s=10140 TIME=+23h59m43s635ms:+1d23h59m43s635ms PERIODIC PERSISTED satisfied:0x3600000 unsatisfied:0x80000000}: 129648204
+    JobStatus{8d15413 #u0a200/6 com.google.android.permissioncontroller/com.android.permissioncontroller.privacysources.AccessibilityJobService u=0 s=10200 TIME=+21h35m49s208ms:+23h59m49s208ms PERIODIC satisfied:0x3600000 unsatisfied:0x80000000}: 99593777
+    JobStatus{7bdd5fe androidx.work.systemjobscheduler:u0a201/0 @androidx.work.systemjobscheduler@com.google.android.providers.media.module/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10201 TIME=+364d23h59m26s938ms:none satisfied:0x3600000 unsatisfied:0x80000000}: 31557631507
+    JobStatus{fab5b4d #u0a136/310487677 com.google.android.as/com.google.android.apps.miphone.aiai.echo.scheduler.EchoJobService u=0 s=10136 TIME=+5h59m29s320ms:+11h59m29s320ms PERIODIC satisfied:0x3600000 unsatisfied:0x80000000}: 43893889
+    JobStatus{125f56c androidx.work.systemjobscheduler:u0a143/2 @androidx.work.systemjobscheduler@com.google.android.googlequicksearchbox/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10143 TIME=+5h59m47s392ms:none CHARGING satisfied:0x3600003 unsatisfied:0x80000000}: 46611961
+    JobStatus{e7ecb17 #u0a140/1981 com.google.android.settings.intelligence/.modules.routines.impl.ComputeNewInferencesJobService u=0 s=10140 TIME=+23h59m43s636ms:+1d23h59m43s636ms PERIODIC PERSISTED satisfied:0x3600000 unsatisfied:0x80000000}: 129648205
+    JobStatus{74f118d #u0a136/5 com.google.android.as/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10136 TIME=+23h59m34s885ms:none CHARGING satisfied:0x3600003 unsatisfied:0x80000000}: 109959454
+    JobStatus{5046871 #u0a144/2 com.google.android.gms/.backup.component.MmsBackupSchedulerService u=0 s=10144 TIME=+23h59m45s372ms:none NET CHARGING IDLE satisfied:0x13600003 unsatisfied:0x80000004}: 108049941
+    JobStatus{3cca55a androidx.work.systemjobscheduler:u0a143/11 @androidx.work.systemjobscheduler@com.google.android.googlequicksearchbox/androidx.work.impl.background.systemjob.SystemJobService u=0 s=10143 TIME=+6h11m46s119ms:none NET CHARGING satisfied:0x13600003 unsatisfied:0x80000000}: 46850688
+--
+      FORCE_ALL_CHANGED: count=0, total=0.0ms, avg=0.000ms, max calls/s=0 max dur/s=0.0ms max time=0.0ms
+      IS_UID_ACTIVE_CACHED: count=0, total=0.0ms, avg=0.000ms, max calls/s=0 max dur/s=0.0ms max time=0.0ms
+      IS_UID_ACTIVE_RAW: count=7, total=1.7ms, avg=0.241ms, max calls/s=0 max dur/s=0.0ms max time=1.5ms
+  
+  Stopped packages:
+    10209:lav.visaroom.alav=false
+    10205:com.google.android.rkpdapp=false
+    10201:com.google.android.providers.media.module=false
+    10200:com.google.android.permissioncontroller=false
+    10196:com.google.android.ext.services=false
+    10195:com.google.android.devicelockcontroller=false
+    10165:com.google.android.tts=false
+    10154:com.google.android.inputmethod.latin=false
+    10144:com.google.android.gms=false
+    10143:com.google.android.googlequicksearchbox=false
+    10142:com.google.android.apps.wellbeing=false
+    10140:com.google.android.settings.intelligence=false
+    10138:com.android.imsserviceentitlement=false
+    10137:com.google.android.apps.messaging=false
+    10136:com.google.android.as=false
+    10135:com.google.android.configupdater=false
+    10132:com.google.android.as.oss=false
+    10131:com.google.android.partnersetup=false
+    10130:com.google.android.apps.safetyhub=false
+    10101:com.android.providers.calendar=false
+    10096:com.android.providers.downloads=false
+    10095:com.google.android.documentsui=false
+    1073:com.google.android.networkstack=false
+    1000:com.android.settings=false
+    1000:com.android.providers.settings=false
+    1000:android=false
     
-	at com.android.builder.internal.aapt.v2.Aapt2Exception$Companion.create(Aapt2Exception.kt:45)
-	at com.android.builder.internal.aapt.v2.Aapt2Exception$Companion.create$default(Aapt2Exception.kt:33)
-	at com.android.build.gradle.internal.res.Aapt2ErrorUtils.rewriteException(Aapt2ErrorUtils.kt:262)
-	at com.android.build.gradle.internal.res.Aapt2ErrorUtils.rewriteLinkException(Aapt2ErrorUtils.kt:133)
-	at com.android.build.gradle.internal.res.Aapt2ProcessResourcesRunnableKt.processResources(Aapt2ProcessResourcesRunnable.kt:76)
-	at com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$Companion.invokeAaptForSplit(LinkApplicationAndroidResourcesTask.kt:941)
-	at com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$Companion.access$invokeAaptForSplit(LinkApplicationAndroidResourcesTask.kt:796)
-	at com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$TaskAction.run(LinkApplicationAndroidResourcesTask.kt:432)
-	at com.android.build.gradle.internal.profile.ProfileAwareWorkAction.execute(ProfileAwareWorkAction.kt:74)
-	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
-	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
-	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
-	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
-	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:187)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:120)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:162)
-	at org.gradle.internal.Factories$1.create(Factories.java:31)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:264)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:133)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:157)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:126)
-	... 2 more
-
-
-BUILD FAILED in 33s
-26 actionable tasks: 26 executed
+    ##u0a209/1101 from u0a209 active, exempted: lav.visaroom.alav [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    #androidx.work.systemjobscheduler:u0a205/2 from u0a205 active, exempted: com.google.android.rkpdapp [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a201/-300 from u0a201 active, exempted: com.google.android.providers.media.module [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    #androidx.work.systemjobscheduler:u0a201/0 from u0a201 active, exempted: com.google.android.providers.media.module [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a201/-200 from u0a201 active, exempted: com.google.android.providers.media.module [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a201/-500 from u0a201 active, exempted: com.google.android.providers.media.module [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a200/4 from u0a200 active, exempted: com.google.android.permissioncontroller [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a200/9 from u0a200 active, exempted: com.google.android.permissioncontroller [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a200/6 from u0a200 active, exempted: com.google.android.permissioncontroller [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a200/2 from u0a200 active, exempted: com.google.android.permissioncontroller [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a200/8 from u0a200 active, exempted: com.google.android.permissioncontroller [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a200/0 from u0a200 active, exempted: com.google.android.permissioncontroller [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a200/7 from u0a200 active, exempted: com.google.android.permissioncontroller [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a200/3 from u0a200 active, exempted: com.google.android.permissioncontroller [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a196/27 from u0a196 idle, exempted: com.google.android.ext.services [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a165/5 from u0a165 active, exempted: com.google.android.tts [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a165/3 from u0a165 active, exempted: com.google.android.tts [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a165/4 from u0a165 active, exempted: com.google.android.tts [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a165/1 from u0a165 active, exempted: com.google.android.tts [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a165/0 from u0a165 active, exempted: com.google.android.tts [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a165/2 from u0a165 active, exempted: com.google.android.tts [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a154/5 from u0a154 active, exempted: com.google.android.inputmethod.latin [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a154/4 from u0a154 active, exempted: com.google.android.inputmethod.latin [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a154/10 from u0a154 active, exempted: com.google.android.inputmethod.latin [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a154/3 from u0a154 active, exempted: com.google.android.inputmethod.latin [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a154/8 from u0a154 active, exempted: com.google.android.inputmethod.latin [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a144/2 from u0a144 active, exempted: com.google.android.gms [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    ##u0a143/2000007999 from u0a143 active, exempted: com.google.android.googlequicksearchbox [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+    #androidx.work.systemjobscheduler:u0a143/10 from u0a143 active, exempted: com.google.android.googlequicksearchbox [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+--
+            content://com.google.android.gsf.gservices
+  
+  DeviceIdleJobsController:
+    Idle mode: false
+    
+    ##u0a209/1101 from u0a209: lav.visaroom.alav RUNNABLE
+    #androidx.work.systemjobscheduler:u0a205/2 from u0a205: com.google.android.rkpdapp RUNNABLE
+    ##u0a201/-300 from u0a201: com.google.android.providers.media.module RUNNABLE
+    #androidx.work.systemjobscheduler:u0a201/0 from u0a201: com.google.android.providers.media.module RUNNABLE
+    ##u0a201/-200 from u0a201: com.google.android.providers.media.module RUNNABLE
+    ##u0a201/-500 from u0a201: com.google.android.providers.media.module RUNNABLE
+    ##u0a200/4 from u0a200: com.google.android.permissioncontroller RUNNABLE
+    ##u0a200/9 from u0a200: com.google.android.permissioncontroller RUNNABLE
+--- final app-UID log ---
+--------- beginning of main
+11-20 05:35:35.908  2067  2067 I v.visaroom.alav: Using CollectorTypeCMC GC.
+11-20 05:35:35.911  2067  2067 W v.visaroom.alav: Unexpected CPU variant for x86: x86_64.
+11-20 05:35:35.911  2067  2067 W v.visaroom.alav: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, default
+11-20 05:35:35.912  2067  2067 E v.visaroom.alav: Not starting debugger since process cannot load the jdwp agent.
+11-20 05:35:35.925  2067  2067 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-20 05:35:36.007  2067  2067 D CompatChangeReporter: Compat change id reported: 242716250; UID 10209; state: ENABLED
+11-20 05:35:36.024  2067  2067 D nativeloader: Configuring clns-7 for other apk /data/app/~~1ukknyQWjrTlP4gvXpKVBw==/lav.visaroom.alav-El3Y7k_eKAPRyJYJxeC-8A==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~1ukknyQWjrTlP4gvXpKVBw==/lav.visaroom.alav-El3Y7k_eKAPRyJYJxeC-8A==/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/lav.visaroom.alav
+11-20 05:35:36.037  2067  2067 V GraphicsEnvironment: Currently set values for:
+11-20 05:35:36.037  2067  2067 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-20 05:35:36.037  2067  2067 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-20 05:35:36.037  2067  2067 V GraphicsEnvironment: Global.Settings values are invalid: number of packages: 0, number of values: 0
+11-20 05:35:36.037  2067  2067 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11-20 05:35:36.153  2067  2067 I VisaroomSmoke: seed_saved=true uid_matches=true token_present=true
+--------- beginning of system
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: Failed to execute the transaction: tId:965026270 ClientTransaction{
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270   transactionItems=[
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270     LaunchActivityItem{activityToken=android.os.BinderProxy@a021fad,intent=Intent { flg=0x10008000 cmp=lav.visaroom.alav/.ChatsActivity },ident=2442040,info=ActivityInfo{8140979 lav.visaroom.alav.ChatsActivity},curConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h707dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2476) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.53 fontWeightAdjustment=0},overrideConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h707dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2476) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.3 fontWeightAdjustment=0},deviceId=0,referrer=lav.visaroom.alav,procState=2,state=null,persistentState=null,pendingResults=null,pendingNewIntents=null,sceneTransitionInfo=null,profilerInfo=null,assistToken=android.os.BinderProxy@b9b1572,shareableActivityToken=android.os.BinderProxy@9bd0dc3,activityWindowInfo=ActivityWindowInfo{isEmbedded=false, taskBounds=Rect(0, 0 - 1440, 2560), taskFragmentBounds=Rect(0, 0 - 1440, 2560)}}
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270     ResumeActivityItem{mActivityToken=android.os.BinderProxy@a021fad,procState=-1,updateProcState=false,isForward=false,shouldSendCompatFakeFocus=false}
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270     Target activity: lav.visaroom.alav.ChatsActivity
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270   ]
+11-20 05:35:36.326  2067  2067 E TransactionExecutor: tId:965026270 }
+11-20 05:35:36.326  2067  2067 D AndroidRuntime: Shutting down VM
+--------- beginning of crash
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: FATAL EXCEPTION: main
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: Process: lav.visaroom.alav, PID: 2067
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4048)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4235)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:112)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:174)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:109)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:81)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2636)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:107)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:232)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:317)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:8705)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:580)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:886)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: Caused by: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettingsFolders(ChatsActivity.java:625)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettings(ChatsActivity.java:406)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.onCreate(ChatsActivity.java:158)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9002)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:8980)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1526)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4030)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	... 13 more
+11-20 05:35:36.348  2067  2067 I Process : Sending signal. PID: 2067 SIG: 9
+11-20 05:35:54.096  3054  3054 I v.visaroom.alav: Using CollectorTypeCMC GC.
+11-20 05:35:54.097  3054  3054 W v.visaroom.alav: Unexpected CPU variant for x86: x86_64.
+11-20 05:35:54.097  3054  3054 W v.visaroom.alav: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, default
+11-20 05:35:54.101  3054  3054 E v.visaroom.alav: Not starting debugger since process cannot load the jdwp agent.
+11-20 05:35:54.119  3054  3054 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-20 05:35:54.145  3054  3054 D CompatChangeReporter: Compat change id reported: 242716250; UID 10209; state: ENABLED
+11-20 05:35:54.196  3054  3054 D nativeloader: Configuring clns-7 for other apk /data/app/~~1ukknyQWjrTlP4gvXpKVBw==/lav.visaroom.alav-El3Y7k_eKAPRyJYJxeC-8A==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~1ukknyQWjrTlP4gvXpKVBw==/lav.visaroom.alav-El3Y7k_eKAPRyJYJxeC-8A==/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/lav.visaroom.alav
+11-20 05:35:54.206  3054  3054 V GraphicsEnvironment: Currently set values for:
+11-20 05:35:54.206  3054  3054 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-20 05:35:54.206  3054  3054 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-20 05:35:54.206  3054  3054 V GraphicsEnvironment: Global.Settings values are invalid: number of packages: 0, number of values: 0
+11-20 05:35:54.206  3054  3054 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11-20 05:35:54.248  3054  3054 D CompatChangeReporter: Compat change id reported: 253665015; UID 10209; state: ENABLED
+11-20 05:35:54.336  3054  3096 D TrafficStats: tagSocket(84) with statsTag=0xffffffff, statsUid=-1
+11-20 05:35:56.329  3054  3095 D TrafficStats: tagSocket(87) with statsTag=0xffffffff, statsUid=-1
+--- final crash buffer ---
+--------- beginning of crash
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: FATAL EXCEPTION: main
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: Process: lav.visaroom.alav, PID: 2067
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: java.lang.RuntimeException: Unable to start activity ComponentInfo{lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4048)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4235)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:112)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:174)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:109)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:81)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2636)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:107)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:232)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:317)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:8705)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:580)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:886)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: Caused by: java.lang.ClassCastException: android.widget.LinearLayout cannot be cast to android.widget.TextView
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettingsFolders(ChatsActivity.java:625)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.setupSettings(ChatsActivity.java:406)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at lav.visaroom.alav.ChatsActivity.onCreate(ChatsActivity.java:158)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:9002)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Activity.performCreate(Activity.java:8980)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1526)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4030)
+11-20 05:35:36.327  2067  2067 E AndroidRuntime: 	... 13 more
+--- filtered app-context extract ---
+18230-11-20 05:35:54.237   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 807.090945ms Overdue 307.091646ms
+18231-11-20 05:35:54.237   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18232-11-20 05:35:54.237  2963  3052 I RkpdPeriodicProvisioner: Starting provisioning for com.android.rkpdapp.interfaces.SystemInterface{android.hardware.security.keymint.IRemotelyProvisionedComponent/default}
+18233-11-20 05:35:54.237   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18234-11-20 05:35:54.237   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18235-11-20 05:35:54.237   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18236-11-20 05:35:54.237   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 807.507552ms Overdue 307.508263ms
+18237-11-20 05:35:54.237   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18238-11-20 05:35:54.238  3081  3081 W gs.intelligence: Unexpected CPU variant for x86: x86_64.
+18239-11-20 05:35:54.238  3081  3081 W gs.intelligence: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, default
+18240-11-20 05:35:54.238   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18241-11-20 05:35:54.238   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18242-11-20 05:35:54.238   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18243-11-20 05:35:54.238   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 808.217664ms Overdue 308.218365ms
+18244-11-20 05:35:54.238   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18245-11-20 05:35:54.238   552  1666 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18246-11-20 05:35:54.239   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18247-11-20 05:35:54.239   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18248-11-20 05:35:54.239   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18249-11-20 05:35:54.239   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 809.269301ms Overdue 309.270012ms
+18250-11-20 05:35:54.239   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18251-11-20 05:35:54.239   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18252-11-20 05:35:54.239   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18253-11-20 05:35:54.239   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18254-11-20 05:35:54.239   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 809.338273ms Overdue 309.338974ms
+18255-11-20 05:35:54.239   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18256-11-20 05:35:54.241  3081  3081 E gs.intelligence: Not starting debugger since process cannot load the jdwp agent.
+18257-11-20 05:35:54.243  3081  3081 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+18258-11-20 05:35:54.243   552  1666 D PackageManager: Clear ephemeral installer activity
+18259-11-20 05:35:54.246  1154  1233 W AllAppsList: updatePromiseInstallInfo: no Activities matched updated package, removing all apps from package=com.google.android.settings.intelligence
+18260-11-20 05:35:54.248  3054  3054 D CompatChangeReporter: Compat change id reported: 253665015; UID 10209; state: ENABLED
+18261-11-20 05:35:54.248   552   570 D CompatChangeReporter: Compat change id reported: 271850009; UID 10209; state: ENABLED
+18262-11-20 05:35:54.248   552   570 D CompatChangeReporter: Compat change id reported: 253665015; UID 10209; state: ENABLED
+18263-11-20 05:35:54.249   552   588 I ActivityManager: Start proc 3081:com.google.android.settings.intelligence/u0a140 for broadcast {com.google.android.settings.intelligence/com.google.android.settings.intelligence.modules.batterywidget.impl.BatteryWidgetBootBroadcastReceiver}
+18264-11-20 05:35:54.249   364   364 I Zygote  : Process 2228 exited due to signal 9 (Killed)
+18265-11-20 05:35:54.250   552   570 D ConnectivityService: requestNetwork for uid/pid:1000/552 asUid: 10209 activeRequest: null callbackRequest: 94 [NetworkRequest [ REQUEST id=95, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10209 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false
+18266-11-20 05:35:54.250   552   589 I libprocessgroup: Removed cgroup /sys/fs/cgroup/uid_10195/pid_2228
+18267-11-20 05:35:54.250   552   589 I libprocessgroup: Removed cgroup /sys/fs/cgroup/uid_10202/pid_3005
+18268-11-20 05:35:54.251   552   589 I libprocessgroup: Removed cgroup /sys/fs/cgroup/uid_10140/pid_2626
+18269-11-20 05:35:54.251   552   638 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+18270-11-20 05:35:54.251   552   638 D PackageManager: Clear ephemeral installer activity
+18271-11-20 05:35:54.251  1463  1537 V ClearcutMetricXmitter: Transmission is done.
+18272-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18273-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18274-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18275-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 821.861577ms Overdue 321.862288ms
+18276-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18277-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18278-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18279-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18280-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 821.89728ms Overdue 321.897991ms
+18281-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18282-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18283-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18284-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18285-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 822.51883ms Overdue 322.519542ms
+18286-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18287-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18288-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18289-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18290-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 822.719528ms Overdue 322.720229ms
+18291-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18292-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18293-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18294-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18295-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 822.748991ms Overdue 322.749702ms
+18296-11-20 05:35:54.252   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18297-11-20 05:35:54.253   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18298-11-20 05:35:54.253   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18299-11-20 05:35:54.253   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18300-11-20 05:35:54.253   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 823.548375ms Overdue 323.549076ms
+18301-11-20 05:35:54.253   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18302-11-20 05:35:54.254  1393  2987 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.audit, using defaults.
+18303-11-20 05:35:54.254   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18304-11-20 05:35:54.254   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18305-11-20 05:35:54.254   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+--
+18309-11-20 05:35:54.254   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18310-11-20 05:35:54.254   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18311-11-20 05:35:54.254   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18312-11-20 05:35:54.254   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 824.536338ms Overdue 324.537039ms
+18313-11-20 05:35:54.254   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18314-11-20 05:35:54.256   552   820 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=95, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10209 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]
+18315-11-20 05:35:54.256   552   820 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=95, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10209 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]
+18316-11-20 05:35:54.256   552   820 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=95, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10209 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]
+18317-11-20 05:35:54.257   552   827 D ConnectivityService: NetReassign [95 : null → 100] [c 0] [a 0] [i 5]
+18318-11-20 05:35:54.258   552   586 W MagnificationConnectionManager: requestConnection duplicated request: connect=false, mConnectionState=DISCONNECTED
+18319:11-20 05:35:54.258   552   570 I ActivityManager: Background started FGS: Allowed [callingPackage: lav.visaroom.alav; callingUid: 10209; uidState: RCVR; uidBFSL: n/a; intent: Intent { cmp=lav.visaroom.alav/.MessageSyncService }; code:BOOT_COMPLETED; tempAllowListReason:<57b4c7a android.intent.action.BOOT_COMPLETED/u0,reasonCode:BOOT_COMPLETED,duration:20000,callingUid:1000>; targetSdkVersion:34; callerTargetSdkVersion:34; startForegroundCount:0; bindFromPackage:null: isBindService:false]
+18320-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: Retrieving snapshot for com.google.android.gms.playlog.uploader failed
+18321-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: java.util.concurrent.TimeoutException: Timed out waiting for Task
+18322-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at dkkh.n(:com.google.android.gms@242335041@24.23.35 (190800-646585959):53)
+18323-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at czsy.f(:com.google.android.gms@242335041@24.23.35 (190800-646585959):11)
+18324-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at czsy.j(:com.google.android.gms@242335041@24.23.35 (190800-646585959):42)
+18325-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at czsy.h(:com.google.android.gms@242335041@24.23.35 (190800-646585959):4)
+18326-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at com.google.android.gms.clearcut.init.ClearcutInitChimeraIntentService.b(:com.google.android.gms@242335041@24.23.35 (190800-646585959):45)
+18327-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at ajjh.onHandleIntent(:com.google.android.gms@242335041@24.23.35 (190800-646585959):143)
+18328-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at com.google.android.chimera.IntentOperation.onHandleIntent(:com.google.android.gms@242335041@24.23.35 (190800-646585959):2)
+18329-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at ajom.onHandleIntent(:com.google.android.gms@242335041@24.23.35 (190800-646585959):8)
+18330-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at pkf.run(:com.google.android.gms@242335041@24.23.35 (190800-646585959):70)
+18331-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at pke.run(:com.google.android.gms@242335041@24.23.35 (190800-646585959):152)
+18332-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at emsz.run(:com.google.android.gms@242335041@24.23.35 (190800-646585959):21)
+18333-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+18334-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:644)
+18335-11-20 05:35:54.259  1393  2356 E PhenotypeFlagCommitter: 	at java.lang.Thread.run(Thread.java:1012)
+18336-11-20 05:35:54.259   552   552 W IPCThreadState: Sending oneway calls to frozen process.
+18337-11-20 05:35:54.268  1079  1079 I Telephony: TelecomAccountRegistry$AccountEntry: registerPstnPhoneAccount: Registering account=[[ ] PhoneAccount: ComponentInfo{com.android.phone/com.android.services.telephony.TelephonyConnectionService}, 1, UserHandle{0} Capabilities: CallProvider MultiUser PlaceEmerg SimSub  Audio Routes: BESW Schemes: tel voicemail  Extras: Bundle[{android.telecom.extra.SUPPORTS_VIDEO_CALLING_FALLBACK=true}] GroupId: *** SC Restrictions: [ ]] with Telecom. subId=1
+18338-11-20 05:35:54.268   552   570 I Telecom : TelecomServiceImpl$1: registerPhoneAccount: account=[[ ] PhoneAccount: ComponentInfo{com.android.phone/com.android.services.telephony.TelephonyConnectionService}, 1, UserHandle{0} Capabilities: CallProvider MultiUser PlaceEmerg SimSub  Audio Routes: BESW Schemes: tel voicemail  Extras: Bundle[{android.telecom.extra.SUPPORTS_VIDEO_CALLING_FALLBACK=true}] GroupId: *** SC Restrictions: [ ]]: TSI.rPA(cap)@AKg🔒
+18339-11-20 05:35:54.271   552   570 I Telecom : PhoneAccountRegistrar: Modify account: [ComponentInfo{com.android.phone/com.android.services.telephony.TelephonyConnectionService}, 1, UserHandle{0}]: TSI.rPA(cap)@AKg🔒
+18340-11-20 05:35:54.274   552   570 I Telecom : CallsManager: handlePhoneAccountChanged: phoneAccount=[[X] PhoneAccount: ComponentInfo{com.android.phone/com.android.services.telephony.TelephonyConnectionService}, 1, UserHandle{0} Capabilities: CallProvider MultiUser PlaceEmerg SimSub  Audio Routes: BESW Schemes: tel voicemail  Extras: Bundle[{android.telecom.extra.SUPPORTS_VIDEO_CALLING_FALLBACK=true}] GroupId: *** SC Restrictions: [ ]]: TSI.rPA(cap)@AKg🔒
+18341:11-20 05:35:54.274   552   638 W ActivityManager: Foreground service started from background can not have location/camera/microphone access: service lav.visaroom.alav/.MessageSyncService
+18342-11-20 05:35:54.275   552   638 W ForegroundServiceTypeLoggerModule: Foreground service start for UID: 10209 does not have any types
+18343-11-20 05:35:54.276  1202  2588 W ctxmgr  : [UpdateFenceRegistrationOperation] Gesture nano app is not available. [CONTEXT service_id=47 ]
+18344:11-20 05:35:54.278   552   637 W ActivityManager: Foreground service started from background can not have location/camera/microphone access: service lav.visaroom.alav/.MessageSyncService
+18345-11-20 05:35:54.279   552   866 D ShortcutService: received package broadcast intent: Intent { act=android.intent.action.PACKAGE_CHANGED dat=package: flg=0x45000010 (has extras) }
+18346-11-20 05:35:54.279   552   866 D ShortcutService: changing package: com.google.android.healthconnect.controller userId0
+18347-11-20 05:35:54.280   552   866 D ShortcutService: handlePackageChanged: com.google.android.healthconnect.controller user=0
+18348-11-20 05:35:54.280   552   866 D ShortcutService: rescanPackageIfNeeded 0@com.google.android.healthconnect.controller, forceRescan=true , isNewApp=true
+18349-11-20 05:35:54.280   552   866 D ShortcutService: Package com.google.android.healthconnect.controller has 0 manifest shortcut(s), and 0 share target(s)
+18350-11-20 05:35:54.280   552   866 D ShortcutService: received package broadcast intent: Intent { act=android.intent.action.PACKAGE_CHANGED dat=package: flg=0x45000010 (has extras) }
+18351-11-20 05:35:54.280   552   866 D ShortcutService: changing package: com.google.android.settings.intelligence userId0
+18352-11-20 05:35:54.280   552   866 D ShortcutService: handlePackageChanged: com.google.android.settings.intelligence user=0
+18353-11-20 05:35:54.280   552   866 D ShortcutService: rescanPackageIfNeeded 0@com.google.android.settings.intelligence, forceRescan=true , isNewApp=true
+18354-11-20 05:35:54.280   552   570 I Telecom : PhoneAccountRegistrar: getSimCallManager: SimCallManager for subId 1 queried, returning: null: TSI.rPA(cap)@AKg🔒
+18355-11-20 05:35:54.280   552   866 D ShortcutService: Package com.google.android.settings.intelligence has 0 manifest shortcut(s), and 0 share target(s)
+18356-11-20 05:35:54.280   552   570 I Telecom : PhoneAccountRegistrar: Notifying telephony of voice service override change for 1 SIMs, hasService = false: TSI.rPA(cap)@AKg🔒
+18357-11-20 05:35:54.280   552   866 D ShortcutService: received package broadcast intent: Intent { act=android.intent.action.PACKAGE_CHANGED dat=package: flg=0x45000010 (has extras) }
+18358-11-20 05:35:54.280   552   866 D ShortcutService: changing package: com.google.android.settings.intelligence userId0
+18359-11-20 05:35:54.280   552   866 D ShortcutService: handlePackageChanged: com.google.android.settings.intelligence user=0
+18360-11-20 05:35:54.280   552   866 D ShortcutService: rescanPackageIfNeeded 0@com.google.android.settings.intelligence, forceRescan=true , isNewApp=true
+18361-11-20 05:35:54.280   552   866 D ShortcutService: Package com.google.android.settings.intelligence has 0 manifest shortcut(s), and 0 share target(s)
+18362-11-20 05:35:54.281  3081  3081 D ApplicationLoaders: Returning zygote-cached class loader: /system/framework/org.apache.http.legacy.jar
+18363-11-20 05:35:54.281  3081  3081 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+18364-11-20 05:35:54.281  3081  3081 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+18365-11-20 05:35:54.285   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18366-11-20 05:35:54.285   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18367-11-20 05:35:54.285   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18368-11-20 05:35:54.285   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 854.977544ms Overdue 354.978255ms
+18369-11-20 05:35:54.285   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18370-11-20 05:35:54.285  1079  1079 I PhoneInterfaceManager: setVoiceServiceStateOverride: subId=1, phone=Handler (com.android.internal.telephony.GsmCdmaPhone) {8b8c27d}, hasService=false, callingPackage=com.android.server.telecom
+18371-11-20 05:35:54.285  1079  1079 I Telephony: TelecomAccountRegistry$AccountEntry: Registered phoneAccount: [[ ] PhoneAccount: ComponentInfo{com.android.phone/com.android.services.telephony.TelephonyConnectionService}, 1, UserHandle{0} Capabilities: CallProvider MultiUser PlaceEmerg SimSub  Audio Routes: BESW Schemes: tel voicemail  Extras: Bundle[{android.telecom.extra.SUPPORTS_VIDEO_CALLING_FALLBACK=true}] GroupId: *** SC Restrictions: [ ]] with handle: ComponentInfo{com.android.phone/com.android.services.telephony.TelephonyConnectionService}, 1, UserHandle{0}
+18372-11-20 05:35:54.285  1079  1079 I Telephony: PstnIncomingCallNotifier: Registering: [0]
+18373-11-20 05:35:54.286  1079  1079 D Telephony: Registering: Handler (com.android.internal.telephony.GsmCdmaPhone) {8b8c27d}
+18374-11-20 05:35:54.286  1079  1079 W Telephony: registerMmTelCapabilityCallback: registration failed, no ImsService available. Exception: code: 1
+18375-11-20 05:35:54.286  1079  1079 W Telephony: registerImsRegistrationCallback: registration failed, no ImsService available. Exception: code: 1
+18376-11-20 05:35:54.286  1079  1079 D Telephony: Finished registering mSimultaneousCallingTrackerListener for phoneId = 0; subId = 1
+18377-11-20 05:35:54.286   552  1045 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.WALLET
+18378-11-20 05:35:54.287   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18379-11-20 05:35:54.287   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18380-11-20 05:35:54.287   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18381-11-20 05:35:54.287   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 856.904297ms Overdue 356.905008ms
+18382-11-20 05:35:54.287   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18383-11-20 05:35:54.287   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18384-11-20 05:35:54.287   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18385-11-20 05:35:54.287   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18386-11-20 05:35:54.287   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 856.967701ms Overdue 356.968422ms
+18387-11-20 05:35:54.287   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18388-11-20 05:35:54.288  1079  1079 D Telephony: isEmergencyPreferredAccount: subId=1, activeData=1
+18389-11-20 05:35:54.289   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18390-11-20 05:35:54.289   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18391-11-20 05:35:54.289   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18392-11-20 05:35:54.289   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 859.471178ms Overdue 359.471889ms
+18393-11-20 05:35:54.289   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18394-11-20 05:35:54.291  1079  1079 D Telephony: isEmergencyPreferredAccount: Device does not require preference.
+18395-11-20 05:35:54.292   552  1045 I RoleControllerServiceImpl: Removing package that no longer qualifies for the role, package: com.google.android.devicelockcontroller, role: android.app.role.SYSTEM_FINANCED_DEVICE_CONTROLLER
+18396-11-20 05:35:54.293  1463  1496 W earchbox:search: Suspending all threads took: 28.572ms
+18397-11-20 05:35:54.293   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18398-11-20 05:35:54.293   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18399-11-20 05:35:54.293   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18400-11-20 05:35:54.293   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 863.449569ms Overdue 363.450301ms
+18401-11-20 05:35:54.293   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18402-11-20 05:35:54.294   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18403-11-20 05:35:54.294   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18404-11-20 05:35:54.294   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18405-11-20 05:35:54.294   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 864.729995ms Overdue 364.730717ms
+18406-11-20 05:35:54.294   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18407-11-20 05:35:54.296   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18408-11-20 05:35:54.296   552  1045 W AppOpService: Ignored setUidMode call for runtime permission app op: uid = 10195, code = POST_NOTIFICATION, mode = allow, callingUid = 1000, oldMode = allow
+18409-11-20 05:35:54.296   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18410-11-20 05:35:54.296   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18411-11-20 05:35:54.296   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 866.483903ms Overdue 366.484614ms
+18412-11-20 05:35:54.296   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18413-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18414-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18415-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18416-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 868.047868ms Overdue 368.04858ms
+18417-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18418-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18419-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18420-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18421-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 868.085344ms Overdue 368.086055ms
+18422-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18423-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18424-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18425-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18426-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 868.722417ms Overdue 368.723128ms
+18427-11-20 05:35:54.298   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18428-11-20 05:35:54.299   552  1045 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.devicelockcontroller, role: android.app.role.SYSTEM_FINANCED_DEVICE_CONTROLLER
+18429-11-20 05:35:54.300   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18430-11-20 05:35:54.300   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18431-11-20 05:35:54.300   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18432-11-20 05:35:54.300   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 870.071395ms Overdue 370.072106ms
+18433-11-20 05:35:54.300   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18434-11-20 05:35:54.302   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18435-11-20 05:35:54.302   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18436-11-20 05:35:54.302   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18437-11-20 05:35:54.302   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 872.660048ms Overdue 372.660759ms
+18438-11-20 05:35:54.302   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18439-11-20 05:35:54.303   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18440-11-20 05:35:54.303   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18441-11-20 05:35:54.303   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18442-11-20 05:35:54.303   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 873.351302ms Overdue 373.352013ms
+18443-11-20 05:35:54.303   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18444-11-20 05:35:54.307   552   552 I DevicePolicyEngine: Couldn't find any receivers that handle ACTION_DEVICE_POLICY_SET_RESULT in package com.google.android.devicelockcontroller
+18445-11-20 05:35:54.307   552   552 D DevicePolicyEngine: Writing device policies to file.
+18446-11-20 05:35:54.307   552   552 D DevicePolicyEngine: Writing to /data/system/device_policy_state.xml
+18447-11-20 05:35:54.308   552   651 D CompatChangeReporter: Compat change id reported: 262645982; UID 10209; state: ENABLED
+18448-11-20 05:35:54.309   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18449-11-20 05:35:54.309   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18450-11-20 05:35:54.309   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18451-11-20 05:35:54.309   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 878.784006ms Overdue 378.784727ms
+18452-11-20 05:35:54.309   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18453-11-20 05:35:54.309   552   651 D CompatChangeReporter: Compat change id reported: 262645982; UID 10205; state: ENABLED
+18454-11-20 05:35:54.310   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18455-11-20 05:35:54.310   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18456-11-20 05:35:54.310   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+18457-11-20 05:35:54.310   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:164 - ThreadId(10) Calling get_rkpd_attestation_key() Pending: 879.816866ms Overdue 379.817577ms
+18458-11-20 05:35:54.310   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:175 - ### Keystore Watchdog report - END ###
+18459-11-20 05:35:54.310  3081  3081 D nativeloader: InitLlndkLibrariesProduct: libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libRS.so:libandroid_net.so:libapexsupport.so:libbinder_ndk.so:libc.so:libcgrouprc.so:libclang_rt.asan-x86_64-android.so:libcom.android.tethering.connectivity_native.so:libdl.so:libft2.so:liblog.so:libm.so:libmediandk.so:libnativewindow.so:libneuralnetworks.so:libselinux.so:libsync.so:libvendorsupport.so:libvndksupport.so:libvulkan.so
+18460-11-20 05:35:54.310  3081  3081 D nativeloader: Configuring product-clns-7 for unbundled product apk /product/priv-app/SettingsIntelligenceGooglePrebuilt/SettingsIntelligenceGooglePrebuilt.apk. target_sdk_version=35, uses_libraries=, library_path=/product/priv-app/SettingsIntelligenceGooglePrebuilt/lib/x86_64:/product/lib64:/system/product/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.settings.intelligence:/product/lib64:/system/product/lib64
+18461-11-20 05:35:54.310  3081  3081 D nativeloader: InitVndkspLibrariesProduct: VNDK is deprecated with product
+18462-11-20 05:35:54.311   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:114 - ### Keystore Watchdog report - BEGIN ###
+18463-11-20 05:35:54.311   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:123 - When extracting from a bug report, please include this header
+18464-11-20 05:35:54.311   172  2962 W keystore2: system/security/keystore2/watchdog/src/lib.rs:124 - and all 1 records below.
+--
+19151-11-20 05:35:54.761  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.development.transcode.TranscodeDefaultOptionPreferenceController
+19152-11-20 05:35:54.761  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.development.transcode.TranscodeNotificationPreferenceController
+19153-11-20 05:35:54.761  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.development.transcode.TranscodeDisableCachePreferenceController
+19154-11-20 05:35:54.761  1081  3135 V SettingsSearchProvider: com.android.settings.development.transcode.TranscodeSettingsFragment$1@c5efd2 tried to add an empty non-indexable key
+19155-11-20 05:35:54.763  1081  1081 D BluetoothAdapter: HID_HOST connected
+19156-11-20 05:35:54.763  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.connecteddevice.audiosharing.AudioSharingPreferenceController
+19157-11-20 05:35:54.763  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.connecteddevice.NfcAndPaymentFragmentController
+19158-11-20 05:35:54.763  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.wfd.WifiDisplayPreferenceController
+19159-11-20 05:35:54.764  1081  1081 D BluetoothAdapter: HID_DEVICE connected
+19160-11-20 05:35:54.765  1081  3136 V MediaRouter: Selecting route: RouteInfo{ name=Phone, description=null, status=null, category=RouteCategory{ name=System types=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO  groupable=false }, supportedTypes=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO , presentationDisplay=null }
+19161:11-20 05:35:54.765  1393  1947 I Icing   : doRemovePackageData lav.visaroom.alav
+19162-11-20 05:35:54.765  1081  3136 I MediaRouter: Skip setBluetoothA2dpOn(): types=8388615, isPlaybackActive()=false, BT route=null
+19163-11-20 05:35:54.765  1435  1486 W ogle.android.as: ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/YouTube/YouTube.apk' with 1 weak references
+19164-11-20 05:35:54.766  1081  1081 D BluetoothAdapter: PAN connected
+19165-11-20 05:35:54.766  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.connecteddevice.threadnetwork.ThreadNetworkFragmentController
+19166-11-20 05:35:54.766  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.connecteddevice.threadnetwork.ThreadNetworkFragmentController
+19167-11-20 05:35:54.766  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.connecteddevice.threadnetwork.ThreadNetworkFragmentController
+19168-11-20 05:35:54.766  1081  1081 D BluetoothAdapter: PBAP connected
+19169-11-20 05:35:54.767  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.uwb.UwbPreferenceController
+19170-11-20 05:35:54.767  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.uwb.UwbPreferenceController
+19171-11-20 05:35:54.767  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.DoubleTapScreenPreferenceController
+19172-11-20 05:35:54.767  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.DoubleTapScreenPreferenceController
+19173-11-20 05:35:54.767  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.GestureNavigationSettingsAssistController
+19174-11-20 05:35:54.767  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.batteryinfo.BatteryManufactureDatePreferenceController
+19175-11-20 05:35:54.769  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.uwb.UwbPreferenceController
+19176-11-20 05:35:54.769  1081  3135 W SettingsPrefController: Skipping updateNonIndexableKeys, key already in list. com.android.settings.connecteddevice.NfcAndPaymentFragmentController@389291b
+19177-11-20 05:35:54.769  1081  3135 W SettingsPrefController: Skipping updateNonIndexableKeys, key already in list. com.android.settings.connecteddevice.threadnetwork.ThreadNetworkFragmentController@1ceeab8
+19178-11-20 05:35:54.769  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.DoubleTapScreenPreferenceController
+19179-11-20 05:35:54.770  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.GestureNavigationSettingsAssistController
+19180-11-20 05:35:54.770  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.batteryinfo.BatteryFirstUseDatePreferenceController
+19181-11-20 05:35:54.770  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.batteryinfo.BatteryCycleCountPreferenceController
+19182-11-20 05:35:54.772  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.GestureNavigationSettingsAssistController
+19183-11-20 05:35:54.773  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.communal.GlanceableHubTogglePreferenceController
+19184-11-20 05:35:54.773  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.biometrics.face.FaceSettingsLockscreenBypassPreferenceController
+19185-11-20 05:35:54.773  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.users.AddUserWhenLockedPreferenceController
+19186-11-20 05:35:54.778  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.WalletPrivacyPreferenceController
+19187-11-20 05:35:54.778  1081  1206 D CompatChangeReporter: Compat change id reported: 303742236; UID 1000; state: ENABLED
+19188-11-20 05:35:54.778  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ControlsPrivacyPreferenceController
+19189-11-20 05:35:54.778  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ControlsTrivialPrivacyPreferenceController
+19190-11-20 05:35:54.778  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.CustomizableLockScreenQuickAffordancesPreferenceController
+19191-11-20 05:35:54.778  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.LockscreenClockPreferenceController
+19192-11-20 05:35:54.778  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.AmbientDisplayWhenToShowPreferenceController
+19193-11-20 05:35:54.778  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.AmbientDisplayAlwaysOnPreferenceController
+19194-11-20 05:35:54.779  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.TapScreenGesturePreferenceController
+19195-11-20 05:35:54.779  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.DoubleTapScreenPreferenceController
+19196-11-20 05:35:54.779  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.PickupGesturePreferenceController
+19197-11-20 05:35:54.779  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.AmbientDisplayNotificationsPreferenceController
+19198-11-20 05:35:54.779  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.location.LocationInjectedServicesPreferenceController
+19199-11-20 05:35:54.779  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.location.LocationServicesWifiScanningPreferenceController
+19200-11-20 05:35:54.779  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.location.LocationServicesBluetoothScanningPreferenceController
+19201-11-20 05:35:54.780  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.inputmethod.ModifierKeysPreferenceController
+19202-11-20 05:35:54.780  1079  1079 D CarrierConfigLoader: EVENT_SYSTEM_UNLOCKED phoneId: 0
+19203-11-20 05:35:54.780  1079  1079 D CarrierConfigLoader: System unlocked
+19204-11-20 05:35:54.783   503   503 W libgoldfish-rild: Multi-element reporting criteria are not supported with HIDL HAL
+19205-11-20 05:35:54.783  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.inputmethod.ModifierKeysRestorePreferenceController
+19206-11-20 05:35:54.784  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.network.telephony.CallsDefaultSubscriptionController
+19207-11-20 05:35:54.784  1081  1206 D MobileNetworkDatabase: createDatabase.
+19208-11-20 05:35:54.785  1081  1206 W SettingsMetricsFeature: action(Pair<Integer, Object>... taggedData) is deprecated, Use action(int, int, int, String, int) instead.
+19209-11-20 05:35:54.785  1081  1206 W ElapsedTimeUtils: getElapsedTime: sSuwFinishedTimeStamp is null
+19210-11-20 05:35:54.785  1081  3136 D BatterySettingsFeatureProviderGoogleImpl: isBatteryInfoEnabled = false
+19211-11-20 05:35:54.786  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.communal.GlanceableHubTogglePreferenceController
+19212-11-20 05:35:54.786  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.network.telephony.SmsDefaultSubscriptionController
+19213-11-20 05:35:54.786  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.network.telephony.NetworkProviderWifiCallingPreferenceController
+19214-11-20 05:35:54.786  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.network.ConnectivityHelperCallQualityPreferenceController
+19215-11-20 05:35:54.786  1081  1206 D ch_callQuality: isDeviceSupport: falsemIsChecked: true
+19216-11-20 05:35:54.786  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.network.ConnectivityHelperDeviceToDevicePreferenceController
+19217-11-20 05:35:54.786  1081  1206 D ch_d2d  : isDeviceSupport: falsemIsChecked: false
+19218-11-20 05:35:54.786  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.biometrics.face.FaceSettingsLockscreenBypassPreferenceController
+19219-11-20 05:35:54.786  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.users.AddUserWhenLockedPreferenceController
+19220-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.AutoBrightnessPreferenceController
+19221-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.EvenDimmerPreferenceController
+19222-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.security.screenlock.LockScreenPreferenceController
+19223-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.FoldLockBehaviorPreferenceController
+19224-11-20 05:35:54.787  1081  3135 D BatterySettingsFeatureProviderGoogleImpl: isBatteryInfoEnabled = false
+19225-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ScreenTimeoutPreferenceController
+19226-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.DarkUIPreferenceController
+19227-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ScreenSaverPreferenceController
+19228-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.TextReadingFragmentForDisplaySettingsController
+19229-11-20 05:35:54.787  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.batteryinfo.BatteryManufactureDatePreferenceController
+19230-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.SystemNavigationPreferenceController
+19231-11-20 05:35:54.787  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.batteryinfo.BatteryFirstUseDatePreferenceController
+19232-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.DisplayWhiteBalancePreferenceController
+19233-11-20 05:35:54.787  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.batteryinfo.BatteryCycleCountPreferenceController
+19234-11-20 05:35:54.787  1081  3135 V SettingsSearchProvider: com.android.settings.deviceinfo.batteryinfo.BatteryInfoFragment$1@8bd483 tried to add an empty non-indexable key
+19235-11-20 05:35:54.787  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.NightDisplayPreferenceController
+19236-11-20 05:35:54.789  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.communal.GlanceableHubTogglePreferenceController
+19237-11-20 05:35:54.789  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.biometrics.face.FaceSettingsLockscreenBypassPreferenceController
+19238-11-20 05:35:54.789  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.users.AddUserWhenLockedPreferenceController
+19239-11-20 05:35:54.789  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ColorModePreferenceController
+19240-11-20 05:35:54.789  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ContrastPreferenceController
+19241-11-20 05:35:54.789  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.touch.TouchSensitivitySettingsPreferenceController
+19242-11-20 05:35:54.789  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.SmartAutoRotatePreferenceController
+19243-11-20 05:35:54.790  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.DeviceStateAutoRotateOverviewController
+19244-11-20 05:35:54.790  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ScreenResolutionController
+19245-11-20 05:35:54.790  1081  1206 E ScreenResolutionController: No support
+19246-11-20 05:35:54.790  1081  1206 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.PeakRefreshRatePreferenceController
+19247-11-20 05:35:54.790  1081  1206 D RefreshRatePrefCtr: DEFAULT_REFRESH_RATE : 60.0 mPeakRefreshRate : 60.0
+19248-11-20 05:35:54.797  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.WalletPrivacyPreferenceController
+19249-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ControlsPrivacyPreferenceController
+19250-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ControlsTrivialPrivacyPreferenceController
+19251-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.CustomizableLockScreenQuickAffordancesPreferenceController
+19252-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.LockscreenClockPreferenceController
+19253-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.AmbientDisplayWhenToShowPreferenceController
+19254-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.AmbientDisplayAlwaysOnPreferenceController
+19255-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.TapScreenGesturePreferenceController
+19256-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.DoubleTapScreenPreferenceController
+19257-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.PickupGesturePreferenceController
+19258-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.AmbientDisplayNotificationsPreferenceController
+19259-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.location.LocationInjectedServicesPreferenceController
+19260-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.location.LocationServicesWifiScanningPreferenceController
+19261-11-20 05:35:54.798  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.location.LocationServicesBluetoothScanningPreferenceController
+19262-11-20 05:35:54.798  1081  3135 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.WalletPrivacyPreferenceController
+19263-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.inputmethod.ModifierKeysPreferenceController
+19264-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.inputmethod.ModifierKeysRestorePreferenceController
+19265-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.AutoBrightnessPreferenceController
+19266-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.EvenDimmerPreferenceController
+19267-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.security.screenlock.LockScreenPreferenceController
+19268-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.FoldLockBehaviorPreferenceController
+19269-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ScreenTimeoutPreferenceController
+19270-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.DarkUIPreferenceController
+19271-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ScreenSaverPreferenceController
+19272-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.TextReadingFragmentForDisplaySettingsController
+19273-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.SystemNavigationPreferenceController
+19274-11-20 05:35:54.799  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.DisplayWhiteBalancePreferenceController
+19275-11-20 05:35:54.800  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.NightDisplayPreferenceController
+19276-11-20 05:35:54.800  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ColorModePreferenceController
+19277-11-20 05:35:54.800  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ContrastPreferenceController
+19278-11-20 05:35:54.800  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.touch.TouchSensitivitySettingsPreferenceController
+19279-11-20 05:35:54.800  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.SmartAutoRotatePreferenceController
+19280-11-20 05:35:54.800  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.DeviceStateAutoRotateOverviewController
+19281-11-20 05:35:54.800  1081  3136 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.display.ScreenResolutionController
+--
+22790-11-20 05:35:56.720   552  3329 D SystemServerTimingAsync: ssm.onCompletedEventUser-0_{|Unlocked|}_com.android.system.virtualmachine.VirtualizationSystemService
+22791-11-20 05:35:56.720   552  3329 V SystemServerTimingAsync: ssm.onCompletedEventUser-0_{|Unlocked|}_com.android.system.virtualmachine.VirtualizationSystemService took to complete: 0ms
+22792-11-20 05:35:56.721  1202  2518 I FontLog : Received query Noto Color Emoji Compat, URI content://com.google.android.gms.fonts [CONTEXT service_id=132 ]
+22793-11-20 05:35:56.721  1202  2518 I FontLog : Query [Noto Color Emoji Compat] resolved to {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+22794-11-20 05:35:56.723   552  3330 V SystemServerTimingAsync: ssm.onCompletedEventUser-0_{|Unlocked|}_com.android.server.job.JobSchedulerService took to complete: 12ms
+22795-11-20 05:35:56.723   552   587 V SystemServerTimingAsync: ssm.CompletedEventUser-0 took to complete: 17ms
+22796-11-20 05:35:56.726  1393  1399 W gle.android.gms: ApkAssets: Deleting an ApkAssets object '<empty> and /product/priv-app/SafetyHubPrebuilt/SafetyHubPrebuilt.apk' with 1 weak references
+22797-11-20 05:35:56.726  1393  1399 W gle.android.gms: ApkAssets: Deleting an ApkAssets object '<empty> and /system/priv-app/DocumentsUIGoogle/DocumentsUIGoogle.apk' with 1 weak references
+22798-11-20 05:35:56.726  1393  1399 W gle.android.gms: ApkAssets: Deleting an ApkAssets object '<empty> and /system_ext/priv-app/GoogleServicesFramework/GoogleServicesFramework.apk' with 1 weak references
+22799-11-20 05:35:56.726  1393  1399 W gle.android.gms: ApkAssets: Deleting an ApkAssets object '<empty> and /product/priv-app/Velvet/Velvet.apk' with 1 weak references
+22800:11-20 05:35:56.726  1393  1399 W gle.android.gms: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~1ukknyQWjrTlP4gvXpKVBw==/lav.visaroom.alav-El3Y7k_eKAPRyJYJxeC-8A==/base.apk' with 1 weak references
+22801-11-20 05:35:56.726  1393  1399 W gle.android.gms: ApkAssets: Deleting an ApkAssets object '<empty> and /system_ext/priv-app/SettingsGoogle/SettingsGoogle.apk' with 1 weak references
+22802-11-20 05:35:56.726  1393  1399 W gle.android.gms: ApkAssets: Deleting an ApkAssets object '/product/overlay/SettingsGoogle__sdk_gphone64_x86_64__auto_generated_rro_product.apk' with 1 weak references
+22803-11-20 05:35:56.728  3209  3312 I Bugle   : DatabaseHelperBasic: sqlite version is 3.44.3
+22804-11-20 05:35:56.732  1202  2016 I FontLog : Received query Noto Color Emoji Compat, URI content://com.google.android.gms.fonts [CONTEXT service_id=132 ]
+22805-11-20 05:35:56.732  1202  2016 I FontLog : Query [Noto Color Emoji Compat] resolved to {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} [CONTEXT service_id=132 ]
+22806-11-20 05:35:56.739  1202  2345 D TrafficStats: tagSocket(236) with statsTag=0x1203, statsUid=10144
+22807-11-20 05:35:56.744  3218  3218 D nativeloader: Load /product/priv-app/PrebuiltGmsCore/PrebuiltGmsCore.apk!/lib/x86_64/libconscrypt_gmscore_jni.so using ns product-clns-9 from class loader (caller=/product/priv-app/PrebuiltGmsCore/PrebuiltGmsCore.apk!classes3.dex): ok
+22808-11-20 05:35:56.746  3218  3218 V NativeCrypto: Registering com/google/android/gms/org/conscrypt/NativeCrypto's 305 native methods...
+22809-11-20 05:35:56.753  3209  3294 I SyncManagerImpl: #poke(). Scheduling workers.
+22810-11-20 05:35:56.754  1202  2345 D TrafficStats: tagSocket(246) with statsTag=0x6001, statsUid=10137
+22811-11-20 05:35:56.759  1202  2345 D TrafficStats: tagSocket(236) with statsTag=0x1203, statsUid=10144
+22812-11-20 05:35:56.764  1202  2345 D TrafficStats: tagSocket(236) with statsTag=0x1203, statsUid=10144
+22813-11-20 05:35:56.769  1202  1847 W VerdictProvider: response is invalid 4 [CONTEXT service_id=257 ]
+22814-11-20 05:35:56.777   552  1678 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22815-11-20 05:35:56.777   552  1678 D PackageManager: Clear ephemeral installer activity
+22816-11-20 05:35:56.778   552  1678 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22817-11-20 05:35:56.778   552  1678 D PackageManager: Clear ephemeral installer activity
+22818-11-20 05:35:56.778   552  1678 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22819-11-20 05:35:56.778   552  1678 D PackageManager: Clear ephemeral installer activity
+22820-11-20 05:35:56.785  1202  2345 D TrafficStats: tagSocket(236) with statsTag=0x1203, statsUid=10144
+22821-11-20 05:35:56.787  3209  3299 I CarrierServices: Initializing Carrier Services Logging. [CONTEXT thread_id=49 ]
+22822-11-20 05:35:56.788  3209  3297 I SyncManagerImpl: Completed sync. Scheduling next wakeup
+22823-11-20 05:35:56.788  3209  3297 I SyncWorkManagerOneTimeS: Scheduling next onetime WorkManager workers
+22824-11-20 05:35:56.789   552  1528 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22825-11-20 05:35:56.789   552  1528 D PackageManager: Clear ephemeral installer activity
+22826-11-20 05:35:56.795  1202  2345 D TrafficStats: tagSocket(236) with statsTag=0x1203, statsUid=10144
+22827-11-20 05:35:56.817   552  1678 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22828-11-20 05:35:56.817   552  1678 D PackageManager: Clear ephemeral installer activity
+22829-11-20 05:35:56.821   552  1528 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22830-11-20 05:35:56.821   552  1528 D PackageManager: Clear ephemeral installer activity
+22831-11-20 05:35:56.835  3209  3312 I Bugle   : TelephonyManagerFactory: Returning per-subscription TelephonyManager (>= N) subscription{id:1}
+22832-11-20 05:35:56.837  3209  3312 D CompatChangeReporter: Compat change id reported: 330583731; UID 10137; state: ENABLED
+22833-11-20 05:35:56.863  1202  1210 W .gms.persistent: Suspending all threads took: 48.716ms
+22834-11-20 05:35:56.864  3218  3218 I ProviderInstaller: Installed default security provider GmsCore_OpenSSL
+22835-11-20 05:35:56.869  3209  3305 D CompatChangeReporter: Compat change id reported: 311402873; UID 10137; state: ENABLED
+22836-11-20 05:35:56.869  3209  3305 D CompatChangeReporter: Compat change id reported: 323349338; UID 10137; state: ENABLED
+22837-11-20 05:35:56.869   552  1657 D CompatChangeReporter: Compat change id reported: 311402873; UID 10137; state: ENABLED
+22838-11-20 05:35:56.869   552  1657 D CompatChangeReporter: Compat change id reported: 323349338; UID 10137; state: ENABLED
+22839-11-20 05:35:56.893   552  1657 D ConnectivityService: requestNetwork for uid/pid:1000/552 asUid: 10137 activeRequest: null callbackRequest: 96 [NetworkRequest [ TRACK_DEFAULT id=97, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10137 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ], NetworkRequest [ REQUEST id=98, [ Transports: SATELLITE Capabilities: INTERNET&TRUSTED&NOT_VCN_MANAGED Uid: 10137 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false
+22840-11-20 05:35:56.901  1202  1202 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.pseudonymous.service.START pkg=com.google.android.gms }
+22841-11-20 05:35:56.901  1202  1202 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.pseudonymous.service.START pkg=com.google.android.gms }
+22842-11-20 05:35:56.910   552   827 D ConnectivityService: NetReassign [97 : null → 100] [c 0] [a 1] [i 1]
+22843-11-20 05:35:56.922  3209  3305 I SyncWorkManagerOneTimeS: Successfully scheduled next onetime workers
+22844-11-20 05:35:56.933   552  1528 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22845-11-20 05:35:56.933   552  1528 D PackageManager: Clear ephemeral installer activity
+22846-11-20 05:35:56.947  3218  3218 I GmsApplication: [gms_startup_benchmark] Static start time (ms): 56124, Startup latency (ms): 464, Is system user: true
+22847-11-20 05:35:56.955  3218  3339 I GMS_MM_Logger: Start time: 274042
+22848-11-20 05:35:56.960  3216  3216 D CompatChangeReporter: Compat change id reported: 3400644; UID 10130; state: ENABLED
+22849-11-20 05:35:56.975  3209  3313 I BugleDataModel: DatabaseHelperUtils: insertSelfParticipant. participantId: 1, selfParticipantId: 1, subId: -1
+22850-11-20 05:35:56.978  3209  3313 I BugleShortcuts: Clearing shortcuts for DB recreation
+22851-11-20 05:35:56.979   552   638 D ShortcutService: rescanPackageIfNeeded 0@com.google.android.apps.messaging, forceRescan=false , isNewApp=false
+22852-11-20 05:35:56.983   552  1678 D ShortcutService: rescanPackageIfNeeded 0@com.google.android.apps.messaging, forceRescan=false , isNewApp=false
+22853-11-20 05:35:56.987   358  3341 I resolv  : GetAddrInfoHandler::run: {100 100 100 983140 10130 0}
+22854-11-20 05:35:56.987   358  3343 I resolv  : res_nmkquery: (QUERY, IN, A)
+22855-11-20 05:35:56.987   358  3343 I resolv  : resolv_cache_lookup: FOUND IN CACHE entry=0x7fc902097d70
+22856-11-20 05:35:56.987   358  3343 I resolv  : doQuery: rcode=0, ancount=8, return value=182
+22857-11-20 05:35:56.989   358  3342 I resolv  : res_nmkquery: (QUERY, IN, AAAA)
+22858-11-20 05:35:56.990   358  3342 I resolv  : resolv_cache_lookup: FOUND IN CACHE entry=0x7fc9d208e8d0
+22859-11-20 05:35:56.990   358  3342 I resolv  : doQuery: rcode=0, ancount=8, return value=278
+22860-11-20 05:35:56.990  3216  3333 D TrafficStats: tagSocket(87) with statsTag=0x8001, statsUid=-1
+22861-11-20 05:35:56.991   552  1678 D ShortcutService: rescanPackageIfNeeded 0@com.google.android.apps.messaging, forceRescan=false , isNewApp=false
+22862-11-20 05:35:56.991   552  1678 D ShortcutService: rescanPackageIfNeeded 0@com.google.android.apps.messaging, forceRescan=false , isNewApp=false
+22863-11-20 05:35:56.992   552  1528 D ShortcutService: rescanPackageIfNeeded 0@com.google.android.apps.messaging, forceRescan=false , isNewApp=false
+22864-11-20 05:35:56.998  3218  3218 W ebcf    : Primes not initialized, returning default (no-op) Primes instance which will ignore all calls. Please call Primes.initialize(...) before using any Primes API.
+22865-11-20 05:35:57.001  3218  3339 I GMS_MM_Logger: Started.
+22866-11-20 05:35:57.010  3209  3313 D CompatChangeReporter: Compat change id reported: 303742236; UID 10137; state: ENABLED
+22867-11-20 05:35:57.016  3209  3313 I Bugle   : TelephonySyncManager: setting full sync. inProgress: true, before: false
+22868-11-20 05:35:57.026  3209  3313 I Bugle   : TelephonySyncManager: Starting full sync, reason: 7
+22869-11-20 05:35:57.047   552   638 D CompatChangeReporter: Compat change id reported: 297989574; UID 10137; state: ENABLED
+22870-11-20 05:35:57.061  3209  3313 I Bugle   : DatabaseHelperBasic: sqlite version is 3.44.3
+22871:11-20 05:35:57.070   552  1677 D JobScheduler: executeRunCommand(): lav.visaroom.alav/null/0 1101 s=false f=true
+22872-11-20 05:35:57.073  1463  1701 I A       : (REDACTED) Device Compliance Fetch time taken = %sms
+22873-11-20 05:35:57.073  3209  3313 I BugleDataModel: HeavyWorkQueueEmptyObserver: Starting observation of WorkQueueWorkManagerTable
+22874-11-20 05:35:57.074  1463  1701 I A       : Device is compliant!
+22875-11-20 05:35:57.074  1463  1701 I A       : Invoking "compliant" action...
+22876-11-20 05:35:57.091  1393  1393 I WakefulBroadcastRcvr: Processing wakeful broadcast: com.google.android.gms.checkin.CHECKIN_START_ACTION
+22877-11-20 05:35:57.098  1393  1844 I Checkin : [CheckinIntentOperation] onHandleIntent, Intent { act=com.google.android.gms.checkin.CHECKIN_START_ACTION cat=[targeted_intent_op_prefix:.checkin.CheckinIntentOperation] cmp=com.google.android.gms/.chimera.GmsIntentOperationService (has extras) }
+22878-11-20 05:35:57.112   552   866 D ShortcutService: Saving package item com.google.android.apps.messaging to /data/system_ce/0/shortcut_service/packages/com.google.android.apps.messaging.xml
+22879-11-20 05:35:57.118  1393  1844 W GmsTaskScheduler: ScheduledCheckinGmsTaskService is not available. This may cause the task to be lost.
+22880-11-20 05:35:57.169   552   638 D CompatChangeReporter: Compat change id reported: 161145287; UID 10130; state: ENABLED
+22881-11-20 05:35:57.180   552   586 D ShortcutService: Getting shortcuts for launcher= com.android.systemuiuser=0 pkg=com.google.android.apps.messaging
+22882-11-20 05:35:57.183  2047  2051 W .android.as.oss: Suspending all threads took: 9.608ms
+22883-11-20 05:35:57.214   552  1528 D OomAdjuster: Not killing cached processes
+22884-11-20 05:35:57.221   358   388 I netd    : tetherGetStats() -> {[]} <0.50ms>
+22885-11-20 05:35:57.243  3218  3365 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.adsidentity, using defaults.
+22886-11-20 05:35:57.245   552  1657 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22887-11-20 05:35:57.245   552  1657 D PackageManager: Clear ephemeral installer activity
+22888-11-20 05:35:57.257   358   388 I netd    : bandwidthSetGlobalAlert(2097152) <0.12ms>
+22889-11-20 05:35:57.259  3209  3300 I BugleNotifications: Foreground service channel created
+22890-11-20 05:35:57.268  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.family, using defaults.
+22891-11-20 05:35:57.268  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.auth.api.credentials, using defaults.
+22892-11-20 05:35:57.268  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.auth_api_phone, using defaults.
+22893-11-20 05:35:57.287  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.auth_managed, using defaults.
+22894-11-20 05:35:57.288  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.auth.proximity, using defaults.
+22895-11-20 05:35:57.312   358   388 I netd    : bandwidthRemoveInterfaceQuota(eth0) <5.24ms>
+22896-11-20 05:35:57.314   358   388 I netd    : bandwidthSetInterfaceQuota(eth0, 9223372036854775807) <0.53ms>
+22897-11-20 05:35:57.322  3218  3369 D Backup  : [BackupGoogleSettingsIO] Back up or restore entry point is not enabled
+22898-11-20 05:35:57.327   358   388 I netd    : bandwidthRemoveInterfaceQuota(eth0) <0.82ms>
+22899-11-20 05:35:57.329  3081  3206 W MetricsFeatureProvider: Disabled westworld logs writing!!!
+22900-11-20 05:35:57.330   358   388 I netd    : bandwidthSetInterfaceQuota(eth0, 9223372036854775807) <2.06ms>
+22901-11-20 05:35:57.351  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.cast, using defaults.
+22902-11-20 05:35:57.352  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.common.download, using defaults.
+22903-11-20 05:35:57.352   358   388 I netd    : tetherGetStats() -> {[]} <0.42ms>
+22904-11-20 05:35:57.354   552   904 D NetworkStatsObservers: Unregistering RequestInfo from pid/uid:552/1000(android) for DataUsageRequest [ requestId=6, networkTemplate=NetworkTemplate: matchRule=MOBILE, matchSubscriberIds=[310260...], matchWifiNetworkKeys=[], metered=YES, defaultNetwork=NO, thresholdInBytes=3574120 ] accessLevel:3
+22905-11-20 05:35:57.355  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.dtdi#com.google.android.gms, using defaults.
+22906-11-20 05:35:57.359   552   818 D NetworkStatsObservers: Registering observer for RequestInfo from pid/uid:552/1000(android) for DataUsageRequest [ requestId=7, networkTemplate=NetworkTemplate: matchRule=MOBILE, matchSubscriberIds=[310260...], matchWifiNetworkKeys=[], metered=YES, defaultNetwork=NO, thresholdInBytes=3565838 ] accessLevel:3
+22907-11-20 05:35:57.367  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.googlesettings#com.google.android.gms, using defaults.
+22908-11-20 05:35:57.371  3218  3364 I CAR.DRIVINGMODE: DrivingMode Settings Indexed from the location module
+22909-11-20 05:35:57.393   552   586 D ShortcutService: Getting shortcuts for launcher= com.google.android.apps.nexuslauncheruser=0 pkg=com.google.android.apps.messaging
+22910-11-20 05:35:57.393   552   586 D ShortcutService: Getting shortcuts for launcher= com.google.android.asuser=0 pkg=com.google.android.apps.messaging
+22911-11-20 05:35:57.404  1393  1947 I Icing   : Usage reports ok 0, Failed Usage reports 0, indexed 0, rejected 0
+22912-11-20 05:35:57.408  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.security, using defaults.
+22913-11-20 05:35:57.408  3218  3339 I ebvk$a  : Unable to retrieve flag snapshot for com.google.android.gms.multidevice#com.google.android.gms, using defaults.
+22914-11-20 05:35:57.416  1202  1202 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.instantapps.START pkg=com.google.android.gms }
+22915-11-20 05:35:57.416  1202  1202 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.instantapps.START pkg=com.google.android.gms }
+22916-11-20 05:35:57.417  2047  2051 I .android.as.oss: Background concurrent mark compact GC freed 6124KB AllocSpace bytes, 0(0B) LOS objects, 49% free, 10MB/21MB, paused 9.926ms,466us total 434.036ms
+22917-11-20 05:35:57.419  3218  3363 I Nearby  : is blocked device type false, isAuto=false, isIot=false, isLatchsky=false, isChinaWearable=false, isTv=false, isWearable=false (supportWearOs=false), isChromeOsDevice=false (supportChromeOs=false) [CONTEXT service_id=49 ]
+22918-11-20 05:35:57.424   358   388 I netd    : tetherGetStats() -> {[]} <0.47ms>
+22919-11-20 05:35:57.435  1202  1210 I .gms.persistent: Background concurrent mark compact GC freed 11MB AllocSpace bytes, 15(592KB) LOS objects, 49% free, 22MB/44MB, paused 49.318ms,42.586ms total 698.225ms
+22920-11-20 05:35:57.436  1435  1863 I SP.AiAi : Scheduling: download stopped, 0 started, 0 paused, 0 scheduled, 6 pending: manifests:kg_collections_table-21051103 {W:C:I:l, bg}, manifests:spelling_correction-22110320 {W:C:I:l, bg}, manifests:text-classifier-annotator-272525175 {W:C:I:l, bg}, manifests:text-classifier-actions-1140547708 {W:C:I:l, bg}, manifests:text-classifier-langid-1941001461 {W:C:I:l, bg}, captions_i18n_v0_en-US:asr_en-US_v3003 @ {W:b:u:l, bg}
+22921-11-20 05:35:57.436  1731  1808 I d.process.acore: Background concurrent mark compact GC freed 3261KB AllocSpace bytes, 10(520KB) LOS objects, 49% free, 2333KB/4667KB, paused 60us,46.335ms total 274.780ms
+22922-11-20 05:35:57.456  3209  3299 I LogSaver: LogSaver new instance with filename: carrier_services
+22923-11-20 05:35:57.478   552  1673 D CompatChangeReporter: Compat change id reported: 261072174; UID 10130; state: ENABLED
+22924-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: Error getting setting item searchables
+22925-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: java.util.concurrent.ExecutionException: java.lang.IllegalStateException: No account, cannot provide search indexables
+22926-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.r(PG:4)
+22927-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.get(PG:11)
+22928-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at ifl.a(PG:18)
+22929-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at com.google.android.apps.safetyhub.platformsettings.search.EmergencySearchIndexablesProvider.a(PG:9)
+22930-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at com.google.android.apps.safetyhub.platformsettings.search.EmergencySearchIndexablesProvider.queryRawData(PG:2)
+22931-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.provider.SearchIndexablesProvider.query(SearchIndexablesProvider.java:125)
+22932-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.content.ContentProvider.query(ContentProvider.java:1620)
+22933-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.content.ContentProvider.query(ContentProvider.java:1716)
+22934-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.content.ContentProvider$Transport.query(ContentProvider.java:295)
+22935-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.content.ContentProviderNative.onTransact(ContentProviderNative.java:107)
+22936-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.os.Binder.execTransactInternal(Binder.java:1500)
+22937-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.os.Binder.execTransact(Binder.java:1444)
+22938-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: Caused by: java.lang.IllegalStateException: No account, cannot provide search indexables
+22939-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at gnu.a(PG:53)
+22940-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at nqn.a(PG:3)
+22941-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npy.d(PG:2)
+22942-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at nqa.run(PG:9)
+22943-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at a.d(PG:1)
+22944-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at nrb.execute(PG:1)
+22945-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.g(PG:1)
+22946-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.j(PG:12)
+22947-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.m(PG:2)
+22948-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npz.e(PG:1)
+22949-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at nqa.run(PG:13)
+22950-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at a.d(PG:1)
+22951-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at nrb.execute(PG:1)
+22952-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.g(PG:1)
+22953-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.j(PG:12)
+22954-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.o(PG:5)
+22955-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at npy.e(PG:2)
+22956-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at nqa.run(PG:13)
+22957-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at nsp.run(PG:1)
+22958-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at nsq.run(PG:4)
+22959-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at ief.run(PG:1)
+22960-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at nmv.run(PG:24)
+22961-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at idl.run(PG:66)
+22962-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at java.lang.Thread.run(Thread.java:1012)
+22963-11-20 05:35:57.479  3216  3270 W Safetyhub.EmergencySearchIndexablesProvider: 	at iem.run(PG:6)
+22964-11-20 05:35:57.483  1463  2556 W A       : (REDACTED) [%s] response code: %d
+22965-11-20 05:35:57.491  3081  3206 W MetricsFeatureProvider: Disabled westworld logs writing!!!
+22966-11-20 05:35:57.492  3081  3206 W RemoteCallableBase: Null cursor. Cannot add index data for Uri: content://com.google.android.apps.safetyhub.platformsettings.searchindexablesprovider/settings/dynamic_indexables_raw
+22967-11-20 05:35:57.492  3081  3206 W MetricsFeatureProvider: Disabled westworld logs writing!!!
+22968-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: Error getting setting item searchables
+22969-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: java.util.concurrent.ExecutionException: java.lang.IllegalStateException: No account, cannot provide search indexables
+22970-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.r(PG:4)
+22971-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.get(PG:11)
+22972-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at ifl.a(PG:18)
+22973-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at com.google.android.apps.safetyhub.platformsettings.search.EmergencySearchIndexablesProvider.a(PG:9)
+22974-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at com.google.android.apps.safetyhub.platformsettings.search.EmergencySearchIndexablesProvider.queryNonIndexableKeys(PG:6)
+22975-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.provider.SearchIndexablesProvider.query(SearchIndexablesProvider.java:127)
+22976-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.content.ContentProvider.query(ContentProvider.java:1620)
+22977-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.content.ContentProvider.query(ContentProvider.java:1716)
+22978-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.content.ContentProvider$Transport.query(ContentProvider.java:295)
+22979-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.content.ContentProviderNative.onTransact(ContentProviderNative.java:107)
+22980-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.os.Binder.execTransactInternal(Binder.java:1500)
+22981-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at android.os.Binder.execTransact(Binder.java:1444)
+22982-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: Caused by: java.lang.IllegalStateException: No account, cannot provide search indexables
+22983-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at gnu.a(PG:53)
+22984-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at nqn.a(PG:3)
+22985-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at npy.d(PG:2)
+22986-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at nqa.run(PG:9)
+22987-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at a.d(PG:1)
+22988-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at nrb.execute(PG:1)
+22989-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.g(PG:1)
+22990-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.j(PG:12)
+22991-11-20 05:35:57.495  3216  3278 W Safetyhub.EmergencySearchIndexablesProvider: 	at npw.m(PG:2)
+--
+30091-11-20 05:36:02.846  1154  1154 D SsBaseTemplateCard: Passed-in item info is null
+30092-11-20 05:36:02.846  1154  1154 I SsBaseTemplateCard: Secondary card pane is null
+30093-11-20 05:36:02.852   905   905 W PageIndicator: Total number of pages invalid: 0. Assuming 1 page.
+30094-11-20 05:36:02.853  1393  1844 D TrafficStats: tagSocket(167) with statsTag=0x30000408, statsUid=-1
+30095-11-20 05:36:02.857  1202  2116 I NetworkScheduler.Stats: Task com.google.android.gms/com.google.android.gms.gcm.gmsproc.GcmInGmsTaskService started execution. cause:5 exec_start_elapsed_seconds: 61 [CONTEXT service_id=218 ]
+30096-11-20 05:36:02.860  1202  2586 I NetworkScheduler.Stats: Task com.google.android.gms/com.google.android.gms.gcm.gmsproc.GcmInGmsTaskService finished executing. cause:5 result: 1 elapsed_millis: 580 uptime_millis: 580 exec_start_elapsed_seconds: 61 [CONTEXT service_id=218 ]
+30097-11-20 05:36:02.870  1202  1212 W .gms.persistent: ApkAssets: Deleting an ApkAssets object '<empty> and /product/priv-app/Velvet/Velvet.apk' with 1 weak references
+30098-11-20 05:36:02.874  1393  1844 W Conscrypt: Could not set socket write timeout: java.net.SocketException: Socket closed
+30099-11-20 05:36:02.874  1393  1844 W Conscrypt: 	at com.google.android.gms.org.conscrypt.Platform.setSocketWriteTimeout(:com.google.android.gms@242335041@24.23.35 (190800-646585959):204)
+30100-11-20 05:36:02.874  1393  1844 W Conscrypt: 	at com.google.android.gms.org.conscrypt.ConscryptFileDescriptorSocket.setSoWriteTimeout(:com.google.android.gms@242335041@24.23.35 (190800-646585959):4)
+30101:11-20 05:36:02.885  1393  1399 W gle.android.gms: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~1ukknyQWjrTlP4gvXpKVBw==/lav.visaroom.alav-El3Y7k_eKAPRyJYJxeC-8A==/base.apk' with 1 weak references
+30102-11-20 05:36:02.886  1393  1399 W gle.android.gms: ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/YouTube/YouTube.apk' with 1 weak references
+30103-11-20 05:36:02.886  1393  1399 W gle.android.gms: ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/Maps/Maps.apk' with 1 weak references
+30104-11-20 05:36:02.938  1393  1844 W Conscrypt: Could not set socket write timeout: java.net.SocketException: Socket closed
+30105-11-20 05:36:02.945  1202  1591 D nativeloader: Load /product/priv-app/PrebuiltGmsCore/PrebuiltGmsCore.apk!/lib/x86_64/libsemanticlocation_inference_jni.so using ns product-clns-9 from class loader (caller=/product/priv-app/PrebuiltGmsCore/PrebuiltGmsCore.apk!classes3.dex): ok
+30106-11-20 05:36:02.947  1393  1844 W Conscrypt: 	at com.google.android.gms.org.conscrypt.Platform.setSocketWriteTimeout(:com.google.android.gms@242335041@24.23.35 (190800-646585959):204)
+30107-11-20 05:36:02.947  1393  1844 W Conscrypt: 	at com.google.android.gms.org.conscrypt.ConscryptFileDescriptorSocket.setSoWriteTimeout(:com.google.android.gms@242335041@24.23.35 (190800-646585959):4)
+30108-11-20 05:36:02.952  1393  2732 I GmsDebugLogger: [53] +tflite_dynamite:-1
+30109-11-20 05:36:02.958  1202  1591 W SemanticLocation: [MDD] ModelBundleMetadata: File not found: java.io.FileNotFoundException: /data/user/0/com.google.android.gms/files/model_bundle_metadata.pb: open failed: ENOENT (No such file or directory) [CONTEXT service_id=173 ]
+30110-11-20 05:36:02.958  1202  1591 W SemanticLocation: java.io.FileNotFoundException: /data/user/0/com.google.android.gms/files/model_bundle_metadata.pb: open failed: ENOENT (No such file or directory)
+30111-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at libcore.io.IoBridge.open(IoBridge.java:574)
+30112-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at java.io.FileInputStream.<init>(FileInputStream.java:179)
+30113-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at android.app.ContextImpl.openFileInput(ContextImpl.java:774)
+30114-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at android.content.ContextWrapper.openFileInput(ContextWrapper.java:251)
+30115-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at android.content.ContextWrapper.openFileInput(ContextWrapper.java:251)
+30116-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at android.content.ContextWrapper.openFileInput(ContextWrapper.java:251)
+30117-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at ddho.k(:com.google.android.gms@242335041@24.23.35 (190800-646585959):5)
+30118-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at ddhd.c(:com.google.android.gms@242335041@24.23.35 (190800-646585959):65)
+30119-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at ddop.run(:com.google.android.gms@242335041@24.23.35 (190800-646585959):20)
+30120-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at angs.c(:com.google.android.gms@242335041@24.23.35 (190800-646585959):50)
+30121-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at angs.run(:com.google.android.gms@242335041@24.23.35 (190800-646585959):97)
+30122-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+30123-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:644)
+30124-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at anmg.run(:com.google.android.gms@242335041@24.23.35 (190800-646585959):8)
+30125-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at java.lang.Thread.run(Thread.java:1012)
+30126-11-20 05:36:02.958  1202  1591 W SemanticLocation: Caused by: android.system.ErrnoException: open failed: ENOENT (No such file or directory)
+30127-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at libcore.io.Linux.open(Native Method)
+30128-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at libcore.io.ForwardingOs.open(ForwardingOs.java:563)
+30129-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at libcore.io.BlockGuardOs.open(BlockGuardOs.java:274)
+30130-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at libcore.io.ForwardingOs.open(ForwardingOs.java:563)
+30131-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at android.app.ActivityThread$AndroidOs.open(ActivityThread.java:8591)
+30132-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	at libcore.io.IoBridge.open(IoBridge.java:560)
+30133-11-20 05:36:02.958  1202  1591 W SemanticLocation: 	... 14 more
+30134-11-20 05:36:02.965  1202  1591 I NetworkScheduler.Stats: Task com.google.android.gms/com.google.android.gms.udc.service.UdcContextInitService started execution. cause:5 exec_start_elapsed_seconds: 62 [CONTEXT service_id=218 ]
+30135-11-20 05:36:02.995  1202  1582 I NearbyConnections: Client 0p:com.google.android.gms.nearby.sharing disconnecting
+30136-11-20 05:36:02.995  1202  1582 I Nearby  : Successfully shutdown executor ClientBridge.alarmExecutor. [CONTEXT service_id=49 ]
+30137-11-20 05:36:02.996  1202  1671 I NearbyConnections: Because they unbound from our service, all state for client 211208232 will now be cleaned up.
+30138-11-20 05:36:03.009  1202  1671 I Nearby  : Successfully shutdown executor AnalyticsRecorder.analyticsExecutor. [CONTEXT service_id=49 ]
+30139-11-20 05:36:03.013  1202  3200 I NetworkScheduler.Stats: Task com.google.android.gms/com.google.android.gms.gass.chimera.SchedulePeriodicTasksService finished executing. cause:5 result: 1 elapsed_millis: 2427 uptime_millis: 2427 exec_start_elapsed_seconds: 60 [CONTEXT service_id=218 ]
+30140-11-20 05:36:03.039  1202  1671 I Nearby  : Successfully shutdown executor AnalyticsRecorder.analyticsExecutor. [CONTEXT service_id=49 ]
+30141-11-20 05:36:03.055  1202  3200 I NetworkScheduler.Stats: Task com.google.android.gms/com.google.android.gms.udc.service.UdcContextInitService finished executing. cause:5 result: 1 elapsed_millis: 66 uptime_millis: 66 exec_start_elapsed_seconds: 62 [CONTEXT service_id=218 ]
+30142-11-20 05:36:03.064  1202  1671 I Nearby  : Successfully shutdown executor AnalyticsRecorder.analyticsExecutor. [CONTEXT service_id=49 ]
+30143-11-20 05:36:03.064  1202  1671 I Nearby  : Successfully shutdown executor PayloadManager.streamPayloadExecutor. [CONTEXT service_id=49 ]
+30144-11-20 05:36:03.064  1202  1671 I Nearby  : Successfully shutdown executor PayloadManager.filePayloadExecutor. [CONTEXT service_id=49 ]
+30145-11-20 05:36:03.064  1202  1671 I Nearby  : Successfully shutdown executor PayloadManager.bytesPayloadExecutor. [CONTEXT service_id=49 ]
+30146-11-20 05:36:03.064  1202  1671 I Nearby  : Successfully shutdown executor ClientProxy.endpointRotationAlarmExecutor. [CONTEXT service_id=49 ]
+30147-11-20 05:36:03.068  1202  1671 I Nearby  : Successfully shutdown executor AnalyticsRecorder.analyticsExecutor. [CONTEXT service_id=49 ]
+30148-11-20 05:36:03.088  1202  1950 I NetworkScheduler.Stats: Task com.google.android.gms/com.google.android.gms.phenotype.service.sync.PhenotypeConfigurator started execution. cause:5 exec_start_elapsed_seconds: 62 [CONTEXT service_id=218 ]
+30149-11-20 05:36:03.107  1202  1743 W GetConfigSnapshotOp: Succeeded but not registered: com.google.android.gms.learning#com.google.android.gms [CONTEXT service_id=51 ]
+30150-11-20 05:36:03.120   358   388 I netd    : tetherGetStats() -> {[]} <0.28ms>
+30151-11-20 05:36:03.122   358   388 I netd    : bandwidthSetGlobalAlert(2097152) <0.10ms>
+30152-11-20 05:36:03.124   358   388 I netd    : bandwidthRemoveInterfaceQuota(eth0) <0.36ms>
+30153-11-20 05:36:03.124   358   388 I netd    : bandwidthSetInterfaceQuota(eth0, 9223372036854775807) <0.30ms>
+30154-11-20 05:36:03.127   358   388 I netd    : bandwidthRemoveInterfaceQuota(eth0) <0.22ms>
+30155-11-20 05:36:03.128   358   388 I netd    : bandwidthSetInterfaceQuota(eth0, 9223372036854775807) <1.44ms>
+30156-11-20 05:36:03.130   552   904 D NetworkStatsObservers: Unregistering RequestInfo from pid/uid:552/1000(android) for DataUsageRequest [ requestId=8, networkTemplate=NetworkTemplate: matchRule=MOBILE, matchSubscriberIds=[310260...], matchWifiNetworkKeys=[], metered=YES, defaultNetwork=NO, thresholdInBytes=3563326 ] accessLevel:3
+30157-11-20 05:36:03.130   552   818 D NetworkStatsObservers: Registering observer for RequestInfo from pid/uid:552/1000(android) for DataUsageRequest [ requestId=9, networkTemplate=NetworkTemplate: matchRule=MOBILE, matchSubscriberIds=[310260...], matchWifiNetworkKeys=[], metered=YES, defaultNetwork=NO, thresholdInBytes=3560813 ] accessLevel:3
+30158-11-20 05:36:03.147   358   388 I netd    : tetherGetStats() -> {[]} <0.27ms>
+30159-11-20 05:36:03.158  1328  1328 I PhenotypeModule: PhenotypeModule.receiveBroadcast():563 onReceive() urgent = false
+30160-11-20 05:36:03.158  1328  1328 I PhenotypeModule: PhenotypeModule.maybeFetchAndUpdate():222 maybeFetchAndUpdate: start new task to fetch
+30161-11-20 05:36:03.161  1328  1708 I PhenotypeBackgroundRecv: Successfully updated snapshot for com.google.android.libraries.consentverifier#com.google.android.inputmethod.latin
+30162-11-20 05:36:03.194  3453  3560 I BugleRcsEngine: triggerStopRcsStack for msisdn:redacted-pii:phone_number[chars:0,last2:] [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]" thread_id=65 ]
+30163-11-20 05:36:03.201  1435  1435 W JobService: onNetworkChanged() not implemented in com.google.android.apps.miphone.aiai.common.superpacks.impl.AiAiPersistentDownloadJobService. Must override in a subclass.
+30164-11-20 05:36:03.221  1202  2102 I ChimeraSrvcProxy: NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl
+30165-11-20 05:36:03.222  1202  2102 W .gms.persistent: Large reply transaction of 1056768 bytes, interface descriptor , code 1
+30166-11-20 05:36:03.259  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /product/overlay/NotesRoleEnabled/NotesRoleEnabledOverlay.apk' with 1 weak references
+30167-11-20 05:36:03.263  3453  3504 I BugleRcsEngine: triggerStopRcsStack for msisdn:redacted-pii:phone_number[chars:0,last2:] [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]" thread_id=49 ]
+30168-11-20 05:36:03.265  1393  1844 I CheckinResponseProcess: From server: 1407 gservices [full] [CONTEXT service_id=130 ]
+30169-11-20 05:36:03.268  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system/priv-app/LiveWallpapersPicker/LiveWallpapersPicker.apk' with 1 weak references
+30170-11-20 05:36:03.272  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/PrebuiltGoogleAdservicesTvp/PrebuiltGoogleAdservicesTvp.apk' with 1 weak references
+30171-11-20 05:36:03.273  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /apex/com.android.healthfitness/priv-app/HealthConnectControllerGoogle@350820300/HealthConnectControllerGoogle.apk' with 1 weak references
+30172-11-20 05:36:03.275  3453  3509 I BugleRcsEngine: Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=53 ]
+30173-11-20 05:36:03.276  3209  3319 I RcsClientLib: Disconnecting RcsEngineLifecycleService
+30174-11-20 05:36:03.276  3453  3539 I BugleRcsEngine: handleMessage processing message:[STOP_RCS_STACK] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]>Handler" thread_id=63 ]
+30175-11-20 05:36:03.276  3453  3539 I BugleRcsEngine: RCS engine STOP RCS stack [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]>Handler" thread_id=63 ]
+30176-11-20 05:36:03.277  3453  3539 I BugleRcsEngine: imsModule is null, shutdown not required [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]" thread_id=63 ]
+30177-11-20 05:36:03.277  3453  3539 I BugleRcsEngine: skipping imsModule.stop [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]" thread_id=63 ]
+30178-11-20 05:36:03.277  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /product/priv-app/KidsSupervisionStub/KidsSupervisionStub.apk' with 1 weak references
+30179-11-20 05:36:03.277  3453  3539 I BugleRcsEngine: handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]>Handler" thread_id=63 ]
+30180-11-20 05:36:03.277  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system_ext/priv-app/StorageManager/StorageManager.apk' with 1 weak references
+30181-11-20 05:36:03.280  3453  3539 I BugleRcsEngine: RCS Configuration storage in Bugle is disabled by p/h flag, using ProvisioningEngineStateCacheUtil.getProvisioningConfigurationForGivenSimIfExist() [CONTEXT log_prefix="ProvisioningEngineDataRetriever" thread_id=63 ]
+30182-11-20 05:36:03.280  3453  3539 I BugleRcsEngine: handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]>Handler" thread_id=63 ]
+30183-11-20 05:36:03.283  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '/product/overlay/StorageManager__sdk_gphone64_x86_64__auto_generated_rro_product.apk' with 1 weak references
+30184-11-20 05:36:03.283  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system/app/BookmarkProvider/BookmarkProvider.apk' with 1 weak references
+30185-11-20 05:36:03.283  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system_ext/priv-app/SettingsGoogle/SettingsGoogle.apk' with 1 weak references
+30186-11-20 05:36:03.283  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '/product/overlay/SettingsGoogle__sdk_gphone64_x86_64__auto_generated_rro_product.apk' with 1 weak references
+30187-11-20 05:36:03.284  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /product/priv-app/SettingsIntelligenceGooglePrebuilt/SettingsIntelligenceGooglePrebuilt.apk' with 1 weak references
+30188-11-20 05:36:03.284  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /apex/com.android.uwb/priv-app/ServiceUwbResourcesGoogle@350820300/ServiceUwbResourcesGoogle.apk' with 1 weak references
+30189-11-20 05:36:03.284  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /apex/com.android.wifi/priv-app/ServiceWifiResourcesGoogle@350820300/ServiceWifiResourcesGoogle.apk' with 1 weak references
+30190-11-20 05:36:03.284  3453  3539 I BugleRcsEngine: RCS Configuration storage in Bugle is disabled by p/h flag, using ProvisioningEngineStateCacheUtil.getProvisioningConfigurationForGivenSimIfExist() [CONTEXT log_prefix="ProvisioningEngineDataRetriever" thread_id=63 ]
+30191-11-20 05:36:03.284  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system_ext/priv-app/ThemePicker/ThemePicker.apk' with 1 weak references
+30192-11-20 05:36:03.284  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system_ext/priv-app/WallpaperPickerGoogleRelease/WallpaperPickerGoogleRelease.apk' with 1 weak references
+30193-11-20 05:36:03.285  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /product/priv-app/OdadPrebuilt/OdadPrebuilt.apk' with 1 weak references
+30194-11-20 05:36:03.285  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system/priv-app/TeleService/TeleService.apk' with 1 weak references
+30195-11-20 05:36:03.285  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '/vendor/overlay/TeleService__sdk_gphone64_x86_64__auto_generated_rro_vendor.apk' with 1 weak references
+30196-11-20 05:36:03.285  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '/product/overlay/TeleService__sdk_gphone64_x86_64__auto_generated_rro_product.apk' with 1 weak references
+30197-11-20 05:36:03.285  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system/priv-app/Shell/Shell.apk' with 1 weak references
+30198-11-20 05:36:03.285  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system/priv-app/BlockedNumberProvider/BlockedNumberProvider.apk' with 1 weak references
+30199-11-20 05:36:03.285  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system/priv-app/UserDictionaryProvider/UserDictionaryProvider.apk' with 1 weak references
+30200-11-20 05:36:03.285  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system_ext/app/EmergencyInfoGoogleNoUi/EmergencyInfoGoogleNoUi.apk' with 1 weak references
+30201-11-20 05:36:03.285  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk' with 1 weak references
+30202-11-20 05:36:03.286  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system/priv-app/FusedLocation/FusedLocation.apk' with 1 weak references
+30203-11-20 05:36:03.286  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system_ext/priv-app/SystemUIGoogle/SystemUIGoogle.apk' with 1 weak references
+30204-11-20 05:36:03.286  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '/vendor/overlay/SystemUIGoogle__sdk_gphone64_x86_64__auto_generated_rro_vendor.apk' with 1 weak references
+30205-11-20 05:36:03.286  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '/product/overlay/SystemUIGoogle__sdk_gphone64_x86_64__auto_generated_rro_product.apk' with 1 weak references
+30206-11-20 05:36:03.287  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/YouTubeMusicPrebuilt/YouTubeMusicPrebuilt.apk' with 1 weak references
+30207-11-20 05:36:03.287  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system/app/BluetoothMidiService/BluetoothMidiService.apk' with 1 weak references
+30208-11-20 05:36:03.287  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system/app/Traceur/Traceur.apk' with 1 weak references
+30209-11-20 05:36:03.288  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /apex/com.android.cellbroadcast/priv-app/GoogleCellBroadcastApp@350820300/GoogleCellBroadcastApp.apk' with 1 weak references
+30210-11-20 05:36:03.288  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /system/priv-app/ContactsProvider/ContactsProvider.apk' with 1 weak references
+30211-11-20 05:36:03.288  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '/product/overlay/ContactsProvider__sdk_gphone64_x86_64__auto_generated_rro_product.apk' with 1 weak references
+30212-11-20 05:36:03.288  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/LatinIMEGooglePrebuilt/LatinIMEGooglePrebuilt.apk' with 1 weak references
+30213-11-20 05:36:03.296  1361  1367 W .apps.wellbeing: ApkAssets: Deleting an ApkAssets object '<empty> and /product/priv-app/GoogleRestorePrebuilt-v526684/GoogleRestorePrebuilt-v526684.apk' with 1 weak references
+30214-11-20 05:36:03.301  3209  3303 I RcsClientLib: Disconnecting RcsEngineLifecycleService
+30215-11-20 05:36:03.305  3453  3539 I BugleRcsEngine: handleMessage processing message:[STOP_RCS_STACK] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]>Handler" thread_id=63 ]
+30216-11-20 05:36:03.305  3453  3539 I BugleRcsEngine: RCS engine STOP RCS stack [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]>Handler" thread_id=63 ]
+30217-11-20 05:36:03.305  3453  3539 I BugleRcsEngine: imsModule is null, shutdown not required [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]" thread_id=63 ]
+30218-11-20 05:36:03.305  3453  3539 I BugleRcsEngine: skipping imsModule.stop [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]" thread_id=63 ]
+30219-11-20 05:36:03.306  3453  3539 I BugleRcsEngine: handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl[DUAL_REG]:[bba6594e-ef31]>Handler" thread_id=63 ]
+30220-11-20 05:36:03.309  1202  1743 I HeterodyneSyncScheduler: Scheduling Phenotype for a PhenotypeSyncImmediately(16, com.google.android.gms.nnapi.drivermanager) one off with window [1, 2] in seconds [CONTEXT service_id=51 ]
+30221-11-20 05:36:03.325  1463  2432 W TimedProcessReaper: Scheduling killing of process to refresh configuration
+SMOKE_FAILED: fatal exception in logcat
