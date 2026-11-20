@@ -1,11 +1,11 @@
 apply plugin: "com.android.application"
 
-// Подпись: сначала переменные окружения (CI), иначе встроенный keystore
-// репозитория (тот же release.p12, что и у glass-лаунчера).
+// Подпись: сначала переменные окружения (CI), иначе родной ключ visaroom
+// из репозитория (бэкап — visaroom-signing-key-backup.zip в корне).
 def envKeystore = System.getenv("VISAROOM_KEYSTORE_PATH")
-def keystorePath = envKeystore ?: (file("keystore/release.p12").exists() ? "keystore/release.p12" : null)
-def keystorePassword = System.getenv("VISAROOM_KEYSTORE_PASSWORD") ?: (envKeystore ? null : "glasslauncher")
-def keyAliasName = System.getenv("VISAROOM_KEY_ALIAS") ?: (envKeystore ? "visaroom" : "release")
+def keystorePath = envKeystore ?: (file("keystore/visaroom-release.p12").exists() ? "keystore/visaroom-release.p12" : null)
+def keystorePassword = System.getenv("VISAROOM_KEYSTORE_PASSWORD") ?: (envKeystore ? null : "de920830c4afa419e0061beaebdd9e0dc5e0fb726fc55d8c")
+def keyAliasName = System.getenv("VISAROOM_KEY_ALIAS") ?: "visaroom"
 
 android {
     namespace = "lav.visaroom.alav"
@@ -15,8 +15,8 @@ android {
         applicationId = "lav.visaroom.alav"
         minSdk = 26
         targetSdk = 34
-        versionCode = 17
-        versionName = "1.13.0"
+        versionCode = 18
+        versionName = "1.13.1"
 
         // Keep the APK small: ship only the locales offered in Settings.
         resourceConfigurations += ["en", "ru", "uk", "es", "de", "fr", "tr", "pt"]
