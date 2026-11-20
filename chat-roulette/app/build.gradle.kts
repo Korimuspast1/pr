@@ -14,7 +14,7 @@ android {
 
     defaultConfig {
         applicationId = "m.chatrulet.m"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
