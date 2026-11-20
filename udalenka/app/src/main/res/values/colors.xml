@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Telegram-палитра, светлая -->
+<resources>
+    <color name="m3_primary">#FF3390EC</color>
+    <color name="m3_on_primary">#FFFFFFFF</color>
+    <color name="m3_tertiary">#FF2FA84F</color>
+    <color name="m3_surface">#FFFFFFFF</color>
+    <color name="m3_surface_dim">#FFF1F4F7</color>
+    <color name="m3_surface_container">#FFEDF1F5</color>
+    <color name="m3_on_surface">#FF0F0F0F</color>
+    <color name="m3_error">#FFEC3942</color>
+    <color name="m3_error_container">#FFFDE3E4</color>
+    <color name="m3_on_error_container">#FF5C0007</color>
+    <color name="chat_bg">#FFE7EBF0</color>
+
+    <color name="white">#FFFFFFFF</color>
+    <color name="text_main">#FF0F0F0F</color>
+    <color name="text_secondary">#FF707579</color>
+    <color name="text_hint">#FF9AA2A8</color>
+    <color name="bubble_peer">#FFFFFFFF</color>
+    <color name="bubble_deleted">#FFFDECEC</color>
+    <color name="ripple">#1F3390EC</color>
+    <color name="ic_launcher_bg">#FF3390EC</color>
+</resources>

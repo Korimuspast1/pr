@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Удалёнка</string>
+    <string name="settings">Настройки</string>
+    <string name="back">Назад</string>
+    <string name="search_hint">Поиск по сохранённым…</string>
+    <string name="access_banner">Доступ к уведомлениям выключен. Нажмите, чтобы включить — без него приложение ничего не сохранит.</string>
+    <string name="access_row">Доступ к уведомлениям</string>
+    <string name="access_granted">Включён</string>
+    <string name="access_needed">Включить →</string>
+    <string name="empty_apps">Пока пусто. Как только придёт уведомление из любого приложения (WhatsApp, Telegram, TikTok…), оно появится здесь — даже если отправитель его удалит.</string>
+    <string name="empty_convos">Из этого приложения пока ничего не поймано.</string>
+    <string name="empty_messages">Нет сообщений.</string>
+    <string name="deleted_badge">🗑 удалено — но сохранено здесь</string>
+    <string name="clear">Очистить</string>
+    <string name="cancel">Отмена</string>
+    <string name="clear_convo_title">Очистить этот диалог?</string>
+    <string name="clear_convo_body">Все сохранённые сообщения диалога будут удалены из архива.</string>
+    <string name="clear_all_title">Очистить весь архив</string>
+    <string name="clear_all_body">Все сохранённые уведомления будут удалены безвозвратно.</string>
+    <string name="retention_title">Хранить историю</string>
+    <string name="retention_forever">Всегда</string>
+    <string name="apps_to_watch">Какие приложения ловить</string>
+    <plurals name="saved_count">
+        <item quantity="one">%d сохранено</item>
+        <item quantity="few">%d сохранено</item>
+        <item quantity="many">%d сохранено</item>
+        <item quantity="other">%d сохранено</item>
+    </plurals>
+    <plurals name="chats_count">
+        <item quantity="one">%d чат</item>
+        <item quantity="few">%d чата</item>
+        <item quantity="many">%d чатов</item>
+        <item quantity="other">%d чатов</item>
+    </plurals>
+    <plurals name="retention_days">
+        <item quantity="one">%d день</item>
+        <item quantity="few">%d дня</item>
+        <item quantity="many">%d дней</item>
+        <item quantity="other">%d дней</item>
+    </plurals>
+</resources>

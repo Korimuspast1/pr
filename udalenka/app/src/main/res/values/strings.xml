@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Udalenka</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="search_hint">Search saved notifications…</string>
+    <string name="access_banner">Notification access is off. Tap to enable — the app cannot save anything without it.</string>
+    <string name="access_row">Notification access</string>
+    <string name="access_granted">Enabled</string>
+    <string name="access_needed">Enable →</string>
+    <string name="empty_apps">Nothing saved yet. As soon as a notification arrives from any app (WhatsApp, Telegram, TikTok…), it will show up here — even if the sender deletes it.</string>
+    <string name="empty_convos">No conversations captured from this app yet.</string>
+    <string name="empty_messages">No messages.</string>
+    <string name="deleted_badge">🗑 deleted — saved here</string>
+    <string name="clear">Clear</string>
+    <string name="cancel">Cancel</string>
+    <string name="clear_convo_title">Clear this conversation?</string>
+    <string name="clear_convo_body">All saved messages of this conversation will be deleted from the archive.</string>
+    <string name="clear_all_title">Clear entire archive</string>
+    <string name="clear_all_body">Every saved notification will be permanently deleted.</string>
+    <string name="retention_title">Keep history for</string>
+    <string name="retention_forever">Forever</string>
+    <string name="apps_to_watch">Apps to watch</string>
+    <plurals name="saved_count">
+        <item quantity="one">%d saved</item>
+        <item quantity="other">%d saved</item>
+    </plurals>
+    <plurals name="chats_count">
+        <item quantity="one">%d chat</item>
+        <item quantity="other">%d chats</item>
+    </plurals>
+    <plurals name="retention_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+</resources>

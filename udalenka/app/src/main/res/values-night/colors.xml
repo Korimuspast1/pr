@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Telegram Dark -->
+<resources>
+    <color name="m3_primary">#FF71A9E0</color>
+    <color name="m3_on_primary">#FF00315A</color>
+    <color name="m3_tertiary">#FF6FDE7E</color>
+    <color name="m3_surface">#FF17212B</color>
+    <color name="m3_surface_dim">#FF0E1621</color>
+    <color name="m3_surface_container">#FF1E2C3A</color>
+    <color name="m3_on_surface">#FFF5F5F5</color>
+    <color name="m3_error">#FFFF8A80</color>
+    <color name="m3_error_container">#FF5C2226</color>
+    <color name="m3_on_error_container">#FFFDE3E4</color>
+    <color name="chat_bg">#FF0E1621</color>
+
+    <color name="white">#FFFFFFFF</color>
+    <color name="text_main">#FFF5F5F5</color>
+    <color name="text_secondary">#FF7F8B96</color>
+    <color name="text_hint">#FF5A6672</color>
+    <color name="bubble_peer">#FF182533</color>
+    <color name="bubble_deleted">#FF3A2226</color>
+    <color name="ripple">#1F71A9E0</color>
+    <color name="ic_launcher_bg">#FF17212B</color>
+</resources>
