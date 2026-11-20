@@ -64,6 +64,12 @@ adb shell input tap $((W/2)) $((H*68/100))
 sleep 3
 shot "kingdom-create"
 
+echo "== листаем вниз до кнопки «Начать» =="
+adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 300
+sleep 1
+adb shell input swipe $((W/2)) $((H*80/100)) $((W/2)) $((H*30/100)) 300
+sleep 1
+
 echo "== start =="
 # «НАЧАТЬ ИГРУ» — внизу экрана создания
 adb shell input tap $((W/2)) $((H*84/100))
