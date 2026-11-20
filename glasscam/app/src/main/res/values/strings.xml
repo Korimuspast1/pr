@@ -18,4 +18,6 @@
     <string name="video_saved">Video saved</string>
     <string name="camera_error">Camera error</string>
     <string name="need_permissions">Camera and microphone access required</string>
+    <string name="mp_fmt">%s MP</string>
+    <string name="video_quality_fmt">Video: %s</string>
 </resources>

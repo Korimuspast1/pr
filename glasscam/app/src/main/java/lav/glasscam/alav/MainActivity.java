@@ -4,10 +4,12 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.media.MediaActionSound;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.util.Size;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.TextureView;
@@ -40,6 +42,8 @@ public class MainActivity extends Activity implements CameraController.Events {
     private ImageView btnShutter;
     private TextView modePhoto;
     private TextView modeVideo;
+    private TextView mpLabel;
+    private TextView btnQuality;
 
     private boolean videoMode;
     private boolean gridOn;
@@ -86,6 +90,8 @@ public class MainActivity extends Activity implements CameraController.Events {
         btnShutter = findViewById(R.id.btn_shutter);
         modePhoto = findViewById(R.id.mode_photo);
         modeVideo = findViewById(R.id.mode_video);
+        mpLabel = findViewById(R.id.mp_label);
+        btnQuality = findViewById(R.id.btn_quality);
 
         actionSound.load(MediaActionSound.SHUTTER_CLICK);
         actionSound.load(MediaActionSound.START_VIDEO_RECORDING);
@@ -125,6 +131,9 @@ public class MainActivity extends Activity implements CameraController.Events {
                     @Override
                     public void onSurfaceTextureSizeChanged(SurfaceTexture st,
                                                             int w, int h) {
+                        if (cameraReady) {
+                            applyTextureTransform();
+                        }
                     }
 
                     @Override
@@ -142,6 +151,7 @@ public class MainActivity extends Activity implements CameraController.Events {
         btnFlash.setOnClickListener(v -> cycleFlash());
         btnGrid.setOnClickListener(v -> toggleGrid());
         btnTimer.setOnClickListener(v -> cycleTimer());
+        btnQuality.setOnClickListener(v -> cycleQuality());
         modePhoto.setOnClickListener(v -> setVideoMode(false));
         modeVideo.setOnClickListener(v -> setVideoMode(true));
         updateFlashIcon();
@@ -193,6 +203,7 @@ public class MainActivity extends Activity implements CameraController.Events {
             cameraReady = true;
             cam.startPreview(textureView.getSurfaceTexture());
             applyTextureTransform();
+            updateCameraInfo();
         });
     }
 
@@ -343,8 +354,8 @@ public class MainActivity extends Activity implements CameraController.Events {
     }
 
     private void showZoom() {
-        zoomLabel.setText(String.format(java.util.Locale.US, "%.1fx",
-                cam.getZoom()));
+        zoomLabel.setText(String.format(java.util.Locale.US, "%.1fx / %.0fx",
+                cam.getZoom(), cam.getMaxZoom()));
         zoomLabel.setVisibility(View.VISIBLE);
         zoomLabel.removeCallbacks(hideZoom);
         zoomLabel.postDelayed(hideZoom, 1200);
@@ -369,29 +380,62 @@ public class MainActivity extends Activity implements CameraController.Events {
     private final Runnable hideRing =
             () -> focusRing.setVisibility(View.GONE);
 
-    /** Превью без искажений: подгоняем размер вью под пропорции сенсора. */
+    /**
+     * Превью без искажений: center-crop матрицей на весь экран.
+     * Система отдаёт буфер уже повёрнутым в портрет, поэтому ширина буфера —
+     * это высота превью-размера. Масштабируем так, чтобы вью было заполнено
+     * полностью, а выступающие полосы обрезались.
+     */
     private void applyTextureTransform() {
         int vw = textureView.getWidth();
         int vh = textureView.getHeight();
         if (vw == 0 || vh == 0) {
             return;
         }
-        int pw = cam.getPreviewSize().getWidth();
-        int ph = cam.getPreviewSize().getHeight();
-        // сенсор ландшафтный; на портретном экране высота = ширина * pw/ph
-        int targetH = vw * pw / Math.max(1, ph);
-        if (targetH > vh) {
-            int targetW = vh * ph / Math.max(1, pw);
-            android.view.ViewGroup.LayoutParams lp = textureView.getLayoutParams();
-            lp.width = targetW;
-            lp.height = vh;
-            textureView.setLayoutParams(lp);
-        } else {
-            android.view.ViewGroup.LayoutParams lp = textureView.getLayoutParams();
-            lp.width = vw;
-            lp.height = targetH;
-            textureView.setLayoutParams(lp);
+        float bufW = cam.getPreviewSize().getHeight();
+        float bufH = cam.getPreviewSize().getWidth();
+        float sx = vw / bufW;
+        float sy = vh / bufH;
+        float scale = Math.max(sx, sy);
+        Matrix m = new Matrix();
+        m.setScale(scale / sx, scale / sy, vw / 2f, vh / 2f);
+        textureView.setTransform(m);
+    }
+
+    /** Реальные мегапиксели фото + текущее качество видео. */
+    private void updateCameraInfo() {
+        Size s = cam.getStillSize();
+        float mp = s.getWidth() * (float) s.getHeight() / 1_000_000f;
+        String mpText = mp >= 10f
+                ? String.valueOf(Math.round(mp))
+                : String.format(java.util.Locale.US, "%.1f", mp);
+        mpLabel.setText(getString(R.string.mp_fmt, mpText));
+        btnQuality.setText(qualityLabel(
+                cam.getVideoSizes().get(cam.getVideoSizeIndex())));
+    }
+
+    private void cycleQuality() {
+        if (!cameraReady || cam.isRecording()) {
+            return;
         }
+        int n = cam.getVideoSizes().size();
+        int idx = (cam.getVideoSizeIndex() + 1) % n;
+        cam.setVideoSizeIndex(idx);
+        String label = qualityLabel(cam.getVideoSizes().get(idx));
+        btnQuality.setText(label);
+        Toast.makeText(this, getString(R.string.video_quality_fmt, label),
+                Toast.LENGTH_SHORT).show();
+    }
+
+    private String qualityLabel(Size s) {
+        int h = Math.min(s.getWidth(), s.getHeight());
+        if (h >= 2160) {
+            return "4K";
+        }
+        if (h >= 1440) {
+            return "2K";
+        }
+        return h + "p";
     }
 
     @Override

@@ -34,6 +34,17 @@
         android:paddingTop="28dp"
         android:paddingBottom="8dp">
 
+        <TextView
+            android:id="@+id/mp_label"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical|start"
+            android:paddingStart="14dp"
+            android:textColor="#B3FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
         <ImageView
             android:id="@+id/btn_flash"
             android:layout_width="52dp"
@@ -58,6 +69,18 @@
             android:padding="12dp"
             android:src="@drawable/ic_timer_off"
             android:contentDescription="@string/timer" />
+
+        <TextView
+            android:id="@+id/btn_quality"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical|end"
+            android:paddingEnd="14dp"
+            android:text="1080p"
+            android:textColor="@color/hud_active"
+            android:textSize="14sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <!-- Таймер записи -->

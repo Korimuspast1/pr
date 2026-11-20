@@ -73,6 +73,9 @@ final class CameraController {
     private boolean recording;
     private Size previewSize = new Size(1280, 720);
     private Size videoSize = new Size(1280, 720);
+    private Size stillSize = new Size(1280, 720);
+    private List<Size> videoSizes = new ArrayList<>();
+    private int videoSizeIdx;
     private String videoTmpPath;
 
     CameraController(Context context, Events events) {
@@ -108,6 +111,25 @@ final class CameraController {
         return sensorOrientation;
     }
 
+    Size getStillSize() {
+        return stillSize;
+    }
+
+    List<Size> getVideoSizes() {
+        return videoSizes;
+    }
+
+    int getVideoSizeIndex() {
+        return videoSizeIdx;
+    }
+
+    void setVideoSizeIndex(int idx) {
+        if (idx >= 0 && idx < videoSizes.size()) {
+            videoSizeIdx = idx;
+            videoSize = videoSizes.get(idx);
+        }
+    }
+
     // ── открытие ────────────────────────────────────────────────
 
     void open(boolean frontCamera, SurfaceTexture texture, int viewW, int viewH) {
@@ -141,13 +163,54 @@ final class CameraController {
                 if (prev != null && prev.length > 0) {
                     previewSize = pickSize(prev, viewW, viewH, 1920);
                 }
-                Size[] vid = map.getOutputSizes(MediaRecorder.class);
-                if (vid != null && vid.length > 0) {
-                    videoSize = pickSize(vid, 1280, 720, 1920);
+                // фото — в максимальном разрешении сенсора (реальные МП)
+                Size[] stills = map.getOutputSizes(ImageFormat.JPEG);
+                if (stills != null && stills.length > 0) {
+                    stillSize = stills[0];
+                    for (Size s : stills) {
+                        if ((long) s.getWidth() * s.getHeight()
+                                > (long) stillSize.getWidth() * stillSize.getHeight()) {
+                            stillSize = s;
+                        }
+                    }
                 }
+                // видео — список реально поддерживаемых разрешений
+                Size[] vids = map.getOutputSizes(MediaRecorder.class);
+                videoSizes = new ArrayList<>();
+                if (vids != null) {
+                    int[][] wanted = {{1280, 720}, {1920, 1080},
+                            {2560, 1440}, {3840, 2160}};
+                    for (int[] w : wanted) {
+                        for (Size s : vids) {
+                            if (s.getWidth() == w[0] && s.getHeight() == w[1]) {
+                                videoSizes.add(s);
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (videoSizes.isEmpty()) {
+                    videoSizes.add(new Size(1280, 720));
+                }
+                videoSizeIdx = -1;
+                for (int i = 0; i < videoSizes.size(); i++) {
+                    if (videoSizes.get(i).getWidth() == 1920) {
+                        videoSizeIdx = i;
+                        break;
+                    }
+                }
+                if (videoSizeIdx < 0) {
+                    videoSizeIdx = Math.min(1, videoSizes.size() - 1);
+                }
+                videoSize = videoSizes.get(videoSizeIdx);
+            }
+            if (videoSizes.isEmpty()) {
+                videoSizes.add(new Size(1280, 720));
+                videoSizeIdx = 0;
+                videoSize = videoSizes.get(0);
             }
             imageReader = ImageReader.newInstance(
-                    previewSize.getWidth(), previewSize.getHeight(),
+                    stillSize.getWidth(), stillSize.getHeight(),
                     ImageFormat.JPEG, 2);
             manager.openCamera(cameraId, stateCallback, handler);
         } catch (Exception e) {
@@ -372,17 +435,34 @@ final class CameraController {
                 return;
             }
             try {
-                // превью подогнано под вью точно по пропорциям (aspect-fit)
-                float cropX = viewX / Math.max(1f, viewW);
-                float cropY = viewY / Math.max(1f, viewH);
-                // портрет: сенсор повёрнут на 90°
-                int sx = (int) (sensorRect.left + cropY * sensorRect.width());
-                int sy = (int) (sensorRect.top + (1f - cropX) * sensorRect.height());
+                // превью рисуется center-crop: вью полностью заполнено,
+                // боковые полосы буфера обрезаны — учитываем это при маппинге
+                float bufW = previewSize.getHeight(); // портретный буфер
+                float bufH = previewSize.getWidth();
+                float sx = viewW / bufW;
+                float sy = viewH / bufH;
+                float scale = Math.max(sx, sy);
+                float dispW = bufW * scale;
+                float dispH = bufH * scale;
+                float cropX = (viewX - (viewW - dispW) / 2f) / dispW;
+                float cropY = (viewY - (viewH - dispH) / 2f) / dispH;
+                cropX = Math.max(0f, Math.min(1f, cropX));
+                cropY = Math.max(0f, Math.min(1f, cropY));
+                int mx;
+                int my;
+                if (sensorOrientation == 270) {
+                    mx = sensorRect.left + (int) ((1f - cropY) * sensorRect.width());
+                    my = sensorRect.top + (int) (cropX * sensorRect.height());
+                } else {
+                    mx = sensorRect.left + (int) (cropY * sensorRect.width());
+                    my = sensorRect.top + (int) ((1f - cropX) * sensorRect.height());
+                }
                 if (front) {
-                    sx = sensorRect.left + sensorRect.width() - (sx - sensorRect.left);
+                    mx = sensorRect.left + sensorRect.width()
+                            - (mx - sensorRect.left);
                 }
                 int half = Math.min(sensorRect.width(), sensorRect.height()) / 8;
-                Rect area = new Rect(sx - half, sy - half, sx + half, sy + half);
+                Rect area = new Rect(mx - half, my - half, mx + half, my + half);
                 MeteringRectangle mr = new MeteringRectangle(area,
                         MeteringRectangle.METERING_WEIGHT_MAX);
                 CaptureRequest.Builder b = camera.createCaptureRequest(
@@ -518,7 +598,10 @@ final class CameraController {
                 recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
                 recorder.setVideoSize(videoSize.getWidth(), videoSize.getHeight());
                 recorder.setVideoFrameRate(30);
-                recorder.setVideoEncodingBitRate(10_000_000);
+                int bitRate = (int) Math.min(45_000_000L,
+                        (long) (videoSize.getWidth() * (long) videoSize.getHeight()
+                                * 30 * 0.15));
+                recorder.setVideoEncodingBitRate(bitRate);
                 recorder.setOrientationHint(videoOrientation());
                 recorder.prepare();
                 recorderSurface = recorder.getSurface();
