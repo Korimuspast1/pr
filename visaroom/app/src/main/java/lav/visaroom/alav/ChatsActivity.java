@@ -22,13 +22,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.InputType;
-import android.text.SpannableStringBuilder;
-import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.TextWatcher;
-import android.text.style.ForegroundColorSpan;
-import android.text.style.RelativeSizeSpan;
-import android.text.style.StyleSpan;
 import android.view.Gravity;
 import android.view.Window;
 import android.view.WindowManager;
@@ -108,10 +103,8 @@ public class ChatsActivity extends Activity {
     private TextView twoFaValue;
     private TextView e2eeValue;
     private TextView accountsValue;
-    private TextView[] settingsFolderHeaders;
+    private View[] settingsFolderHeaders;
     private View[] settingsFolderContents;
-    private String[] settingsFolderTitles;
-    private String[] settingsFolderDescriptions;
     private Switch showBioSwitch;
     private Switch showAvatarSwitch;
     private Switch showIdSwitch;
@@ -621,7 +614,7 @@ public class ChatsActivity extends Activity {
     }
 
     private void setupSettingsFolders() {
-        settingsFolderHeaders = new TextView[]{
+        settingsFolderHeaders = new View[]{
                 findViewById(R.id.folder_chats_header),
                 findViewById(R.id.folder_notifications_header),
                 findViewById(R.id.folder_security_header),
@@ -635,27 +628,14 @@ public class ChatsActivity extends Activity {
                 findViewById(R.id.folder_privacy_content),
                 findViewById(R.id.folder_moderation_content),
                 findViewById(R.id.folder_account_content)};
-        settingsFolderTitles = new String[]{
-                getString(R.string.chats), getString(R.string.notifications), getString(R.string.security), getString(R.string.privacy), getString(R.string.moderation), getString(R.string.account)};
-        settingsFolderDescriptions = new String[]{
-                getString(R.string.settings_folder_chats_desc),
-                getString(R.string.settings_folder_notifications_desc),
-                getString(R.string.settings_folder_security_desc),
-                getString(R.string.settings_folder_privacy_desc),
-                getString(R.string.settings_folder_moderation_desc),
-                getString(R.string.settings_folder_account_desc)};
 
         for (int i = 0; i < settingsFolderHeaders.length; i++) {
             final int index = i;
-            TextView header = settingsFolderHeaders[i];
+            View header = settingsFolderHeaders[i];
             View content = settingsFolderContents[i];
             if (header == null || content == null) {
                 continue;
             }
-            header.setTextSize(16);
-            header.setTextColor(getColor(R.color.text_main));
-            header.setPadding(dp(24), dp(12), dp(24), dp(12));
-            header.setLineSpacing(0f, 1.08f);
             setFolderOpen(index, index == 0, false);
             header.setOnClickListener(v -> {
                 boolean openNext = content.getVisibility() != View.VISIBLE;
@@ -680,24 +660,11 @@ public class ChatsActivity extends Activity {
     }
 
     private void setFolderOpen(int index, boolean open, boolean animate) {
-        TextView header = settingsFolderHeaders[index];
+        View header = settingsFolderHeaders[index];
         View content = settingsFolderContents[index];
         if (header == null || content == null) {
             return;
         }
-        SpannableStringBuilder text = new SpannableStringBuilder();
-        text.append(settingsFolderTitles[index]);
-        text.setSpan(new StyleSpan(Typeface.BOLD), 0, text.length(),
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        text.append(open ? "  -" : "  +");
-        int descriptionStart = text.length() + 1;
-        text.append("\n").append(settingsFolderDescriptions[index]);
-        text.setSpan(new RelativeSizeSpan(0.78f), descriptionStart, text.length(),
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        text.setSpan(new ForegroundColorSpan(getColor(R.color.text_secondary)),
-                descriptionStart, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        header.setText(text);
-
         content.animate().cancel();
         if (open) {
             content.setVisibility(View.VISIBLE);
