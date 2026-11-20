@@ -3456,14 +3456,6 @@ public class DirectChatActivity extends Activity {
         return out;
     }
 
-    /** Цвет с подменённой альфой (0-255) — для вспомогательного текста на primary-пузырях. */
-    private static int withAlpha(int color, int alpha) {
-        return android.graphics.Color.argb(alpha,
-                android.graphics.Color.red(color),
-                android.graphics.Color.green(color),
-                android.graphics.Color.blue(color));
-    }
-
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
