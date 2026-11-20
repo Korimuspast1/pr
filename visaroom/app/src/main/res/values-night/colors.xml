@@ -2,6 +2,7 @@
 <!-- Material 3 Expressive × Telegram Dark (тёмно-синяя тема Telegram) -->
 <resources>
     <color name="m3_primary">#FF71A9E0</color>
+    <color name="ic_launcher_bg">#FF17212B</color>
     <color name="m3_on_primary">#FF00315A</color>
     <color name="m3_primary_container">#FF2B5278</color>
     <color name="m3_on_primary_container">#FFCFE5FC</color>

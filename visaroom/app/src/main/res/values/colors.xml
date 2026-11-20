@@ -3,6 +3,7 @@
 <resources>
     <!-- акцент -->
     <color name="m3_primary">#FF3390EC</color>
+    <color name="ic_launcher_bg">#FF3390EC</color>
     <color name="m3_on_primary">#FFFFFFFF</color>
     <color name="m3_primary_container">#FFCFE5FC</color>
     <color name="m3_on_primary_container">#FF001D33</color>
