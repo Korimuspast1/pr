@@ -1,0 +1,103 @@
+name: Release Kingdom Crash APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "arena/**"
+      - "main"
+    paths:
+      - "game/kingdom-crash/www/**"
+      - "game/kingdom-crash/android/**"
+      - "game/kingdom-crash/tools/**"
+      - ".github/workflows/kingdom-release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Game logic tests
+        working-directory: game/kingdom-crash
+        run: |
+          node tools/test_logic.js
+          node tools/sim.js www/js 6 6000
+
+      - name: UI tests (jsdom)
+        working-directory: game/kingdom-crash
+        run: |
+          mkdir -p /tmp/kc-tools && cd /tmp/kc-tools && npm init -y >/dev/null && npm install jsdom@24 >/dev/null
+          cd "$GITHUB_WORKSPACE/game/kingdom-crash"
+          KC_TOOLS=/tmp/kc-tools node tools/test_ui.js
+          KC_TOOLS=/tmp/kc-tools node tools/test_ui2.js
+
+      - name: Build signed APK
+        working-directory: game/kingdom-crash
+        run: |
+          set -o pipefail
+          KC_KEYSTORE="$GITHUB_WORKSPACE/activity-launcher/keystore/release.p12" \
+          KC_KEY_ALIAS=release \
+          KC_KEYSTORE_PASS=glasslauncher \
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0" \
+          ANDROID_JAR="$ANDROID_HOME/platforms/android-34/android.jar" \
+          sh android/build.sh 2>&1 | tee "$GITHUB_WORKSPACE/build-output.txt"
+
+      - name: Commit build log on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p build-transfer
+          tail -n 300 build-output.txt > build-transfer/kingdom-build-log.txt || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f build-transfer/kingdom-build-log.txt
+          git diff --cached --quiet || git commit -m "CI: kingdom build failure log [skip ci]"
+          for i in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}" && break || sleep 3
+          done
+
+      - name: Verify APK signature
+        run: |
+          set -euo pipefail
+          APK="$(find game/kingdom-crash/release -name '*.apk' | head -n 1)"
+          test -n "$APK"
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs "$APK" | head -n 5
+          sha256sum "$APK"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VER=$(sed -n "s/.*GAME_VERSION = '\\([0-9.]*\\)'.*/\\1/p" game/kingdom-crash/www/js/data.js | head -1)
+          cp "$APK_PATH" kingdomcrash.apk
+          TAG="kingdomcrash-v$(date +%Y%m%d)-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" kingdomcrash.apk \
+            --title "Kingdom Crash $VER ($TAG)" \
+            --notes "Kingdom Crash $VER: разработки (дерево технологий), ярмарка, форсированный марш. Подписано ключом лаунчера." \
+            --latest=false
+          echo "APK: https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/kingdomcrash.apk"

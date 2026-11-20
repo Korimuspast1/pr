@@ -1,0 +1,6 @@
+# ключ подписи приложения — никогда не выкладывать в открытый доступ
+android/keystore/
+# результаты сборки
+release/*.apk
+release/*.zip
+node_modules/
