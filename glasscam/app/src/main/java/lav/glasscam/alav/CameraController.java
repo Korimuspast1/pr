@@ -283,8 +283,8 @@ final class CameraController {
     private void startRepeating() {
         try {
             int template = currentRecorderOn
-                    ? CaptureRequest.TEMPLATE_RECORD
-                    : CaptureRequest.TEMPLATE_PREVIEW;
+                    ? CameraDevice.TEMPLATE_RECORD
+                    : CameraDevice.TEMPLATE_PREVIEW;
             CaptureRequest.Builder b = camera.createCaptureRequest(template);
             b.addTarget(previewSurface);
             if (currentRecorderOn && recorderSurface != null) {
@@ -386,7 +386,7 @@ final class CameraController {
                 MeteringRectangle mr = new MeteringRectangle(area,
                         MeteringRectangle.METERING_WEIGHT_MAX);
                 CaptureRequest.Builder b = camera.createCaptureRequest(
-                        CaptureRequest.TEMPLATE_PREVIEW);
+                        CameraDevice.TEMPLATE_PREVIEW);
                 b.addTarget(previewSurface);
                 if (imageReader != null && !currentRecorderOn) {
                     b.addTarget(imageReader.getSurface());
@@ -413,8 +413,8 @@ final class CameraController {
             }
             try {
                 int template = currentRecorderOn
-                        ? CaptureRequest.TEMPLATE_RECORD
-                        : CaptureRequest.TEMPLATE_PREVIEW;
+                        ? CameraDevice.TEMPLATE_RECORD
+                        : CameraDevice.TEMPLATE_PREVIEW;
                 CaptureRequest.Builder b = camera.createCaptureRequest(template);
                 b.addTarget(previewSurface);
                 if (currentRecorderOn && recorderSurface != null) {
@@ -450,7 +450,7 @@ final class CameraController {
                     startRepeating();
                 }, handler);
                 CaptureRequest.Builder b = camera.createCaptureRequest(
-                        CaptureRequest.TEMPLATE_STILL_CAPTURE);
+                        CameraDevice.TEMPLATE_STILL_CAPTURE);
                 b.addTarget(imageReader.getSurface());
                 applyCommon(b);
                 b.set(CaptureRequest.CONTROL_AF_MODE,
