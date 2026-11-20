@@ -126,19 +126,23 @@ def main():
     # settings
     tap_any("Settings", "Настройки")
     shot("3-settings")
-    sh("adb shell input swipe 500 1600 500 400 300")
+    sh("adb shell input swipe 300 1900 300 700 500")
     time.sleep(1.5)
-    shot("4-settings-bottom")
-    tap_any("Dark", "Тёмная")
-    time.sleep(2)
-    shot("5-settings-dark")
+    shot("4-settings-scrolled")
+    tap_any("Dark", "Тёмная")  # может быть выше/ниже видимой зоны
+    time.sleep(1.5)
+    shot("5-settings-more")
     back_in_app()
-    shot("6-home-dark")
-    # rules
+    shot("6-home")
+    # прокрутить главную вниз, чтобы достать карточки «Правила» и «Чёрный список»
+    sh("adb shell input swipe 300 1900 300 800 500")
+    time.sleep(1.5)
+    shot("6b-home-scrolled")
     tap_any("Rules", "Правила")
     shot("7-rules")
     back_in_app()
-    # blocked list
+    sh("adb shell input swipe 300 1900 300 800 500")
+    time.sleep(1.5)
     tap_any("Blocked", "Заблокированные")
     shot("8-blocked")
     back_in_app()
