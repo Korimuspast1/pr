@@ -1,0 +1,134 @@
+name: Build visaroom APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "arena/**"
+      - "main"
+    paths:
+      - "visaroom/**"
+      - ".github/workflows/build-apk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: visaroom
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Install Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0"
+
+      # Signing happens in CI only when both keystore secrets exist
+      # (VISAROOM_KEYSTORE_B64, VISAROOM_KEYSTORE_PASSWORD). Secrets are
+      # never printed and the keystore is never uploaded anywhere —
+      # on a public repository artifacts and logs are public too.
+      - name: Prepare release keystore (if secrets are set)
+        env:
+          KEYSTORE_B64: ${{ secrets.VISAROOM_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.VISAROOM_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "${KEYSTORE_B64:-}" ] && [ -n "${KEYSTORE_PASSWORD:-}" ]; then
+            KS_PATH="$RUNNER_TEMP/visaroom-release.p12"
+            echo "$KEYSTORE_B64" | base64 -d > "$KS_PATH"
+            echo "VISAROOM_KEYSTORE_PATH=$KS_PATH" >> "$GITHUB_ENV"
+            echo "VISAROOM_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "VISAROOM_KEY_ALIAS=visaroom" >> "$GITHUB_ENV"
+            echo "HAS_SIGNING=true" >> "$GITHUB_ENV"
+          else
+            echo "HAS_SIGNING=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build release APK (R8 obfuscated)
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee "$GITHUB_WORKSPACE/build-output.txt"
+
+      # CI logs are the only place compile errors appear; on failure keep
+      # the tail of the log in git so it can be read outside Actions.
+      - name: Commit build log on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p build-transfer
+          tail -n 300 build-output.txt > build-transfer/build-log.txt || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f build-transfer/build-log.txt
+          git diff --cached --quiet || git commit -m "CI: build failure log [skip ci]"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}" || true
+
+      - name: Check APK contents
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+          "$ANDROID_HOME/build-tools/34.0.0/aapt2" dump badging "$APK" | head -n 3
+          unzip -p "$APK" classes.dex > /tmp/classes.dex
+          if strings /tmp/classes.dex | grep -F "AIza" >/dev/null; then
+            echo "Plain API key found in DEX" >&2
+            exit 1
+          fi
+          echo "DEX check: no plain API key"
+          sha256sum "$APK"
+
+      - name: Verify signature
+        if: env.HAS_SIGNING == 'true'
+        run: |
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs "$APK_PATH"
+          cp "$APK_PATH" "$RUNNER_TEMP/visaroom-1.0-release.apk"
+
+      - name: Upload signed APK
+        if: env.HAS_SIGNING == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visaroom-apk
+          path: ${{ runner.temp }}/visaroom-1.0-release.apk
+          retention-days: 90
+
+      # Without secrets the APK is released unsigned (not installable) and
+      # committed to build-transfer/ so it can be signed with the owner's
+      # key outside CI. An unsigned APK contains nothing secret.
+      - name: Commit unsigned APK for external signing
+        if: env.HAS_SIGNING != 'true'
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          mkdir -p build-transfer
+          cp "visaroom/$APK_PATH" build-transfer/app-release-unsigned.apk
+          {
+            sha256sum build-transfer/app-release-unsigned.apk
+            echo "source: $GITHUB_SHA"
+          } > build-transfer/SHA256.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f build-transfer/app-release-unsigned.apk build-transfer/SHA256.txt
+          if git diff --cached --quiet; then
+            echo "Unsigned APK unchanged"
+          else
+            git commit -m "CI: unsigned release build for signing [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

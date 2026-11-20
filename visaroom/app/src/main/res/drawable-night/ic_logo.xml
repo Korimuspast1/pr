@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Custom visaroom logo. Original vector paths, no icon library. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M10,0 L38,0 A10,10 0,0 1,48 10 L48,38 A10,10 0,0 1,38 48 L10,48 A10,10 0,0 1,0 38 L0,10 A10,10 0,0 1,10 0 Z" />
+    <path
+        android:pathData="M13,14 L24,35 L35,14"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="5"
+        android:strokeLineCap="square" />
+</vector>

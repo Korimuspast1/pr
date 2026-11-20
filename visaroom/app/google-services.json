@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "76010286017",
+    "project_id": "lool-4d49c",
+    "storage_bucket": "lool-4d49c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:76010286017:android:0d773de43b74421f931d40",
+        "android_client_info": {
+          "package_name": "lav.visaroom.alav"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1MTF9e3x59VoSiFvuRtkx4e3D4hpyTSA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
