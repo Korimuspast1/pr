@@ -99,27 +99,44 @@ public class NotifSaverService extends NotificationListenerService {
 
         boolean any = false;
         // Полная история из свёрнутого уведомления (MessagingStyle).
-        Notification.MessagingStyle style = null;
+        // EXTRA_MESSAGES — массив Bundle с ключами AOSP: "text", "time",
+        // "sender" (CharSequence, legacy) и "sender_person" (Bundle c "name").
+        android.os.Parcelable[] arr;
         try {
-            style = Notification.MessagingStyle
-                    .extractMessagingStyleFromNotification(n);
+            arr = ex.getParcelableArray(Notification.EXTRA_MESSAGES);
         } catch (RuntimeException e) {
-            style = null;
+            arr = null;
         }
-        if (style != null && style.getMessages() != null
-                && !style.getMessages().isEmpty()) {
-            for (Notification.MessagingStyle.Message m : style.getMessages()) {
-                if (m == null || m.getText() == null
-                        || m.getText().length() == 0) {
+        if (arr != null && arr.length > 0) {
+            for (android.os.Parcelable p : arr) {
+                if (!(p instanceof Bundle)) {
                     continue;
                 }
-                String sender = m.getSenderPerson() != null
-                        && m.getSenderPerson().getName() != null
-                        ? m.getSenderPerson().getName().toString()
-                        : (title.length() > 0 ? title : convo);
-                long ts = m.getTimestamp() > 0
-                        ? m.getTimestamp() : sbn.getPostTime();
-                String body = m.getText().toString();
+                Bundle mb = (Bundle) p;
+                CharSequence text = mb.getCharSequence("text");
+                if (text == null || text.length() == 0) {
+                    continue;
+                }
+                String sender = null;
+                CharSequence legacySender = mb.getCharSequence("sender");
+                if (legacySender != null && legacySender.length() > 0) {
+                    sender = legacySender.toString();
+                }
+                Object person = mb.get("sender_person");
+                if (sender == null && person instanceof Bundle) {
+                    CharSequence pn = ((Bundle) person).getCharSequence("name");
+                    if (pn != null && pn.length() > 0) {
+                        sender = pn.toString();
+                    }
+                }
+                if (sender == null || sender.length() == 0) {
+                    sender = title.length() > 0 ? title : convo;
+                }
+                long ts = mb.getLong("time", 0L);
+                if (ts <= 0) {
+                    ts = sbn.getPostTime();
+                }
+                String body = text.toString();
                 if (DELETED_MARKER.matcher(body).find()) {
                     Db.get(this).markLastDeleted(pkg, convo);
                 } else {
