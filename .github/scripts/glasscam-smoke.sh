@@ -54,7 +54,14 @@ shot "glasscam-photo"
 echo "== check photo in gallery =="
 PHOTOS=$(adb shell "ls /sdcard/Pictures/GlassCam/ 2>/dev/null" | tr -d '\r')
 echo "Pictures/GlassCam: $PHOTOS"
-echo "$PHOTOS" | grep -q "\.jpg" || { echo "SMOKE_FAILED: no photo saved"; exit 1; }
+if ! echo "$PHOTOS" | grep -q "\.jpg"; then
+  echo "== diagnostics =="
+  adb shell "content query --uri content://media/external/images/media --projection _display_name --where \"_display_name LIKE 'GlassCam%'\" 2>/dev/null" | head -5 || true
+  adb logcat -d | grep -iE "glasscam|CameraController|CameraDevice|ImageReader" | tail -30 || true
+  adb logcat -d | grep -iE " E /|Exception" | tail -20 || true
+  echo "SMOKE_FAILED: no photo saved"
+  exit 1
+fi
 
 echo "== switch to front camera =="
 # кнопка смены камеры: правее шторки

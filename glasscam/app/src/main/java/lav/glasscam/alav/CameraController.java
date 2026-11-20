@@ -289,9 +289,9 @@ final class CameraController {
             b.addTarget(previewSurface);
             if (currentRecorderOn && recorderSurface != null) {
                 b.addTarget(recorderSurface);
-            } else if (imageReader != null) {
-                b.addTarget(imageReader.getSurface());
             }
+            // ImageReader сюда НЕ добавляем: JPEG только для одиночного кадра,
+            // иначе HAL кодирует JPEG на каждый кадр превью и всё душится.
             applyCommon(b);
             session.setRepeatingRequest(b.build(), null, handler);
         } catch (Exception e) {
@@ -388,9 +388,6 @@ final class CameraController {
                 CaptureRequest.Builder b = camera.createCaptureRequest(
                         CameraDevice.TEMPLATE_PREVIEW);
                 b.addTarget(previewSurface);
-                if (imageReader != null && !currentRecorderOn) {
-                    b.addTarget(imageReader.getSurface());
-                }
                 applyCommon(b);
                 b.set(CaptureRequest.CONTROL_AF_REGIONS,
                         new MeteringRectangle[]{mr});
@@ -419,8 +416,6 @@ final class CameraController {
                 b.addTarget(previewSurface);
                 if (currentRecorderOn && recorderSurface != null) {
                     b.addTarget(recorderSurface);
-                } else if (imageReader != null) {
-                    b.addTarget(imageReader.getSurface());
                 }
                 applyCommon(b);
                 session.setRepeatingRequest(b.build(), null, handler);

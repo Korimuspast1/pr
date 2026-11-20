@@ -73,7 +73,7 @@ jobs:
           disable-spellchecker: true
           script: set -o pipefail; bash .github/scripts/glasscam-smoke.sh ${{ matrix.api-level }} | tee -a "$GITHUB_WORKSPACE/glasscam-smoke-api${{ matrix.api-level }}.txt"
 
-      - name: Commit smoke log
+      - name: Commit smoke log and screenshots
         if: always()
         continue-on-error: true
         run: |
@@ -85,14 +85,33 @@ jobs:
           else
             echo "No smoke log was produced." > "$DST"
           fi
+          # Скриншоты из base64-маркеров лога → glasscam/screenshots/*.png
+          mkdir -p glasscam/screenshots
+          python3 - "$DST" <<'PY'
+          import base64, re, sys, os
+          log = open(sys.argv[1], errors="ignore").read()
+          for name in re.findall(r'SHOTB64_BEGIN:([\w-]+)', log):
+              m = re.search(rf'SHOTB64_BEGIN:{name}\n([A-Za-z0-9+/=\s]+?)\n?SHOTB64_END:{name}', log)
+              if not m:
+                  continue
+              try:
+                  data = base64.b64decode(re.sub(r'\s', '', m.group(1)))
+              except Exception:
+                  continue
+              if data[:8] == b'\x89PNG\r\n\x1a\n':
+                  out = f'glasscam/screenshots/{name}.png'
+                  open(out, 'wb').write(data)
+                  print('saved', out, len(data))
+          PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f "$DST"
+          git add -f glasscam/screenshots/ 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "Smoke log unchanged"
             exit 0
           fi
-          git commit -m "CI: glasscam smoke API ${{ matrix.api-level }} log [skip ci]"
+          git commit -m "CI: glasscam smoke API ${{ matrix.api-level }} log + screenshots [skip ci]"
           for i in 1 2 3 4; do
             git pull --rebase origin "${GITHUB_REF_NAME}" || true
             git push origin "HEAD:${GITHUB_REF_NAME}" && break || sleep 3
