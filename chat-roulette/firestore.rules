@@ -1,0 +1,38 @@
+rules_version = '2';
+// Правила Firestore для Glass Roulette.
+// Загрузить: Firebase Console → Firestore Database → Правила → вставить → Опубликовать.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    // Очередь поиска: читать могут все вошедшие (нужно для подбора),
+    // писать — только владелец своей записи.
+    match /queue/{uid} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Комнаты звонков: создаёт звонящий, читают/меняют только участники.
+    match /rooms/{roomId} {
+      allow create: if signedIn() && request.resource.data.caller == request.auth.uid;
+      allow read, update, delete: if signedIn()
+          && (resource.data.caller == request.auth.uid || resource.data.callee == request.auth.uid);
+
+      match /callerIce/{doc} { allow read, write: if signedIn(); }
+      match /calleeIce/{doc} { allow read, write: if signedIn(); }
+    }
+
+    // Профили-присутствие (онлайн-счётчик): читают все, пишет владелец.
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Жалобы: создавать может любой вошедший, читать — никто (только в консоли).
+    match /reports/{doc} {
+      allow create: if signedIn();
+      allow read, update, delete: if false;
+    }
+  }
+}
