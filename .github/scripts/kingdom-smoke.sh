@@ -60,13 +60,13 @@ for i in $(seq 1 10); do
 done
 shot "kingdom-menu2"
 # «НОВАЯ ИГРА» — большая кнопка в нижней части меню
-adb shell input tap $((W/2)) $((H*71/100))
+adb shell input tap $((W/2)) $((H*68/100))
 sleep 3
 shot "kingdom-create"
 
 echo "== start =="
 # «НАЧАТЬ ИГРУ» — внизу экрана создания
-adb shell input tap $((W/2)) $((H*88/100))
+adb shell input tap $((W/2)) $((H*84/100))
 sleep 14
 shot "kingdom-game"
 
