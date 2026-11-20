@@ -49,6 +49,7 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
@@ -77,22 +78,6 @@ import java.util.Locale
 
 // ════════════════════════════════════════════════════════ каталоги
 
-data class Interest(val key: String, val en: String, val ru: String, val emoji: String)
-
-val INTERESTS = listOf(
-    Interest("music", "Music", "Музыка", "🎵"),
-    Interest("movies", "Movies", "Фильмы", "🎬"),
-    Interest("games", "Games", "Игры", "🎮"),
-    Interest("sport", "Sport", "Спорт", "⚽"),
-    Interest("travel", "Travel", "Путешествия", "✈️"),
-    Interest("tech", "Tech", "Технологии", "💻"),
-    Interest("art", "Art", "Искусство", "🎨"),
-    Interest("food", "Food", "Еда", "🍕"),
-    Interest("books", "Books", "Книги", "📚"),
-    Interest("anime", "Anime", "Аниме", "🌸"),
-    Interest("memes", "Memes", "Мемы", "😂"),
-    Interest("dance", "Dance", "Танцы", "💃"),
-)
 
 val LANGS = listOf("ru", "en", "de", "fr", "es", "pt", "it", "tr", "uk", "pl", "ar", "ja")
 
@@ -140,8 +125,6 @@ fun GateScreen(onAgree: () -> Unit, onRules: () -> Unit, onExit: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.align(Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
                     Text("Glass Roulette", color = g.text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(8.dp))
-                    ProBadge()
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -191,10 +174,8 @@ fun HomeScreen(vm: AppViewModel, onFind: () -> Unit) {
             GlassTopBar(
                 haze,
                 title = "Glass Roulette",
-                subtitle = if (vm.online >= 0) tr("online: ", "онлайн: ") + vm.online
-                else tr("connecting…", "подключение…"),
-                pro = true,
             ) {
+                if (Store.bgMode == "gta") GtaBadge()
                 GlassIconButton(Icons.Rounded.Settings, tr("Settings", "Настройки")) { vm.screen = Screen.SETTINGS }
             }
         },
@@ -215,12 +196,6 @@ fun HomeScreen(vm: AppViewModel, onFind: () -> Unit) {
                     ) {
                         Icon(Icons.Rounded.Videocam, null, tint = g.accent, modifier = Modifier.size(34.dp))
                     }
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        tr("Video · Audio · Chat · E2E AES-256", "Видео · Аудио · Чат · E2E AES-256"),
-                        color = g.textDim, fontSize = 13.sp,
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                    )
                     Spacer(Modifier.height(14.dp))
                     GlassButton(
                         tr("Find someone", "Найти собеседника"),
@@ -277,23 +252,6 @@ fun HomeScreen(vm: AppViewModel, onFind: () -> Unit) {
                 }
             }
 
-            // ── интересы ──
-            SectionTitle(tr("Interests (better matches)", "Интересы (точнее подбор)"))
-            GlassCard {
-                Row(Modifier.horizontalScroll(rememberScrollState())) {
-                    val mine = Store.interestsSet()
-                    INTERESTS.forEachIndexed { i, it ->
-                        if (i > 0) Spacer(Modifier.width(6.dp))
-                        val sel = mine.contains(it.key)
-                        GlassChip(it.emoji + " " + tr(it.en, it.ru), sel) {
-                            val s = mine.toMutableSet()
-                            if (sel) s.remove(it.key) else s.add(it.key)
-                            Store.interests = s.joinToString(",")
-                        }
-                    }
-                }
-            }
-
             // ── правила и блокировки ──
             Spacer(Modifier.height(14.dp))
             Row {
@@ -334,6 +292,27 @@ fun HomeScreen(vm: AppViewModel, onFind: () -> Unit) {
             onPick = { Store.countryFilter = it; countryDialog = false },
             onDismiss = { countryDialog = false },
         )
+    }
+}
+
+/** Мини-бейдж «GTA VI» в топ-баре, когда выбран стиль GTA. */
+@Composable
+fun GtaBadge() {
+    Row(
+        Modifier
+            .padding(end = 8.dp)
+            .clip(CircleShape)
+            .background(
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    listOf(Color(0xFF2DE2FF), Color(0xFFFF3D7F)),
+                ),
+            )
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.Star, null, tint = Color.White, modifier = Modifier.size(12.dp))
+        Spacer(Modifier.width(4.dp))
+        Text("GTA VI", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
     }
 }
 
@@ -396,7 +375,6 @@ fun SettingsScreen(vm: AppViewModel) {
                 title = tr("Settings", "Настройки"),
                 onBack = { vm.screen = Screen.HOME },
                 backDesc = tr("Back", "Назад"),
-                pro = true,
             )
         },
     ) { pad ->
@@ -499,7 +477,55 @@ fun SettingsScreen(vm: AppViewModel) {
                 GlassSlider(tr("Font scale", "Масштаб шрифта"), Store.fontScale, 0.8f..1.3f, { "${(it * 100).toInt()}%" }) { Store.fontScale = it }
                 GlassSlider(tr("Glass shine", "Блик стекла"), Store.refraction, 0f..1f, { "${(it * 100).toInt()}%" }) { Store.refraction = it }
                 Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Star, null, tint = g.accent, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(tr("Background style", "Стиль фона"), color = g.text, fontSize = 14.sp)
+                    Spacer(Modifier.width(10.dp))
+                    Row(Modifier.horizontalScroll(rememberScrollState())) {
+                        GlassChip(tr("Blobs", "Пятна"), Store.bgMode == "blobs") { Store.bgMode = "blobs" }
+                        Spacer(Modifier.width(6.dp))
+                        GlassChip("GTA VI", Store.bgMode == "gta") {
+                            Store.bgMode = "gta"
+                            if (Store.accent >= 0) Store.accent = 2
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        GlassChip(tr("Gradient", "Градиент"), Store.bgMode == "gradient") { Store.bgMode = "gradient" }
+                        Spacer(Modifier.width(6.dp))
+                        GlassChip(tr("Solid", "Однотонный"), Store.bgMode == "solid") { Store.bgMode = "solid" }
+                    }
+                }
                 SwitchRow(Icons.Rounded.Videocam, tr("Animated background", "Анимированный фон"), Store.animatedBg) { Store.animatedBg = it }
+            }
+
+            // ── эффект касания ──
+            SectionTitle(tr("Touch effect", "Эффект касания"))
+            GlassCard {
+                SwitchRow(Icons.Rounded.Star, tr("Ripple wave with glow", "Волна с подсветкой"), Store.touchRipples) { Store.touchRipples = it }
+                SwitchRow(Icons.Rounded.VolumeUp, tr("Touch sound", "Звук касания"), Store.touchSound) { Store.touchSound = it }
+                SwitchRow(Icons.Rounded.Timer, tr("Touch vibration", "Вибрация касания"), Store.touchVibrate) { Store.touchVibrate = it }
+            }
+
+            // ── для разработчика ──
+            SectionTitle(tr("For developers", "Для разработчика"))
+            GlassCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Person, null, tint = g.accent, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Test bot call", "Тестовый звонок с ботом"), color = g.text, fontSize = 14.sp)
+                        Text(
+                            tr("Instantly connects to an automated partner: shows video, answers in chat, simulates typing and reactions.",
+                               "Мгновенно соединяет с автоматическим собеседником: показывает видео, отвечает в чате, печатает и шлёт реакции."),
+                            color = g.textDim, fontSize = 12.sp,
+                        )
+                    }
+                    Switch(
+                        checked = Store.devBot,
+                        onCheckedChange = { Store.devBot = it },
+                        colors = SwitchDefaults.colors(checkedTrackColor = g.accent, checkedThumbColor = Color.White),
+                    )
+                }
             }
 
             // ── язык ──
@@ -535,11 +561,10 @@ fun SettingsScreen(vm: AppViewModel) {
                     Column(Modifier.weight(1f)) {
                         Text("Glass Roulette " + BuildConfig.VERSION_NAME, color = g.text, fontSize = 14.sp)
                         Text(
-                            tr("PRO ∞ unlocked forever", "PRO ∞ разблокирован навсегда"),
+                            tr("All features are free forever", "Все функции бесплатны навсегда"),
                             color = g.textDim, fontSize = 12.sp,
                         )
                     }
-                    ProBadge()
                 }
             }
             Spacer(Modifier.height(24.dp))

@@ -101,8 +101,12 @@ def tap_any(*texts):
 
 def crashed():
     log = sh("adb logcat -d -b crash")
-    if "FATAL EXCEPTION" in log or "AndroidRuntime" in log:
-        return log
+    if "FATAL EXCEPTION" not in log:
+        return None
+    # реагируем только на краши нашего пакета (в эмуляторе иногда падают системные приложения)
+    for block in log.split("FATAL EXCEPTION")[1:]:
+        if PKG in block[:2000]:
+            return "FATAL EXCEPTION" + block[:30000]
     return None
 
 

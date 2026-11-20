@@ -3,6 +3,8 @@ package m.chatrulet.m
 import android.app.Application
 import android.content.Context
 import android.media.AudioManager
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -88,6 +90,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var toast by mutableStateOf<String?>(null)
     var callId by mutableIntStateOf(0)
         private set
+    /** true, когда текущий звонок — тестовый бот. */
+    val isBotCallUi: Boolean get() = isBotCall
 
     // ── внутреннее ──
     private var roomRef: DocumentReference? = null
@@ -113,6 +117,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var timeoutJob: Job? = null
     private var typingJob: Job? = null
     private var lastTypingSent = 0L
+    private var isBotCall = false
+    private val botHandler = Handler(Looper.getMainLooper())
+    private var botMsgIdx = 0
 
     init {
         engine.events = object : RtcEngine.Events {
@@ -183,6 +190,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ═════════════════════════════════════════════ поиск собеседника
 
     fun startSearch() {
+        if (Store.devBot) {
+            startBotCall()
+            return
+        }
         if (uid.isEmpty()) {
             signIn()
             toast = tr("Connecting to server…", "Подключаемся к серверу…")
@@ -284,6 +295,105 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return Store.interestsSet().intersect(theirs).size
     }
 
+
+    // ═══════════════════════════════════════ тестовый бот (dev-режим)
+    // Мгновенный звонок с автоматическим «собеседником» прямо в этом приложении:
+    // второй «пир» в другом процессе не нужен — бот ставит себя в очередь с isBot=true
+    // и отвечает сам себе через DataChannel, как настоящий партнёр.
+
+    private val botLines = listOf(
+        "Привет! 👋" to "Hi there! 👋",
+        "Я тестовый бот — проверяю, что видео, чат и шифрование работают 🔒" to
+            "I'm a test bot — checking video, chat and encryption 🔒",
+        "Включи камеру, помаши рукой 🙂" to "Turn your camera on and wave 🙂",
+        "Попробуй блюр, реакции и смену камеры!" to "Try blur, reactions and camera switch!",
+    )
+
+    private fun startBotCall() {
+        if (uid.isEmpty()) {
+            signIn()
+            toast = tr("Connecting to server…", "Подключаемся к серверу…")
+        }
+        if (phase == Phase.SEARCHING || phase == Phase.CONNECTING || phase == Phase.IN_CALL) return
+        cleanupCall()
+        phase = Phase.SEARCHING
+        keyPair = E2E.keyPair()
+        viewModelScope.launch {
+            try {
+                val ref = db.collection("queue").document(uid)
+                myQueueRef = ref
+                ref.set(queuePayload() + ("isBot" to true)).await()
+            } catch (e: Throwable) {
+                phase = Phase.IDLE
+                toast = tr("Search failed — check Firestore rules", "Поиск не удался — проверь правила Firestore")
+                return@launch
+            }
+        }
+        searchJob = viewModelScope.launch {
+            delay(900)
+            if (phase != Phase.SEARCHING) return@launch
+            try {
+                val cutoff = Timestamp(Date(System.currentTimeMillis() - 90_000))
+                val qs = db.collection("queue")
+                    .whereGreaterThan("ts", cutoff)
+                    .orderBy("ts", Query.Direction.ASCENDING)
+                    .limit(40)
+                    .get()
+                    .await()
+                val cand = qs.documents.firstOrNull { it.id != uid && matches(it) && it.getBoolean("isBot") != true }
+                if (cand != null && tryMatch(cand)) return@launch
+            } catch (e: Throwable) {
+            }
+            // партнёра-человека нет — звоним сами себе (бот)
+            try {
+                val me = db.collection("queue").document(uid).get().await()
+                if (phase == Phase.SEARCHING && me.exists()) tryMatch(me)
+            } catch (e: Throwable) {
+                toast = tr("Bot failed to start", "Не удалось запустить бота")
+                phase = Phase.IDLE
+            }
+        }
+    }
+
+    /** Реакции бота после установки соединения: печатает, отвечает, шлёт эмодзи. */
+    private fun startBotBehavior() {
+        botMsgIdx = 0
+        fun post(delayMs: Long, block: () -> Unit) {
+            botHandler.postDelayed({ if (isBotCall && phase == Phase.IN_CALL) block() }, delayMs)
+        }
+        post(1500) { peerTyping = true }
+        post(3200) {
+            peerTyping = false
+            botSay(botLines[0])
+        }
+        post(6500) {
+            reaction = "👍"
+        }
+        post(9000) { peerTyping = true }
+        post(11500) {
+            peerTyping = false
+            botSay(botLines[1])
+        }
+        post(16000) { peerTyping = true }
+        post(18500) {
+            peerTyping = false
+            botSay(botLines[2])
+        }
+        post(22000) {
+            reaction = "🔥"
+        }
+        post(25000) { peerTyping = true }
+        post(27500) {
+            peerTyping = false
+            botSay(botLines[3])
+        }
+    }
+
+    private fun botSay(pair: Pair<String, String>) {
+        messages.add(ChatMsg(tr(pair.second, pair.first), mine = false))
+        if (!chatOpen) unread++
+    }
+
     // ═════════════════════════════════════════════ создание комнаты (звонящий)
 
     private suspend fun tryMatch(cand: DocumentSnapshot): Boolean {
@@ -327,6 +437,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 null
             }.await()
             myQueueRef = null
+            if (cand.id == uid) isBotCall = true
             becomeCaller(ref, calleeMeta, cand.getString("pub"))
             true
         } catch (e: Throwable) {
@@ -415,6 +526,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch { try { qref.delete().await() } catch (e: Throwable) {} }
         }
         isCaller = false
+        if (doc.getString("caller") == uid) isBotCall = true
         roomRef = doc.reference
         roomId = doc.id
         peerPub = doc.getString("callerKey")
@@ -609,6 +721,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         phase = Phase.IN_CALL
+        if (isBotCall) startBotBehavior()
     }
 
     private fun onRtcDisconnected(reason: String) {
@@ -691,6 +804,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         answerApplied = false
         roomId = null
         roomRef = null
+        isBotCall = false
         callSeconds = 0
         quality = 0
         peerTyping = false
@@ -773,6 +887,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (sendDc(JSONObject().put("t", "msg").put("e", E2E.encrypt(k, t)))) {
             messages.add(ChatMsg(t, mine = true))
+            if (isBotCall) {
+                botHandler.postDelayed({ if (isBotCall && phase == Phase.IN_CALL) peerTyping = true }, 900)
+                botHandler.postDelayed({
+                    if (isBotCall && phase == Phase.IN_CALL) {
+                        peerTyping = false
+                        botSay("Принял: «" + t.take(40) + "» ✅" to "Got it: \"" + t.take(40) + "\" ✅")
+                    }
+                }, 2400)
+            }
         } else {
             toast = tr("Channel is not ready yet", "Канал ещё не готов")
         }
@@ -827,7 +950,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun blockPeer() {
         val p = peer
-        if (p.uid.isBlank()) return
+        if (p.uid.isBlank() || (isBotCall && p.uid == uid)) {
+            next()
+            return
+        }
         Store.block(p.uid, p.nick.ifBlank { p.country })
         viewModelScope.launch {
             try {

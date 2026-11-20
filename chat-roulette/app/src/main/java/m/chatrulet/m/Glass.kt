@@ -1,11 +1,17 @@
 package m.chatrulet.m
 
 import android.os.Build
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -67,6 +73,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.input.pointer.changedToDown
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -84,7 +97,14 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import java.lang.ref.WeakReference
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.PI
+import kotlin.math.exp
+import kotlin.math.max
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -95,6 +115,7 @@ data class Accent(val nameEn: String, val nameRu: String, val a: Color, val b: C
 val ACCENTS = listOf(
     Accent("Ocean", "Океан", Color(0xFF3D7BFF), Color(0xFF00C6FF)),
     Accent("Violet", "Фиалка", Color(0xFF8B5CF6), Color(0xFFEC4899)),
+    Accent("GTA VI", "GTA VI", Color(0xFFFF3D7F), Color(0xFF7C5CFF)),
     Accent("Mint", "Мята", Color(0xFF10B981), Color(0xFF06B6D4)),
     Accent("Sunset", "Закат", Color(0xFFFF6B3D), Color(0xFFFF3D7F)),
     Accent("Gold", "Золото", Color(0xFFF59E0B), Color(0xFFEF4444)),
@@ -207,7 +228,11 @@ fun LiquidBackground(modifier: Modifier = Modifier) {
         }
     }
     val mode = Store.bgMode
-    val t = rememberClock(Store.animatedBg && !reduceMotion && mode == "blobs")
+    val t = rememberClock(Store.animatedBg && !reduceMotion)
+    if (mode == "gta") {
+        GtaBackground(modifier, g, t)
+        return
+    }
     if (mode == "solid") {
         Box(modifier.fillMaxSize().background(g.base))
         return
@@ -253,6 +278,107 @@ fun LiquidBackground(modifier: Modifier = Modifier) {
                 drawRect(
                     Brush.verticalGradient(
                         listOf(g.base.copy(alpha = 0.0f), g.base.copy(alpha = if (g.dark) 0.35f else 0.25f)),
+                    ),
+                )
+            },
+    )
+}
+
+
+// ── GTA VI: неоновый закат Vice City — солнце-сетка, пальмы-силуэты, сканлайны ──
+
+private val GTA_SUN = Color(0xFFFF2E6C)
+private val GTA_MAGENTA = Color(0xFFFF3D7F)
+private val GTA_VIOLET = Color(0xFF7C5CFF)
+private val GTA_CYAN = Color(0xFF2DE2FF)
+private val GTA_SKY_TOP = Color(0xFF120821)
+private val GTA_SKY_MID = Color(0xFF3B1E5C)
+
+@Composable
+fun GtaBackground(modifier: Modifier = Modifier, g: GlassColors, t: Float) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .drawBehind {
+                val w = size.width
+                val h = size.height
+                // небо: фиолетовый → маджента → горячий розовый у горизонта
+                drawRect(
+                    Brush.verticalGradient(
+                        0f to GTA_SKY_TOP, 0.42f to GTA_SKY_MID, 0.62f to GTA_MAGENTA.copy(alpha = .9f),
+                        0.70f to GTA_SUN, 0.72f to GTA_SKY_TOP, 1f to Color(0xFF07030F),
+                    ),
+                )
+                // солнце-сетка (полосы снизу расширяются)
+                val sunR = h * 0.19f
+                val sunC = Offset(w * 0.5f, h * 0.58f)
+                drawCircle(
+                    Brush.verticalGradient(
+                        0f to GTA_CYAN, 0.45f to GTA_SUN, 1f to Color(0xFFFFC93D),
+                        startY = sunC.y - sunR, endY = sunC.y + sunR,
+                    ),
+                    radius = sunR, center = sunC,
+                )
+                val hz = h * 0.60f
+                var yy = hz
+                var step = h * 0.006f
+                while (yy < sunC.y + sunR) {
+                    drawRect(GTA_SKY_TOP.copy(alpha = .92f), topLeft = Offset(sunC.x - sunR * 1.2f, yy), size = androidx.compose.ui.geometry.Size(sunR * 2.4f, step * 0.8f))
+                    yy += step + step * 0.8f
+                    step *= 1.45f
+                }
+                // горизонт
+                drawRect(
+                    Brush.horizontalGradient(listOf(GTA_CYAN.copy(alpha = .0f), GTA_CYAN, GTA_MAGENTA, GTA_CYAN.copy(alpha = .0f))),
+                    topLeft = Offset(0f, hz - 1.dp.toPx()), size = androidx.compose.ui.geometry.Size(w, 2.dp.toPx()),
+                )
+                // сетка земли в перспективе (ползёт к зрителю)
+                val horizonY = hz + 2.dp.toPx()
+                val bottom = h
+                for (i in -8..8) {
+                    drawLine(
+                        GTA_VIOLET.copy(alpha = .5f),
+                        start = Offset(w * 0.5f + i * w * 0.06f, horizonY),
+                        end = Offset(w * 0.5f + i * w * 0.55f, bottom),
+                        strokeWidth = 1.4.dp.toPx(),
+                    )
+                }
+                val rows = 14
+                for (r in 0 until rows) {
+                    val prog = ((r + (t * 0.55f) % 1f) / rows)
+                    val y2 = horizonY + (bottom - horizonY) * prog * prog
+                    drawLine(
+                        GTA_MAGENTA.copy(alpha = 0.12f + 0.45f * prog),
+                        start = Offset(0f, y2), end = Offset(w, y2),
+                        strokeWidth = (0.8f + 2.2f * prog).dp.toPx(),
+                    )
+                }
+                // силуэты пальм по краям
+                val palm = Color(0xFF0A0514)
+                for (side in 0..1) {
+                    val baseX = if (side == 0) w * 0.07f else w * 0.93f
+                    val baseY = horizonY + (bottom - horizonY) * 0.45f
+                    val sway = sin(t * 0.7f + side) * w * 0.004f
+                    val topX = baseX + (if (side == 0) -1f else 1f) * w * 0.03f + sway
+                    drawLine(palm, Offset(baseX, baseY), Offset(topX, baseY - h * 0.13f), strokeWidth = 5.dp.toPx())
+                    for (leaf in 0..6) {
+                        val ang = leaf / 6f * PI.toFloat()
+                        val dx = cos(ang) * w * 0.05f * (if (side == 0) 1f else -1f)
+                        val dy = -sin(ang) * h * 0.03f
+                        drawLine(palm, Offset(topX, baseY - h * 0.13f), Offset(topX + dx, baseY - h * 0.13f + dy + h * 0.028f), strokeWidth = 3.dp.toPx())
+                    }
+                }
+                // сканлайны
+                var sy = 0f
+                while (sy < h) {
+                    drawRect(Color.Black.copy(alpha = .10f), topLeft = Offset(0f, sy), size = androidx.compose.ui.geometry.Size(w, 1.dp.toPx()))
+                    sy += 4.dp.toPx()
+                }
+                // лёгкая виньетка
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(Color.Transparent, Color.Black.copy(alpha = .38f)),
+                        center = Offset(w / 2f, h / 2f), radius = max(w, h) * 0.75f,
                     ),
                 )
             },
@@ -381,6 +507,132 @@ fun Modifier.glassClick(onLongClick: (() -> Unit)? = null, onClick: () -> Unit):
         )
 }
 
+
+// ══════════════════════════════════════════ «супер-касание» (animtou-стиль)
+// Волна-риппл с градиентным глоу от акцента + лёгкий «бип» касания.
+
+private class TouchFxState {
+    var anim = Animatable(0f)
+    var x = 0f
+    var y = 0f
+}
+
+private val appCtxRef = ConcurrentLinkedQueue<WeakReference<Context>>()
+
+internal fun registerAppContext(ctx: Context) {
+    appCtxRef.offer(WeakReference(ctx.applicationContext))
+    while (appCtxRef.size > 2) appCtxRef.poll()
+}
+
+private fun appContext(): Context? = appCtxRef.mapNotNull { it.get() }.lastOrNull()
+
+private var vibrator: Vibrator? = null
+private var toneGen: ToneGenerator? = null
+private var lastTouchMs = 0L
+private var lastTone = -1
+
+private fun rippleVibrate() {
+    if (!Store.touchVibrate) return
+    val ctx = appContext() ?: return
+    try {
+        if (vibrator == null) {
+            vibrator = if (Build.VERSION.SDK_INT >= 31) {
+                (ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 26) {
+            vibrator?.vibrate(VibrationEffect.createOneShot(9, 56))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator?.vibrate(9)
+        }
+    } catch (e: Throwable) {
+    }
+}
+
+private fun rippleTone() {
+    if (!Store.touchSound) return
+    val now = System.currentTimeMillis()
+    if (now - lastTouchMs < 90) return
+    lastTouchMs = now
+    try {
+        if (toneGen == null) {
+            toneGen = ToneGenerator(AudioManager.STREAM_MUSIC, 26)
+        }
+        val tones = intArrayOf(ToneGenerator.TONE_PROP_ACK, ToneGenerator.TONE_PROP_NACK, ToneGenerator.TONE_CDMA_PIP)
+        var pick = (0..2).random()
+        if (pick == lastTone) pick = (pick + 1) % 3
+        lastTone = pick
+        toneGen?.startTone(tones[pick], 32)
+    } catch (e: Throwable) {
+    }
+}
+
+private fun touchFeedback() {
+    rippleVibrate()
+    kotlinx.coroutines.GlobalScope.launch(Dispatchers.Main) { rippleTone() }
+}
+
+/** Модификатор: волна от точки касания поверх стекла (как SuperRipple в animtou). */
+@Composable
+fun Modifier.touchFx(accent: Color, accent2: Color): Modifier {
+    if (!Store.touchRipples) return this
+    val fx = remember { TouchFxState() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    return this
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                var change = down
+                while (true) {
+                    if (change.changedToDown()) {
+                        fx.x = change.position.x
+                        fx.y = change.position.y
+                        scope.launch {
+                            fx.anim.snapTo(0f)
+                            fx.anim.animateTo(1f, tween(520))
+                        }
+                        break
+                    }
+                    change = awaitTouchSlopOrCancellation(down.id) { c, _ -> c } ?: break
+                }
+            }
+        }
+        .drawWithContent {
+            drawContent()
+            val p = fx.anim.value
+            if (p > 0f && p < 1f) {
+                val maxR = max(size.width, size.height) * 1.05f
+                val ease = 1f - (1f - p) * (1f - p)
+                val r = maxR * ease
+                val fade = exp(-3.2f * p)
+                val cx = fx.x
+                val cy = fx.y
+                // градиентная волна-глоу (аксент → акцент2)
+                drawCircle(
+                    Brush.radialGradient(
+                        listOf(
+                            accent.copy(alpha = 0.42f * fade),
+                            accent2.copy(alpha = 0.22f * fade),
+                            Color.Transparent,
+                        ),
+                        center = Offset(cx, cy), radius = r, tileMode = TileMode.Clamp,
+                    ),
+                    radius = r, center = Offset(cx, cy),
+                )
+                // тонкое яркое кольцо
+                drawCircle(
+                    accent2.copy(alpha = 0.5f * fade),
+                    radius = r, center = Offset(cx, cy),
+                    style = Stroke(width = 2.4.dp.toPx() * (1f - p) + 0.6.dp.toPx()),
+                )
+            }
+        }
+}
+
 // ══════════════════════════════════════════════════════════════ scaffold
 
 val TopBarHeight = 64.dp
@@ -435,17 +687,6 @@ fun GlassTopBar(
         Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
             Text(title, color = g.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (subtitle != null || (pro && Store.PRO_ACTIVE)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (pro && Store.PRO_ACTIVE) {
-                        ProBadge()
-                        Spacer(Modifier.width(6.dp))
-                    }
-                    if (subtitle != null) {
-                        Text(subtitle, color = g.textDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            }
         }
         actions()
     }
@@ -468,7 +709,8 @@ fun GlassIconButton(
         Modifier
             .size(size)
             .then(if (plain) Modifier.clip(CircleShape) else Modifier.glassPane(g, CircleShape))
-            .glassClick(onLongClick, onClick),
+            .touchFx(g.accent, g.accent2)
+            .glassClick(onLongClick) { touchFeedback(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, description, tint = tint ?: g.text, modifier = Modifier.size(22.dp))
@@ -520,7 +762,8 @@ fun GlassButton(
             .height(54.dp)
             .graphicsLayer { alpha = if (enabled) 1f else 0.45f }
             .then(bg)
-            .then(if (enabled) Modifier.glassClick(onClick = onClick) else Modifier)
+            .touchFx(if (primary) Color.White else g.accent, if (primary) g.accent2.copy(alpha = .9f) else g.accent2)
+            .then(if (enabled) Modifier.glassClick { touchFeedback(); onClick() } else Modifier)
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -548,7 +791,8 @@ fun GlassChip(text: String, selected: Boolean, icon: ImageVector? = null, onClic
                     .glassRim(g.copy(stroke = Color.White.copy(alpha = .55f)), shape)
                 else Modifier.glassPane(g, shape),
             )
-            .glassClick(onClick = onClick)
+            .touchFx(if (selected) Color.White else g.accent, g.accent2)
+            .glassClick { touchFeedback(); onClick() }
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -626,21 +870,3 @@ fun EmptyState(icon: ImageVector, title: String, text: String) {
     }
 }
 
-/** Градиентная пилюля «PRO ∞». */
-@Composable
-fun ProBadge(big: Boolean = false) {
-    val g = glass
-    Row(
-        Modifier
-            .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(Color(0xFFFFC94D), Color(0xFFFF7A59), Color(0xFFB45CFF))))
-            .glassRim(g.copy(stroke = Color.White.copy(alpha = .8f), highlight = Color.White.copy(alpha = .4f)), CircleShape)
-            .padding(horizontal = if (big) 14.dp else 8.dp, vertical = if (big) 5.dp else 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            if (big) "PRO  ∞" else "PRO ∞", color = Color.White, fontWeight = FontWeight.Black,
-            fontSize = if (big) 15.sp else 10.sp, letterSpacing = 0.5.sp, maxLines = 1,
-        )
-    }
-}

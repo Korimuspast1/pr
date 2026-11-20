@@ -58,7 +58,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          APK=app/build/outputs/apk/release/app-release.apk
+          APK=app/build/outputs/apk/release/app-universal-release.apk
           cp "$APK" GlassRoulette.apk
           TAG="chat-roulette-v1.0.${GITHUB_RUN_NUMBER}"
           NOTES="Glass Roulette — видео-чат-рулетка в стиле Liquid Glass: WebRTC P2P, сквозное шифрование чата (ECDH P-256 + AES-256-GCM), фильтры, блюр камеры, чёрный список. Android 6.0+ (API 23+). Built from ${GITHUB_SHA::7} on ${GITHUB_REF_NAME}."

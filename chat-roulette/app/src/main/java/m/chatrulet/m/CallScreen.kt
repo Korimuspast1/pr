@@ -211,6 +211,17 @@ fun CallScreen(vm: AppViewModel) {
                     vm.peer.nick.ifBlank { tr("Stranger", "Собеседник") },
                     color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                 )
+                if (vm.isBotCallUi) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "BOT",
+                        color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Black,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF2DE2FF))
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                    )
+                }
                 if (vm.peer.gender == "m") {
                     Spacer(Modifier.width(4.dp))
                     Icon(Icons.Rounded.Male, null, tint = Color(0xFF7EB6FF), modifier = Modifier.size(16.dp))
@@ -377,6 +388,7 @@ fun CallScreen(vm: AppViewModel) {
                         .clip(CircleShape)
                         .background(Color(0xFFE53935).copy(alpha = .85f))
                         .glassRim(g.copy(stroke = Color.White.copy(alpha = .5f)), CircleShape)
+                        .touchFx(Color.White, Color(0xFFFFB3AE))
                         .clickable(
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() },
@@ -412,6 +424,7 @@ fun CallScreen(vm: AppViewModel) {
                         .clip(CircleShape)
                         .background(Brush.horizontalGradient(listOf(g.accent, lerp(g.accent, g.accent2, 0.65f))))
                         .glassRim(g.copy(stroke = Color.White.copy(alpha = .6f)), CircleShape)
+                        .touchFx(Color.White, g.accent2)
                         .clickable(
                             indication = null,
                             interactionSource = remember { MutableInteractionSource() },
@@ -461,6 +474,7 @@ private fun CallIconButton(
                 g, CircleShape,
                 if (active) g.accent.copy(alpha = .55f) else Color.Black.copy(alpha = .4f),
             )
+            .touchFx(Color.White, g.accent2)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },

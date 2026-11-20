@@ -86,14 +86,17 @@ object Store {
     var speakerOn by PrefState("speaker", true)
     var autoNext by PrefState("auto_next", 0)          // сек; 0 = выкл
     var secureScreen by PrefState("secure_screen", false)
+    var devBot by PrefState("dev_bot", false)          // тест: мгновенный звонок с ботом
+
+    // ── Эффект касания (волна + глоу) ──
+    var touchRipples by PrefState("touch_ripples", true)
+    var touchSound by PrefState("touch_sound", false)
+    var touchVibrate by PrefState("touch_vibrate", true)
 
     // ── Служебное ──
     var agreed18 by PrefState("agreed18", false)
     var statsCalls by PrefState("stats_calls", 0)
     var statsMinutes by PrefState("stats_minutes", 0)
-
-    /** PRO разблокирован для всех, навсегда. */
-    const val PRO_ACTIVE = true
 
     val blocked = mutableStateListOf<BlockEntry>()
     val liked = mutableStateListOf<String>()           // uid понравившихся (локально)
