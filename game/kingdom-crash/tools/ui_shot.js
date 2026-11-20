@@ -23,7 +23,7 @@ src = src.replace('function canSee(S, o) { return o.owner === 0 || allied(S, 0, 
 src = src.replace('function visibleAt(', 'function _visibleAt(') + '\nfunction visibleAt() { return true; }\n';
 const names = ['newGame', 'tick', 'RN', 'frame', 'buildTerrain', 'drawTerr', 'centerOn', 'clampCam', 'TS', 'DAY', 'TR', 'SQ', 'BD',
   'mkSquad', 'newArmy', 'doBuild', 'siteOk', 'upgradeCity', 'addCity', 'setRecipe', 'startWar', 'rel', 'makeFolk', 'folkBuild', 'isWater', 'orderMove', 'units',
-  'calcRates', 'recomputeTerr', 'todHours', 'RECIPES', 'PERKS', 'cmdLvl', 'tickCars', 'tickFest'];
+  'calcRates', 'recomputeTerr', 'todHours', 'RECIPES', 'PERKS', 'cmdLvl', 'tickCars', 'tickFest', 'TERR'];
 const body = src + '\n;const __o = {}; ' + names.map(n => `try { __o.${n} = ${n}; } catch (e) { __o.${n} = undefined; }`).join(' ') + ' return __o;';
 const G = new Function('document', 'localStorage', 'window', 'performance', 'ImageData', body)(global.document, global.localStorage, global.window, global.performance, ImageData);
 
@@ -49,6 +49,7 @@ S.fest = { city: cap.id, x: cap.x + 2, y: cap.y + 2.2, until: S.time + 500 };
 for (let i = 0; i < 24; i++) { try { G.makeFolk(S); } catch (e) { } }
 for (let t = 0; t < 60; t++) G.tick(S, 0.25);
 G.buildTerrain(S);
+if (G.TERR && G.TERR.drain) G.TERR.drain(); // достроить все участки до единого снимка
 let T_REF = 100;
 S.cars = [{ id: 990, owner: 0, x: cap.x - 3.5, y: cap.y + 1.5, toX: cap.x + 10, toY: cap.y + 8, face: 1, gold: 60 }];
 function shot(name, seasonIdx, cx, cy) {

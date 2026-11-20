@@ -8,6 +8,8 @@
 const TERR = (() => {
   const PPT = 32, CT = 8, CPX = PPT * CT, OV = 8; // точек на клетку, клеток в участке, точек на клетку в обзорной карте
   let S = null, W = 0, H = 0, F = null, chunks = new Map(), stamp = 0, over = null, spr = null, baked = -1;
+  let overOld = null, jobs = new Map(), fieldStamp = 0; // участки и обзорная строятся полосами с бюджетом времени
+  const nowMs = () => (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   const NA = new Float32Array(65536), NB = new Float32Array(65536);
 
   // два «бесшовных» шума 256×256: из них берутся все неровности
@@ -55,6 +57,7 @@ const TERR = (() => {
   };
 
   function fields() {
+    fieldStamp++; // пересборка кэша: строящиеся участки начнутся заново
     const n = W * H, t = S.ter;
     if (!F || F.land.length !== n) F = { land: new Float32Array(n), deep: new Float32Array(n), hgt: new Float32Array(n), forest: new Float32Array(n), dry: new Float32Array(n), sand: new Float32Array(n) };
     for (let i = 0; i < n; i++) {
@@ -236,27 +239,48 @@ const TERR = (() => {
     }
   }
 
-  function makeChunk(cx, cy) {
-    const cv = document.createElement('canvas'); cv.width = CPX; cv.height = CPX; const c = cv.getContext('2d');
-    c.putImageData(raster(cx * CPX, cy * CPX, CPX, CPX, 1), 0, 0);
-    plant(c, cx * CT - 1, cy * CT - 1, cx * CT + CT + 1, cy * CT + CT + 2, cx * CPX, cy * CPX, 1);
-    return cv;
+  function makeChunkJob(cx, cy) { const cv = document.createElement('canvas'); cv.width = CPX; cv.height = CPX; return { kind: 'chunk', cv, cx, cy, y: 0, h: CPX, v: fieldStamp, ctx: cv.getContext('2d') }; }
+  function makeOverviewJob() { const cv = document.createElement('canvas'); cv.width = W * OV; cv.height = H * OV; return { kind: 'over', cv, y: 0, h: H * OV, v: fieldStamp, ctx: cv.getContext('2d') }; }
+  const OVER_KEY = -1;
+  function queueOverview() { if (!over && !jobs.has(OVER_KEY)) jobs.set(OVER_KEY, makeOverviewJob()); }
+  function finishJob(job) {
+    if (job.kind === 'chunk') {
+      plant(job.ctx, job.cx * CT - 1, job.cy * CT - 1, job.cx * CT + CT + 1, job.cy * CT + CT + 2, job.cx * CPX, job.cy * CPX, 1);
+      chunks.set(job.cy * 4096 + job.cx, { cv: job.cv, used: stamp });
+    } else {
+      job.ctx.imageSmoothingEnabled = true; plant(job.ctx, 0, 0, W, H, 0, 0, OV / PPT); over = job.cv; overOld = null;
+    }
   }
-  function overview() {
-    if (over) return over;
-    over = document.createElement('canvas'); over.width = W * OV; over.height = H * OV; const c = over.getContext('2d');
-    c.putImageData(raster(0, 0, W * OV, H * OV, PPT / OV), 0, 0);
-    c.imageSmoothingEnabled = true; plant(c, 0, 0, W, H, 0, 0, OV / PPT);
-    return over;
+  /* Участок/обзорная строятся не разом, а полосами с бюджетом по времени:
+     кадр не подвисает, пока земля достраивается по мере прокрутки карты. */
+  const SLICE = 32;
+  function stepJobs(budgetMs) {
+    const t0 = nowMs();
+    for (const [key, job] of jobs) {
+      if (job.v !== fieldStamp) { job.y = 0; job.v = fieldStamp; job.ctx.clearRect(0, 0, job.cv.width, job.cv.height); } // земля изменилась — строим заново
+      while (job.y < job.h) {
+        if (nowMs() - t0 >= budgetMs) return;
+        const h = Math.min(SLICE, job.h - job.y);
+        const img = job.kind === 'chunk' ? raster(job.cx * CPX, job.cy * CPX + job.y, CPX, h, 1) : raster(0, job.y, job.cv.width, h, PPT / OV);
+        job.ctx.putImageData(img, 0, job.y); job.y += h;
+      }
+      finishJob(job); jobs.delete(key);
+    }
   }
+  // достроить всё сразу (загрузочный экран, снимки, тесты)
+  function drain() { queueOverview(); while (jobs.size) stepJobs(1e9); }
+  // синхронный доступ к обзорной карте (миникарта): строит сразу, если её ещё нет
+  function overview() { queueOverview(); stepJobs(1e9); return over; }
 
   function init(state) {
-    S = state; W = S.W; H = S.H; chunks = new Map(); over = null; stamp = 0;
+    S = state; W = S.W; H = S.H; chunks = new Map(); over = null; overOld = null; jobs = new Map(); stamp = 0;
     bake(S.seed | 0); fields(); if (!spr) sprites();
   }
   // клетки изменились (вырубили лес под город): участки вокруг строятся заново
   function dirty(tx, ty, r) {
-    if (!S) return; fields(); over = null; r = r || 1;
+    if (!S) return; fields();
+    if (over) { overOld = over; over = null; } // обзорную покажем старую, пока новая достраивается полосами
+    r = r || 1;
     for (let cy = Math.floor((ty - 1) / CT); cy <= Math.floor((ty + r + 1) / CT); cy++) for (let cx = Math.floor((tx - 1) / CT); cx <= Math.floor((tx + r + 1) / CT); cx++) chunks.delete(cy * 4096 + cx);
   }
   /* Рисует видимую часть карты. z — точек экрана на точку мира (масштаб × плотность экрана).
@@ -265,12 +289,24 @@ const TERR = (() => {
     if (!S) return; stamp++;
     const X = wx => Math.round((wx - cam.x) * z), Y = wy => Math.round((wy - cam.y) * z);
     c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
-    if (z < 1.1) { c.imageSmoothingEnabled = true; const o = overview(); c.drawImage(o, X(0), Y(0), X(W * TS) - X(0), Y(H * TS) - Y(0)); c.restore(); return; }
+    if (z < 1.1) { // обзорная строится полосами; пока новая не готова — показываем старую
+      c.imageSmoothingEnabled = true; queueOverview(); stepJobs(16);
+      const o = over || overOld;
+      if (o) c.drawImage(o, X(0), Y(0), X(W * TS) - X(0), Y(H * TS) - Y(0));
+      else { c.fillStyle = '#1f4f8e'; c.fillRect(0, 0, vw, vh); } // самый первый кадр — ровная вода
+      c.restore(); return;
+    }
     const cw = CT * TS, cx0 = Math.max(0, Math.floor(cam.x / cw)), cy0 = Math.max(0, Math.floor(cam.y / cw)), cx1 = Math.min(Math.ceil(W / CT) - 1, Math.floor((cam.x + vw / z) / cw)), cy1 = Math.min(Math.ceil(H / CT) - 1, Math.floor((cam.y + vh / z) / cw));
-    c.imageSmoothingEnabled = z < 2; let made = 0, need = 0;
+    c.imageSmoothingEnabled = z < 2;
+    // недостающие участки ставим в очередь и достраиваем сколько успеется за кадр — без подвисаний
+    let need = 0;
     for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
-      const key = cy * 4096 + cx; let ch = chunks.get(key); need++;
-      if (!ch && made < 3) { ch = { cv: makeChunk(cx, cy), used: 0 }; chunks.set(key, ch); made++; }
+      const key = cy * 4096 + cx; need++;
+      if (!chunks.has(key) && !jobs.has(key)) jobs.set(key, makeChunkJob(cx, cy));
+    }
+    stepJobs(16);
+    for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
+      const key = cy * 4096 + cx, ch = chunks.get(key);
       const dx = X(cx * cw), dy = Y(cy * cw), dw = X((cx + 1) * cw) - dx, dh = Y((cy + 1) * cw) - dy;
       if (ch) { ch.used = stamp; c.drawImage(ch.cv, dx, dy, dw, dh); }
       else for (let ty = 0; ty < CT; ty++) for (let tx = 0; tx < CT; tx++) { // участок ещё не готов: ровные цвета, через кадр-другой он появится
@@ -278,14 +314,16 @@ const TERR = (() => {
         c.fillStyle = TCOL[S.ter[gy * W + gx]]; const ax = X(gx * TS), ay = Y(gy * TS); c.fillRect(ax, ay, X((gx + 1) * TS) - ax, Y((gy + 1) * TS) - ay);
       }
     }
-    // пока всё видимое готово — заранее строим участок по соседству, чтобы при прокрутке не было рывков
-    if (!made) outer: for (let cy = cy0 - 1; cy <= cy1 + 1; cy++) for (let cx = cx0 - 1; cx <= cx1 + 1; cx++) {
-      if (cx < 0 || cy < 0 || cx * CT >= W || cy * CT >= H || chunks.has(cy * 4096 + cx)) continue;
-      chunks.set(cy * 4096 + cx, { cv: makeChunk(cx, cy), used: stamp }); break outer;
+    const total = Math.ceil(W / CT) * Math.ceil(H / CT);
+    const cap = Math.min(total + 8, Math.max(72, need * 2 + 16)); // маленькая карта влезает целиком: без пересборок и рывков
+    // очередь пуста — заранее строим по одному участку вокруг, чтобы при прокрутке не было рывков
+    if (!jobs.size && chunks.size < cap) outer: for (let cy = cy0 - 1; cy <= cy1 + 1; cy++) for (let cx = cx0 - 1; cx <= cx1 + 1; cx++) {
+      if (cx < 0 || cy < 0 || cx * CT >= W || cy * CT >= H) continue;
+      const key = cy * 4096 + cx; if (chunks.has(key) || jobs.has(key)) continue;
+      jobs.set(key, makeChunkJob(cx, cy)); stepJobs(16); break outer;
     }
-    const cap = Math.max(48, need * 2 + 12);
     if (chunks.size > cap) { const old = Array.from(chunks.entries()).sort((a, b) => a[1].used - b[1].used); for (let k = 0; k < old.length && chunks.size > cap; k++) if (old[k][1].used !== stamp) chunks.delete(old[k][0]); }
     c.restore();
   }
-  return { init, draw, dirty, over: overdraw, overview, count: () => chunks.size };
+  return { init, draw, dirty, over: overdraw, overview, drain, count: () => chunks.size };
 })();

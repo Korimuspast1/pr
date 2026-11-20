@@ -261,27 +261,25 @@ function frame(S, now) {
   drawSkyBirds(c, S, tm, RN.cv.width, RN.cv.height);
   { // смена времени суток (плавно)
     const tn = todTint(todHours(S)), dark = Math.max(0, Math.min(1, (255 - tn[1]) / 150));
-    { // тёплый тон + время суток. Приглушение красок вынесено в стили (filter у холста): раньше оно делалось здесь
-      // отдельным полноэкранным проходом в каждом кадре и на слабых телефонах съедало большую часть времени кадра.
-      // Тон слегка усилен: приглушение теперь накладывается после него.
+    { // тёплый тон + время суток + сезон + погода тонируют сцену
+      // все «multiply»-тонировки слоем подряд сворачиваются в один полноэкранный проход:
+      // dst' = dst * f1 * f2 * f3 — тот же результат, но не 3–4 полноэкранных смешения за кадр, а одно
       const r0 = tn[0] * 0.98, g0 = tn[1] * 0.95, b0 = tn[2] * 0.9, lum = 0.213 * r0 + 0.715 * g0 + 0.072 * b0, bo = v => Math.max(0, Math.min(255, lum + (v - lum) / 0.64)) | 0;
-      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'multiply'; c.fillStyle = `rgb(${bo(r0)},${bo(g0)},${bo(b0)})`; c.fillRect(0, 0, RN.cv.width, RN.cv.height); c.restore(); c.imageSmoothingEnabled = false;
-    }
-    { // времена года и погода — настоящая система: то же, что считают в игре
       const seas = Math.floor(S.time / SEASON_LEN) % 4;
       const wx = weather(S);
-      c.save(); c.setTransform(1, 0, 0, 1, 0, 0);
-      c.globalCompositeOperation = 'multiply';
-      c.fillStyle = seas === 0 ? 'rgba(206,228,255,0.22)' : seas === 1 ? 'rgba(255,238,200,0.12)' : seas === 2 ? 'rgba(255,214,170,0.2)' : 'rgba(216,230,255,0.26)';
-      c.fillRect(0, 0, RN.cv.width, RN.cv.height);
-      // погода тонирует сцену
-      if (wx.id === 'heat') { c.fillStyle = 'rgba(255,196,110,0.22)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); }
-      else if (wx.id === 'frost') { c.globalCompositeOperation = 'multiply'; c.fillStyle = 'rgba(178,206,255,0.34)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); c.globalCompositeOperation = 'multiply'; }
-      else if (wx.id === 'storm') { c.fillStyle = 'rgba(84,92,120,0.34)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); }
-      else if (wx.id === 'cloud') { c.fillStyle = 'rgba(150,158,170,0.16)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); }
-      else if (wx.id === 'rain') { c.fillStyle = 'rgba(96,108,132,0.2)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); }
-      else if (wx.id === 'snow') { c.fillStyle = 'rgba(226,236,250,0.2)'; c.fillRect(0, 0, RN.cv.width, RN.cv.height); }
-      c.globalCompositeOperation = 'source-over';
+      let fR = bo(r0) / 255, fG = bo(g0) / 255, fB = bo(b0) / 255;
+      const mulLayer = rgba => { fR *= 1 - rgba[3] * (1 - rgba[0] / 255); fG *= 1 - rgba[3] * (1 - rgba[1] / 255); fB *= 1 - rgba[3] * (1 - rgba[2] / 255); };
+      mulLayer(seas === 0 ? [206, 228, 255, 0.22] : seas === 1 ? [255, 238, 200, 0.12] : seas === 2 ? [255, 214, 170, 0.2] : [216, 230, 255, 0.26]);
+      if (wx.id === 'heat') mulLayer([255, 196, 110, 0.22]);
+      else if (wx.id === 'frost') mulLayer([178, 206, 255, 0.34]);
+      else if (wx.id === 'storm') mulLayer([84, 92, 120, 0.34]);
+      else if (wx.id === 'cloud') mulLayer([150, 158, 170, 0.16]);
+      else if (wx.id === 'rain') mulLayer([96, 108, 132, 0.2]);
+      else if (wx.id === 'snow') mulLayer([226, 236, 250, 0.2]);
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'multiply';
+      c.fillStyle = `rgb(${Math.min(255, fR * 255) | 0},${Math.min(255, fG * 255) | 0},${Math.min(255, fB * 255) | 0})`;
+      c.fillRect(0, 0, RN.cv.width, RN.cv.height); c.restore(); c.imageSmoothingEnabled = false;
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over';
       const W2 = RN.cv.width, H2 = RN.cv.height;
       const rain = wx.id === 'rain' || wx.id === 'storm', snow = wx.id === 'snow', leaves = seas === 2 && !rain && !snow && wx.id !== 'storm';
       if (rain || snow || leaves) {
