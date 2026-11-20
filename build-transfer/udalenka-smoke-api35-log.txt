@@ -23,8 +23,8 @@ Daemon will be stopped at the end of the build
 > Task :app:checkDebugAarMetadata
 > Task :app:mapDebugSourceSetPaths
 > Task :app:generateDebugResources
-> Task :app:mergeDebugResources
 > Task :app:packageDebugResources
+> Task :app:mergeDebugResources
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
 > Task :app:parseDebugLocalResources
@@ -33,17 +33,19 @@ Daemon will be stopped at the end of the build
 > Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugStartupProfile
 > Task :app:generateDebugAssets UP-TO-DATE
-> Task :app:mergeExtDexDebug
 > Task :app:mergeDebugAssets
+> Task :app:mergeExtDexDebug
 > Task :app:compressDebugAssets
 > Task :app:extractDebugVersionControlInfo
 > Task :app:processDebugJavaRes NO-SOURCE
-> Task :app:processDebugManifestForPackage
-> Task :app:mergeDebugJavaResource
 > Task :app:collectDebugDependencies
+> Task :app:mergeDebugJavaResource
 > Task :app:sdkDebugDependencyData
-> Task :app:processDebugResources
 > Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
 
 > Task :app:compileDebugJavaWithJavac
 Note: Some input files use or override a deprecated API.
@@ -51,17 +53,15 @@ Note: Recompile with -Xlint:deprecation for details.
 
 > Task :app:dexBuilderDebug
 > Task :app:mergeDebugGlobalSynthetics
-> Task :app:writeDebugAppMetadata
-> Task :app:writeDebugSigningConfigVersions
 > Task :app:optimizeDebugResources
 > Task :app:mergeDexDebug
 > Task :app:compileDebugArtProfile
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795158222598.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795158531419.json
 
-BUILD SUCCESSFUL in 35s
+BUILD SUCCESSFUL in 36s
 36 actionable tasks: 36 executed
 === udalenka smoke (API 35) ===
 == install ==
@@ -70,35 +70,38 @@ Success
 == grant notification listener ==
 lav.udalenka.alav/lav.udalenka.alav.NotifSaverService
 == clear logcat ==
-== post test notifications (как будто WhatsApp/TikTok) ==
-Error occurred. Check logcat for details. Permission Denial: getIntentSender() from pid=2408, uid=2000 is not allowed to send as package android
-Error occurred. Check logcat for details. Permission Denial: getIntentSender() from pid=2421, uid=2000 is not allowed to send as package android
-Error occurred. Check logcat for details. Permission Denial: getIntentSender() from pid=2431, uid=2000 is not allowed to send as package android
+== post test notifications ==
+posting:
+  Notification(channel=shell_cmd shortcut=null contentView=null vibrate=null sound=null defaults=0 flags=0 color=0x00000000 vis=PRIVATE)
+Error occurred. Check logcat for details. Permission Denial: getIntentSender() from pid=2658, uid=2000 is not allowed to send as package android
 == logcat capture check ==
-11-20 07:05:40.617  2357  2357 D nativeloader: Configuring clns-7 for other apk /data/app/~~bpnzW_16F_9lRSkcsGA9KA==/lav.udalenka.alav-yuZvlZmhb3o4JuPH7iQjSw==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~bpnzW_16F_9lRSkcsGA9KA==/lav.udalenka.alav-yuZvlZmhb3o4JuPH7iQjSw==/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/lav.udalenka.alav
-11-20 07:05:40.634   561   869 I AppWidgetServiceImpl: Updating package stopped masked state for uid 10209 package lav.udalenka.alav isStopped false
-11-20 07:05:40.636   561   881 D ShortcutService: adding package: lav.udalenka.alav userId0
-11-20 07:05:40.636   561   881 D ShortcutService: handlePackageAdded: lav.udalenka.alav user=0
-11-20 07:05:40.636   561   881 D ShortcutService: rescanPackageIfNeeded 0@lav.udalenka.alav, forceRescan=true , isNewApp=true
-11-20 07:05:40.636   561   881 D ShortcutService: Package lav.udalenka.alav has 0 manifest shortcut(s), and 0 share target(s)
-11-20 07:05:40.637   561   895 I SdkSandboxManager: No SDKs used. Skipping SDK data reconcilation for CallingInfo{mUid=10209, mPackageName='lav.udalenka.alav, mAppProcessToken='null'}
-11-20 07:05:40.637   561   561 V NotificationManagerService$NotificationListeners: enabling notification listener for 0: ComponentInfo{lav.udalenka.alav/lav.udalenka.alav.NotifSaverService}
-11-20 07:05:40.642   561   561 V NotificationManagerService$NotificationListeners: Not registering ComponentInfo{lav.udalenka.alav/lav.udalenka.alav.NotifSaverService} is already bound
-11-20 07:05:40.868   561   561 I AppsFilter: interaction: PackageSetting{bb70e01 com.android.microdroid.empty_payload/10192} -> PackageSetting{8fb74a6 lav.udalenka.alav/10209} BLOCKED
-11-20 07:05:40.895   561   561 V NotificationManagerService$NotificationListeners: 0 notification listener service connected: ComponentInfo{lav.udalenka.alav/lav.udalenka.alav.NotifSaverService}
-11-20 07:05:40.896   561   881 D ShortcutService: changing package: lav.udalenka.alav userId0
-11-20 07:05:40.896   561   881 D ShortcutService: handlePackageChanged: lav.udalenka.alav user=0
-11-20 07:05:40.896   561   881 D ShortcutService: rescanPackageIfNeeded 0@lav.udalenka.alav, forceRescan=true , isNewApp=true
-11-20 07:05:40.896   561   881 D ShortcutService: Package lav.udalenka.alav has 0 manifest shortcut(s), and 0 share target(s)
-11-20 07:05:40.907  2357  2357 I Udalenka: listener connected
-11-20 07:05:40.912   561   561 V NotificationManagerService$NotificationListeners: enabling notification listener for 0: ComponentInfo{lav.udalenka.alav/lav.udalenka.alav.NotifSaverService}
-11-20 07:05:40.912   561   561 V NotificationManagerService$NotificationListeners: Not registering ComponentInfo{lav.udalenka.alav/lav.udalenka.alav.NotifSaverService} is already bound
-11-20 07:05:41.728   933   933 I SafetyLabelChangedBroadcastReceiver: received broadcast packageName: lav.udalenka.alav, current user: UserHandle{0}, packageChangeEvent: NEW_INSTALL, intent user: UserHandle{0}
-11-20 07:05:42.175  1091  1091 D CarrierSvcBindHelper: onPackageAdded: lav.udalenka.alav
+11-20 07:11:04.667  2607  2607 I ActivityThread: ApplicationInfo updating for lav.udalenka.alav, new timestamp: 49311
+11-20 07:11:04.669  2607  2607 W ActivityThread: getPackageInfo() called with an older ApplicationInfo than the cached version for package lav.udalenka.alav
+11-20 07:11:04.672   573   573 V NotificationManagerService$NotificationListeners: 0 notification listener service connected: ComponentInfo{lav.udalenka.alav/lav.udalenka.alav.NotifSaverService}
+11-20 07:11:04.673  2607  2607 I Udalenka: listener connected
+11-20 07:11:04.857  1097  1097 D CarrierSvcBindHelper: onPackageAdded: lav.udalenka.alav
+11-20 07:11:04.864  1097  1304 D ImsResolver: maybeAddedImsService, packageName: lav.udalenka.alav
+11-20 07:11:04.930   573   909 I SdkSandboxManager: No SDKs used. Skipping SDK data reconcilation for CallingInfo{mUid=10209, mPackageName='lav.udalenka.alav, mAppProcessToken='null'}
+11-20 07:11:04.930   573   900 D ShortcutService: adding package: lav.udalenka.alav userId0
+11-20 07:11:04.930   573   900 D ShortcutService: handlePackageAdded: lav.udalenka.alav user=0
+11-20 07:11:04.930   573   900 D ShortcutService: rescanPackageIfNeeded 0@lav.udalenka.alav, forceRescan=true , isNewApp=true
+11-20 07:11:04.930   573   900 D ShortcutService: Package lav.udalenka.alav has 0 manifest shortcut(s), and 0 share target(s)
+11-20 07:11:04.953   573   880 I AppWidgetServiceImpl: Updating package stopped masked state for uid 10209 package lav.udalenka.alav isStopped false
+11-20 07:11:05.000   573   573 I AppsFilter: interaction: PackageSetting{3a8b00 com.android.microdroid.empty_payload/10202} -> PackageSetting{1475f39 lav.udalenka.alav/10209} BLOCKED
+11-20 07:11:05.014   573   573 V NotificationManagerService$NotificationListeners: enabling notification listener for 0: ComponentInfo{lav.udalenka.alav/lav.udalenka.alav.NotifSaverService}
+11-20 07:11:05.014   573   573 V NotificationManagerService$NotificationListeners: Not registering ComponentInfo{lav.udalenka.alav/lav.udalenka.alav.NotifSaverService} is already bound
+11-20 07:11:05.741  1258  1290 D SessionCommitReceiver: Removing PromiseIcon for package: lav.udalenka.alav, install reason: 0, alreadyAddedPromiseIcon: false
+11-20 07:11:05.741  1258  1290 D PackageUpdatedTask: Package updated: mOp=ADD packages=[lav.udalenka.alav]
+11-20 07:11:06.090  1258  1268 W s.nexuslauncher: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~89vArE2qUfwrqcnZ-J5qmQ==/lav.udalenka.alav-zYdQpfpnTaxYhbGjInaZaQ==/base.apk' with 1 weak references
+11-20 07:11:06.111   573   573 V NotificationManagerService$NotificationListeners: enabling notification listener for 0: ComponentInfo{lav.udalenka.alav/lav.udalenka.alav.NotifSaverService}
+11-20 07:11:06.111   573   573 V NotificationManagerService$NotificationListeners: Not registering ComponentInfo{lav.udalenka.alav/lav.udalenka.alav.NotifSaverService} is already bound
 == launch app ==
 Starting: Intent { cmp=lav.udalenka.alav/.MainActivity }
-SHOT:udalenka-main:iVBORw0KGgoAAAANSUhEUgAABaAAAAoACAYAAABH... (85601 bytes)
-== UI check: ищем сохранённый текст на экране ==
-warn: saved text not on main screen (приложения могли быть не распознаны)
+SHOT:udalenka-main:iVBORw0KGgoAAAANSUhEUgAABaAAAAoACAYAAABH... (69666 bytes)
+== UI check: на главном экране должна появиться строка приложения ==
+--- ui.xml (фрагмент) ---
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node index="0" text="" resource-id="" class="android.widget.FrameLayout" package="lav.udalenka.alav" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][1440,2560]"><node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="lav.udalenka.alav" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,0][1440,2476]"><node index="0" text="" resource-id="android:id/content" class="android.widget.FrameLayout" package="lav.udalenka.alav" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,84][1440,2476]"><node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="lav.udalenka.alav" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,84][1440,2476]"><node index="0" text="" resource-id="" class="android.widget.LinearLayout" package="lav.udalenka.alav" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[0,84][1440,294]"><node index="0" text="Udalenka" resource-id="" class="android.widget.TextView" package="lav.udalenka.alav" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[56,142][1258,235]" /><node index="1" text="" resource-id="lav.udalenka.alav:id/btn_settings" class="android.widget.ImageView" package="lav.udalenka.alav" content-desc="Settings" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" bounds="[1258,112][1412,266]" /></node><node index="1" text="Search saved notifications…" resource-id="lav.udalenka.alav:id/search_field" class="android.widget.EditText" package="lav.udalenka.alav" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" focused="false" scrollable="false" long-clickable="true" password="false" selected="false" bounds="[42,336][1398,491]" /><node index="2" text="" resource-id="" class="android.widget.ScrollView" package="lav.udalenka.alav" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="true" focused="
+--- end fragment ---
+UI_CONTAINS_SAVED_APP
 == FATAL check ==
 SMOKE_PASSED
