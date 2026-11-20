@@ -16,6 +16,17 @@ adb install -r "$APK" || { echo "SMOKE_FAILED: install"; exit 1; }
 
 adb logcat -c || true
 
+# на слабом эмуляторе системный процесс периодически «зависает» — диалог закрываем кнопкой «Подождать»
+waiter() {
+  while :; do
+    F=$(adb shell dumpsys window 2>/dev/null | grep -i "mCurrentFocus" | head -1)
+    case "$F" in *Not?Responding*) adb shell input keyevent KEYCODE_DPAD_RIGHT; sleep 0.3; adb shell input keyevent KEYCODE_DPAD_CENTER;; esac
+    sleep 2
+  done
+}
+waiter & WPID=$!
+trap 'kill $WPID 2>/dev/null' EXIT
+
 echo "== launch =="
 adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 \
   || adb shell am start -n "$PKG/.MainActivity" || { echo "SMOKE_FAILED: launch"; exit 1; }
@@ -39,6 +50,8 @@ W=${WM_SIZE%x*}; H=${WM_SIZE#*x}
 echo "display: ${W}x${H}"
 
 echo "== new game =="
+sleep 2
+shot "kingdom-menu2"
 # «НОВАЯ ИГРА» — центр экрана, чуть выше середины
 adb shell input tap $((W/2)) $((H*52/100))
 sleep 3
