@@ -20,7 +20,10 @@ adb logcat -c || true
 waiter() {
   while :; do
     F=$(adb shell dumpsys window 2>/dev/null | grep -i "mCurrentFocus" | head -1)
-    case "$F" in *Not?Responding*) adb shell input keyevent KEYCODE_DPAD_RIGHT; sleep 0.3; adb shell input keyevent KEYCODE_DPAD_CENTER;; esac
+    case "$F" in
+      *Not?Responding*) adb shell input keyevent KEYCODE_DPAD_RIGHT; sleep 0.3; adb shell input keyevent KEYCODE_DPAD_CENTER;;
+      *ImmersiveModeConfirmation*) adb shell input keyevent KEYCODE_BACK;; # «Полноэкранный режим» — закрываем
+    esac
     sleep 2
   done
 }
