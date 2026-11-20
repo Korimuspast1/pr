@@ -17,8 +17,8 @@ Daemon will be stopped at the end of the build
 > Task :app:stripDebugDebugSymbols NO-SOURCE
 > Task :app:extractDebugNativeSymbolTables NO-SOURCE
 > Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
-> Task :app:desugarDebugFileDependencies
 > Task :app:mergeDebugArtProfile
+> Task :app:desugarDebugFileDependencies
 > Task :app:javaPreCompileDebug
 > Task :app:checkDebugAarMetadata
 > Task :app:mapDebugSourceSetPaths
@@ -27,235 +27,1373 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeDebugResources
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
-> Task :app:processDebugMainManifest
 > Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
 > Task :app:checkDebugDuplicateClasses
-> Task :app:processDebugManifestForPackage
 > Task :app:mergeDebugStartupProfile
 > Task :app:generateDebugAssets UP-TO-DATE
-> Task :app:mergeDebugAssets
+> Task :app:processDebugManifestForPackage
 > Task :app:mergeExtDexDebug
+> Task :app:mergeDebugAssets
 > Task :app:compressDebugAssets
 > Task :app:extractDebugVersionControlInfo
 > Task :app:processDebugJavaRes NO-SOURCE
 > Task :app:collectDebugDependencies
 > Task :app:mergeDebugJavaResource
-> Task :app:processDebugResources
 > Task :app:sdkDebugDependencyData
+> Task :app:processDebugResources
+> Task :app:validateSigningDebug
 
 > Task :app:compileDebugJavaWithJavac
-/home/runner/work/pr/pr/visaroom/app/src/main/java/lav/visaroom/alav/DirectChatActivity.java:3460: error: method withAlpha(int,int) is already defined in class DirectChatActivity
-    private static int withAlpha(int color, int alpha) {
-                       ^
 Note: Some input files use or override a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
-1 error
 
-> Task :app:compileDebugJavaWithJavac FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795150638466.json
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:optimizeDebugResources
+> Task :app:mergeDexDebug
+> Task :app:compileDebugArtProfile
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795150854354.json
 
-FAILURE: Build failed with an exception.
+BUILD SUCCESSFUL in 28s
+36 actionable tasks: 36 executed
+--- emulator smoke ---
+API=36 MODE=seeded APK=/home/runner/work/_temp/visaroom-debug.apk
+060c0789ee5e75325f3313be3152b8d4b9fbcb1d973d1c143f635b64594ff6fd  /home/runner/work/_temp/visaroom-debug.apk
+Performing Streamed Install
+Success
+install_status=0
+app_uid=10216
+--- package permissions before launch ---
+    pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    privatePkgFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    apexModuleName=null
+    requested permissions:
+      android.permission.POST_NOTIFICATIONS
+      android.permission.RECEIVE_BOOT_COMPLETED
+      android.permission.INTERNET
+      android.permission.ACCESS_NETWORK_STATE
+      android.permission.RECORD_AUDIO
+    install permissions:
+      android.permission.RECEIVE_BOOT_COMPLETED: granted=true
+      android.permission.INTERNET: granted=true
+      android.permission.ACCESS_NETWORK_STATE: granted=true
+    User 0: ceDataInode=352533 deDataInode=65917 installed=true hidden=false suspended=false distractionFlags=0 stopped=true notLaunched=true enabled=0 instant=false virtual=false quarantined=false
+      installReason=0
+--
+        /data/resource-cache/com.android.systemui-dynamic-v04C.frro
+      legacy overlay paths:
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+      gids=[3003]
+      runtime permissions:
 
-* What went wrong:
-Execution failed for task ':app:compileDebugJavaWithJavac'.
-> Compilation failed; see the compiler error output for details.
+Queries:
+  system apps queryable: false
+  queries via forceQueryable:
+--- launch debug SmokeSeedActivity (saves a test session, then opens ChatsActivity) ---
+Starting: Intent { cmp=lav.visaroom.alav/.SmokeSeedActivity }
+Status: ok
+LaunchState: COLD
+Activity: com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity
+TotalTime: 4680
+WaitTime: 4745
+Complete
+pid_after_3s=2374
+--- early app-UID log ---
+--------- beginning of main
+11-20 05:03:04.834  2374  2374 I v.visaroom.alav: Using CollectorTypeCMC GC.
+11-20 05:03:04.834  2374  2374 W v.visaroom.alav: Unexpected CPU variant for x86: x86_64.
+11-20 05:03:04.834  2374  2374 W v.visaroom.alav: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, alderlake, default
+11-20 05:03:04.836  2374  2374 E v.visaroom.alav: Not starting debugger since process cannot load the jdwp agent.
+11-20 05:03:04.873  2374  2374 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-20 05:03:05.067  2374  2374 D CompatChangeReporter: Compat change id reported: 242716250; UID 10216; state: ENABLED
+11-20 05:03:05.076  2374  2374 D nativeloader: Configuring clns-9 for other apk /data/app/~~o7JqdL5rrXwFgYr94obBeA==/lav.visaroom.alav-jiYrJfTSf2bQdStwW2Rpag==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~o7JqdL5rrXwFgYr94obBeA==/lav.visaroom.alav-jiYrJfTSf2bQdStwW2Rpag==/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/lav.visaroom.alav
+11-20 05:03:05.077  2374  2374 I v.visaroom.alav: AssetManager2(0x7a3f533083f8) locale list changing from [] to [en-US]
+11-20 05:03:05.198  2374  2374 V GraphicsEnvironment: Currently set values for:
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment: lav.visaroom.alav is not listed in per-application setting
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment: ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment: lav.visaroom.alav is not listed in ANGLE allowlist or settings, returning default
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+--------- beginning of system
+11-20 05:03:05.251  2374  2401 I DisplayManager: Choreographer implicitly registered for the refresh rate.
+11-20 05:03:05.267  2374  2374 I v.visaroom.alav: AssetManager2(0x7a3f532fd4f8) locale list changing from [] to [en-US]
+11-20 05:03:05.279  2374  2374 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
+11-20 05:03:05.365  2374  2401 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+11-20 05:03:05.366  2374  2401 I EGL_emulation: Opening libGLESv2_emulation.so
+11-20 05:03:05.391  2374  2401 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+11-20 05:03:05.467  2374  2374 I VisaroomSmoke: seed_saved=true uid_matches=true token_present=true
+11-20 05:03:06.230  2374  2374 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
+11-20 05:03:06.360  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.360  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.360  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.360  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.361  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.361  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.361  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.361  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.361  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.363  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.365  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.365  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.365  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.365  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.491  2374  2374 D CompatChangeReporter: Compat change id reported: 253665015; UID 10216; state: ENABLED
+11-20 05:03:07.160  2374  2374 W HWUI    : Unknown dataspace 0
+11-20 05:03:07.284  2374  2374 I Choreographer: Skipped 54 frames!  The application may be doing too much work on its main thread.
+11-20 05:03:08.512  2374  2480 E SurfaceSyncGroup: Failed to receive transaction ready in 1000ms. Marking SurfaceSyncGroup(wmsSync-VRI[ChatsActivity]#0) as ready
+11-20 05:03:08.513  2374  2480 E SurfaceSyncGroup: Failed to receive transaction ready in 1000ms. Marking SurfaceSyncGroup(VRI[ChatsActivity]#1) as ready
+11-20 05:03:09.944  2374  2482 I HWUI    : Davey! duration=3530ms; Flags=1, FrameTimelineVsyncId=4794, IntendedVsync=50830718810, Vsync=51730718774, InputEventId=0, HandleInputStart=51734538007, AnimationStart=51734538438, PerformTraversalsStart=51734622984, DrawStart=52011207206, FrameDeadline=50847385476, FrameStartTime=51734380863, FrameInterval=16666666, WorkloadTarget=16666666, SyncQueued=52011933839, SyncStart=52031726266, IssueDrawCommandsStart=52031852414, SwapBuffers=54207823788, FrameCompleted=54381081168, DequeueBufferDuration=6710, QueueBufferDuration=21428421, GpuCompleted=54368849789, SwapBuffersCompleted=54381081168, DisplayPresentTime=0, CommandSubmissionCompleted=54207823788, 
+11-20 05:03:10.058  2374  2374 I Choreographer: Skipped 165 frames!  The application may be doing too much work on its main thread.
+11-20 05:03:10.404  2374  2482 I HWUI    : Davey! duration=3006ms; Flags=0, FrameTimelineVsyncId=5090, IntendedVsync=51747385440, Vsync=54497385330, InputEventId=0, HandleInputStart=54526282611, AnimationStart=54526283422, PerformTraversalsStart=54540965331, DrawStart=54541015666, FrameDeadline=54397385334, FrameStartTime=54508430915, FrameInterval=16666666, WorkloadTarget=16666666, SyncQueued=54541076417, SyncStart=54542911464, IssueDrawCommandsStart=54543029029, SwapBuffers=54552584131, FrameCompleted=54756064109, DequeueBufferDuration=5108, QueueBufferDuration=13439195, GpuCompleted=54755976729, SwapBuffersCompleted=54756064109, DisplayPresentTime=0, CommandSubmissionCompleted=54552584131, 
+--- early crash buffer ---
+--- force MessageCheckJobService job 1101 ---
+pid_after_chats=2374
+--- activity state ---
+ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
+Display #0 (activities from top to bottom):
+  * Task{d3cfc7a #7 type=standard A=10216:lav.visaroom.alav U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=2}
+    mLastPausedActivity: ActivityRecord{175335440 u0 lav.visaroom.alav/.ChatsActivity t7}
+    mLastNonFullscreenBounds=Rect(287, 560 - 1153, 2000)
+    isSleeping=false
+    topResumedActivity=ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}
+    * Hist  #1: ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}
+      packageName=com.google.android.permissioncontroller processName=com.google.android.permissioncontroller
+      launchedFromUid=10216 launchedFromPackage=lav.visaroom.alav launchedFromFeature=null userId=0
+      app=ProcessRecord{46d74a1 1018:com.google.android.permissioncontroller/u0a213}
+      Intent { act=android.content.pm.action.REQUEST_PERMISSIONS flg=0x800000 xflg=0x4 pkg=com.google.android.permissioncontroller cmp=com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity (has extras) }
+      rootOfTask=false task=Task{d3cfc7a #7 type=standard A=10216:lav.visaroom.alav}
+      taskAffinity=10213:com.google.android.permissioncontroller
+      mActivityComponent=com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity
+      baseDir=/apex/com.android.permission/priv-app/GooglePermissionController@360527520/GooglePermissionController.apk
+      dataDir=/data/user_de/0/com.google.android.permissioncontroller
+      stateNotNeeded=false componentSpecified=false mActivityType=standard
+      compat={560dpi} theme=0x7f1401ab
+      mLastReportedConfigurations:
+        mGlobalConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h731dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2560) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.37 fontWeightAdjustment=0}
+        mOverrideConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h731dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2560) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.1 fontWeightAdjustment=0}
+      mLastReportedActivityWindowInfo=ActivityWindowInfo{isEmbedded=false, taskBounds=Rect(0, 0 - 1440, 2560), taskFragmentBounds=Rect(0, 0 - 1440, 2560)}
+      CurrentConfiguration={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h731dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2560) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.1 fontWeightAdjustment=0}
+      resultTo=ActivityRecord{175335440 u0 lav.visaroom.alav/.ChatsActivity t7} resultWho=@android:requestPermissions: resultCode=902
+      taskDescription: label="null" icon=null iconResource=/0 iconFilename=null primaryColor=fff1f0f7
+        backgroundColor=ffeeedf4 statusBarColor=fff1f0f7 navigationBarColor=808080
+       backgroundColorFloating=fff1f0f7
+      launchFailed=false launchCount=1 lastLaunchTime=-26s814ms
+      mHaveState=false mIcicle=null
+      state=RESUMED delayedResume=false finishing=false
+--
+      configChanges=0x423
+      neverSandboxDisplayApis=false
+      alwaysSandboxDisplayApis=false
+      isTransparentPolicyRunning=false
+      areBoundsLetterboxed=false
+      isLetterboxRunning=false
+    * Hist  #0: ActivityRecord{175335440 u0 lav.visaroom.alav/.ChatsActivity t7}
+      packageName=lav.visaroom.alav processName=lav.visaroom.alav
+      launchedFromUid=10216 launchedFromPackage=lav.visaroom.alav launchedFromFeature=null userId=0
+      app=ProcessRecord{5d5261b 2374:lav.visaroom.alav/u0a216}
+      Intent { flg=0x10008000 xflg=0x4 cmp=lav.visaroom.alav/.ChatsActivity }
+      rootOfTask=true task=Task{d3cfc7a #7 type=standard A=10216:lav.visaroom.alav}
+      taskAffinity=10216:lav.visaroom.alav
+      mActivityComponent=lav.visaroom.alav/.ChatsActivity
+      baseDir=/data/app/~~o7JqdL5rrXwFgYr94obBeA==/lav.visaroom.alav-jiYrJfTSf2bQdStwW2Rpag==/base.apk
+      dataDir=/data/user/0/lav.visaroom.alav
+      stateNotNeeded=false componentSpecified=true mActivityType=standard
+      compat={560dpi} theme=0x7f090000
+      mLastReportedConfigurations:
+        mGlobalConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h683dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2476) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.40 fontWeightAdjustment=0}
+        mOverrideConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h683dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2476) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.2 fontWeightAdjustment=0}
+      mLastReportedActivityWindowInfo=ActivityWindowInfo{isEmbedded=false, taskBounds=Rect(0, 0 - 1440, 2560), taskFragmentBounds=Rect(0, 0 - 1440, 2560)}
+--
+      launchFailed=false launchCount=1 lastLaunchTime=-28s118ms
+      mHaveState=false mIcicle=null
+      state=PAUSED delayedResume=false finishing=false
+      keysPaused=false inHistory=true idle=true
+      occludesParent=true mNoDisplay=false immersive=false launchMode=0
+      mActivityType=standard
+      windows=[Window{8234587 u0 lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}]
+      windowType=2
+      mOccludesParent=true
+      overrideOrientation=SCREEN_ORIENTATION_UNSPECIFIED
+      requestedOrientation=SCREEN_ORIENTATION_UNSPECIFIED
+      mVisibleRequested=true mVisible=true mClientVisible=true reportedDrawn=true reportedVisible=true
+      mNumInterestingWindows=1 mNumDrawnWindows=1 allDrawn=true)
+--
+  Resumed activities in task display areas (from top to bottom):
+    Resumed: ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}
 
-* Try:
-> Run with --info option to get more log output.
-> Run with --scan to get full insights.
+  ResumedActivity: ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}
 
-* Exception is:
-org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugJavaWithJavac'.
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:130)
-	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:282)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:128)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
-	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
-	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
-	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
-	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
-	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
-	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:80)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
-Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Compilation failed; see the compiler error output for details.
-	at org.gradle.api.internal.tasks.compile.JdkJavaCompiler.execute(JdkJavaCompiler.java:61)
-	at org.gradle.api.internal.tasks.compile.JdkJavaCompiler.execute(JdkJavaCompiler.java:41)
-	at org.gradle.api.internal.tasks.compile.NormalizingJavaCompiler.delegateAndHandleErrors(NormalizingJavaCompiler.java:98)
-	at org.gradle.api.internal.tasks.compile.NormalizingJavaCompiler.execute(NormalizingJavaCompiler.java:52)
-	at org.gradle.api.internal.tasks.compile.NormalizingJavaCompiler.execute(NormalizingJavaCompiler.java:38)
-	at org.gradle.api.internal.tasks.compile.AnnotationProcessorDiscoveringCompiler.execute(AnnotationProcessorDiscoveringCompiler.java:52)
-	at org.gradle.api.internal.tasks.compile.AnnotationProcessorDiscoveringCompiler.execute(AnnotationProcessorDiscoveringCompiler.java:38)
-	at org.gradle.api.internal.tasks.compile.ModuleApplicationNameWritingCompiler.execute(ModuleApplicationNameWritingCompiler.java:46)
-	at org.gradle.api.internal.tasks.compile.ModuleApplicationNameWritingCompiler.execute(ModuleApplicationNameWritingCompiler.java:36)
-	at org.gradle.jvm.toolchain.internal.DefaultToolchainJavaCompiler.execute(DefaultToolchainJavaCompiler.java:57)
-	at org.gradle.api.tasks.compile.JavaCompile.lambda$createToolchainCompiler$3(JavaCompile.java:202)
-	at org.gradle.api.internal.tasks.compile.CleaningJavaCompiler.execute(CleaningJavaCompiler.java:53)
-	at org.gradle.api.internal.tasks.compile.incremental.IncrementalCompilerFactory.lambda$createRebuildAllCompiler$0(IncrementalCompilerFactory.java:52)
-	at org.gradle.api.internal.tasks.compile.incremental.SelectiveCompiler.execute(SelectiveCompiler.java:70)
-	at org.gradle.api.internal.tasks.compile.incremental.SelectiveCompiler.execute(SelectiveCompiler.java:44)
-	at org.gradle.api.internal.tasks.compile.incremental.IncrementalResultStoringCompiler.execute(IncrementalResultStoringCompiler.java:66)
-	at org.gradle.api.internal.tasks.compile.incremental.IncrementalResultStoringCompiler.execute(IncrementalResultStoringCompiler.java:52)
-	at org.gradle.api.internal.tasks.compile.CompileJavaBuildOperationReportingCompiler$1.call(CompileJavaBuildOperationReportingCompiler.java:64)
-	at org.gradle.api.internal.tasks.compile.CompileJavaBuildOperationReportingCompiler$1.call(CompileJavaBuildOperationReportingCompiler.java:48)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.api.internal.tasks.compile.CompileJavaBuildOperationReportingCompiler.execute(CompileJavaBuildOperationReportingCompiler.java:48)
-	at org.gradle.api.tasks.compile.JavaCompile.performCompilation(JavaCompile.java:220)
-	at org.gradle.api.tasks.compile.JavaCompile.performIncrementalCompilation(JavaCompile.java:161)
-	at org.gradle.api.tasks.compile.JavaCompile.compile(JavaCompile.java:146)
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
-	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-	at org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:125)
-	at org.gradle.api.internal.project.taskfactory.IncrementalTaskAction.doExecute(IncrementalTaskAction.java:45)
-	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:51)
-	at org.gradle.api.internal.project.taskfactory.IncrementalTaskAction.execute(IncrementalTaskAction.java:26)
-	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:29)
-	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:244)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:29)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:26)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:47)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.run(DefaultBuildOperationExecutor.java:68)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:229)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:212)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:195)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:162)
-	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:105)
-	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:44)
-	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:59)
-	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:56)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:56)
-	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:44)
-	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:41)
-	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:74)
-	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
-	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:50)
-	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:28)
-	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:67)
-	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:37)
-	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:61)
-	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:26)
-	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:67)
-	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:45)
-	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:40)
-	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:29)
-	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:189)
-	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$1(BuildCacheStep.java:75)
-	at org.gradle.internal.Either$Right.fold(Either.java:175)
-	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:62)
-	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:73)
-	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:48)
-	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:46)
-	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:35)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:76)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:54)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:54)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:36)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
-	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:49)
-	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:27)
-	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:71)
-	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:39)
-	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:65)
-	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:36)
-	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:106)
-	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:55)
-	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:64)
-	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:43)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.executeWithNonEmptySources(AbstractSkipEmptyWorkStep.java:125)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:61)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:36)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
-	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:36)
-	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:23)
-	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:75)
-	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:41)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$execute$0(AssignMutableWorkspaceStep.java:35)
-	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:289)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:31)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:22)
-	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
-	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
-	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
-	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
-	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:48)
-	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:35)
-	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:61)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:127)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
-	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
-	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
-	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
-	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
-	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
-	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:80)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+ActivityTaskSupervisor state:
+  topDisplayFocusedRootTask=Task{d3cfc7a #7 type=standard A=10216:lav.visaroom.alav}
+  Display: mDisplayId=0 (organized)
+    init=1440x2560 560dpi mMinSizeOfResizeableTaskDp=220 cur=1440x2560 app=1440x2560 rng=1440x1440-2560x2560
+    deferred=false mLayoutNeeded=false
+  mLastOrientationSource=WindowedMagnification:0:31@116431623
+  deepestLastOrientationSource=ActivityRecord{175335440 u0 lav.visaroom.alav/.ChatsActivity t7}
+  overrideConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h731dp 560dpi nrml long port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1440, 2560) mAppBounds=Rect(0, 0 - 1440, 2560) mMaxBounds=Rect(0, 0 - 1440, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} as.2 s.23 fontWeightAdjustment=0}
+  ignoreOrientationRequest=false
+  mLayoutSeq=68
+  mCurrentFocus=Window{b4cf87c u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity}
+  mFocusedApp=ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}
 
+  mHoldScreenWindow=null
+  mObscuringWindow=Window{8234587 u0 lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}
+  mLastWakeLockHoldingWindow=null
+  mLastWakeLockObscuringWindow=null
 
-BUILD FAILED in 34s
-26 actionable tasks: 26 executed
+  displayId=0
+  mWallpaperTarget=null
+  mLastWallpaperZoomOut=0.0
+--
+          * AppZoomOut:0:0
+            * Leaf:0:0
+
+  Task display areas in top down Z order:
+    TaskDisplayArea DefaultTaskDisplayArea
+      overrideConfig={0.0 ?mcc0mnc ?localeList ?layoutDir ?swdp ?wdp ?hdp ?density ?lsize ?long ?ldr ?wideColorGamut ?orien ?uimode ?night ?touch ?keyb/?/? ?nav/? winConfig={ mBounds=Rect(0, 0 - 0, 0) mAppBounds=null mMaxBounds=Rect(0, 0 - 0, 0) mDisplayRotation=undefined mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=undefined} ?fontWeightAdjustment}
+      mPreferredTopFocusableRootTask=Task{d3cfc7a #7 type=standard A=10216:lav.visaroom.alav}
+      mLastFocusedRootTask=Task{d3cfc7a #7 type=standard A=10216:lav.visaroom.alav}
+      Application tokens in top down Z order:
+      * Task{d3cfc7a #7 type=standard A=10216:lav.visaroom.alav U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=2}
+        bounds=[0,0][1440,2560]
+        * ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}
+        * ActivityRecord{175335440 u0 lav.visaroom.alav/.ChatsActivity t7}
+      * Task{6314ae #1 type=home U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}
+        bounds=[0,0][1440,2560]
+        * Task{e9bdd85 #6 type=home I=com.google.android.apps.nexuslauncher/.NexusLauncherActivity U=0 rootTaskId=1 visible=false visibleRequested=false mode=fullscreen translucent=true sz=2}
+          bounds=[0,0][1440,2560]
+          * ActivityRecord{258745084 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t6}
+          * TaskFragment{9917a64 mode=multi-window organizerUid=10181 organizerProc=com.google.android.apps.nexuslauncher}
+--
+    mHasBottomNavigationBar=true
+    mLeftGestureHost=Window{538cdce u0 Taskbar}
+    mTopGestureHost=Window{43d17e5 u0 StatusBar}
+    mRightGestureHost=Window{538cdce u0 Taskbar}
+    mBottomGestureHost=Window{538cdce u0 Taskbar}
+    mFocusedWindow=Window{b4cf87c u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity}
+    mTopFullscreenOpaqueWindowState=Window{8234587 u0 lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}
+    mSystemBarColorApps={ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}}
+    mNavBarColorWindowCandidate=Window{b4cf87c u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity}
+    mNavBarBackgroundWindowCandidate=Window{8234587 u0 lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}
+    mLastStatusBarAppearanceRegions=
+      AppearanceRegion{ bounds=[0,0][1440,2560]}
+    mLastLetterboxDetails=
+    mStatusBarBackgroundWindows=
+      Window{8234587 u0 lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}
+    mTopIsFullscreen=false
+    mImeInsetsConsumed=false
+    mForceShowNavigationBarEnabled=false mAllowLockscreenWhenOn=false
+    mRemoteInsetsControllerControlsSystemBars=false
+    mDecorInsetsInfo:
+      ROTATION_0={nonDecorInsets=[0,0][0,0], overrideNonDecorInsets=[0,0][0,84], configInsets=[0,0][0,0], overrideConfigInsets=[0,84][0,84], nonDecorFrame=[0,0][1440,2560], overrideNonDecorFrame=[0,0][1440,2476], configFrame=[0,0][1440,2560], overrideConfigFrame=[0,84][1440,2476]}
+--
+  TaskOrganizerController:
+      android.window.ITaskOrganizer$Stub$Proxy@53510d7 uid=10185 (active):
+        (fullscreen) Task{6314ae #1 type=home}
+        (fullscreen) Task{3331b60 #3 type=undefined}
+        (multi-window) Task{b5a1819 #4 type=undefined}
+        (multi-window) Task{2229363 #5 type=undefined}
+        (fullscreen) Task{d3cfc7a #7 type=standard A=10216:lav.visaroom.alav}
+
+  VisibleActivityProcess:[ ProcessRecord{46d74a1 1018:com.google.android.permissioncontroller/u0a213} ProcessRecord{5d5261b 2374:lav.visaroom.alav/u0a216}]
+  NumNonAppVisibleWindowUidMap:[ 10185:1 10181:1]
+  SleepTokens={}
+--- focused window ---
+  Window #8 Window{b4cf87c u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity}:
+    mOwnerUid=10213 showForAllUsers=false package=com.google.android.permissioncontroller appop=NONE
+    mBaseLayer=21000 mSubLayer=0    mToken=ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}
+    mActivityRecord=ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}
+    WindowStateAnimator{c1bc31d com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity}:
+      mSurface=Surface(name=com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity)/@0x2b31992
+  Window #9 Window{8234587 u0 lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}:
+    mOwnerUid=10216 showForAllUsers=false package=lav.visaroom.alav appop=NONE
+    mBaseLayer=21000 mSubLayer=0    mToken=ActivityRecord{175335440 u0 lav.visaroom.alav/.ChatsActivity t7}
+    mActivityRecord=ActivityRecord{175335440 u0 lav.visaroom.alav/.ChatsActivity t7}
+    WindowStateAnimator{f88f63 lav.visaroom.alav/lav.visaroom.alav.ChatsActivity}:
+      mSurface=Surface(name=lav.visaroom.alav/lav.visaroom.alav.ChatsActivity)/@0xf176760
+  #0 Window{b4cf87c u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity}:
+    mOwnerUid=10213 showForAllUsers=false package=com.google.android.permissioncontroller appop=NONE
+    mBaseLayer=21000 mSubLayer=0    mToken=ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}
+    mActivityRecord=ActivityRecord{62910339 u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity t7}
+    WindowStateAnimator{c1bc31d com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity}:
+      mSurface=Surface(name=com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity)/@0x2b31992
+  imeLayeringTarget in display# 0 Window{b4cf87c u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity}
+  imeInputTarget in display# 0 Window{b4cf87c u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity}
+  imeControlTarget in display# 0 Window{b4cf87c u0 com.google.android.permissioncontroller/com.android.permissioncontroller.permission.ui.GrantPermissionsActivity}
+--- visible UI hierarchy (text/package excerpts) ---
+text=""
+package="com.google.android.permissioncontroller"
+content-desc=""
+text=""
+package="com.google.android.permissioncontroller"
+content-desc=""
+text=""
+package="com.google.android.permissioncontroller"
+content-desc=""
+text=""
+package="com.google.android.permissioncontroller"
+content-desc=""
+text=""
+package="com.google.android.permissioncontroller"
+content-desc=""
+text=""
+package="com.google.android.permissioncontroller"
+content-desc=""
+text=""
+package="com.google.android.permissioncontroller"
+content-desc=""
+text=""
+package="com.google.android.permissioncontroller"
+content-desc=""
+text=""
+package="com.google.android.permissioncontroller"
+content-desc=""
+text="Allow visaroom to send you notifications?"
+package="com.google.android.permissioncontroller"
+content-desc=""
+text=""
+package="com.google.android.permissioncontroller"
+content-desc=""
+text="Allow"
+package="com.google.android.permissioncontroller"
+content-desc=""
+text="Don’t allow"
+package="com.google.android.permissioncontroller"
+content-desc=""
+--- JobScheduler state for visaroom ---
+      62469
+    <0>com.google.android.googlequicksearchbox::.schedulePersisted():
+      61841, 65341, 66404
+    <0>com.google.android.apps.safetyhub::.schedulePersisted():
+      67031, 67081
+    <0>lav.visaroom.alav::.schedulePersisted():
+      50996
+    <0>android::.schedulePersisted():
+      36454, 38152, 42280, 42649
+    <0>com.google.android.as::.schedulePersisted():
+      43604, 45476, 45495, 47000, 48758, 49160, 49948, 58715, 58746, 62908, 64418, 64424, 64473, 74539
+    <0>com.google.android.permissioncontroller::.schedulePersisted():
+      55362, 58955, 59050
+    <0>com.android.providers.settings::.schedulePersisted():
+      26660
+    <0>com.google.android.dialer::.schedulePersisted():
+      56159
+    <0>com.google.android.settings.intelligence::.schedulePersisted():
+      64469, 64472
+  
+  Cached execution stats:
+    <0>com.google.android.ext.services::timeout-reg:
+      expirationTime=86462480, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.ext.services::.schedulePersisted():
+      expirationTime=122469, windowSizeMs=60000, countLimit=250, countInWindow=1, inQuotaTime=0
+    <0>com.google.android.ext.services::anr:
+      expirationTime=86462478, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.ext.services::timeout-total:
+      expirationTime=86462478, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.googlequicksearchbox::timeout-reg:
+      expirationTime=86455120, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.googlequicksearchbox::.schedulePersisted():
+      expirationTime=121841, windowSizeMs=60000, countLimit=250, countInWindow=3, inQuotaTime=0
+    <0>com.google.android.googlequicksearchbox::anr:
+--
+      expirationTime=127031, windowSizeMs=60000, countLimit=250, countInWindow=2, inQuotaTime=0
+    <0>com.google.android.apps.safetyhub::anr:
+      expirationTime=86467001, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.apps.safetyhub::timeout-total:
+      expirationTime=86467001, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>lav.visaroom.alav::timeout-reg:
+      expirationTime=86451015, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>lav.visaroom.alav::.schedulePersisted():
+      expirationTime=110996, windowSizeMs=60000, countLimit=250, countInWindow=1, inQuotaTime=0
+    <0>lav.visaroom.alav::anr:
+      expirationTime=86451015, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>lav.visaroom.alav::timeout-total:
+      expirationTime=86451015, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>android::timeout-reg:
+      expirationTime=86428149, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>android::.schedulePersisted():
+      expirationTime=96454, windowSizeMs=60000, countLimit=250, countInWindow=4, inQuotaTime=0
+    <0>android::anr:
+      expirationTime=86427791, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>android::timeout-total:
+      expirationTime=86427791, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.as::timeout-reg:
+      expirationTime=86440875, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.as::.schedulePersisted():
+      expirationTime=103604, windowSizeMs=60000, countLimit=250, countInWindow=14, inQuotaTime=0
+    <0>com.google.android.as::anr:
+      expirationTime=86440815, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.as::timeout-total:
+      expirationTime=86440815, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.permissioncontroller::timeout-reg:
+      expirationTime=86455402, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.permissioncontroller::.schedulePersisted():
+      expirationTime=115362, windowSizeMs=60000, countLimit=250, countInWindow=3, inQuotaTime=0
+    <0>com.google.android.permissioncontroller::anr:
+      expirationTime=86455402, windowSizeMs=21600000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.google.android.permissioncontroller::timeout-total:
+      expirationTime=86455402, windowSizeMs=86400000, countLimit=10, countInWindow=0, inQuotaTime=0
+    <0>com.android.providers.settings::timeout-reg:
+      expirationTime=86428110, windowSizeMs=86400000, countLimit=3, countInWindow=0, inQuotaTime=0
+    <0>com.android.providers.settings::.schedulePersisted():
+--
+      FORCE_ALL_CHANGED: count=0, total=0.0ms, avg=0.000ms, max calls/s=0 max dur/s=0.0ms max time=0.0ms
+      IS_UID_ACTIVE_CACHED: count=0, total=0.0ms, avg=0.000ms, max calls/s=0 max dur/s=0.0ms max time=0.0ms
+      IS_UID_ACTIVE_RAW: count=8, total=6.4ms, avg=0.799ms, max calls/s=2 max dur/s=0.3ms max time=4.7ms
+  
+  Stopped packages:
+    10216:lav.visaroom.alav=false
+    10213:com.google.android.permissioncontroller=false
+    10209:com.android.devicelockcontroller=false
+    10204:com.google.android.ext.services=false
+    10200:com.google.android.providers.media.module=false
+    10190:com.google.android.rkpdapp=false
+    10153:com.google.android.inputmethod.latin=false
+    10149:com.google.android.tts=false
+    10147:com.google.android.googlequicksearchbox=false
+    10146:com.google.android.gms=false
+    10145:com.google.android.apps.messaging=false
+    10144:com.google.android.as=false
+    10142:com.google.android.as.oss=false
+    10141:com.google.android.apps.wellbeing=false
+    10140:com.google.android.configupdater=false
+    10139:com.google.android.partnersetup=false
+    10137:com.google.android.apps.safetyhub=false
+    10136:com.google.android.settings.intelligence=false
+    10135:com.google.android.dialer=false
+    10131:com.android.imsserviceentitlement=false
+    10105:com.android.providers.downloads=false
+    10103:com.google.android.documentsui=false
+    10099:com.android.providers.calendar=false
+    1073:com.google.android.networkstack=false
+    1000:com.android.settings=false
+    1000:com.android.providers.settings=false
+    1000:android=false
+    
+    ##u0a213/6 from u0a213 active: com.google.android.permissioncontroller [RUN_ANY_IN_BACKGROUND allowed] RUNNABLE
+--
+    
+    Timer<REG>{<0>com.google.android.providers.media.module} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>com.google.android.apps.safetyhub} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>lav.visaroom.alav} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>android} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>com.google.android.as} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>com.google.android.permissioncontroller} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>com.android.providers.settings} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>com.google.android.apps.wellbeing} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>com.google.android.dialer} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>com.google.android.partnersetup} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>com.android.imsserviceentitlement} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>com.android.settings} NOT active, 0 running bg jobs
+    
+    Timer<REG>{<0>com.google.android.settings.intelligence} NOT active, 0 running bg jobs
+      3fb1694 #u0a136/15 com.google.android.settings.intelligence/.modules.appsearchindexing.impl.AppSearchIndexUpdateJobService
+    
+    Timer<REG>{<0>com.google.android.inputmethod.latin} NOT active, 0 running bg jobs
+    
+    
+    Timer<EJ>{<0>com.android.providers.calendar} NOT active, 0 running bg jobs (debit adj=0)
+    
+    Timer<EJ>{<0>com.android.devicelockcontroller} NOT active, 0 running bg jobs (debit adj=0)
+--
+    
+    TopAppTimer{<0>com.google.android.apps.nexuslauncher} NOT active
+    TopAppTimer{<0>com.google.android.googlesdksetup} NOT active
+    TopAppTimer{<0>com.google.android.permissioncontroller} started at 52667 (28395ms ago)
+      com.android.permissioncontroller.permission.ui.GrantPermissionsActivity
+    TopAppTimer{<0>lav.visaroom.alav} NOT active
+    
+    Cached execution stats:
+      <0>com.google.android.ext.services
+        ACTIVE: expirationTime=86481057, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.googlequicksearchbox
+        ACTIVE: expirationTime=86452055, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.android.providers.downloads
+        EXEMPTED: expirationTime=86461972, allowedTimePerPeriodMs=1200000, windowSizeMs=2400000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.apps.messaging
+        ACTIVE: expirationTime=86467397, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.configupdater
+        ACTIVE: expirationTime=86481056, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.providers.media.module
+        ACTIVE: expirationTime=86458409, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.apps.safetyhub
+        EXEMPTED: expirationTime=86481056, allowedTimePerPeriodMs=1200000, windowSizeMs=2400000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>android
+        EXEMPTED: expirationTime=86428791, allowedTimePerPeriodMs=1200000, windowSizeMs=2400000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.as
+        ACTIVE: expirationTime=86463127, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.permissioncontroller
+        ACTIVE: expirationTime=86458939, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.android.providers.settings
+        EXEMPTED: expirationTime=86428791, allowedTimePerPeriodMs=1200000, windowSizeMs=2400000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.as.oss
+        ACTIVE: expirationTime=86462413, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+      <0>com.google.android.apps.wellbeing
+        ACTIVE: expirationTime=86451980, allowedTimePerPeriodMs=1200000, windowSizeMs=3600000, jobCountLimit=75, sessionCountLimit=75, executionTimeInWindow=0, bgJobCountInWindow=0, executionTimeInMaxPeriod=0, bgJobCountInMaxPeriod=0, sessionCountInWindow=0, inQuotaTime=0, rateLimitJobCountExpirationTime=0, rateLimitJobCountWindow=0, rateLimitSessionCountExpirationTime=0, rateLimitSessionCountWindow=0
+--
+    EJ debits:
+      <0>com.google.android.googlequicksearchbox: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.android.providers.downloads: ShrinkableDebits { debit tally: 0, bucket: 6 }
+      <0>com.google.android.apps.messaging: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.providers.media.module: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>lav.visaroom.alav: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>android: ShrinkableDebits { debit tally: 0, bucket: 6 }
+      <0>com.google.android.as: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.permissioncontroller: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.android.providers.settings: ShrinkableDebits { debit tally: 0, bucket: 6 }
+      <0>com.google.android.as.oss: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.apps.wellbeing: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.dialer: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.gms: ShrinkableDebits { debit tally: 0, bucket: 6 }
+      <0>com.google.android.tts: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.googlesdksetup: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.partnersetup: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.apps.nexuslauncher: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.settings.intelligence: ShrinkableDebits { debit tally: 0, bucket: 0 }
+      <0>com.google.android.inputmethod.latin: ShrinkableDebits { debit tally: 0, bucket: 0 }
+    
+    In quota alarms:
+      NOT WAITING
+
+ComponentController:
+  0-ComponentInfo{com.google.android.apps.safetyhub/com.google.android.libraries.notifications.entrypoints.scheduled.ScheduledTaskService}: com.google.android.apps.safetyhub
+  0-ComponentInfo{com.google.android.rkpdapp/androidx.work.impl.background.systemjob.SystemJobService}: com.google.android.rkpdapp
+  0-ComponentInfo{com.google.android.partnersetup/com.google.android.partnersetup.ClientIdJobService}: com.google.android.partnersetup
+  0-ComponentInfo{com.google.android.partnersetup/com.google.android.partnersetup.AppHidingJobService}: com.google.android.partnersetup
+  0-ComponentInfo{android/com.android.server.PruneInstantAppsJobService}: system
+  0-ComponentInfo{com.google.android.tts/androidx.work.impl.background.systemjob.SystemJobService}: com.google.android.tts
+  0-ComponentInfo{com.google.android.permissioncontroller/com.android.permissioncontroller.hibernation.HibernationJobService}: com.google.android.permissioncontroller
+  0-ComponentInfo{com.google.android.dialer/com.android.dialer.shortcuts.PeriodicJobService}: com.google.android.dialer
+  0-ComponentInfo{com.google.android.permissioncontroller/com.android.permissioncontroller.permission.service.PermissionEventCleanupJobService}: com.google.android.permissioncontroller
+--
+    1x pending 1x active 
+    1x canceled
+  u0a213 / com.google.android.permissioncontroller:
+    2x pending 2x active-top
+    2x successful_finish
+  u0a216 / lav.visaroom.alav:
+    1x pending 6% 1x active-top
+    1x canceled
+
+  Job history:
+          -23s567ms    STOP: #u0a153/15 @androidx.work.systemjobscheduler@com.google.android.inputmethod.latin/androidx.work.impl.background.systemjob.SystemJobService app called jobFinished
+          -23s563ms   START: #u0a141/1 com.google.android.apps.wellbeing/.autodnd.impl.AutoDndJobService
+          -23s543ms    STOP: #u0a141/1 com.google.android.apps.wellbeing/.autodnd.impl.AutoDndJobService app called jobFinished
+          -22s954ms    STOP: #u0a147/-151 com.google.android.googlequicksearchbox/com.google.android.apps.gsa.tasks.BackgroundTasksJobService canceled
+          -22s876ms   START: #u0a147/-151 com.google.android.googlequicksearchbox/com.google.android.apps.gsa.tasks.BackgroundTasksJobService
+          -22s321ms   START: #u0a144/16392 com.google.android.as/com.google.android.apps.miphone.aiai.common.superpacks.impl.AiAiPersistentDownloadJobService
+          -22s287ms   START: #u0a153/16 @androidx.work.systemjobscheduler@com.google.android.inputmethod.latin/androidx.work.impl.background.systemjob.SystemJobService
+          -22s271ms    STOP: #u0a153/16 @androidx.work.systemjobscheduler@com.google.android.inputmethod.latin/androidx.work.impl.background.systemjob.SystemJobService canceled
+          -22s251ms   START: #u0a153/17 @androidx.work.systemjobscheduler@com.google.android.inputmethod.latin/androidx.work.impl.background.systemjob.SystemJobService
+          -22s242ms    STOP: #u0a153/17 @androidx.work.systemjobscheduler@com.google.android.inputmethod.latin/androidx.work.impl.background.systemjob.SystemJobService canceled
+          -22s234ms   START: #u0a153/18 @androidx.work.systemjobscheduler@com.google.android.inputmethod.latin/androidx.work.impl.background.systemjob.SystemJobService
+          -22s232ms    STOP: #u0a153/18 @androidx.work.systemjobscheduler@com.google.android.inputmethod.latin/androidx.work.impl.background.systemjob.SystemJobService cancelled while waiting for bind
+          -22s225ms   START: #u0a153/19 @androidx.work.systemjobscheduler@com.google.android.inputmethod.latin/androidx.work.impl.background.systemjob.SystemJobService
+          -22s104ms START-P: #u0a213/2 com.google.android.permissioncontroller/com.android.permissioncontroller.hibernation.HibernationJobService
+          -22s087ms  STOP-P: #u0a213/2 com.google.android.permissioncontroller/com.android.permissioncontroller.hibernation.HibernationJobService app called jobFinished
+          -21s313ms    STOP: #u0a147/-237 com.google.android.googlequicksearchbox/com.google.android.apps.gsa.tasks.BackgroundTasksJobService canceled
+          -21s199ms   START: #u0a135/1 @androidx.work.systemjobscheduler@com.google.android.dialer/androidx.work.impl.background.systemjob.SystemJobService
+          -21s121ms    STOP: #u0a147/-45 com.google.android.googlequicksearchbox/com.google.android.apps.gsa.tasks.BackgroundTasksJobService canceled
+          -21s072ms    STOP: #u0a147/-47 com.google.android.googlequicksearchbox/com.google.android.apps.gsa.tasks.BackgroundTasksJobService canceled
+          -20s783ms   START: #u0a131/2 com.android.imsserviceentitlement/.fcm.FcmRegistrationService
+          -20s742ms    STOP: #u0a147/-163 com.google.android.googlequicksearchbox/com.google.android.apps.gsa.tasks.BackgroundTasksJobService app called jobFinished
+          -20s738ms   START: #u0a147/1 @androidx.work.systemjobscheduler@com.google.android.googlequicksearchbox/androidx.work.impl.background.systemjob.SystemJobService
+          -20s641ms    STOP: #u0a131/2 com.android.imsserviceentitlement/.fcm.FcmRegistrationService app called jobFinished
+          -20s566ms START-P: #1000/86408622 @class com.android.server.healthconnect.migration.MigrationStateChangeJob@android/com.android.server.healthconnect.HealthConnectDailyService
+--- final app-UID log ---
+--------- beginning of main
+11-20 05:03:04.834  2374  2374 I v.visaroom.alav: Using CollectorTypeCMC GC.
+11-20 05:03:04.834  2374  2374 W v.visaroom.alav: Unexpected CPU variant for x86: x86_64.
+11-20 05:03:04.834  2374  2374 W v.visaroom.alav: Known variants: atom, sandybridge, silvermont, goldmont, goldmont-plus, goldmont-without-sha-xsaves, tremont, kabylake, alderlake, default
+11-20 05:03:04.836  2374  2374 E v.visaroom.alav: Not starting debugger since process cannot load the jdwp agent.
+11-20 05:03:04.873  2374  2374 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-20 05:03:05.067  2374  2374 D CompatChangeReporter: Compat change id reported: 242716250; UID 10216; state: ENABLED
+11-20 05:03:05.076  2374  2374 D nativeloader: Configuring clns-9 for other apk /data/app/~~o7JqdL5rrXwFgYr94obBeA==/lav.visaroom.alav-jiYrJfTSf2bQdStwW2Rpag==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~o7JqdL5rrXwFgYr94obBeA==/lav.visaroom.alav-jiYrJfTSf2bQdStwW2Rpag==/lib/x86_64, permitted_path=/data:/mnt/expand:/data/user/0/lav.visaroom.alav
+11-20 05:03:05.077  2374  2374 I v.visaroom.alav: AssetManager2(0x7a3f533083f8) locale list changing from [] to [en-US]
+11-20 05:03:05.198  2374  2374 V GraphicsEnvironment: Currently set values for:
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment: lav.visaroom.alav is not listed in per-application setting
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment: ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment: lav.visaroom.alav is not listed in ANGLE allowlist or settings, returning default
+11-20 05:03:05.204  2374  2374 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+--------- beginning of system
+11-20 05:03:05.251  2374  2401 I DisplayManager: Choreographer implicitly registered for the refresh rate.
+11-20 05:03:05.267  2374  2374 I v.visaroom.alav: AssetManager2(0x7a3f532fd4f8) locale list changing from [] to [en-US]
+11-20 05:03:05.279  2374  2374 E ashmem  : Pinning is deprecated since Android Q. Please use trim or other methods.
+11-20 05:03:05.365  2374  2401 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+11-20 05:03:05.366  2374  2401 I EGL_emulation: Opening libGLESv2_emulation.so
+11-20 05:03:05.391  2374  2401 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+11-20 05:03:05.467  2374  2374 I VisaroomSmoke: seed_saved=true uid_matches=true token_present=true
+11-20 05:03:06.230  2374  2374 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
+11-20 05:03:06.360  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.360  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.360  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.360  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.361  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.361  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.361  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.361  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.361  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.362  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.363  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.364  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.365  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.365  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.365  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.365  2374  2374 W HWUI    : Image decoding logging dropped!
+11-20 05:03:06.491  2374  2374 D CompatChangeReporter: Compat change id reported: 253665015; UID 10216; state: ENABLED
+11-20 05:03:07.160  2374  2374 W HWUI    : Unknown dataspace 0
+11-20 05:03:07.284  2374  2374 I Choreographer: Skipped 54 frames!  The application may be doing too much work on its main thread.
+11-20 05:03:08.512  2374  2480 E SurfaceSyncGroup: Failed to receive transaction ready in 1000ms. Marking SurfaceSyncGroup(wmsSync-VRI[ChatsActivity]#0) as ready
+11-20 05:03:08.513  2374  2480 E SurfaceSyncGroup: Failed to receive transaction ready in 1000ms. Marking SurfaceSyncGroup(VRI[ChatsActivity]#1) as ready
+11-20 05:03:09.944  2374  2482 I HWUI    : Davey! duration=3530ms; Flags=1, FrameTimelineVsyncId=4794, IntendedVsync=50830718810, Vsync=51730718774, InputEventId=0, HandleInputStart=51734538007, AnimationStart=51734538438, PerformTraversalsStart=51734622984, DrawStart=52011207206, FrameDeadline=50847385476, FrameStartTime=51734380863, FrameInterval=16666666, WorkloadTarget=16666666, SyncQueued=52011933839, SyncStart=52031726266, IssueDrawCommandsStart=52031852414, SwapBuffers=54207823788, FrameCompleted=54381081168, DequeueBufferDuration=6710, QueueBufferDuration=21428421, GpuCompleted=54368849789, SwapBuffersCompleted=54381081168, DisplayPresentTime=0, CommandSubmissionCompleted=54207823788, 
+11-20 05:03:10.058  2374  2374 I Choreographer: Skipped 165 frames!  The application may be doing too much work on its main thread.
+11-20 05:03:10.404  2374  2482 I HWUI    : Davey! duration=3006ms; Flags=0, FrameTimelineVsyncId=5090, IntendedVsync=51747385440, Vsync=54497385330, InputEventId=0, HandleInputStart=54526282611, AnimationStart=54526283422, PerformTraversalsStart=54540965331, DrawStart=54541015666, FrameDeadline=54397385334, FrameStartTime=54508430915, FrameInterval=16666666, WorkloadTarget=16666666, SyncQueued=54541076417, SyncStart=54542911464, IssueDrawCommandsStart=54543029029, SwapBuffers=54552584131, FrameCompleted=54756064109, DequeueBufferDuration=5108, QueueBufferDuration=13439195, GpuCompleted=54755976729, SwapBuffersCompleted=54756064109, DisplayPresentTime=0, CommandSubmissionCompleted=54552584131, 
+11-20 05:03:16.333  2374  2381 I v.visaroom.alav: Background concurrent mark compact GC freed 2663KB AllocSpace bytes, 127(4300KB) LOS objects, 49% free, 2759KB/5519KB, paused 81us,381us total 137.708ms
+--- final crash buffer ---
+--- filtered app-context extract ---
+13104-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 282: Setting notAfter to 0
+13105-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 148: Using TAG_CERTIFICATE_NOT_BEFORE: 0
+13106-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 154: Using TAG_CERTIFICATE_NOT_AFTER: 0
+13107-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 159: Got certificate date params:  NotBefore = 0, NotAfter = 0
+13108-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 273: Setting notBefore to 0
+13109-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 282: Setting notAfter to 0
+13110-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 148: Using TAG_CERTIFICATE_NOT_BEFORE: 0
+13111-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 154: Using TAG_CERTIFICATE_NOT_AFTER: 0
+13112-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 159: Got certificate date params:  NotBefore = 0, NotAfter = 0
+13113-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 273: Setting notBefore to 0
+13114-11-20 05:03:16.965   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 282: Setting notAfter to 0
+13115-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 148: Using TAG_CERTIFICATE_NOT_BEFORE: 0
+13116-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 154: Using TAG_CERTIFICATE_NOT_AFTER: 0
+13117-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 159: Got certificate date params:  NotBefore = 0, NotAfter = 0
+13118-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 273: Setting notBefore to 0
+13119-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 282: Setting notAfter to 0
+13120-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 148: Using TAG_CERTIFICATE_NOT_BEFORE: 0
+13121-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 154: Using TAG_CERTIFICATE_NOT_AFTER: 0
+13122-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 159: Got certificate date params:  NotBefore = 0, NotAfter = 0
+13123-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 273: Setting notBefore to 0
+13124-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 282: Setting notAfter to 0
+13125-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 148: Using TAG_CERTIFICATE_NOT_BEFORE: 0
+13126-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 154: Using TAG_CERTIFICATE_NOT_AFTER: 0
+13127-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 159: Got certificate date params:  NotBefore = 0, NotAfter = 0
+13128-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 273: Setting notBefore to 0
+13129-11-20 05:03:16.966   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 282: Setting notAfter to 0
+--
+20561-11-20 05:03:21.341  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.applications.contacts.ContactsStoragePreferenceController
+20562-11-20 05:03:21.341  1711  2051 I bosm    : (REDACTED) isDeeplinkEnabled %s, isInitialSimplifiedOobeViaDeeplinkUser %s
+20563-11-20 05:03:21.341  1711  2051 I biqq    : User not OptedIn. Skipping Eligibility Checks.
+20564-11-20 05:03:21.341  1711  2051 I bioy    : Robin is not eligible or not opted-in
+20565-11-20 05:03:21.341  1711  2051 I bioy    : Headphone voice queries disabled: HEADPHONE_VOICE_QUERIES flag not enabled
+20566-11-20 05:03:21.341  1711  2051 I bioy    : (REDACTED) Headphone Integration status: %s
+20567-11-20 05:03:21.344  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.applications.HibernatedAppsPreferenceController
+20568-11-20 05:03:21.344  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.applications.AppBatteryUsagePreferenceController
+20569-11-20 05:03:21.344  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.applications.appcompat.UserAspectRatioAppsPreferenceController
+20570-11-20 05:03:21.344  1711  1950 I boak    : (REDACTED) DelegationStatus: %s
+20571:11-20 05:03:21.344  1270  1320 D LauncherAppsCallbackImpl: onPackageAdded triggered for packageName=lav.visaroom.alav, user=UserHandle{0}
+20572:11-20 05:03:21.345  1270  1320 D PackageUpdatedTask: Package updated: mOp=ADD packages=[lav.visaroom.alav], user=UserHandle{0}
+20573-11-20 05:03:21.346  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.notification.LockScreenNotificationsGlobalPreferenceController
+20574-11-20 05:03:21.346  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.notification.lockscreen.MinimalismPreferenceController
+20575-11-20 05:03:21.346  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.notification.LockScreenWhatToShowController
+20576-11-20 05:03:21.346  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.notification.LockScreenNotificationShowSeenController
+20577-11-20 05:03:21.346  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.notification.LockScreenNotificationShowSilentController
+20578-11-20 05:03:21.346  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.notification.LockScreenNotificationShowSensitiveController
+20579-11-20 05:03:21.346  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.notification.LockScreenNotificationShowSensitiveController
+20580-11-20 05:03:21.346  1252  3490 V SettingsSearchProvider: com.android.settings.notification.LockScreenNotificationsPreferencePageFragment$1@be68bb3 tried to add an empty non-indexable key
+20581-11-20 05:03:21.347  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f53321a38) locale list changing from [] to [en-US]
+20582-11-20 05:03:21.347  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.network.NetworkProviderSimListController
+20583-11-20 05:03:21.349  1688  2472 I AiAiEcho: Settings changed for uri: content://settings/secure/autofill_user_data_max_category_count
+20584-11-20 05:03:21.349  1688  1841 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+20585-11-20 05:03:21.349  1688  1841 I AiAiEcho: EchoTargets: 
+20586-11-20 05:03:21.349  1688  1841 I AiAiEcho: Filtered by AiAi flag check: 
+20587-11-20 05:03:21.349  1688  1841 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+20588-11-20 05:03:21.349  1688  1841 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+20589-11-20 05:03:21.349  1688  1841 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+20590-11-20 05:03:21.349  1688  1841 I AiAiEcho: EchoTargets: 
+20591-11-20 05:03:21.349  1688  1841 I AiAiEcho: Filtered by AiAi flag check: 
+20592-11-20 05:03:21.349  1688  1841 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+20593-11-20 05:03:21.350  1688  1841 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+20594-11-20 05:03:21.353  1688  1841 I AiAiEcho: #postPredictionTargets: Sending updates to UISurface home with targets# 0 (types=[])
+20595-11-20 05:03:21.353  1688  1841 I AiAiEcho: #postPredictionTargets: Sending updates to UISurface lockscreen with targets# 0 (types=[])
+20596-11-20 05:03:21.353  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.security.ContentProtectionTogglePreferenceController
+20597-11-20 05:03:21.354  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.security.ContentProtectionWorkSwitchController
+20598-11-20 05:03:21.355  1017  1017 W PageIndicator: Total number of pages invalid: 0. Assuming 1 page.
+20599-11-20 05:03:21.356  3322  3322 I AidlLazyServiceRegistrar: Process has 0 (of 1 available) client(s) in use after notification android.hardware.drm.IDrmFactory/clearkey has clients: 0
+20600-11-20 05:03:21.356  3322  3322 I AidlLazyServiceRegistrar: Trying to shut down the service. No clients in use for any service in process.
+20601-11-20 05:03:21.357  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.inputmethod.KeyboardRepeatKeysController
+20602-11-20 05:03:21.357  1252  3490 W PrefCtrlListHelper: Cannot instantiate controller from reflection: com.android.settings.inputmethod.KeyboardRepeatKeysController
+20603-11-20 05:03:21.499     0     0 I servicemanager: Notifying android.hardware.drm.IDrmFactory/clearkey they don't (previously: do) have clients when we now have no record of a client
+20604-11-20 05:03:21.503     0     0 I servicemanager: Notifying artd they don't (previously: do) have clients when we now have no record of a client
+20605-11-20 05:03:21.357  1711  1950 I bifu    : (REDACTED) Populated bump behaviors: %s
+20606-11-20 05:03:21.357  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.sound.MediaControlsPreferenceController
+20607-11-20 05:03:21.357  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.sound.MediaControlsLockScreenPreferenceController
+20608-11-20 05:03:21.358  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.inputmethod.KeyboardAccessibilityMouseKeysController
+20609-11-20 05:03:21.358  1252  3490 W PrefCtrlListHelper: Cannot instantiate controller from reflection: com.android.settings.inputmethod.KeyboardAccessibilityMouseKeysController
+20610-11-20 05:03:21.358  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.security.MemtagPreferenceController
+20611-11-20 05:03:21.358  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.security.MemtagFooterPreferenceController
+20612-11-20 05:03:21.358  1252  3490 V SettingsSearchProvider: com.android.settings.search.BaseSearchIndexProvider@dbe2b tried to add an empty non-indexable key
+20613-11-20 05:03:21.358  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.AccessibilityButtonPreviewPreferenceController
+20614-11-20 05:03:21.358  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.AccessibilityButtonLocationPreferenceController
+20615-11-20 05:03:21.358  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.AccessibilityButtonGesturePreferenceController
+20616-11-20 05:03:21.362  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.FloatingMenuSizePreferenceController
+20617-11-20 05:03:21.362  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.FloatingMenuFadePreferenceController
+20618-11-20 05:03:21.362  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.FloatingMenuTransparencyPreferenceController
+20619-11-20 05:03:21.363  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.AccessibilityButtonFooterPreferenceController
+20620-11-20 05:03:21.363  1252  3490 V SettingsSearchProvider: com.android.settings.accessibility.AccessibilityButtonFragment$1@3623046 tried to add an empty non-indexable key
+20621-11-20 05:03:21.365   787   796 I AidlLazyServiceRegistrar: Process has 0 (of 1 available) client(s) in use after notification artd has clients: 0
+20622-11-20 05:03:21.365   787   796 I AidlLazyServiceRegistrar: Trying to shut down the service. No clients in use for any service in process.
+20623-11-20 05:03:21.510     0     0 I servicemanager: Caller(pid=3322,uid=1013,sid=u:r:hal_drm_clearkey_aidl:s0) Unregistering android.hardware.drm.IDrmFactory/clearkey
+20624-11-20 05:03:21.512     0     0 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+20625-11-20 05:03:21.513     0     0 I servicemanager: Caller(pid=787,uid=1082,sid=u:r:artd:s0) Unregistering artd
+20626-11-20 05:03:21.366  3322  3322 I AidlLazyServiceRegistrar: Unregistered all clients and exiting
+20627-11-20 05:03:21.371   787   796 I AidlLazyServiceRegistrar: Unregistered all clients and exiting
+20628-11-20 05:03:21.515     0     0 I init    : Service 'vendor.drm-clearkey-service' (pid 3322) exited with status 0 oneshot service took 2.565000 seconds in background
+20629-11-20 05:03:21.517     0     0 I init    : Sending signal 9 to service 'vendor.drm-clearkey-service' (pid 3322) process group...
+20630-11-20 05:03:21.518     0     0 I BpBinder: onLastStrongRef automatically unlinking death recipients:
+20631-11-20 05:03:21.526     0     0 I libprocessgroup: Removed cgroup /sys/fs/cgroup/system/uid_1013/pid_3322
+20632-11-20 05:03:21.527     0     0 I init    : Service 'artd' (pid 787) exited with status 0 oneshot service took 42.731998 seconds in background
+20633-11-20 05:03:21.529     0     0 I init    : Sending signal 9 to service 'artd' (pid 787) process group...
+20634-11-20 05:03:21.384  1811  1973 D WM-Processor: Work WorkGenerationalId(workSpecId=36d7b535-b1b7-416f-bd3a-34a39f4324a3, generation=0) is already enqueued for processing
+20635-11-20 05:03:21.388  1811  2088 V ClearcutMetricXmitter: Transmission is done.
+20636-11-20 05:03:21.388  1328  1328 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.findmydevice.spot.service.locationreport.START dat=chimera-action:/... xflg=0x4 cmp=com.google.android.gms/.chimera.PersistentApiService }
+20637-11-20 05:03:21.388  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.fuelgauge.adaptivecharging.AdaptiveChargingMainSwitchPreferenceController
+20638-11-20 05:03:21.388  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.fuelgauge.adaptivecharging.AdaptiveChargingFooterPreferenceController
+20639-11-20 05:03:21.388  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.FlashNotificationsIntroPreferenceController
+20640-11-20 05:03:21.388  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.FlashNotificationIllustrationPreferenceController
+20641-11-20 05:03:21.388  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.CameraFlashNotificationPreferenceController
+20642-11-20 05:03:21.388  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.ScreenFlashNotificationPreferenceController
+20643-11-20 05:03:21.388  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.FlashNotificationsPreviewPreferenceController
+20644-11-20 05:03:21.388  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.accessibility.FlashNotificationsFooterPreferenceController
+20645-11-20 05:03:21.390  1252  3490 D SlotSimStatus: Number of active SIM: 1
+20646-11-20 05:03:21.390  1252  3490 W BaseSearchIndex: Error initializing controller in fragment: com.android.settings.deviceinfo.aboutphone.MyDeviceInfoFragment$1@e3b45fd, e: java.lang.IllegalStateException: Cannot invoke setValue on a background thread
+20647-11-20 05:03:21.390  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.DeviceNamePreferenceController
+20648-11-20 05:03:21.390  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.BrandedAccountPreferenceController
+20649-11-20 05:03:21.533     0     0 I libprocessgroup: Removed cgroup /sys/fs/cgroup/system/uid_1082/pid_787
+20650-11-20 05:03:21.391  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.PhoneNumberPreferenceController
+20651-11-20 05:03:21.391  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.warranty.WarrantyPreferenceController
+20652-11-20 05:03:21.391  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.simstatus.SimStatusPreferenceController
+20653-11-20 05:03:21.391  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.HardwareInfoPreferenceController
+20654-11-20 05:03:21.391  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.imei.ImeiInfoPreferenceController
+20655-11-20 05:03:21.391  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.firmwareversion.FirmwareVersionPreferenceController
+20656-11-20 05:03:21.391  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.batteryinfo.BatteryInfoPreferenceController
+20657-11-20 05:03:21.391  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.deviceinfo.BuildNumberPreferenceController
+20658-11-20 05:03:21.392  1811  1973 D WM-Processor: Work WorkGenerationalId(workSpecId=961c4abf-9ee5-43d4-a420-8047bf4f9611, generation=0) is already enqueued for processing
+20659-11-20 05:03:21.392  1328  2991 I .gms.persistent: AssetManager2(0x7a3f53310d78) locale list changing from [] to [en-US]
+20660-11-20 05:03:21.392  1811  1973 D WM-Processor: kug: processing WorkGenerationalId(workSpecId=28ca491f-6a43-4fbc-9fed-733781a03f50, generation=0)
+20661-11-20 05:03:21.392  1811  1973 D WM-Processor: kug: processing WorkGenerationalId(workSpecId=e3c98a19-448b-4203-bf60-c9571adc22be, generation=0)
+20662-11-20 05:03:21.392  1811  1973 I WM-WorkerWrapper: Worker result FAILURE for Work [ id=258a529f-bbc8-4267-8bd2-bf55a7657a52, tags={ com.google.apps.tiktok.contrib.work.TikTokListenableWorker,TikTokWorker#com.google.android.apps.search.googleapp.notifications.accountsettings.LocationReportWorker } ]
+20663-11-20 05:03:21.393  1252  3490 D BatterySettingsFeatureProviderGoogleImpl: isBatteryInfoEnabled = false
+20664-11-20 05:03:21.394  1811  1811 D WM-Processor: kug 258a529f-bbc8-4267-8bd2-bf55a7657a52 executed; reschedule = false
+20665-11-20 05:03:21.394  1811  1811 D WM-GreedyScheduler: Stopping tracking for WorkGenerationalId(workSpecId=258a529f-bbc8-4267-8bd2-bf55a7657a52, generation=0)
+20666-11-20 05:03:21.394  1811  1811 D WM-SystemJobService: 258a529f-bbc8-4267-8bd2-bf55a7657a52 executed on JobScheduler
+20667-11-20 05:03:21.394  1252  3490 V SettingsSearchProvider: com.android.settings.enterprise.EnterprisePrivacySettings$1@92fdaa0 tried to add an empty non-indexable key
+20668-11-20 05:03:21.394  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.regionalpreferences.TemperatureUnitController
+20669-11-20 05:03:21.394  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.regionalpreferences.FirstDayOfWeekController
+20670-11-20 05:03:21.395  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.regionalpreferences.NumberingSystemController
+20671-11-20 05:03:21.395  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.regionalpreferences.RegionalFooterPreferenceController
+20672-11-20 05:03:21.395  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.DoubleTapPowerIllustrationPreferenceController
+20673-11-20 05:03:21.395  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.DoubleTapPowerMainSwitchPreferenceController
+20674-11-20 05:03:21.395  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.DoubleTapPowerForCameraPreferenceController
+20675-11-20 05:03:21.395  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.gestures.DoubleTapPowerForWalletPreferenceController
+20676-11-20 05:03:21.396  1711  1950 I bigb    : (REDACTED) Client type %s set for %s
+20677-11-20 05:03:21.396  1711  1950 I bigb    : (REDACTED) Client type %s set for %s
+20678-11-20 05:03:21.396  1711  1950 I bigb    : (REDACTED) Client type %s set for %s
+20679-11-20 05:03:21.396  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.notification.SpatialAudioTipsButtonPreferenceController
+20680-11-20 05:03:21.397  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.notification.SpatialAudioPreferenceController
+20681-11-20 05:03:21.397  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.notification.SpatialAudioWiredHeadphonesController
+20682-11-20 05:03:21.397  1811  1974 I WM-WorkerWrapper: Worker result SUCCESS for Work [ id=4a508c83-4bc4-495e-8c46-fd818a126f3b, tags={ com.google.apps.tiktok.contrib.work.TikTokListenableWorker,TikTokWorker#com.google.android.apps.gsa.smartspace.task.LoggerTask } ]
+20683-11-20 05:03:21.398  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.android.settings.development.featureflags.FeatureFlagsPreferenceController
+20684-11-20 05:03:21.398  1252  3490 V SettingsSearchProvider: com.android.settings.development.featureflags.FeatureFlagsDashboard$1@677222a tried to add an empty non-indexable key
+20685-11-20 05:03:21.398  1711  1950 I blgd    : (REDACTED) #isRobinOnlyLocale checkedLocale:%s language:%s list:%s
+20686-11-20 05:03:21.399  1811  1970 I CalRefreshTaskCtrl: Do not refresh calendar data because Smartspace is not available on device.
+20687-11-20 05:03:21.399  1711  1950 I bijr    : (REDACTED) FCF System FeatureName to check: %s
+20688-11-20 05:03:21.400  1252  3490 I ndroid.settings: AssetManager2(0x7a3f53304ed8) locale list changing from [] to [en-US]
+20689-11-20 05:03:21.400  1624  1756 I .apps.wellbeing: AssetManager2(0x7a3f53314bf8) locale list changing from [] to [en-US]
+20690-11-20 05:03:21.400  1252  3490 I ndroid.settings: AssetManager2(0x7a3f533051f8) locale list changing from [] to [en-US]
+20691-11-20 05:03:21.401  1711  1950 I bijr    : (REDACTED) FCF: Device model check status : %s
+20692-11-20 05:03:21.401  1483  1588 I Icing   : Indexing com.google.android.gms-contacts_contact_id from com.google.android.gms
+--
+20810-11-20 05:03:21.420  1483  1588 I Icing   : Indexing done com.google.android.gms-contacts_contact_id
+20811-11-20 05:03:21.420  1483  1588 I Icing   : Indexing com.google.android.gms-emails_data_id from com.google.android.gms
+20812-11-20 05:03:21.420  1711  1984 I egqw    : (REDACTED) New message(%s, @%s) received at connection(%s).
+20813-11-20 05:03:21.420  1711  1984 I egqw    : (REDACTED) Setting client id(%s) at connection(%s).
+20814-11-20 05:03:21.420  1483  1588 I Icing   : Indexing done com.google.android.gms-emails_data_id
+20815-11-20 05:03:21.420  1483  1588 I Icing   : Indexing com.google.android.gms-phones_data_id from com.google.android.gms
+20816-11-20 05:03:21.421  1483  1588 I Icing   : Indexing done com.google.android.gms-phones_data_id
+20817-11-20 05:03:21.421  1483  1588 I Icing   : Indexing com.google.android.gms-postals_data_id from com.google.android.gms
+20818-11-20 05:03:21.421  1483  1588 I Icing   : Indexing done com.google.android.gms-postals_data_id
+20819-11-20 05:03:21.421  1483  1588 I Icing   : Post-init done
+20820:11-20 05:03:21.421  1483  1588 I Icing   : doRemovePackageData lav.visaroom.alav
+20821-11-20 05:03:21.421  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.notification.ClearCallingTogglePreferenceController
+20822-11-20 05:03:21.421  1252  3490 D PrefCtrlListHelper: Could not find Context-only controller for pref: com.google.android.settings.notification.ClearCallingTipsButtonPreferenceController
+20823-11-20 05:03:21.421  1252  3490 V SettingsSearchProvider: com.android.settings.search.BaseSearchIndexProvider@3e7b5c6 tried to add an empty non-indexable key
+20824-11-20 05:03:21.422  1711  1984 I egqw    : (REDACTED) Message(%s, @%s) has been successfully processed at connection(%s).
+20825-11-20 05:03:21.422  1711  1984 I bhxn    : (REDACTED) starting updateConfig, reason: %s
+20826-11-20 05:03:21.423  1711  1984 I biiu    : #getEarcons
+20827-11-20 05:03:21.423  1711  1984 I bjit    : (REDACTED) #isBluetoothOrWiredHeadsetConnected Number of connected audio devices: %s
+20828-11-20 05:03:21.423  1711  1984 I blgd    : (REDACTED) #isRobinOnlyLocale checkedLocale:%s language:%s list:%s
+20829-11-20 05:03:21.423  1711  1984 I bxxg    : (REDACTED) getInitialSimplifiedOobeViaDeeplinkUser: %b
+20830-11-20 05:03:21.423  1711  1984 I bosm    : (REDACTED) isDeeplinkEnabled %s, isInitialSimplifiedOobeViaDeeplinkUser %s
+20831-11-20 05:03:21.423  1711  1984 I bxxg    : (REDACTED) getInitialSimplifiedOobeViaDeeplinkUser: %b
+20832-11-20 05:03:21.424  1711  1984 I bosm    : (REDACTED) isDeeplinkEnabled %s, isInitialSimplifiedOobeViaDeeplinkUser %s
+20833-11-20 05:03:21.424  1711  1984 I biqq    : User not OptedIn. Skipping Eligibility Checks.
+20834-11-20 05:03:21.424  1711  1984 I bioy    : Robin is not eligible or not opted-in
+20835-11-20 05:03:21.424  1711  1984 I bioy    : Headphone voice queries disabled: HEADPHONE_VOICE_QUERIES flag not enabled
+20836-11-20 05:03:21.424  1711  1984 I bioy    : (REDACTED) Headphone Integration status: %s
+20837-11-20 05:03:21.424  1711  2099 I bxxg    : (REDACTED) getInitialSimplifiedOobeViaDeeplinkUser: %b
+20838-11-20 05:03:21.425  1811  2325 E dvjc$a  : (REDACTED) %s: getSharedFile called on file that doesn't exist! Key = %s
+20839-11-20 05:03:21.426  3454  3487 W MetricsFeatureProvider: Disabled westworld logs writing!!!
+20840-11-20 05:03:21.426  3454  3479 W MetricsFeatureProvider: Disabled westworld logs writing!!!
+20841-11-20 05:03:21.427  1688  2472 I AiAiEcho: Settings changed for uri: content://settings/secure/config_update_certificate
+20842-11-20 05:03:21.427  1624  1756 I .apps.wellbeing: AssetManager2(0x7a3f533177b8) locale list changing from [] to [en-US]
+20843-11-20 05:03:21.429  1711  2099 I bosm    : (REDACTED) isDeeplinkEnabled %s, isInitialSimplifiedOobeViaDeeplinkUser %s
+20844-11-20 05:03:21.430  1688  1841 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+20845-11-20 05:03:21.430  1688  1841 I AiAiEcho: EchoTargets: 
+20846-11-20 05:03:21.430  1688  1841 I AiAiEcho: Filtered by AiAi flag check: 
+20847-11-20 05:03:21.430  1688  1841 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+20848-11-20 05:03:21.430  1688  1841 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+20849-11-20 05:03:21.430  1688  1841 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+20850-11-20 05:03:21.430  1688  1841 I AiAiEcho: EchoTargets: 
+20851-11-20 05:03:21.430  1688  1841 I AiAiEcho: Filtered by AiAi flag check: 
+20852-11-20 05:03:21.430  1688  1841 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+20853-11-20 05:03:21.430  1688  1841 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+20854-11-20 05:03:21.431  1711  2051 I egkx    : (REDACTED) Connection state changed: %s.
+20855-11-20 05:03:21.432  1688  1841 I AiAiEcho: #postPredictionTargets: Sending updates to UISurface home with targets# 0 (types=[])
+20856-11-20 05:03:21.432  1711  2051 I egkx    : (REDACTED) Invocations routing has changed
+20857-11-20 05:03:21.432  1711  2051 I egkx    : %s
+20858-11-20 05:03:21.433  1711  2051 I egtg    : (REDACTED) Platform configuration for connection(%s) has changed(@%s):%s
+20859-11-20 05:03:21.434  1688  1841 I AiAiEcho: #postPredictionTargets: Sending updates to UISurface lockscreen with targets# 0 (types=[])
+20860-11-20 05:03:21.435  1017  1017 W PageIndicator: Total number of pages invalid: 0. Assuming 1 page.
+20861-11-20 05:03:21.435  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Settings sectionName: S
+20862-11-20 05:03:21.436  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Photos sectionName: P
+20863-11-20 05:03:21.436  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Battery sectionName: B
+20864-11-20 05:03:21.436  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Chrome sectionName: C
+20865-11-20 05:03:21.436  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Gmail sectionName: G
+20866-11-20 05:03:21.436  1688  2472 I AiAiEcho: Settings changed for uri: content://settings/secure/print_service_search_uri
+20867-11-20 05:03:21.437  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Drive sectionName: D
+20868-11-20 05:03:21.437  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Clock sectionName: C
+20869-11-20 05:03:21.437  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Contacts sectionName: C
+20870-11-20 05:03:21.437  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Calendar sectionName: C
+20871-11-20 05:03:21.437  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Maps sectionName: M
+20872-11-20 05:03:21.437  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: YouTube Music sectionName: Y
+20873-11-20 05:03:21.437  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: YouTube sectionName: Y
+20874-11-20 05:03:21.438  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Google sectionName: G
+20875-11-20 05:03:21.438  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Digital Wellbeing sectionName: D
+20876-11-20 05:03:21.438  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: Conversations sectionName: C
+20877-11-20 05:03:21.438  1688  1841 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+20878-11-20 05:03:21.438  1688  1841 I AiAiEcho: EchoTargets: 
+20879-11-20 05:03:21.438  1688  1841 I AiAiEcho: Filtered by AiAi flag check: 
+20880-11-20 05:03:21.438  1688  1841 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+20881-11-20 05:03:21.438  1688  1841 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+20882-11-20 05:03:21.439  1688  1841 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+20883-11-20 05:03:21.439  1688  1841 I AiAiEcho: EchoTargets: 
+20884-11-20 05:03:21.439  1688  1841 I AiAiEcho: Filtered by AiAi flag check: 
+20885-11-20 05:03:21.439  1688  1841 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+20886-11-20 05:03:21.439  1711  2051 I egqw    : (REDACTED) On platform configuration update(@%s) in connection(%s).
+20887-11-20 05:03:21.439  1688  1841 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+20888-11-20 05:03:21.440  1688  1841 I AiAiEcho: #postPredictionTargets: Sending updates to UISurface home with targets# 0 (types=[])
+20889-11-20 05:03:21.440  1688  1841 I AiAiEcho: #postPredictionTargets: Sending updates to UISurface lockscreen with targets# 0 (types=[])
+20890-11-20 05:03:21.440  1017  1017 W PageIndicator: Total number of pages invalid: 0. Assuming 1 page.
+20891-11-20 05:03:21.440  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f533274d8) locale list changing from [] to [en-US]
+20892-11-20 05:03:21.445  1711  2051 I bhxn    : (REDACTED) On platform configuration update(%s).
+20893-11-20 05:03:21.446  1711  2051 I bhxu    : Received ConfigurationUpdate from Triggering API
+20894-11-20 05:03:21.446  1624  1756 I .apps.wellbeing: AssetManager2(0x7a3f53315238) locale list changing from [] to [en-US]
+20895-11-20 05:03:21.448  1270  1320 W HWUI    : Image decoding logging dropped!
+20896-11-20 05:03:21.449  1328  1333 I .gms.persistent: Compiler allocated 6466KB to compile eegs eegt.t(ganp, giba, java.lang.String, boolean, gamn, ganp, boolean, gzsr)
+20897-11-20 05:03:21.451  1624  1756 I .apps.wellbeing: AssetManager2(0x7a3f53312678) locale list changing from [] to [en-US]
+20898-11-20 05:03:21.452  3454  3479 I gs.intelligence: AssetManager2(0x7a3f532fc558) locale list changing from [] to [en-US]
+20899-11-20 05:03:21.452  1711  1950 I bhym    : (REDACTED) Updated TngActivationStateResult %s
+20900-11-20 05:03:21.452  1711  2099 I bhxn    : Maybe update robin eligibility response.
+20901-11-20 05:03:21.452  1711  2049 I bxxg    : (REDACTED) getInitialSimplifiedOobeViaDeeplinkUser: %b
+20902-11-20 05:03:21.452  1711  2049 I bosm    : (REDACTED) isDeeplinkEnabled %s, isInitialSimplifiedOobeViaDeeplinkUser %s
+20903-11-20 05:03:21.453  1711  2049 I biqq    : User not OptedIn. Skipping Eligibility Checks.
+20904-11-20 05:03:21.453  3454  3479 I gs.intelligence: AssetManager2(0x7a3f533038f8) locale list changing from [] to [en-US]
+20905-11-20 05:03:21.453  1711  1950 I bhym    : (REDACTED) Emit result=%s
+20906-11-20 05:03:21.454  3454  3479 I gs.intelligence: AssetManager2(0x7a3f53308718) locale list changing from [] to [en-US]
+20907-11-20 05:03:21.454  1711  1950 I bijr    : (REDACTED) FCF System FeatureName to check: %s
+20908-11-20 05:03:21.454  1711  1950 I bijr    : (REDACTED) FCF: Device model check status : %s
+20909-11-20 05:03:21.454  1711  1950 I biqu    : #isGeminiDefaultSystemFeatureEnabled: false
+20910-11-20 05:03:21.454  1711  1950 I bxxg    : (REDACTED) getInitialSimplifiedOobeViaDeeplinkUser: %b
+20911-11-20 05:03:21.455  1711  1950 I bosm    : (REDACTED) isDeeplinkEnabled %s, isInitialSimplifiedOobeViaDeeplinkUser %s
+20912-11-20 05:03:21.455  1711  2099 I boak    : (REDACTED) DelegationStatus: %s
+20913-11-20 05:03:21.456  3454  3479 I gs.intelligence: AssetManager2(0x7a3f53307db8) locale list changing from [] to [en-US]
+20914-11-20 05:03:21.456  1711  1950 I biqn    : (REDACTED) %s was not found: %s
+20915-11-20 05:03:21.457  3454  3479 I gs.intelligence: AssetManager2(0x7a3f533051f8) locale list changing from [] to [en-US]
+20916-11-20 05:03:21.457  3454  3479 I gs.intelligence: AssetManager2(0x7a3f53304ed8) locale list changing from [] to [en-US]
+20917-11-20 05:03:21.458  1688  2472 I AiAiEcho: Settings changed for uri: content://settings/secure/autofill_service_search_uri
+20918-11-20 05:03:21.458   628   971 D BackgroundInstallControlService: Package event received: 0
+20919-11-20 05:03:21.459   628  2113 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10168, packageName = null, attributionTag = null, token = android.os.Binder@ebd0b9d, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+20920-11-20 05:03:21.460  3454  3479 I gs.intelligence: AssetManager2(0x7a3f53300d38) locale list changing from [] to [en-US]
+20921-11-20 05:03:21.460  1688  2686 I AiAiEcho: Settings changed for uri: content://settings/secure/facelock_detection_threshold
+20922-11-20 05:03:21.461  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f53320138) locale list changing from [] to [en-US]
+20923-11-20 05:03:21.463  1270  1320 W HWUI    : Image decoding logging dropped!
+20924-11-20 05:03:21.465  1688  1841 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+20925-11-20 05:03:21.465  1688  1841 I AiAiEcho: EchoTargets: 
+20926-11-20 05:03:21.465  1688  1841 I AiAiEcho: Filtered by AiAi flag check: 
+20927-11-20 05:03:21.465  1688  1841 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+20928-11-20 05:03:21.465  1688  1841 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+20929-11-20 05:03:21.465  1688  1841 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+20930-11-20 05:03:21.465  1688  1841 I AiAiEcho: EchoTargets: 
+20931-11-20 05:03:21.465  1688  1841 I AiAiEcho: Filtered by AiAi flag check: 
+20932-11-20 05:03:21.465  1688  1841 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+20933-11-20 05:03:21.465  1688  1841 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+20934-11-20 05:03:21.465  1688  1841 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+20935-11-20 05:03:21.465  1688  1841 I AiAiEcho: EchoTargets: 
+20936-11-20 05:03:21.465  1688  1841 I AiAiEcho: Filtered by AiAi flag check: 
+20937-11-20 05:03:21.465  1688  1841 I AiAiEcho: [CONTEXT ratelimit_period="10 SECONDS" ]
+20938-11-20 05:03:21.465  1688  1841 I AiAiEcho: #remoteViewsTwiddler: feature disabled.
+20939-11-20 05:03:21.465  1688  1841 I AiAiEcho: Predicting[0]:  [CONTEXT sampling_count=5 ]
+20940-11-20 05:03:21.465  1688  1841 I AiAiEcho: EchoTargets: 
+--
+22295-11-20 05:03:22.485  1483  2836 I gle.android.gms: AssetManager2(0x7a3f5330cbd8) locale list changing from [] to [en-US]
+22296-11-20 05:03:22.490  1270  1320 W AllAppsList: updatePackage: no Activities matched updated package, removing any AppInfo with package=com.google.android.apps.wellbeing, user=UserHandle{0}
+22297-11-20 05:03:22.492  1270  1320 D PackageUpdatedTask: Package updated: mOp=UPDATE packages=[com.google.android.gms], user=UserHandle{0}
+22298-11-20 05:03:22.492  3521  3682 W JobInfo : Requested important-while-foreground flag for job1000 is ignored and takes no effect
+22299-11-20 05:03:22.494  1270  1320 W AllAppsList: updatePackage: no Activities matched updated package, removing any AppInfo with package=com.google.android.gms, user=UserHandle{0}
+22300-11-20 05:03:22.494  1270  1320 D PackageUpdatedTask: Package updated: mOp=UPDATE packages=[com.google.android.inputmethod.latin], user=UserHandle{0}
+22301-11-20 05:03:22.496  1270  1320 W AllAppsList: updatePackage: no Activities matched updated package, removing any AppInfo with package=com.google.android.inputmethod.latin, user=UserHandle{0}
+22302-11-20 05:03:22.496  3524  3605 I fkev    : Shared storage file not found for com.google.android.gms.smartdevice
+22303-11-20 05:03:22.497  3521  3682 D WM-SystemJobScheduler: Scheduling work ID 64f81902-95b5-4e75-8222-a6c07477e8c3Job ID 1000
+22304-11-20 05:03:22.498  3524  3605 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.smartdevice, using defaults.
+22305:11-20 05:03:22.499  1270  1320 D PackageUpdatedTask: Package updated: mOp=UPDATE packages=[lav.visaroom.alav], user=UserHandle{0}
+22306-11-20 05:03:22.499  1270  1270 I NotificationListener: received notification removed event - android#UserHandle{0},category=-1
+22307-11-20 05:03:22.500  1270  1270 D SsBaseTemplateCard: No text view can be set up
+22308-11-20 05:03:22.500  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+22309-11-20 05:03:22.500  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+22310-11-20 05:03:22.500  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+22311-11-20 05:03:22.500  1270  1270 I SsBaseTemplateCard: Secondary card pane is null
+22312-11-20 05:03:22.500  3524  3605 I fkev    : Shared storage file not found for com.google.android.gms.spatulasettings#com.google.android.gms
+22313-11-20 05:03:22.500  3521  3681 I Bugle   : DatabaseHelperBasic: sqlite version is 3.44.3
+22314-11-20 05:03:22.501  1270  1270 D SsBaseTemplateCard: No text view can be set up
+22315-11-20 05:03:22.501  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+22316-11-20 05:03:22.501  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+22317-11-20 05:03:22.501  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+22318-11-20 05:03:22.501  1270  1270 I SsBaseTemplateCard: Secondary card pane is null
+22319-11-20 05:03:22.501  1270  1270 D SsBaseTemplateCard: No text view can be set up
+22320-11-20 05:03:22.501  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+22321-11-20 05:03:22.501  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+22322-11-20 05:03:22.501  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+22323-11-20 05:03:22.501  1270  1270 I SsBaseTemplateCard: Secondary card pane is null
+22324-11-20 05:03:22.501  3524  3605 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.spatulasettings#com.google.android.gms, using defaults.
+22325-11-20 05:03:22.502   628   971 D BackgroundInstallControlService: Package event received: 0
+22326-11-20 05:03:22.502  3521  3682 D WM-GreedyScheduler: Starting work for 64f81902-95b5-4e75-8222-a6c07477e8c3
+22327-11-20 05:03:22.502  3524  3605 I fkev    : Shared storage file not found for com.google.android.gms.tapandpay
+22328-11-20 05:03:22.502  3524  3605 I fkev    : Unable to retrieve flag snapshot for com.google.android.gms.tapandpay, using defaults.
+22329-11-20 05:03:22.504  1328  1328 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.instantapps.START xflg=0x4 pkg=com.google.android.gms }
+22330-11-20 05:03:22.504  1328  1328 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.instantapps.START xflg=0x4 pkg=com.google.android.gms }
+22331-11-20 05:03:22.513  1483  1588 I Icing   : Usage reports ok 0, Failed Usage reports 0, indexed 0, rejected 0
+22332-11-20 05:03:22.513  3521  3682 D WM-SystemJobScheduler: Scheduling work ID 433c60de-9f16-4175-a946-6bb27923a5cbJob ID 1001
+22333-11-20 05:03:22.515  1483  3057 I Checkin : [CheckinOperation] Checkin Operation finished with result: SUCCESS finish time: 66965.
+22334-11-20 05:03:22.516  3521  3667 D WM-SystemJobScheduler: Scheduling work ID 0a271c37-61b6-4d0d-986d-90f18ce3a1a4Job ID 1002
+22335-11-20 05:03:22.517  1483  3057 I Checkin : [ScheduledCheckinGmsTaskService] scheduleCheckinTask
+22336-11-20 05:03:22.520  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f532fa2f8) locale list changing from [] to [en-US]
+22337-11-20 05:03:22.523  1483  2836 V Configuration: Updating configuration, locales updated from [] to [en_US]
+22338-11-20 05:03:22.523  1483  2836 I gle.android.gms: AssetManager2(0x7a3f5330cbd8) locale list changing from [] to [en-US]
+22339-11-20 05:03:22.528  1483  2836 I ChimeraCfgMgr: Features changed, regenerating config
+22340-11-20 05:03:22.532  1483  1588 I Icing   : updateResources: need to parse buqq{com.google.android.googlequicksearchbox}
+22341-11-20 05:03:22.541  1483  3057 I Checkin : [ExecutionManager] Checkin scheduled at 69967 with schedule delay: 3000
+22342-11-20 05:03:22.544  3526  3695 W JobInfo : Requested important-while-foreground flag for job0 is ignored and takes no effect
+22343-11-20 05:03:22.544  3526  3695 D CompatChangeReporter: Compat change id reported: 253665015; UID 10137; state: ENABLED
+22344-11-20 05:03:22.545   628   981 D CompatChangeReporter: Compat change id reported: 253665015; UID 10137; state: ENABLED
+22345-11-20 05:03:22.546  1811  2016 I dmhi    : (REDACTED) Starting batch sync for corpora: %s
+22346-11-20 05:03:22.549  1483  3057 W ContextImpl: Failed to ensure /data/user/0/com.google.android.gsf/files: mkdir failed: EACCES (Permission denied)
+22347-11-20 05:03:22.550  1483  3057 W ContextImpl: Failed to ensure /data/user/0/com.google.android.gsf/shared_prefs: mkdir failed: EACCES (Permission denied)
+22348-11-20 05:03:22.553  1624  1756 I .apps.wellbeing: AssetManager2(0x7a3f533177b8) locale list changing from [] to [en-US]
+22349-11-20 05:03:22.557  3521  3681 I Bugle   : TelephonyManagerFactory: Returning per-subscription TelephonyManager (>= N) subscription{id:1}
+22350-11-20 05:03:22.561  3521  3682 D WM-SystemJobScheduler: Scheduling work ID a555e8ef-3740-4202-af46-7fe3528e72d3Job ID 1003
+22351-11-20 05:03:22.566  3526  3526 I Safetyhub.GnpSdk: Intent received for action [android.intent.action.BOOT_COMPLETED] package [com.google.android.apps.safetyhub].
+22352-11-20 05:03:22.566  3526  3526 I Safetyhub.GnpSdk: Phenotype initialized.
+22353-11-20 05:03:22.567  3526  3526 I Safetyhub.GnpSdk: Validation OK for action [android.intent.action.BOOT_COMPLETED].
+22354-11-20 05:03:22.567   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 148: Using TAG_CERTIFICATE_NOT_BEFORE: 0
+22355-11-20 05:03:22.568   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 154: Using TAG_CERTIFICATE_NOT_AFTER: 2461449600000
+22356-11-20 05:03:22.568   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 159: Got certificate date params:  NotBefore = 0, NotAfter = 2461449600000
+22357-11-20 05:03:22.568   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 273: Setting notBefore to 0
+22358-11-20 05:03:22.568   238   238 D SoftKeymaster: system/keymaster/km_openssl/certificate_utils.cpp, Line 282: Setting notAfter to 2461449600
+22359-11-20 05:03:22.568  3526  3526 I Safetyhub.GnpSdk: Submitting Broadcast execution [108224280] to tiktok executor.
+22360-11-20 05:03:22.568  3526  3692 I Safetyhub.GnpSdk: Executing action in BroadcastReceiver [android.intent.action.BOOT_COMPLETED].
+22361-11-20 05:03:22.581   628  2113 D CompatChangeReporter: Compat change id reported: 271850009; UID 10137; state: ENABLED
+22362-11-20 05:03:22.590  3526  3650 I Safetyhub.SyncWorkManagerOneTimeScheduler: Successfully scheduled next onetime workers
+22363-11-20 05:03:22.592   628  2113 D ConnectivityService: requestNetwork for uid/pid:1000/628 asUid: 10137 activeRequest: null callbackRequest: 127 [NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10137 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false declaredMethods: AVAIL|LOST|BLK
+22364-11-20 05:03:22.593   628   918 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10137 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]
+22365-11-20 05:03:22.593   628   918 V WifiNetworkFactory: Accepted network request NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10137 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]
+22366-11-20 05:03:22.593   628   918 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10137 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]
+22367-11-20 05:03:22.594   628   924 D ConnectivityService: NetReassign [128 : null → 100] [c 0] [a 0] [i 1]
+22368-11-20 05:03:22.594   628   918 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10137 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]
+22369-11-20 05:03:22.595   628   918 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10137 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]
+22370-11-20 05:03:22.596  1328  1328 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.significantplaces.api.START dat=chimera-action:/... xflg=0x4 cmp=com.google.android.gms/.chimera.PersistentApiService }
+22371-11-20 05:03:22.597  1483  2831 I EnterpriseLoader: [ConditionsChecker] ZT config not present. [CONTEXT service_id=225 ]
+22372-11-20 05:03:22.597  1483  2831 I GCM-GMS : Scheduling task to register GMS
+22373-11-20 05:03:22.597  3526  3651 D CompatChangeReporter: Compat change id reported: 263076149; UID 10137; state: ENABLED
+22374-11-20 05:03:22.598  1483  2831 I AccountSeedingPrefetchI: AccountSeedingPrefetchInit intent operation started. [CONTEXT service_id=42 ]
+22375-11-20 05:03:22.598  1328  1587 I GCoreUlr: Unbound from all signal providers.
+22376-11-20 05:03:22.599   628  1188 D ConnectivityService: requestNetwork for uid/pid:1000/628 asUid: 10145 activeRequest: null callbackRequest: 129 [NetworkRequest [ TRACK_DEFAULT id=130, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10145 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ], NetworkRequest [ REQUEST id=131, [ Transports: SATELLITE Capabilities: INTERNET&TRUSTED&NOT_VCN_MANAGED Uid: 10145 RequestorUid: 1000 RequestorPkg: android UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false declaredMethods: AVAIL|LOST|BLK
+22377-11-20 05:03:22.601  1811  2048 I dmhi    : (REDACTED) Starting batch sync for corpora: %s
+22378-11-20 05:03:22.603   628   924 D ConnectivityService: NetReassign [130 : null → 100] [c 0] [a 0] [i 2]
+22379-11-20 05:03:22.610  3521  3682 I SyncWorkManagerOneTimeS: Successfully scheduled next onetime workers
+22380-11-20 05:03:22.633  1270  1320 W HWUI    : Image decoding logging dropped!
+22381-11-20 05:03:22.635  1624  1756 I .apps.wellbeing: AssetManager2(0x7a3f533113b8) locale list changing from [] to [en-US]
+22382-11-20 05:03:22.636  1270  1320 D AlphabeticIndexCompat: computeSectionName: cs: visaroom sectionName: V
+22383-11-20 05:03:22.637  3526  3695 I Safetyhub.SyncAccountInfoStartupWorker: Syncing account info with paired devices on startup
+22384-11-20 05:03:22.637  1270  1270 D AllAppsStore: setApps: apps.length=19
+22385-11-20 05:03:22.637  1270  1270 D AllAppsStore: notifyUpdate: notifying listeners
+22386-11-20 05:03:22.637  1270  1270 D ActivityAllAppsContainerView: onAppsUpdated; number of apps: 19
+22387-11-20 05:03:22.637   628  2216 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22388-11-20 05:03:22.637  1270  1270 D ActivityAllAppsContainerView: rebindAdapters: force: false
+22389-11-20 05:03:22.637  1270  1270 D ActivityAllAppsContainerView: rebindAdapters: Not needed.
+22390-11-20 05:03:22.637   628  2216 D PackageManager: Clear ephemeral installer activity
+22391-11-20 05:03:22.637  1270  1270 D StatsLog: LAUNCHER_ALLAPPS_COUNT
+22392-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: Clearing FastScrollerSections.
+22393-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: Adding apps with sections. HasPrivateApps: false
+22394-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: C with appInfoTitle: Calendar
+22395-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: D with appInfoTitle: Drive
+22396-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: F with appInfoTitle: Files
+22397-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: G with appInfoTitle: Gmail
+22398-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: M with appInfoTitle: Maps
+22399-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: P with appInfoTitle: Phone
+22400-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: S with appInfoTitle: Safety
+22401-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: T with appInfoTitle: TMoble
+22402-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: V with appInfoTitle: visaroom
+22403-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: Y with appInfoTitle: YouTube
+22404-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: Adding FastScrollSection duplicate to scroll to the bottom.
+22405-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: Clearing FastScrollerSections.
+22406-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: Adding apps with sections. HasPrivateApps: false
+22407-11-20 05:03:22.638  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: C with appInfoTitle: Calendar
+22408-11-20 05:03:22.638   628  1084 D PackageManager: Instant App installer not found with android.intent.action.INSTALL_INSTANT_APP_PACKAGE
+22409-11-20 05:03:22.638   628  1084 D PackageManager: Clear ephemeral installer activity
+22410-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: Failure of at least one StartupWorker at boot time
+22411-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: mfb: No account is found for pseudonymous
+22412-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: 	at lcr.apply(PG:758)
+22413-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: 	at ngr.apply(PG:13)
+22414-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: 	at opx.d(PG:3)
+22415-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: 	at opy.run(PG:38)
+22416-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: 	at itu.run(PG:3)
+22417-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: 	at omi.run(PG:50)
+22418-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: 	at goy.run(PG:37)
+22419-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: 	at java.lang.Thread.run(Thread.java:1119)
+22420-11-20 05:03:22.639  3526  3650 W Safetyhub.StartupBroadcastOneTimeWorker: 	at ivg.run(PG:63)
+22421-11-20 05:03:22.641  3526  3651 W JobInfo : Requested important-while-foreground flag for job3 is ignored and takes no effect
+22422-11-20 05:03:22.641  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: D with appInfoTitle: Drive
+22423-11-20 05:03:22.641  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: F with appInfoTitle: Files
+22424-11-20 05:03:22.641  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: G with appInfoTitle: Gmail
+22425-11-20 05:03:22.641  1270  1270 D AlphabeticalAppsList: addAppsWithSections: adding sectionName: M with appInfoTitle: Maps
+--
+32526-11-20 05:03:29.121  1270  1320 W HWUI    : Image decoding logging dropped!
+32527-11-20 05:03:29.126  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32528-11-20 05:03:29.126  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32529-11-20 05:03:29.127  1270  1320 W HWUI    : Image decoding logging dropped!
+32530-11-20 05:03:29.132  1270  1320 W HWUI    : Image decoding logging dropped!
+32531-11-20 05:03:29.137  1270  1320 W HWUI    : Image decoding logging dropped!
+32532-11-20 05:03:29.141  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32533-11-20 05:03:29.141  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32534-11-20 05:03:29.144  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32535-11-20 05:03:29.153  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32536:11-20 05:03:29.157   628  2209 D JobScheduler: executeRunCommand(): lav.visaroom.alav/null/0 1101 s=false f=true
+32537-11-20 05:03:29.158  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32538-11-20 05:03:29.158  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32539-11-20 05:03:29.161  1270  1320 W HWUI    : Image decoding logging dropped!
+32540-11-20 05:03:29.165  1270  1304 I s.nexuslauncher: Waiting for a blocking GC ProfileSaver
+32541-11-20 05:03:29.177  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32542-11-20 05:03:29.178  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32543-11-20 05:03:29.178  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32544-11-20 05:03:29.179  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32545-11-20 05:03:29.180  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32546-11-20 05:03:29.180  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32547-11-20 05:03:29.180  1270  1320 W HWUI    : Image decoding logging dropped!
+32548-11-20 05:03:29.190  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32549-11-20 05:03:29.191  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32550-11-20 05:03:29.191  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32551-11-20 05:03:29.192  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32552-11-20 05:03:29.192  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32553-11-20 05:03:29.192  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32554-11-20 05:03:29.193  1270  1320 W HWUI    : Image decoding logging dropped!
+32555-11-20 05:03:29.196  1328  1555 I NetworkScheduler.Stats: Task com.google.android.gms/com.google.android.gms.gcm.gmsproc.GcmInGmsTaskService started execution. cause:5 exec_start_elapsed_seconds: 73 [CONTEXT service_id=218 ]
+32556-11-20 05:03:29.199  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32557-11-20 05:03:29.199  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32558-11-20 05:03:29.199  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32559-11-20 05:03:29.200  1270  1320 W HWUI    : Image decoding logging dropped!
+32560-11-20 05:03:29.203  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32561-11-20 05:03:29.203  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32562-11-20 05:03:29.203  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32563-11-20 05:03:29.207  3521  3901 V ClearcutMetricXmitter: Transmission is done.
+32564-11-20 05:03:29.209  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32565-11-20 05:03:29.209  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32566-11-20 05:03:29.209  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32567-11-20 05:03:29.212  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f5330d218) locale list changing from [] to [en-US]
+32568-11-20 05:03:29.214  1270  1320 W HWUI    : Image decoding logging dropped!
+32569-11-20 05:03:29.217  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32570-11-20 05:03:29.217  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32571-11-20 05:03:29.217  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32572-11-20 05:03:29.218  1270  1320 W HWUI    : Image decoding logging dropped!
+32573-11-20 05:03:29.224  1270  1320 W HWUI    : Image decoding logging dropped!
+32574-11-20 05:03:29.226  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32575-11-20 05:03:29.228  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32576-11-20 05:03:29.228  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32577-11-20 05:03:29.237  1270  1320 W HWUI    : Image decoding logging dropped!
+32578-11-20 05:03:29.245  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32579-11-20 05:03:29.245  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32580-11-20 05:03:29.245  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32581-11-20 05:03:29.246  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32582-11-20 05:03:29.247  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32583-11-20 05:03:29.247  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32584-11-20 05:03:29.247  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32585-11-20 05:03:29.247  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32586-11-20 05:03:29.247  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32587-11-20 05:03:29.247  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32588-11-20 05:03:29.248  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32589-11-20 05:03:29.248  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32590-11-20 05:03:29.248  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32591-11-20 05:03:29.248  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32592-11-20 05:03:29.248  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32593-11-20 05:03:29.259  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32594-11-20 05:03:29.259  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32595-11-20 05:03:29.259  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32596-11-20 05:03:29.261  1483  1588 I GCM-GMS : Registering GMS 745476177629
+32597-11-20 05:03:29.262   628   924 D InetDiagMessage: Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+32598-11-20 05:03:29.263   628   924 D InetDiagMessage: Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+32599-11-20 05:03:29.265   628   924 D InetDiagMessage: Destroyed live tcp sockets for uids={10160} in 4ms
+32600-11-20 05:03:29.266   628   924 D InetDiagMessage: Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+32601-11-20 05:03:29.266  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32602-11-20 05:03:29.266  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32603-11-20 05:03:29.266  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32604-11-20 05:03:29.267   628   924 D InetDiagMessage: Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+32605-11-20 05:03:29.267   628   924 D InetDiagMessage: Destroyed live tcp sockets for uids={20160} in 1ms
+32606-11-20 05:03:29.272  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32607-11-20 05:03:29.278  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32608-11-20 05:03:29.279  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32609-11-20 05:03:29.279  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32610-11-20 05:03:29.283  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32611-11-20 05:03:29.283  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32612-11-20 05:03:29.283  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32613-11-20 05:03:29.289  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32614-11-20 05:03:29.290  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32615-11-20 05:03:29.290  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32616-11-20 05:03:29.292  1483  3886 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32617-11-20 05:03:29.292  1483  3884 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32618-11-20 05:03:29.292  1483  3884 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32619-11-20 05:03:29.294  1483  3884 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32620-11-20 05:03:29.294  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32621-11-20 05:03:29.294  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32622-11-20 05:03:29.296  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32623-11-20 05:03:29.296  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32624-11-20 05:03:29.296  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32625-11-20 05:03:29.298  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32626-11-20 05:03:29.298  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32627-11-20 05:03:29.298  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32628-11-20 05:03:29.302  1483  3888 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32629-11-20 05:03:29.303  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32630-11-20 05:03:29.306  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32631-11-20 05:03:29.306  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32632-11-20 05:03:29.306  1270  1304 I s.nexuslauncher: WaitForGcToComplete blocked ProfileSaver on NativeAlloc for 141.341ms
+32633-11-20 05:03:29.306  1483  3884 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32634-11-20 05:03:29.306  1483  3884 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32635-11-20 05:03:29.306  1483  3884 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32636-11-20 05:03:29.307  1483  3884 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32637-11-20 05:03:29.308  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32638-11-20 05:03:29.308  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32639-11-20 05:03:29.309  1483  3884 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+32640-11-20 05:03:29.311  1483  3884 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32641-11-20 05:03:29.313  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32642-11-20 05:03:29.313  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32643-11-20 05:03:29.313  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+32644-11-20 05:03:29.313  1483  3379 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+32645-11-20 05:03:29.320  1328  2596 I HeterodyneSyncer: Finished notifying packages after sync. syncLatency: 8126 [CONTEXT service_id=51 ]
+32646-11-20 05:03:29.331  1328  2596 I RegisterSyncOperation: Not retrying registerSync since Sync__retry_register_sync is false [CONTEXT service_id=51 ]
+32647-11-20 05:03:29.343  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f5331bf98) locale list changing from [] to [en-US]
+32648-11-20 05:03:29.344  1270  1320 W HWUI    : Image decoding logging dropped!
+32649-11-20 05:03:29.346  1270  1320 W HWUI    : Image decoding logging dropped!
+32650-11-20 05:03:29.351  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f5331d578) locale list changing from [] to [en-US]
+32651-11-20 05:03:29.353  1270  1320 W HWUI    : Image decoding logging dropped!
+32652-11-20 05:03:29.355  2064  3152 I HttpGrpcBindableService: [pfd-write] DOWNLOAD COMPLETE: Downloaded 38498810 bytes from URL [https://storage.googleapis.com/captions/aiai-en-US-v3003.zip].
+32653-11-20 05:03:29.355  2064  3152 W System.err: val in interceptor: null
+32654-11-20 05:03:29.356  1688  2713 I AstreaHttpConnection: DOWNLOAD COMPLETE: Downloaded unknown number of bytes from https://storage.googleapis.com/captions/aiai-en-US-v3003.zip.
+32655-11-20 05:03:29.356  1688  1877 I SP.AiAi : Download stopped: captions_i18n_v0_en-US:asr_en-US_v3003, succeeded, size: 38498810
+32656-11-20 05:03:29.356  1270  1320 W HWUI    : Image decoding logging dropped!
+--
+34890-11-20 05:03:31.924  1689  2241 I MediaProvider: Begin Intent { act=android.intent.action.MEDIA_MOUNTED dat=file:///... flg=0x5000010 xflg=0x4 cmp=com.google.android.providers.media.module/com.android.providers.media.MediaService (has extras) }
+34891-11-20 05:03:31.924  1689  2241 I MediaProvider: Volume MediaVolume name: [external_primary] id: [emulated;0] user: [UserHandle{0}] path: [/storage/emulated/0] externallyManaged: [false] mPublicVolume: [false] already attached
+34892-11-20 05:03:31.924  1689  2241 I MediaProvider: End Intent { act=android.intent.action.MEDIA_MOUNTED dat=file:///... flg=0x5000010 xflg=0x4 cmp=com.google.android.providers.media.module/com.android.providers.media.MediaService (has extras) }
+34893-11-20 05:03:31.925  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34894-11-20 05:03:31.925  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34895-11-20 05:03:31.926  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34896-11-20 05:03:31.926  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34897-11-20 05:03:31.926  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34898-11-20 05:03:31.927  1270  1320 W HWUI    : Image decoding logging dropped!
+34899-11-20 05:03:31.927  1689  2241 I MediaProvider: Begin Intent { act=android.intent.action.PACKAGE_DATA_CLEARED dat=package: flg=0x5000010 cmp=com.google.android.providers.media.module/com.android.providers.media.MediaService (has extras) }
+34900:11-20 05:03:31.927  1689  2241 D MediaProvider: Deleted 0 Android/media items belonging to lav.visaroom.alav on /data/user/0/com.google.android.providers.media.module/databases/external.db
+34901-11-20 05:03:31.934  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34902-11-20 05:03:31.934  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34903-11-20 05:03:31.934  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34904-11-20 05:03:31.935  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34905-11-20 05:03:31.936  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34906-11-20 05:03:31.936  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34907-11-20 05:03:31.939  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34908-11-20 05:03:31.939  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34909-11-20 05:03:31.939  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34910-11-20 05:03:31.940  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f53304578) locale list changing from [] to [en-US]
+34911:11-20 05:03:31.942  1689  2241 I FuseDaemon: Successfully deleted rows in leveldb for owner_id:  and ownerPackageIdentifier: lav.visaroom.alav::0
+34912-11-20 05:03:31.942  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34913:11-20 05:03:31.943  1689  2241 D MediaGrants: Removed 0 media_grants for 0 user for [lav.visaroom.alav, lav.visaroom.alav]. Reason: Package orphaned
+34914-11-20 05:03:31.943  1689  2241 I MediaProvider: End Intent { act=android.intent.action.PACKAGE_DATA_CLEARED dat=package: flg=0x5000010 cmp=com.google.android.providers.media.module/com.android.providers.media.MediaService (has extras) }
+34915-11-20 05:03:31.943  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34916-11-20 05:03:31.943  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34917-11-20 05:03:31.946  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34918-11-20 05:03:31.946  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34919-11-20 05:03:31.946  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34920-11-20 05:03:31.949  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34921-11-20 05:03:31.949  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34922-11-20 05:03:31.950  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34923-11-20 05:03:31.950  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34924-11-20 05:03:31.951  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34925-11-20 05:03:31.951  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34926-11-20 05:03:31.951  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34927-11-20 05:03:31.952  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34928-11-20 05:03:31.952  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34929-11-20 05:03:31.952  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34930-11-20 05:03:31.958  1270  1270 D SsBaseTemplateCard: No text view can be set up
+34931-11-20 05:03:31.958  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+34932-11-20 05:03:31.958  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+34933-11-20 05:03:31.958  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+34934-11-20 05:03:31.959  1270  1270 I SsBaseTemplateCard: Secondary card pane is null
+34935-11-20 05:03:31.959  1270  1270 D SsBaseTemplateCard: No text view can be set up
+34936-11-20 05:03:31.959  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+34937-11-20 05:03:31.959  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+34938-11-20 05:03:31.959  1270  1270 D SsBaseTemplateCard: Passed-in item info is null
+34939-11-20 05:03:31.959  1270  1270 I SsBaseTemplateCard: Secondary card pane is null
+34940-11-20 05:03:31.960  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f5330e4d8) locale list changing from [] to [en-US]
+34941-11-20 05:03:31.966  1270  1320 W HWUI    : Image decoding logging dropped!
+34942-11-20 05:03:31.967  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34943-11-20 05:03:31.967  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34944-11-20 05:03:31.967  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34945-11-20 05:03:31.968  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34946-11-20 05:03:31.968  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34947-11-20 05:03:31.968  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34948-11-20 05:03:31.968  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34949-11-20 05:03:31.968  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34950-11-20 05:03:31.968  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34951-11-20 05:03:31.968  1270  1320 W HWUI    : Image decoding logging dropped!
+34952-11-20 05:03:31.969  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34953-11-20 05:03:31.969  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34954-11-20 05:03:31.969  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34955-11-20 05:03:31.971  1624  1758 I .apps.wellbeing: AssetManager2(0x7a3f532fc558) locale list changing from [] to [en-US]
+34956-11-20 05:03:31.971  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34957-11-20 05:03:31.973  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34958-11-20 05:03:31.973  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34959-11-20 05:03:31.977  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34960-11-20 05:03:31.977  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34961-11-20 05:03:31.978  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34962-11-20 05:03:31.981  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34963-11-20 05:03:31.981  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34964-11-20 05:03:31.981  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34965-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: queryLength=0 size=15
+34966-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34967-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34968-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34969-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34970-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34971-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=extra_tall_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34972-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34973-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34974-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34975-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34976-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34977-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34978-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34979-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34980-11-20 05:03:31.985  1270  1270 D SearchTargetUtil: layoutType=short_icon_row resultType=131072 packageName=com.google.android.googlequicksearchbox
+34981-11-20 05:03:31.986  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34982-11-20 05:03:31.986  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34983-11-20 05:03:31.986  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34984-11-20 05:03:31.986  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34985-11-20 05:03:31.987  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34986-11-20 05:03:31.987  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34987-11-20 05:03:31.990  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34988-11-20 05:03:31.990  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34989-11-20 05:03:31.990  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34990-11-20 05:03:31.991  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34991-11-20 05:03:31.991  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34992-11-20 05:03:31.991  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34993-11-20 05:03:31.992  1270  1320 W HWUI    : Image decoding logging dropped!
+34994-11-20 05:03:31.994  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34995-11-20 05:03:31.994  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34996-11-20 05:03:31.994  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+34997-11-20 05:03:31.996  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+34998-11-20 05:03:31.996  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+34999-11-20 05:03:31.996  1483  4040 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+35000-11-20 05:03:31.998  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+35001-11-20 05:03:31.998  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+35002-11-20 05:03:31.998  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+35003-11-20 05:03:32.000  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+35004-11-20 05:03:32.000  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+35005-11-20 05:03:32.000  1483  3378 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+35006-11-20 05:03:32.002  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+35007-11-20 05:03:32.002  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+35008-11-20 05:03:32.002  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+35009-11-20 05:03:32.006  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+35010-11-20 05:03:32.006  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+35011-11-20 05:03:32.006  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+35012-11-20 05:03:32.007  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+35013-11-20 05:03:32.008  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+35014-11-20 05:03:32.008  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+35015-11-20 05:03:32.009  1624  1758 I .apps.wellbeing: AssetManager2(0x7a3f5332a3b8) locale list changing from [] to [en-US]
+35016-11-20 05:03:32.009  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f5331d578) locale list changing from [] to [en-US]
+35017-11-20 05:03:32.013  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+35018-11-20 05:03:32.013  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+35019-11-20 05:03:32.013  1483  3885 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+35020-11-20 05:03:32.014  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+35021-11-20 05:03:32.015  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+35022-11-20 05:03:32.015  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+35023-11-20 05:03:32.016  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+35024-11-20 05:03:32.016  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+35025-11-20 05:03:32.016  1483  3063 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+35026-11-20 05:03:32.017  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+35027-11-20 05:03:32.018  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+35028-11-20 05:03:32.018  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+35029-11-20 05:03:32.018  1624  1758 I .apps.wellbeing: AssetManager2(0x7a3f53328158) locale list changing from [] to [en-US]
+35030-11-20 05:03:32.021  1270  1320 I s.nexuslauncher: AssetManager2(0x7a3f533116d8) locale list changing from [] to [en-US]
+35031-11-20 05:03:32.022  1483  4036 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onCreate [CONTEXT service_id=359 ]
+35032-11-20 05:03:32.022  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] Unavailable Open Gateway Interfaces (OGI) for 3P [CONTEXT service_id=359 ]
+35033-11-20 05:03:32.022  1483  3057 I 43-ServiceEntitlementIn: [Ts.43-ServiceEntitlementIntentOperation] onDestroy [CONTEXT service_id=359 ]
+SMOKE_PASSED
