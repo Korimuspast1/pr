@@ -128,11 +128,6 @@ public class MessagesActivity extends Activity {
                 Ui.dp(this, 12), Ui.dp(this, 7));
         bubble.setBackgroundResource(m.deleted
                 ? R.drawable.bg_bubble_deleted : R.drawable.bg_bubble);
-        int maxW = Math.min(
-                Math.round(getResources().getDisplayMetrics().widthPixels * 0.82f),
-                Ui.dp(this, 560));
-        bubble.setMaxWidth(maxW);
-
         if (showSender) {
             TextView sender = new TextView(this);
             sender.setText(m.sender);

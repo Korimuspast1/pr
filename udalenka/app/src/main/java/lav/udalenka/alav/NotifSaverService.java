@@ -28,7 +28,7 @@ public class NotifSaverService extends NotificationListenerService {
             Notification.CATEGORY_PROGRESS,
             Notification.CATEGORY_TRANSPORT,
             Notification.CATEGORY_STATUS,
-            Notification.CATEGORY_SYS,
+            Notification.CATEGORY_SYSTEM,
             Notification.CATEGORY_ALARM,
             Notification.CATEGORY_REMINDER,
             Notification.CATEGORY_ERROR,
@@ -75,7 +75,7 @@ public class NotifSaverService extends NotificationListenerService {
         if ((n.flags & Notification.FLAG_ONGOING_EVENT) != 0) {
             return;
         }
-        if (sbn.isGroupSummary()) {
+        if ((n.flags & Notification.FLAG_GROUP_SUMMARY) != 0) {
             return; // дочерние уведомления содержат тот же текст подробнее
         }
         if (n.category != null && SKIP_CATEGORIES.contains(n.category)) {
@@ -99,20 +99,16 @@ public class NotifSaverService extends NotificationListenerService {
 
         boolean any = false;
         // Полная история из свёрнутого уведомления (MessagingStyle).
-        android.os.Parcelable[] arr;
+        Notification.MessagingStyle style = null;
         try {
-            arr = ex.getParcelableArray(Notification.EXTRA_MESSAGES);
+            style = Notification.MessagingStyle
+                    .extractMessagingStyleFromNotification(n);
         } catch (RuntimeException e) {
-            arr = null;
+            style = null;
         }
-        if (arr != null && arr.length > 0) {
-            for (android.os.Parcelable p : arr) {
-                if (!(p instanceof Bundle)) {
-                    continue;
-                }
-                Notification.MessagingStyle.Message m =
-                        Notification.MessagingStyle.Message
-                                .getMessageFromBundle((Bundle) p);
+        if (style != null && style.getMessages() != null
+                && !style.getMessages().isEmpty()) {
+            for (Notification.MessagingStyle.Message m : style.getMessages()) {
                 if (m == null || m.getText() == null
                         || m.getText().length() == 0) {
                     continue;
