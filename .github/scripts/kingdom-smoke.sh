@@ -22,7 +22,8 @@ waiter() {
     F=$(adb shell dumpsys window 2>/dev/null | grep -i "mCurrentFocus" | head -1)
     case "$F" in
       *Not?Responding*) adb shell input keyevent KEYCODE_DPAD_RIGHT; sleep 0.3; adb shell input keyevent KEYCODE_DPAD_CENTER;;
-      *ImmersiveModeConfirmation*) adb shell input tap $((W*87/100)) $((H*26/100));; # кнопка «Понятно» в подтверждении полноэкранного режима
+      # «Полноэкранный режим»: жмём и «Понятно», и назад — что-нибудь да сработает
+      *ImmersiveModeConfirmation*) adb shell input keyevent KEYCODE_BACK; sleep 0.4; adb shell input tap 705 415; sleep 0.4; adb shell input keyevent KEYCODE_BACK;;
     esac
     sleep 2
   done
@@ -52,8 +53,11 @@ WM_SIZE=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1)
 W=${WM_SIZE%x*}; H=${WM_SIZE#*x}
 echo "display: ${W}x${H}"
 
-echo "== new game =="
-sleep 2
+echo "== ждём, пока игра вернёт фокус (диалоги закроет waiter) =="
+for i in $(seq 1 10); do
+  F=$(adb shell dumpsys window 2>/dev/null | grep -i "mCurrentFocus" | head -1)
+  case "$F" in *$PKG*) break;; *) sleep 2;; esac
+done
 shot "kingdom-menu2"
 # «НОВАЯ ИГРА» — центр экрана, чуть выше середины
 adb shell input tap $((W/2)) $((H*52/100))
