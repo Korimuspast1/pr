@@ -24,6 +24,14 @@ echo "== launch =="
 adb shell am start -n "$PKG/.MainActivity" || { echo "SMOKE_FAILED: launch"; exit 1; }
 sleep 8
 
+# если поверх висит ANR/системный диалог ("Wait") — закрываем его;
+# если диалога нет, тап попадает в превью и лишь срабатывает автофокус
+WM_SIZE=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1)
+W=${WM_SIZE%x*}; H=${WM_SIZE#*x}
+echo "display: ${W}x${H}"
+adb shell input tap $((W*58/100)) $((H*57/100))
+sleep 2
+
 shot() {
   local name="$1"
   adb exec-out screencap -p > "/tmp/$name.png" 2>/dev/null || true
@@ -38,10 +46,8 @@ shot() {
 shot "glasscam-preview"
 
 echo "== tap shutter (photo) =="
-WM_SIZE=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1)
-W=${WM_SIZE%x*}; H=${WM_SIZE#*x}
-echo "display: ${W}x${H}"
-adb shell input tap $((W/2)) $((H-170))
+# шторка правее центра (слева Space с весом), ~92% высоты
+adb shell input tap $((W*64/100)) $((H*92/100))
 sleep 5
 shot "glasscam-photo"
 
@@ -51,8 +57,8 @@ echo "Pictures/GlassCam: $PHOTOS"
 echo "$PHOTOS" | grep -q "\.jpg" || { echo "SMOKE_FAILED: no photo saved"; exit 1; }
 
 echo "== switch to front camera =="
-# кнопка смены камеры: правее шторки на ~22% ширины экрана
-adb shell input tap $((W/2 + W*22/100)) $((H-220))
+# кнопка смены камеры: правее шторки
+adb shell input tap $((W*80/100)) $((H*92/100))
 sleep 4
 shot "glasscam-front"
 

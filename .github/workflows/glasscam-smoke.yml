@@ -71,7 +71,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back virtualscene -camera-front emulated
           disable-animations: true
           disable-spellchecker: true
-          script: bash .github/scripts/glasscam-smoke.sh ${{ matrix.api-level }} | tee -a "$GITHUB_WORKSPACE/glasscam-smoke-api${{ matrix.api-level }}.txt"
+          script: set -o pipefail; bash .github/scripts/glasscam-smoke.sh ${{ matrix.api-level }} | tee -a "$GITHUB_WORKSPACE/glasscam-smoke-api${{ matrix.api-level }}.txt"
 
       - name: Commit smoke log
         if: always()
