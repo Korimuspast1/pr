@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="hud_active">#FFE9C46A</color>
+    <color name="hud_dim">#B3FFFFFF</color>
+    <color name="ic_launcher_bg">#FF1A1A1E</color>
+</resources>
