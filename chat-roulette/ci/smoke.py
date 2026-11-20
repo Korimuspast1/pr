@@ -106,6 +106,13 @@ def crashed():
     return None
 
 
+def back_in_app():
+    """Возврат внутри приложения по стеклянной кнопке-стрелке; если не вышло — перезапуск."""
+    if not tap_any("Back", "Назад"):
+        sh(f"adb shell am start -W -n {PKG}/m.chatrulet.m.MainActivity")
+        time.sleep(5)
+
+
 def main():
     sh("adb logcat -c")
     out = sh("adb install -r GlassRoulette.apk")
@@ -125,19 +132,16 @@ def main():
     tap_any("Dark", "Тёмная")
     time.sleep(2)
     shot("5-settings-dark")
-    sh("adb shell input keyevent 4")
-    time.sleep(2)
+    back_in_app()
     shot("6-home-dark")
     # rules
     tap_any("Rules", "Правила")
     shot("7-rules")
-    sh("adb shell input keyevent 4")
-    time.sleep(2)
+    back_in_app()
     # blocked list
     tap_any("Blocked", "Заблокированные")
     shot("8-blocked")
-    sh("adb shell input keyevent 4")
-    time.sleep(2)
+    back_in_app()
     shot("9-home-final")
     c = crashed()
     pid = sh(f"adb shell pidof {PKG}").strip()
