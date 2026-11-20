@@ -101,7 +101,7 @@ window.addEventListener('load', () => {
   RN.cv = $('cv'); RN.ctx = RN.cv.getContext('2d'); resize(); initInput();
   window.addEventListener('resize', () => { resize(); clampCam(); });
   // значки в неизменяемой части страницы
-  $('scoreI').innerHTML = IMG('medal', 22); $('inboxIc').innerHTML = IMG('mail', 28); $('burger').innerHTML = IMG('menu', 22);
+  $('scoreI').innerHTML = IMG('medal', 27); $('inboxIc').innerHTML = IMG('mail', 38); $('burger').innerHTML = IMG('menu', 27);
   $('mAch').innerHTML = IMG('star', 22); $('mRec').innerHTML = IMG('trophy', 22); $('mSet').innerHTML = IMG('gear', 22);
   $('ver').textContent = 'версия ' + GAME_VERSION;
   applySettings(); refreshMenu();

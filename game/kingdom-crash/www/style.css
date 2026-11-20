@@ -64,7 +64,7 @@ b { font-weight: normal; }
   box-shadow: inset 0 0 0 2px var(--ink), inset 0 4px 0 0 rgba(255, 255, 255, .14), inset 0 -4px 0 0 rgba(0, 0, 0, .3), 0 3px 0 rgba(0, 0, 0, .4); }
 #resbar .g4 { display: grid; grid-template-columns: repeat(4, 1fr); }
 #resbar .g6 { display: grid; grid-template-columns: repeat(6, 1fr); margin-top: 4px; }
-#resbar .r { display: flex; align-items: center; white-space: nowrap; min-width: 0; height: 20px; }
+#resbar .r { display: flex; align-items: center; white-space: nowrap; min-width: 0; height: 24px; }
 #resbar .r .ic { margin-right: 3px; }
 #resbar .rt { font-size: 12px; margin-left: 3px; }
 .neg { color: var(--bad); } .pos { color: var(--good); }

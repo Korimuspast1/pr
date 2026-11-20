@@ -136,7 +136,7 @@ function weatherOf(S) {
   return Object.assign({ temp, season: SEASONS[season], seasonI: season }, pick);
 }
 function seasonOf(S) { return SEASONS[Math.floor(S.time / SEASON_LEN) % 4]; }
-const GAME_VERSION = '2.10.0';
+const GAME_VERSION = '2.11.0';
 const MAPTYPES = ['continent', 'continents', 'islands', 'lakes', 'random'];
 const CAP_MIN = 10.5; // минимальное расстояние между столицами
 const SEA_MIN = 10; // меньший водоём — пруд: порт у него не строят
@@ -404,7 +404,7 @@ function drawCitySprite(c, x, y, col, lvl, cap) { // 64 x 80 (мелкие пи�
   const hs = [[10, 20], [44, 20], [14, 30], [40, 30], [20, 14], [36, 14]], n = Math.min(hs.length, 1 + lvl);
   for (let i = 0; i < n; i++) { const h = hs[i]; R_(c, x + h[0], oy + h[1] + 4, 10, 7, '#e8dcc0'); R_(c, x + h[0], oy + h[1] + 4, 10, 1, '#5a3a1a'); R_(c, x + h[0] + 4, oy + h[1] + 7, 3, 4, '#5a3a1a'); R_(c, x + h[0] + 1, oy + h[1] + 6, 2, 2, '#e8c860'); gable(c, x + h[0] - 1, oy + h[1], 12, 5, col); if (i < 2) { R_(c, x + h[0] + 8, oy + h[1] - 1, 2, 4, '#8a7a70'); R_(c, x + h[0] + 7, oy + h[1] - 2, 4, 1, '#4a4040'); } }
   R_(c, x + 2, oy + 58, 60, 3, '#6a5a40');
-  if (cap) { const kx2 = x + 26; R_(c, kx2, oy - 8, 12, 4, '#f2c230'); R_(c, kx2, oy - 13, 2, 6, '#f2c230'); R_(c, kx2 + 5, oy - 15, 2, 8, '#f2c230'); R_(c, kx2 + 10, oy - 13, 2, 6, '#f2c230'); R_(c, kx2 + 1, oy - 7, 10, 1, '#fff0a0'); R_(c, kx2 + 5, oy - 11, 2, 2, '#e8402c'); }
+  if (cap) { const kx2 = x + 26; R_(c, kx2, oy - 8, 12, 4, '#c8a03c'); R_(c, kx2, oy - 13, 2, 6, '#c8a03c'); R_(c, kx2 + 5, oy - 15, 2, 8, '#c8a03c'); R_(c, kx2 + 10, oy - 13, 2, 6, '#c8a03c'); R_(c, kx2 + 1, oy - 7, 10, 1, '#8a6a28'); R_(c, kx2 + 5, oy - 11, 2, 2, '#8a2e24'); }
 }
 // цифры 3x5
 const DIG = ['111101101101111', '010110010010111', '111001111100111', '111001111001111', '101101111001001', '111100111001111', '111100111101111', '111001001001001', '111101111101111', '111101111001111'];

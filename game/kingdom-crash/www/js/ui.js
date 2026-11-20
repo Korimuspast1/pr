@@ -14,7 +14,7 @@ const sw = col => `<span class="sw" style="background:${/^#[0-9a-fA-F]{6}$/.test
 const prodSpeed = p => p.mult * (perk(p, 'craft') ? 1.3 : 1), trainSpeed = p => p.mult * (perk(p, 'drill') ? 1.25 : 1);
 const secs = v => Math.max(0, Math.ceil(v));
 function uiError(e) { try { console.error(e); } catch (x) { /* консоли может не быть */ } if (UI.S) UI.S.toast.push({ title: 'Сбой', text: 'Действие не выполнено', t: UI.S.time, bad: true }); }
-const STAR = () => IMG('star', 16), INF = () => IMG('inf', 18);
+const STAR = () => IMG('star', 16), INF = () => IMG('inf', 20);
 
 /* Обновление разметки «на месте»: меняются только отличающиеся узлы. Кнопка под пальцем не пересоздаётся,
    поэтому нажатия не теряются, а прокрутка списков не сбрасывается (раньше панели перерисовывались целиком). */
@@ -158,8 +158,8 @@ function updateHud() {
     const wEl = $('wx'); const wt = wx.n + ' · ' + wx.temp + '° · ' + wx.desc;
     if (wEl && wEl.title !== wt) wEl.title = wt; }
   const sb = !!S.opts.sandbox; let h = '<div class="g4">';
-  for (const k of ['gold', 'wood', 'food', 'iron']) { const v = p.rate[k]; h += `<div class="r">${IMG(k, 18)}<span class="${!sb && k === 'food' && p.stock[k] < 1 ? 'neg' : ''}">${sb ? INF() : fmt(p.stock[k])}</span>${sb ? '' : `<span class="rt ${v < 0 ? 'neg' : 'pos'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}</span>`}</div>`; }
-  h += '</div><div class="g6">'; for (const k of ITEM_KEYS) h += `<div class="r">${IMG(k, 18)}${sb ? INF() : Math.floor(p.stock[k])}</div>`;
+  for (const k of ['gold', 'wood', 'food', 'iron']) { const v = p.rate[k]; h += `<div class="r">${IMG(k, 22)}<span class="${!sb && k === 'food' && p.stock[k] < 1 ? 'neg' : ''}">${sb ? INF() : fmt(p.stock[k])}</span>${sb ? '' : `<span class="rt ${v < 0 ? 'neg' : 'pos'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}</span>`}</div>`; }
+  h += '</div><div class="g6">'; for (const k of ITEM_KEYS) h += `<div class="r">${IMG(k, 22)}${sb ? INF() : Math.floor(p.stock[k])}</div>`;
   setHtml('resbar', h + '</div>');
   const un = S.msgs.filter(m => !m.read).length; setText('badge', String(un)); setCls('badge', 'hidden', !un); setCls('inboxBtn', 'alert', un > 0);
   // звук нового письма

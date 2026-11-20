@@ -328,8 +328,7 @@ function frame(S, now) {
       }
       c.restore(); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     }
-    if (dark > 0.12) { if (!RN.glow) RN.glow = makeGlow(); c.globalCompositeOperation = 'lighter'; for (const ct of S.cities) { const gs = 44 + ct.level * 12; c.globalAlpha = Math.min(0.6, dark * 0.55); c.drawImage(RN.glow, ct.x * TS + 16 - gs / 2, ct.y * TS + 2 - gs / 2, gs, gs); } c.globalCompositeOperation = 'source-over'; c.globalAlpha = Math.min(1, dark * 1.3);
-      for (const ct of S.cities) { const ox = ct.x * TS, oy = ct.y * TS - 14; if (ct.x < vx0 - 3 || ct.x > vx1 || ct.y < vy0 - 3 || ct.y > vy1) continue; R_(c, ox + 14.5, oy + 27.5, 3, 3.5, '#ffd870'); const n = Math.min(6, 1 + ct.level); for (let i = 0; i < n; i++) { const h = CITY_HS[i]; R_(c, ox + (h[0] + 1.5) * 0.5, oy + (32 + h[1] + 6) * 0.5, 1, 1, '#ffd870'); R_(c, ox + (h[0] + 6.5) * 0.5, oy + (32 + h[1] + 6) * 0.5, 0.5, 1, '#ffb850'); } }
+    if (dark > 0.12) { c.globalAlpha = Math.min(1, dark * 1.3);
       for (const b of S.buildings) { if (b.x < vx0 - 1 || b.x > vx1 || b.y < vy0 - 1 || b.y > vy1) continue; if (b.type === 'forge') { c.globalAlpha = dark * 0.35; R_(c, b.x * TS - 2, b.y * TS + 3, 14, 12, '#ff9a3a'); c.globalAlpha = Math.min(1, dark * 1.3); } else if (b.type === 'barracks' || b.type === 'workshop' || b.type === 'stable' || b.type === 'port' || b.type === 'tavern' || b.type === 'mill') R_(c, b.x * TS + 7.5, b.y * TS + 9, 1, 1.5, '#ffd870'); }
       c.globalAlpha = 1; }
   }
