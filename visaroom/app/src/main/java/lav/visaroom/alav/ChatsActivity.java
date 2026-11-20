@@ -1150,8 +1150,7 @@ public class ChatsActivity extends Activity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(16), dp(12), dp(16), dp(12));
-        row.setBackgroundResource(R.drawable.bg_glass_card);
-        row.setElevation(dp(3));
+        row.setBackgroundResource(R.drawable.bg_chat_row);
         row.setClickable(true);
         row.setFocusable(true);
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
@@ -1162,12 +1161,26 @@ public class ChatsActivity extends Activity {
         rowParams.topMargin = dp(4);
         row.setLayoutParams(rowParams);
 
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(R.drawable.ic_nav_profile);
-        icon.setColorFilter(getColor(R.color.text_main), PorterDuff.Mode.SRC_IN);
-        icon.setClickable(true);
-        icon.setFocusable(true);
-        row.addView(icon, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        // Telegram-аватар: цветной круг с инициалом собеседника
+        android.widget.FrameLayout avatarWrap = new android.widget.FrameLayout(this);
+        avatarWrap.setBackgroundResource(R.drawable.bg_avatar_circle);
+        avatarWrap.setClickable(true);
+        avatarWrap.setFocusable(true);
+        int avColor = avatarColorFor(summary.peerUid);
+        avatarWrap.getBackground().setColorFilter(avColor, PorterDuff.Mode.SRC_IN);
+        TextView initial = new TextView(this);
+        String label = summary.username.length() > 0 ? summary.username : "u";
+        initial.setText(String.valueOf(Character.toUpperCase(label.charAt(0))));
+        initial.setTextColor(getColor(R.color.white));
+        initial.setTextSize(19);
+        initial.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        initial.setGravity(Gravity.CENTER);
+        android.widget.FrameLayout.LayoutParams ivLp =
+                new android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT);
+        avatarWrap.addView(initial, ivLp);
+        row.addView(avatarWrap, new LinearLayout.LayoutParams(dp(50), dp(50)));
 
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
@@ -1231,21 +1244,37 @@ public class ChatsActivity extends Activity {
         boolean unread = !summary.lastSenderUid.equals(userId)
                 && summary.lastMessageAt > summary.lastReadAt;
         if (unread) {
-            View dot = new View(this);
-            dot.setBackgroundResource(R.drawable.bg_unread_dot);
-            LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(9), dp(9));
-            dotParams.topMargin = dp(7);
-            dotParams.gravity = Gravity.END;
-            side.addView(dot, dotParams);
+            TextView badge = new TextView(this);
+            badge.setBackgroundResource(R.drawable.bg_unread_badge);
+            badge.setText("1");
+            badge.setTextColor(getColor(R.color.white));
+            badge.setTextSize(12);
+            badge.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            badge.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams badgeParams =
+                    new LinearLayout.LayoutParams(dp(20), dp(20));
+            badgeParams.topMargin = dp(7);
+            badgeParams.gravity = Gravity.END;
+            side.addView(badge, badgeParams);
         }
         row.addView(side, sideParams);
 
-        icon.setOnClickListener(v -> showPublicProfile(summary.peerUid, summary.username));
+        avatarWrap.setOnClickListener(v -> showPublicProfile(summary.peerUid, summary.username));
         // The whole conversation row is for entering the chat. The
         // separate avatar remains the profile entry point.
         texts.setOnClickListener(v -> openDirectChat(summary.peerUid, summary.username));
         row.setOnClickListener(v -> openDirectChat(summary.peerUid, summary.username));
         return row;
+    }
+
+    /** Стабильный Telegram-цвет аватара по uid собеседника. */
+    private int avatarColorFor(String uid) {
+        int[] palette = {
+                0xFF3390EC, 0xFFF54E4E, 0xFFFA8C23, 0xFF9A6BF0,
+                0xFF4FCD5E, 0xFF00B8C4, 0xFFE864A0
+        };
+        int h = uid == null ? 0 : Math.abs(uid.hashCode());
+        return palette[h % palette.length];
     }
 
     private String formatChatTime(long millis) {
@@ -1308,8 +1337,7 @@ public class ChatsActivity extends Activity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(16), dp(12), dp(16), dp(12));
-        row.setBackgroundResource(R.drawable.bg_glass_card);
-        row.setElevation(dp(3));
+        row.setBackgroundResource(R.drawable.bg_chat_row);
         row.setClickable(true);
         row.setFocusable(true);
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(

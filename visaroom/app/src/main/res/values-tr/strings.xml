@@ -99,4 +99,8 @@
     <string name="update_latest">En son sürüme sahipsiniz</string>
     <string name="update_available">Güncelleme mevcut — indirmek için dokunun</string>
     <string name="update_failed">Güncelleme denetlenemedi</string>
+    <string name="background_connection">Arka plan bağlantısı</string>
+    <string name="background_connection_desc">Uygulama kapalıyken bile bildirimler gelir</string>
+    <string name="app_name_tg">visaroom</string>
+    <string name="tg_settings_sync">Her zaman açık — Telegram tarzı bildirimler</string>
 </resources>

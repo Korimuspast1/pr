@@ -560,22 +560,36 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
 
+                <LinearLayout
+                android:id="@+id/folder_chats_header"
+                android:background="@drawable/bg_chat_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:orientation="horizontal"
+                android:paddingLeft="20dp"
+                android:paddingRight="24dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginRight="14dp"
+                    android:src="@drawable/ic_s_chats"
+                    android:importantForAccessibility="no" />
+
                 <TextView
-                    android:id="@+id/folder_chats_header"
-                    android:background="@drawable/bg_chat_row"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="52dp"
-                    android:paddingRight="24dp"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="28dp"
-                    android:paddingLeft="24dp"
+                    android:layout_weight="1"
                     android:text="@string/chats"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
+                    android:textColor="@color/m3_primary"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
+                </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/folder_chats_content"
@@ -781,29 +795,42 @@
 
                 </LinearLayout>
 
+                <LinearLayout
+                android:id="@+id/folder_notifications_header"
+                android:background="@drawable/bg_chat_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:orientation="horizontal"
+                android:paddingLeft="20dp"
+                android:paddingRight="24dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginRight="14dp"
+                    android:src="@drawable/ic_s_bell"
+                    android:importantForAccessibility="no" />
+
                 <TextView
-                    android:id="@+id/folder_notifications_header"
-                    android:background="@drawable/bg_chat_row"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="52dp"
-                    android:paddingRight="24dp"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="22dp"
-                    android:paddingLeft="24dp"
+                    android:layout_weight="1"
                     android:text="@string/notifications"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
+                    android:textColor="@color/m3_primary"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
+                </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/folder_notifications_content"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone">
+                    android:orientation="vertical">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -827,6 +854,16 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
                 </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingLeft="24dp"
+                    android:paddingRight="24dp"
+                    android:paddingBottom="6dp"
+                    android:text="@string/tg_settings_sync"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -854,22 +891,36 @@
 
                 </LinearLayout>
 
+                <LinearLayout
+                android:id="@+id/folder_security_header"
+                android:background="@drawable/bg_chat_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:orientation="horizontal"
+                android:paddingLeft="20dp"
+                android:paddingRight="24dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginRight="14dp"
+                    android:src="@drawable/ic_s_lock"
+                    android:importantForAccessibility="no" />
+
                 <TextView
-                    android:id="@+id/folder_security_header"
-                    android:background="@drawable/bg_chat_row"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="52dp"
-                    android:paddingRight="24dp"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="22dp"
-                    android:paddingLeft="24dp"
+                    android:layout_weight="1"
                     android:text="@string/security"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
+                    android:textColor="@color/m3_primary"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
+                </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/folder_security_content"
@@ -968,22 +1019,36 @@
 
                 </LinearLayout>
 
+                <LinearLayout
+                android:id="@+id/folder_privacy_header"
+                android:background="@drawable/bg_chat_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:orientation="horizontal"
+                android:paddingLeft="20dp"
+                android:paddingRight="24dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginRight="14dp"
+                    android:src="@drawable/ic_s_shield"
+                    android:importantForAccessibility="no" />
+
                 <TextView
-                    android:id="@+id/folder_privacy_header"
-                    android:background="@drawable/bg_chat_row"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="52dp"
-                    android:paddingRight="24dp"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="22dp"
-                    android:paddingLeft="24dp"
+                    android:layout_weight="1"
                     android:text="@string/privacy"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
+                    android:textColor="@color/m3_primary"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
+                </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/folder_privacy_content"
@@ -1103,22 +1168,36 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                    <TextView
-                        android:id="@+id/folder_moderation_header"
-                        android:background="@drawable/bg_chat_row"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center_vertical"
-                        android:minHeight="52dp"
-                        android:paddingRight="24dp"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="22dp"
-                        android:paddingLeft="24dp"
-                        android:text="@string/moderation"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
+                    <LinearLayout
+                android:id="@+id/folder_moderation_header"
+                android:background="@drawable/bg_chat_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:orientation="horizontal"
+                android:paddingLeft="20dp"
+                android:paddingRight="24dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginRight="14dp"
+                    android:src="@drawable/ic_s_gavel"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/moderation"
+                    android:textColor="@color/m3_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+                </LinearLayout>
 
                     <LinearLayout
                         android:id="@+id/folder_moderation_content"
@@ -1154,22 +1233,36 @@
 
                 </LinearLayout>
 
+                <LinearLayout
+                android:id="@+id/folder_account_header"
+                android:background="@drawable/bg_chat_row"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:orientation="horizontal"
+                android:paddingLeft="20dp"
+                android:paddingRight="24dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginRight="14dp"
+                    android:src="@drawable/ic_s_account"
+                    android:importantForAccessibility="no" />
+
                 <TextView
-                    android:id="@+id/folder_account_header"
-                    android:background="@drawable/bg_chat_row"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="52dp"
-                    android:paddingRight="24dp"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="22dp"
-                    android:paddingLeft="24dp"
+                    android:layout_weight="1"
                     android:text="@string/account"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
+                    android:textColor="@color/m3_primary"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
+                </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/folder_account_content"

@@ -203,4 +203,8 @@
     <string name="update_latest">You have the latest version</string>
     <string name="update_available">Update available — tap to download</string>
     <string name="update_failed">Could not check for updates</string>
+    <string name="background_connection">Background connection</string>
+    <string name="background_connection_desc">Notifications arrive even when the app is closed</string>
+    <string name="app_name_tg">visaroom</string>
+    <string name="tg_settings_sync">Always on — Telegram-style push via background connection</string>
 </resources>

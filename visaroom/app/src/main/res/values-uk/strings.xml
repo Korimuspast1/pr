@@ -202,4 +202,8 @@
     <string name="update_latest">У вас остання версія</string>
     <string name="update_available">Доступне оновлення — натисніть, щоб завантажити</string>
     <string name="update_failed">Не вдалося перевірити оновлення</string>
+    <string name="background_connection">Фонове з\'єднання</string>
+    <string name="background_connection_desc">Сповіщення надходять, навіть коли застосунок закрито</string>
+    <string name="app_name_tg">visaroom</string>
+    <string name="tg_settings_sync">Завжди активно — сповіщення як у Telegram</string>
 </resources>

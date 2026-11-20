@@ -26,6 +26,14 @@ final class AppSettings {
     static final int LANG_TURKISH = 7;
     static final int LANG_PORTUGUESE = 8;
 
+    static boolean backgroundSync(Context c) {
+        return prefs(c).getBoolean("background_sync", true);
+    }
+
+    static void setBackgroundSync(Context c, boolean on) {
+        prefs(c).edit().putBoolean("background_sync", on).apply();
+    }
+
     /** Текущая версия приложения (совпадает с versionName в build.gradle). */
     static String appVersion() {
         return "1.12.0";

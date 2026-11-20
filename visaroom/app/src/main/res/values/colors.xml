@@ -1,47 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Material 3 Expressive · светлая схема (база — фиолетовый #6750A4) -->
+<!-- Material 3 Expressive × Telegram · светлая схема (акцент — TG-синий #3390EC) -->
 <resources>
-    <!-- M3 palette reference -->
-    <color name="m3_primary">#FF6750A4</color>
+    <!-- акцент -->
+    <color name="m3_primary">#FF3390EC</color>
     <color name="m3_on_primary">#FFFFFFFF</color>
-    <color name="m3_primary_container">#FFEADDFF</color>
-    <color name="m3_on_primary_container">#FF21005D</color>
-    <color name="m3_secondary">#FF625B71</color>
-    <color name="m3_secondary_container">#FFE8DEF8</color>
-    <color name="m3_on_secondary_container">#FF1D192B</color>
-    <color name="m3_tertiary">#FF7D5260</color>
-    <color name="m3_tertiary_container">#FFFFD8E4</color>
-    <color name="m3_surface">#FFFEF7FF</color>
-    <color name="m3_surface_dim">#FFDED8E1</color>
-    <color name="m3_surface_container_low">#FFF7F2FA</color>
-    <color name="m3_surface_container">#FFF3EDF7</color>
-    <color name="m3_surface_container_high">#FFECE6F0</color>
-    <color name="m3_surface_container_highest">#FFE6E0E9</color>
-    <color name="m3_on_surface">#FF1D1B20</color>
-    <color name="m3_on_surface_variant">#FF49454F</color>
-    <color name="m3_outline">#FF79747E</color>
-    <color name="m3_outline_variant">#FFCAC4D0</color>
-    <color name="m3_error">#FFB3261E</color>
-    <color name="m3_error_container">#FFF9DEDC</color>
-    <color name="m3_on_error_container">#FF410E0B</color>
+    <color name="m3_primary_container">#FFCFE5FC</color>
+    <color name="m3_on_primary_container">#FF001D33</color>
+    <color name="m3_secondary">#FF517DA2</color>
+    <color name="m3_secondary_container">#FFD6E8F7</color>
+    <color name="m3_on_secondary_container">#FF0E1B27</color>
+    <color name="m3_tertiary">#FF4FCD5E</color>
+    <color name="m3_tertiary_container">#FFD7F5DC</color>
+    <!-- поверхности: светлый Telegram -->
+    <color name="m3_surface">#FFFFFFFF</color>
+    <color name="m3_surface_dim">#FFE3E9EF</color>
+    <color name="m3_surface_container_low">#FFF5F7FA</color>
+    <color name="m3_surface_container">#FFEDF1F5</color>
+    <color name="m3_surface_container_high">#FFE3E9EF</color>
+    <color name="m3_surface_container_highest">#FFD9DFE6</color>
+    <color name="m3_on_surface">#FF0F0F0F</color>
+    <color name="m3_on_surface_variant">#FF707579</color>
+    <color name="m3_outline">#FF9AA2A8</color>
+    <color name="m3_outline_variant">#FFE0E4E9</color>
+    <color name="m3_error">#FFEC3942</color>
+    <color name="m3_error_container">#FFFDE3E4</color>
+    <color name="m3_on_error_container">#FF5C0007</color>
 
-    <!-- app tokens (подставляются в drawable/styles) -->
+    <!-- пузыри сообщений в стиле Telegram -->
+    <color name="bubble_mine">#FFE1FFC7</color>
+    <color name="bubble_mine_text">#FF0F0F0F</color>
+    <color name="bubble_peer">#FFFFFFFF</color>
+    <color name="chat_bg">#FFE7EBF0</color>
+
+    <!-- app tokens -->
     <color name="black">#FF000000</color>
-    <color name="ic_launcher_bg">#FFEADDFF</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="near_black">#FF1D1B20</color>
+    <color name="near_black">#FF0F0F0F</color>
     <color name="text_main">@color/m3_on_surface</color>
     <color name="text_secondary">@color/m3_on_surface_variant</color>
-    <color name="text_hint">#FF938F99</color>
+    <color name="text_hint">#FF9AA2A8</color>
     <color name="border">@color/m3_outline_variant</color>
     <color name="border_dark">@color/m3_primary</color>
     <color name="pressed">@color/m3_surface_container_high</color>
-    <color name="pressed_dark">#FF4F378B</color>
-    <color name="disabled">#FFCAC4D0</color>
+    <color name="pressed_dark">#FF2A7BC7</color>
+    <color name="disabled">#FFC4CAD0</color>
     <color name="error_bg">@color/m3_error_container</color>
-    <color name="surface_soft">@color/m3_surface_container_low</color>
-    <color name="glass_white">#F7F3EDF7</color>
-    <color name="glass_stroke">#2979747E</color>
+    <color name="surface_soft">@color/m3_surface</color>
+    <color name="glass_white">#F7F5F7FA</color>
+    <color name="glass_stroke">#299AA2A8</color>
     <color name="accent_strong">@color/m3_primary</color>
     <color name="on_primary">@color/m3_on_primary</color>
 </resources>

@@ -3037,10 +3037,10 @@ public class DirectChatActivity extends Activity {
                 Math.round(getResources().getDisplayMetrics().widthPixels * 0.80f),
                 dp(540));
         int mainColor = mine
-                ? getColor(R.color.m3_on_primary)
+                ? getColor(R.color.bubble_mine_text)
                 : getColor(R.color.text_main);
         int secondaryColor = mine
-                ? withAlpha(getColor(R.color.m3_on_primary), 184)
+                ? withAlpha(getColor(R.color.bubble_mine_text), 168)
                 : getColor(R.color.text_secondary);
         if (VrProto.hasReply(message)) {
             addReplyQuote(bubble, message, mine, maxBubbleWidth,

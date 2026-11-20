@@ -15,8 +15,8 @@ android {
         applicationId = "lav.visaroom.alav"
         minSdk = 26
         targetSdk = 34
-        versionCode = 16
-        versionName = "1.12.0"
+        versionCode = 17
+        versionName = "1.13.0"
 
         // Keep the APK small: ship only the locales offered in Settings.
         resourceConfigurations += ["en", "ru", "uk", "es", "de", "fr", "tr", "pt"]

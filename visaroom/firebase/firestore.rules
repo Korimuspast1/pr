@@ -57,7 +57,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return signedIn()
-        && request.auth.token.email == 'debugger821@gmail.com';
+        && (request.auth.token.email == 'debugger821@gmail.com'
+          || request.auth.token.email == 'nikiilrus22@gmail.com');
     }
 
     function accountBlocked(uid) {

@@ -109,6 +109,7 @@ final class NotificationFx {
             // Foreground polling can still run without a channel UI.
         }
         scheduleBackgroundChecks(appContext);
+        startSyncService(appContext);
         if (foregroundExecutor != null && !foregroundExecutor.isShutdown()) {
             return;
         }
@@ -171,6 +172,70 @@ final class NotificationFx {
         }
     }
 
+    /** Постоянное фоновое соединение (FGS). Запускать только из foreground. */
+    static void startSyncService(Context context) {
+        if (context == null) {
+            return;
+        }
+        try {
+            Context app = context.getApplicationContext();
+            if (!AppSettings.notifications(app) || !AppSettings.backgroundSync(app)
+                    || TokenStore.refreshToken(app) == null) {
+                return;
+            }
+            app.startForegroundService(MessageSyncService.intent(app));
+        } catch (RuntimeException ignored) {
+            // Android 12+ запрещает старт FGS из фона — тогда работает
+            // цепочка JobScheduler.
+        }
+    }
+
+    static void stopSyncService(Context context) {
+        if (context == null) {
+            return;
+        }
+        try {
+            context.getApplicationContext().stopService(
+                    MessageSyncService.intent(context.getApplicationContext()));
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private static final int JOB_ID_NEXT = 1102;
+    private static final long CHAIN_DELAY_MS = TimeUnit.MINUTES.toMillis(3);
+
+    /**
+     * Цепочка одиночных задач каждые ~3 минуты между редкими периодическими
+     * запусками (15 мин) — так уведомления приходят быстро, даже если
+     * foreground-сервис прибит системой.
+     */
+    static void chainNextCheck(Context context) {
+        if (context == null) {
+            return;
+        }
+        try {
+            Context app = context.getApplicationContext();
+            JobScheduler scheduler = (JobScheduler)
+                    app.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            if (scheduler == null || TokenStore.refreshToken(app) == null
+                    || !AppSettings.notifications(app)) {
+                return;
+            }
+            scheduler.cancel(JOB_ID_NEXT);
+            JobInfo.Builder builder = new JobInfo.Builder(JOB_ID_NEXT,
+                    new ComponentName(app, MessageCheckJobService.class))
+                    .setMinimumLatency(CHAIN_DELAY_MS)
+                    .setOverrideDeadline(TimeUnit.MINUTES.toMillis(8))
+                    .setPersisted(true);
+            if (app.checkSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                builder.setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY);
+            }
+            scheduler.schedule(builder.build());
+        } catch (RuntimeException ignored) {
+        }
+    }
+
     static void cancelBackgroundChecks(Context context) {
         if (context == null) {
             return;
@@ -192,6 +257,9 @@ final class NotificationFx {
         setActiveDirectPeer("");
         setChatsVisible(false);
         cancelAll(context);
+        if (context != null) {
+            stopSyncService(context);
+        }
         if (context != null && TokenStore.accountCount(context) == 0) {
             cancelBackgroundChecks(context);
         }
@@ -228,6 +296,7 @@ final class NotificationFx {
         } finally {
             CHECKING.set(false);
         }
+        chainNextCheck(context);
     }
 
     static synchronized void onSummaries(Context context, String myUid,

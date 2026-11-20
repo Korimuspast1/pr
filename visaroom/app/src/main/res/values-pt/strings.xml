@@ -99,4 +99,8 @@
     <string name="update_latest">Você tem a versão mais recente</string>
     <string name="update_available">Atualização disponível — toque para transferir</string>
     <string name="update_failed">Falha ao verificar</string>
+    <string name="background_connection">Ligação em segundo plano</string>
+    <string name="background_connection_desc">As notificações chegam mesmo com a app fechada</string>
+    <string name="app_name_tg">visaroom</string>
+    <string name="tg_settings_sync">Sempre ativo — notificações como no Telegram</string>
 </resources>
