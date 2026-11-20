@@ -136,7 +136,7 @@ function weatherOf(S) {
   return Object.assign({ temp, season: SEASONS[season], seasonI: season }, pick);
 }
 function seasonOf(S) { return SEASONS[Math.floor(S.time / SEASON_LEN) % 4]; }
-const GAME_VERSION = '2.11.0';
+const GAME_VERSION = '2.12.0';
 const MAPTYPES = ['continent', 'continents', 'islands', 'lakes', 'random'];
 const CAP_MIN = 10.5; // минимальное расстояние между столицами
 const SEA_MIN = 10; // меньший водоём — пруд: порт у него не строят

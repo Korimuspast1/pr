@@ -53,10 +53,12 @@ const run = (S, n) => { for (let i = 0; i < n; i++) G.tick(S, 0.25); };
   ok(S.trails && Object.keys(S.trails).length > 0, 'тропинки проступили', S.trails ? Object.keys(S.trails).length : 0);
   const vals = Object.values(S.trails);
   ok(vals.every(v => v > 0 && v <= 1), 'сила тропинки в пределах (0,1]');
-  const k = Object.keys(S.trails)[0], v0 = S.trails[k];
-  run(S, 500); // много циклов затухания
-  const v1 = S.trails[k];
-  ok(v1 === undefined || v1 < v0, 'тропинки плавно зарастают', v0 + ' -> ' + v1);
+  // зарастание проверяем на синтетической тропинке вне карты: по ней никто не ходит,
+  // поэтому видно только затухание, а не рост от ног (иначе тест зависит от расстановки построек)
+  S.trails = { '99999999': 0.9 };
+  run(S, 200); // много циклов затухания
+  const v1 = S.trails['99999999'];
+  ok(v1 === undefined || v1 < 0.9, 'тропинки плавно зарастают', '0.9 -> ' + v1);
   // прямая проверка markTrail: плавный рост без скачков
   const S2 = mk();
   G.markTrail(S2, 10, 10);

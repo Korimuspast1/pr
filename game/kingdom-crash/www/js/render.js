@@ -88,7 +88,8 @@ function resize() {
 }
 function clampCam() {
   const S = RN.S; if (!S) return; const cam = RN.cam, vw = RN.w / cam.z, vh = RN.h / cam.z, mw = S.W * TS, mh = S.H * TS;
-  cam.x = Math.max(-vw * 0.3, Math.min(mw - vw * 0.7, cam.x)); cam.y = Math.max(-vh * 0.3, Math.min(mh - vh * 0.7, cam.y));
+  if (mw <= vw) cam.x = (mw - vw) / 2; else cam.x = Math.max(-vw * 0.3, Math.min(mw - vw * 0.7, cam.x)); // карта меньше экрана — центрируем
+  if (mh <= vh) cam.y = (mh - vh) / 2; else cam.y = Math.max(-vh * 0.3, Math.min(mh - vh * 0.7, cam.y));
 }
 function centerOn(tx, ty) { RN.cam.x = tx * TS - RN.w / RN.cam.z / 2; RN.cam.y = ty * TS - RN.h / RN.cam.z / 2; clampCam(); }
 
@@ -256,8 +257,11 @@ function frame(S, now) {
     }
   }
   drawCars(c, S, tm, vx0, vy0, vx1, vy1); drawFestFx(c, S, tm, vx0, vy0, vx1, vy1);
-  // облака
-  const cw = S.W * TS, off = (tm * 2.5) % cw; c.drawImage(RN.cloud, off, 0, cw, S.H * TS); c.drawImage(RN.cloud, off - cw, 0, cw, S.H * TS);
+  // облака (строго в пределах карты: иначе при отдалении серые пятна висят над пустотой за краем мира)
+  const cw = S.W * TS, off = (tm * 2.5) % cw;
+  c.save(); c.beginPath(); c.rect(0, 0, cw, S.H * TS); c.clip();
+  c.drawImage(RN.cloud, off, 0, cw, S.H * TS); if (off > 0) c.drawImage(RN.cloud, off - cw, 0, cw, S.H * TS);
+  c.restore();
   drawSkyBirds(c, S, tm, RN.cv.width, RN.cv.height);
   { // смена времени суток (плавно)
     const tn = todTint(todHours(S)), dark = Math.max(0, Math.min(1, (255 - tn[1]) / 150));

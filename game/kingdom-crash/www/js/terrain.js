@@ -6,7 +6,7 @@
    Текстура вдвое мельче игровой клетки (32 точки на клетку — как у спрайтов зданий) и строится участками
    по мере надобности: вся карта в таком качестве в память телефона не поместилась бы. */
 const TERR = (() => {
-  const PPT = 32, CT = 8, CPX = PPT * CT, OV = 8; // точек на клетку, клеток в участке, точек на клетку в обзорной карте
+  const PPT = 32, CT = 8, CPX = PPT * CT, OV = 16; // точек на клетку, клеток в участке, точек на клетку в обзорной карте (16: берега без «ступеней» при отдалении)
   let S = null, W = 0, H = 0, F = null, chunks = new Map(), stamp = 0, over = null, spr = null, baked = -1;
   let overOld = null, jobs = new Map(), fieldStamp = 0; // участки и обзорная строятся полосами с бюджетом времени
   const nowMs = () => (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();

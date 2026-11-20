@@ -7,7 +7,7 @@ const ok = (c, name, extra) => { if (c) pass++; else { fail++; console.log('FAIL
 const root = path.resolve(__dirname, '..');
 const src = f => fs.readFileSync(path.join(root, f), 'utf8');
 
-ok(/^2\.(10|11)\.\d+$/.test(G.GAME_VERSION), 'GAME_VERSION 2.10.x/2.11.x', G.GAME_VERSION);
+ok(/^2\.(10|11|12)\.\d+$/.test(G.GAME_VERSION), 'GAME_VERSION 2.10.x/2.11.x/2.12.x', G.GAME_VERSION);
 ok(typeof G.IMG === 'function' && G.IMG('gold', 24).indexOf('<svg') === 0, 'IMG() отдаёт inline-SVG');
 ok(typeof G.SV === 'object' && Object.keys(G.SV).length >= 55, 'набор векторных иконок на месте (>=55)', String(Object.keys(G.SV || {}).length));
 

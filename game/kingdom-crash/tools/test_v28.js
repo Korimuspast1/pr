@@ -16,7 +16,7 @@ const build = (S, type) => { for (let y = 0; y < S.H; y++) for (let x = 0; x < S
 
 // ===== Версия =====
 {
-  ok(/^2\.(8|9|10|11)\.\d+$/.test(G.GAME_VERSION), 'GAME_VERSION 2.8.x-2.10.x (точную цифру держат test_v210.js и test_v291.js)', G.GAME_VERSION);
+  ok(/^2\.(8|9|10|11|12)\.\d+$/.test(G.GAME_VERSION), 'GAME_VERSION 2.8.x-2.10.x (точную цифру держат test_v210.js и test_v212.js)', G.GAME_VERSION);
   const html = src('www/index.html');
   ok(!/2\.7\.0/.test(html.replace(/<!--.*?-->/gs, '')), 'версия в интерфейсе обновлена (или не упоминает 2.7.0)');
 }

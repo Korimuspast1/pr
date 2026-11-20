@@ -7,7 +7,7 @@ const ok = (c, name, extra) => { if (c) pass++; else { fail++; console.log('FAIL
 const root = path.resolve(__dirname, '..');
 const src = f => fs.readFileSync(path.join(root, f), 'utf8');
 
-ok(G.GAME_VERSION === '2.11.0', 'GAME_VERSION = 2.11.0', G.GAME_VERSION);
+ok(/^2\.(11|12)\.\d+$/.test(G.GAME_VERSION), 'GAME_VERSION 2.11.x/2.12.x', G.GAME_VERSION);
 
 {
   const m = src('www/js/main.js');
