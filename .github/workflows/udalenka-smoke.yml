@@ -94,5 +94,7 @@ jobs:
             exit 0
           fi
           git commit -m "CI: udalenka smoke API ${{ matrix.api-level }} log [skip ci]"
-          git pull --rebase origin "${GITHUB_REF_NAME}" || true
-          git push origin "HEAD:${GITHUB_REF_NAME}" || true
+          for i in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}" && break || sleep 3
+          done
