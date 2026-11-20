@@ -28,12 +28,13 @@ adb shell settings get secure enabled_notification_listeners
 echo "== clear logcat =="
 adb logcat -c || true
 
-echo "== post test notifications (как будто WhatsApp/TikTok) =="
-adb shell cmd notification post -t "Mum" -c "Привет! Как дела? Позвони." com.whatsapp tag1 || \
-  echo "warn: whatsapp post failed"
-adb shell cmd notification post -t "TikTok" -c "user123 прокомментировал: крутое видео 🔥" com.zhiliaoapp.musically tag2 || \
-  echo "warn: tiktok post failed"
-adb shell cmd notification post -t "com.android.shell" -c "shell test message" com.android.shell tag3 || true
+echo "== post test notifications =="
+# ВАЖНО: пакет должен существовать на устройстве, иначе NMS уведомление
+# отбросит. com.android.shell и com.android.settings есть всегда.
+adb shell cmd notification post -t "Smoke Tester" -c "SMOKE_MARKER_PRIVET_12345" com.android.shell tag1 || \
+  echo "warn: shell post failed"
+adb shell cmd notification post -t "Settings" -c "SMOKE_MARKER_SETTINGS_67890" com.android.settings tag2 || \
+  echo "warn: settings post failed"
 sleep 3
 
 echo "== logcat capture check =="
@@ -52,14 +53,20 @@ shot() {
 }
 shot "udalenka-main"
 
-echo "== UI check: ищем сохранённый текст на экране =="
+echo "== UI check: на главном экране должна появиться строка приложения =="
 adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
 adb shell cat /sdcard/ui.xml 2>/dev/null | tr -d '\r' > /tmp/ui.xml || true
+echo "--- ui.xml (фрагмент) ---"
+head -c 3000 /tmp/ui.xml 2>/dev/null
+echo ""
+echo "--- end fragment ---"
 
-if grep -qi "Позвони\|прокомментировал\|shell test" /tmp/ui.xml; then
-  echo "UI_CONTAINS_SAVED_TEXT"
+# На главном экране видны: имя приложения-источника и счётчик «N сохранено».
+if grep -qiE "Shell|Настройки|Settings|сохранено|saved" /tmp/ui.xml; then
+  echo "UI_CONTAINS_SAVED_APP"
 else
-  echo "warn: saved text not on main screen (приложения могли быть не распознаны)"
+  echo "SMOKE_FAILED: сохранённое уведомление не появилось в UI"
+  exit 1
 fi
 
 # открыть приложение-строку shell (всегда должно быть, т.к. пакет существует)
