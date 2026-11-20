@@ -151,16 +151,21 @@ public class MainActivity extends Activity {
         root.addView(t, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
-    /** Полноэкранный режим: системные панели скрыты и появляются на время по свайпу от края. */
+    /** Полноэкранный режим включается из настроек игры (UiSettings.immersive).
+     * По умолчанию панели видны: у некоторых прошивок включение immersive
+     * приносит системное подтверждение «Полноэкранный режим», которое
+     * перехватывает касания — для игры это хуже, чем видимые панели. */
     @SuppressWarnings("deprecation")
     private void hideBars() {
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        int vis = View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+        if (getSharedPreferences("kc", MODE_PRIVATE).getBoolean("immersive", false)) {
+            vis |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+        }
+        getWindow().getDecorView().setSystemUiVisibility(vis);
     }
 
     @Override
