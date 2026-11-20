@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bottle Flip 3D</string>
+    <string name="hint">Tap to flip — tap again mid-air for a double flip. Land upright!</string>
+    <string name="game_over">Game over</string>
+    <string name="tap_restart">Tap anywhere to play again</string>
+    <string name="score_fmt">Score: %d</string>
+    <string name="best_fmt">Best: %d</string>
+</resources>

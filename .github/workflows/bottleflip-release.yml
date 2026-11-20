@@ -1,0 +1,86 @@
+name: Release bottleflip APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "arena/**"
+      - "main"
+    paths:
+      - "bottleflip/app/**"
+      - "bottleflip/build.gradle"
+      - "bottleflip/settings.gradle"
+      - "bottleflip/gradle.properties"
+      - ".github/workflows/bottleflip-release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: bottleflip
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Install Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Build signed release APK (R8 obfuscated)
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee "$GITHUB_WORKSPACE/build-output.txt"
+
+      - name: Commit build log on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p build-transfer
+          tail -n 300 build-output.txt > build-transfer/bottleflip-build-log.txt || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f build-transfer/bottleflip-build-log.txt
+          git diff --cached --quiet || git commit -m "CI: bottleflip build failure log [skip ci]"
+          for i in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}" && break || sleep 3
+          done
+
+      - name: Verify APK signature
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+          "$ANDROID_HOME/build-tools/34.0.0/aapt2" dump badging "$APK" | head -n 3
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs "$APK" | head -n 5
+          sha256sum "$APK"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp "$APK_PATH" bottleflip.apk
+          TAG="bottleflip-v$(date +%Y%m%d)-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" bottleflip.apk \
+            --title "Bottle Flip 3D $TAG" \
+            --notes "Bottle Flip 3D: OpenGL ES, процедурная генерация уровней. Signed, R8-obfuscated." \
+            --latest=false
+          echo "APK: https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/bottleflip.apk"

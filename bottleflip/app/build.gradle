@@ -1,0 +1,64 @@
+apply plugin: "com.android.application"
+
+def envKeystore = System.getenv("BOTTLEFLIP_KEYSTORE_PATH")
+def keystorePath = envKeystore ?: (file("keystore/release.p12").exists() ? "keystore/release.p12" : null)
+def keystorePassword = System.getenv("BOTTLEFLIP_KEYSTORE_PASSWORD") ?: (envKeystore ? null : "glasslauncher")
+def keyAliasName = System.getenv("BOTTLEFLIP_KEY_ALIAS") ?: (envKeystore ? "bottleflip" : "release")
+
+android {
+    namespace = "lav.bottleflip.alav"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "lav.bottleflip.alav"
+        minSdk = 26
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0.0"
+        resourceConfigurations += ["en", "ru"]
+        vectorDrawables.useSupportLibrary = false
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePath) {
+                storeFile = file(keystorePath)
+                storeType = keystorePath.endsWith(".p12") ? "PKCS12" : "JKS"
+                storePassword = keystorePassword
+                keyAlias = keyAliasName
+                keyPassword = keystorePassword
+                enableV1Signing = false
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = true
+            shrinkResources = true
+            debuggable = false
+            pseudoLocalesEnabled = false
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            if (keystorePath) {
+                signingConfig = signingConfigs.release
+            }
+        }
+        debug {
+            minifyEnabled = false
+            debuggable = false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+}

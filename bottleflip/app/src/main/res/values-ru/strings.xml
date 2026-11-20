@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bottle Flip 3D</string>
+    <string name="hint">Тап — переворот, тап в полёте — двойной. Приземляйся на дно!</string>
+    <string name="game_over">Игра окончена</string>
+    <string name="tap_restart">Тапни в любое место, чтобы играть снова</string>
+    <string name="score_fmt">Счёт: %d</string>
+    <string name="best_fmt">Рекорд: %d</string>
+</resources>
