@@ -52,7 +52,14 @@ if [ "$MODE" = "seeded" ]; then
   echo "--- launch debug SmokeSeedActivity (saves a test session, then opens ChatsActivity) ---" | tee -a "$LOG"
   adb shell am start -W -n lav.visaroom.alav/.SmokeSeedActivity 2>&1 | tee -a "$LOG"
   sleep 3
-  EARLY_PID="$(adb shell pidof lav.visaroom.alav 2>/dev/null | tr -d '\r')"
+  EARLY_shot() {
+  local name="$1"
+  adb shell screencap -p "/sdcard/smoke-${name}.png" 2>/dev/null || true
+  adb pull "/sdcard/visaroom-smoke-${name}.png" 2>/dev/null || adb pull "/sdcard/smoke-${name}.png" "visaroom-smoke-${name}.png" 2>/dev/null || true
+  echo "captured smoke-${name}" >> "$LOG"
+}
+
+PID="$(adb shell pidof lav.visaroom.alav 2>/dev/null | tr -d '\r')"
   echo "pid_after_3s=$EARLY_PID" | tee -a "$LOG"
   echo "--- early app-UID log ---" >> "$LOG"
   if [ -n "$APP_UID" ]; then
@@ -69,6 +76,7 @@ else
   echo "--- launch AuthActivity ---" | tee -a "$LOG"
   adb shell am start -W -n lav.visaroom.alav/.AuthActivity 2>&1 | tee -a "$LOG"
   sleep 5
+  shot "1-auth"
   echo "pid_after_auth=$(adb shell pidof lav.visaroom.alav 2>/dev/null)" | tee -a "$LOG"
   adb shell dumpsys activity activities 2>/dev/null \
     | grep -A3 -B3 'lav.visaroom.alav' | head -n 100 >> "$LOG"
@@ -81,6 +89,7 @@ else
   echo "--- launch ChatsActivity ---" | tee -a "$LOG"
   adb shell am start -W -n lav.visaroom.alav/.ChatsActivity 2>&1 | tee -a "$LOG"
   sleep 10
+  shot "2-chats"
 fi
 
 PID="$(adb shell pidof lav.visaroom.alav 2>/dev/null | tr -d '\r')"
