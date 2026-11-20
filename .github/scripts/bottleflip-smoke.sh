@@ -25,6 +25,10 @@ shot() {
   adb exec-out screencap -p > "/tmp/$name.png" 2>/dev/null || true
   if [ -s "/tmp/$name.png" ]; then
     echo "SHOT:$name ($(stat -c%s /tmp/$name.png) bytes)"
+    echo "SHOTB64_BEGIN:$name"
+    base64 -w0 "/tmp/$name.png"
+    echo ""
+    echo "SHOTB64_END:$name"
   fi
 }
 shot "bottleflip-start"
