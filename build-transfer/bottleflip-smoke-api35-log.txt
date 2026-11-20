@@ -1,0 +1,81 @@
+
+Welcome to Gradle 8.7!
+
+Here are the highlights of this release:
+ - Compiling and testing with Java 22
+ - Cacheable Groovy script compilation
+ - New methods in lazy collection properties
+
+For more details see https://docs.gradle.org/8.7/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:extractDebugNativeSymbolTables NO-SOURCE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:mergeDebugArtProfile
+> Task :app:desugarDebugFileDependencies
+> Task :app:generateDebugResValues
+> Task :app:javaPreCompileDebug
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:mergeDebugStartupProfile
+> Task :app:processDebugManifestForPackage
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeExtDexDebug
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:extractDebugVersionControlInfo
+> Task :app:processDebugJavaRes NO-SOURCE
+> Task :app:collectDebugDependencies
+> Task :app:mergeDebugJavaResource
+> Task :app:processDebugResources
+> Task :app:sdkDebugDependencyData
+
+> Task :app:compileDebugJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:mergeDexDebug
+> Task :app:validateSigningDebug
+> Task :app:compileDebugArtProfile
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:optimizeDebugResources
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1795159739666.json
+
+BUILD SUCCESSFUL in 32s
+38 actionable tasks: 38 executed
+=== bottleflip smoke (API 35) ===
+== install ==
+Performing Streamed Install
+Success
+== launch ==
+Starting: Intent { cmp=lav.bottleflip.alav/.MainActivity }
+SHOT:bottleflip-start (90708 bytes)
+== taps: прыжки бутылки ==
+SHOT:bottleflip-game (97379 bytes)
+== GL/FATAL check ==
+focus:   mCurrentFocus=Window{fced0b5 u0 ImmersiveModeConfirmation}
+warn: app not in focus dump
+SMOKE_PASSED
