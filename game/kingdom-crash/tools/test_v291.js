@@ -7,7 +7,7 @@ const ok = (c, name, extra) => { if (c) pass++; else { fail++; console.log('FAIL
 const root = path.resolve(__dirname, '..');
 const src = f => fs.readFileSync(path.join(root, f), 'utf8');
 
-ok(G.GAME_VERSION === '2.9.1', 'GAME_VERSION = 2.9.1', G.GAME_VERSION);
+ok(['2.9.1', '2.10.0'].includes(G.GAME_VERSION), 'GAME_VERSION >= 2.9.1', G.GAME_VERSION);
 
 {
   const t = src('www/js/terrain.js');
