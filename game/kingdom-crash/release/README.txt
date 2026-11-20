@@ -23,9 +23,10 @@ KingdomCrash-2.11.0.apk          установочный файл для Androi
 SHA-256 файла APK:
 f49629cde46d1514545edc218f29c5a183c7b126c66b7973d35b8ba36992f00e
 
-Google Drive
-  страница файла:    https://drive.google.com/file/d/140NDeOMf5C5z3zh-DZyv-VLFQgYpCoMU/view
-  прямая загрузка:   https://drive.usercontent.google.com/download?id=140NDeOMf5C5z3zh-DZyv-VLFQgYpCoMU&export=download&confirm=t
+GitHub (с 2.11.0 APK выкладываются в репозиторий, Google Drive больше не используется)
+  релиз:             https://github.com/Korimuspast1/pr/releases/tag/v2.11.0
+  страница файла:    https://github.com/Korimuspast1/pr/blob/v2.11.0/game/kingdom-crash/release/KingdomCrash-2.11.0.apk
+  прямая загрузка:   https://github.com/Korimuspast1/pr/raw/v2.11.0/game/kingdom-crash/release/KingdomCrash-2.11.0.apk
 
 Подпись: ТОТ ЖЕ новый ключ, что и в 2.8.0/2.9.0/2.9.1/2.10.0 (сертификат
 CN=Kingdom Crash, SHA-256 eb30f92a5f9e4936e0a76f162d609ae601cd8530f4a2bb12ff6c296b0855111c).
