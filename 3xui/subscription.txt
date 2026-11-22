@@ -18,14 +18,12 @@
      UUID: fbb3181d-ca2f-43bc-a640-e2ff8b2180e2
      PublicKey: 6BYoxKGgTF8w8310y87KsYfRxXu7XBVtwD1CozVkvXo
      ShortId:   0f2ec0754f3850c8
-  2) VLESS + TLS       порт 8443  remark: Agent-TLS-8443
-     SNI: agent.local   cert: /etc/x-ui/cert.pem
-     UUID: 47e6c21b-c0e9-4d23-a6e8-4bab814bf4a8
+  (TLS-inbound 8443 удалён по запросу — вместе со своим самоподписанным
+   сертификатом CN=agent.local; ключи удалены из /etc/x-ui)
 
 КОНФИГУРАЦИЯ КЛИЕНТА (готовые ссылки, base64 для подписки):
 ---
-vless://fbb3181d-ca2f-43bc-a640-e2ff8b2180e2@169.254.0.21:443?encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=6BYoxKGgTF8w8310y87KsYfRxXu7XBVtwD1CozVkvXo&security=reality&sid=0f2ec0754f3850c8&sni=www.tradingview.com&spx=%2Fe9a2cb6b9bb0d14&support-x25519mlkem768=true&type=tcp#Agent-Reality-443-agent
-vless://47e6c21b-c0e9-4d23-a6e8-4bab814bf4a8@169.254.0.21:8443?alpn=http%2F1.1&encryption=none&security=tls&sni=agent.local&type=tcp#Agent-TLS-8443
+vless://fbb3181d-ca2f-43bc-a640-e2ff8b2180e2@<IP-сервера>:443?encryption=none&flow=xtls-rprx-vision&fp=chrome&pbk=6BYoxKGgTF8w8310y87KsYfRxXu7XBVtwD1CozVkvXo&security=reality&sid=0f2ec0754f3850c8&sni=www.tradingview.com&spx=%2Fe9a2cb6b9bb0d14&support-x25519mlkem768=true&type=tcp#Agent-Reality-443-agent
 
 ----------------------------------------------------------
 ПРОВЕРЕНО END-TO-END:
