@@ -1,6 +1,6 @@
 /* Cozy Pixel Zombie Town — data-driven config (ScriptableObject equivalents) */
 'use strict';
-const ZT = window.ZT = window.ZT || {};
+var ZT = window.ZT = window.ZT || {};
 
 ZT.TILE = 32;            // px per tile (16px pixel-art scaled x2)
 ZT.MAP_W = 56; ZT.MAP_H = 36;

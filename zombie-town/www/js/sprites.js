@@ -1,6 +1,6 @@
 /* Procedural pixel-art sprites — no copyrighted assets, all drawn in code. */
 'use strict';
-const ZT = window.ZT;
+var ZT = window.ZT;
 
 ZT.Sprites = (function(){
   const cache = {};

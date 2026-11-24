@@ -1,6 +1,6 @@
 /* Buildings: construction, production, damage, repair, upgrade, ruins. */
 'use strict';
-const ZT = window.ZT;
+var ZT = window.ZT;
 
 let buildingId = 1;
 ZT.Building = function(id, tileX, tileY){

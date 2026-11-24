@@ -1,6 +1,6 @@
 /* Entities: Citizen, Zombie, Projectile, Particle + BFS pathfinding. */
 'use strict';
-const ZT = window.ZT;
+var ZT = window.ZT;
 
 /* ---------- Pathfinding (BFS with parent tracking) ---------- */
 ZT.Pathfind = (function(){

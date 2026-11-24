@@ -1,6 +1,6 @@
 /* Cozy Pixel Zombie Town — main game: managers, loop, camera, input, director. */
 'use strict';
-const ZT = window.ZT;
+var ZT = window.ZT;
 
 ZT.Game = function(canvas){
   this.canvas=canvas;

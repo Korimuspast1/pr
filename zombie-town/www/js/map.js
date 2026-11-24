@@ -1,6 +1,6 @@
 /* Map: terrain generation, grid helpers, flow-field pathfinding (BFS). */
 'use strict';
-const ZT = window.ZT;
+var ZT = window.ZT;
 
 ZT.Map = (function(){
   const W = ZT.MAP_W, H = ZT.MAP_H, T = ZT.TILE;

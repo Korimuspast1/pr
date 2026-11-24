@@ -1,6 +1,6 @@
 /* UI: HUD, build menu, panels, inspector, toasts, menus. */
 'use strict';
-const ZT = window.ZT;
+var ZT = window.ZT;
 
 ZT.UI = (function(){
   const $ = (id)=>document.getElementById(id);

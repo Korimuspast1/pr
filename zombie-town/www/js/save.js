@@ -1,6 +1,6 @@
 /* Save system: JSON to localStorage with versioning. */
 'use strict';
-const ZT = window.ZT;
+var ZT = window.ZT;
 
 ZT.Save = (function(){
   const KEY='zombieTownSave_';

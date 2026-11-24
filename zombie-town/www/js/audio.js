@@ -1,6 +1,6 @@
 /* Procedural audio via WebAudio — no audio files needed. */
 'use strict';
-const ZT = window.ZT;
+var ZT = window.ZT;
 
 ZT.Audio = function(){
   this.ctx=null; this.master=null; this.musicGain=null;
