@@ -24,6 +24,7 @@ ZT.Game = function(canvas){
   this.tutorialStep=0;
   this.dayLength=240; // seconds per full day
   this.resize();
+  if(window.innerHeight>window.innerWidth) this.camera.zoom=0.72; // portrait: see more of the map
   this.bindInput();
   this.loop=this.loop.bind(this);
   requestAnimationFrame(this.loop);
