@@ -1,0 +1,120 @@
+name: Release Dead Instinct APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'arena/*']
+    tags: ['dead-instinct-v*']
+    paths:
+      - 'dead-instinct/**'
+      - '.github/workflows/dead-instinct-release.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dead-instinct
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node (для тестов логики)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Установить Android SDK (build-tools 34 + platform 34)
+        run: |
+          set -e
+          SDK="$HOME/.cache/android-sdk"
+          mkdir -p "$SDK/bt" "$SDK/pf"
+          cd "$SDK"
+          curl -sSL --retry 3 -o bt.zip https://dl.google.com/android/repository/build-tools_r34-linux.zip
+          curl -sSL --retry 3 -o pf.zip https://dl.google.com/android/repository/platform-34-ext7_r03.zip
+          unzip -q -o bt.zip -d bt
+          unzip -q -o pf.zip -d pf
+          # в архивах каталоги называются по-разному — приводим к единому виду
+          if [ ! -d bt/android-14 ]; then
+            src=$(find bt -maxdepth 2 -name aapt2 -printf '%h\n' | head -1)
+            [ -n "$src" ] && mv "$src" bt/android-14
+          fi
+          if [ ! -f pf/android-34/android.jar ]; then
+            src=$(find pf -maxdepth 3 -name android.jar -printf '%h\n' | head -1)
+            [ -n "$src" ] && mv "$src" pf/android-34
+          fi
+          echo "build-tools:"; ls bt/android-14 | head -5
+          echo "platform:"; ls pf/android-34 | head -5
+          test -x bt/android-14/aapt2
+          test -x bt/android-14/d8
+          test -x bt/android-14/apksigner
+          test -f pf/android-34/android.jar
+          echo "SDK готов: $SDK"
+
+      - name: Тесты игровой логики
+        run: node tools/soak.js
+
+      - name: Сборка подписанного APK
+        env:
+          SDK: ${{ env.HOME }}/.cache/android-sdk
+        run: |
+          sh android/build.sh
+          ls -la release/
+
+      - name: Проверка APK
+        run: |
+          set -e
+          APK=$(ls release/*.apk | head -1)
+          echo "APK: $APK"
+          "$HOME/.cache/android-sdk/bt/android-14/aapt2" dump badging "$APK" | head -20
+          "$HOME/.cache/android-sdk/bt/android-14/apksigner" verify --min-sdk-version 23 "$APK"
+          unzip -l "$APK" | grep -q "assets/www/index.html"
+          unzip -l "$APK" | grep -q "classes.dex"
+          echo "APK корректен"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dead-instinct-apk
+          path: dead-instinct/release/*.apk
+          retention-days: 90
+
+  release:
+    needs: apk
+    if: startsWith(github.ref, 'refs/tags/dead-instinct-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: dead-instinct-apk
+          path: dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.apk
+          name: "Dead Instinct ${{ github.ref_name }}"
+          body: |
+            ## DEAD INSTINCT — зомби-хоррор о выживании
+
+            Пиксельный survival horror в духе **The Walking Dead**: инстинкты, тишина, шум, укрытия,
+            голод, доверие группы и последствия решений. Пять эпизодов, офлайн, без интернета и разрешений.
+
+            ### Установка
+            Скачай `.apk` ниже, открой на телефоне и разреши установку из неизвестных источников.
+            Android 6.0+ (API 23), портретная ориентация.
+
+            ---
+            *Сборка: GitHub Actions, подписана автоматически сгенерированным ключом.*

@@ -1,0 +1,7 @@
+# ключ подписи приложения — никогда не выкладывать в открытый доступ
+android/keystore/
+# результаты сборки
+release/*.apk
+release/*.idsig
+node_modules/
+tools/shots/
