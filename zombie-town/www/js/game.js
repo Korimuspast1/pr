@@ -1016,13 +1016,30 @@ ZT.Game.prototype = {
   }
 };
 
-/* boot */
-window.addEventListener('load',()=>{
-  const canvas=document.getElementById('game');
-  const game=new ZT.Game(canvas);
-  ZT.UI.bind(game);
-  ZT.game=game;
-  // show continue button state
-  if(ZT.Save.hasSave(0)) document.getElementById('btn-continue').style.opacity='1';
-  else document.getElementById('btn-continue').style.opacity='0.5';
-});
+/* boot — run once, as early as possible (DOMContentLoaded / load / immediately) */
+(function(){
+  var booted=false;
+  function start(){
+    if(booted) return; booted=true;
+    try{
+      var canvas=document.getElementById('game');
+      if(!canvas) throw new Error('Canvas #game not found');
+      var game=new ZT.Game(canvas);
+      ZT.UI.bind(game);
+      ZT.game=game;
+      var hasSave=false;
+      try{ hasSave=ZT.Save.hasSave(0); }catch(e){ hasSave=false; }
+      document.getElementById('btn-continue').style.opacity=hasSave?'1':'0.5';
+    }catch(e){
+      console.error('Boot failed:', e);
+      if(window.__ztError) window.__ztError('Ошибка запуска: '+(e&&e.message?e.message:e));
+      else alert('Ошибка запуска: '+(e&&e.message?e.message:e));
+    }
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',start);
+    window.addEventListener('load',start);
+  } else {
+    start();
+  }
+})();

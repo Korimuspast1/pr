@@ -252,8 +252,8 @@ ZT.UI = (function(){
     });
     $('btn-pause').onclick=()=>game.setPaused(!game.paused);
     // menus
-    $('btn-new').onclick=()=>{ game.audio.resume(); game.newGame(); };
-    $('btn-continue').onclick=()=>{ game.audio.resume(); if(!game.loadFrom(0)){ toast('Нет сохранения','bad'); } };
+    $('btn-new').onclick=()=>{ try{ game.audio.resume(); game.newGame(); }catch(e){ console.error(e); if(window.__ztError) window.__ztError('Ошибка старта: '+(e&&e.message?e.message:e)); } };
+    $('btn-continue').onclick=()=>{ try{ game.audio.resume(); if(!game.loadFrom(0)){ toast('Нет сохранения','bad'); } }catch(e){ console.error(e); if(window.__ztError) window.__ztError('Ошибка загрузки: '+(e&&e.message?e.message:e)); } };
     $('btn-howto').onclick=()=>{ renderHowto(); show('howto'); };
     $('btn-settings').onclick=()=>{ syncSettingsUI(); show('settings'); };
     $('btn-resume').onclick=()=>{ hide('pause-menu'); game.setPaused(false); };

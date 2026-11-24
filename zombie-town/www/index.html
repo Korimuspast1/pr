@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#1a2b1a">
 <title>Cozy Pixel Zombie Town</title>
 <link rel="stylesheet" href="css/style.css">
+<script>
+window.__ztError=function(msg){var d=document.getElementById('error-overlay');if(d){d.style.display='flex';d.querySelector('.err-text').textContent=msg;}};
+window.addEventListener('error',function(e){window.__ztError('Ошибка: '+(e.message||e.filename||'unknown'));});
+</script>
 </head>
 <body>
 <div id="app">
@@ -152,6 +156,19 @@
 
   <!-- ======= Tutorial hint ======= -->
   <div id="tutorial" class="hidden"></div>
+
+  <!-- ======= Rotate device hint (portrait) ======= -->
+  <div id="rotate-hint" class="hidden">🔄 Поверни телефон горизонтально</div>
+
+  <!-- ======= Error overlay (diagnostics) ======= -->
+  <div id="error-overlay" style="display:none">
+    <div class="err-card">
+      <h2>⚠️ Что-то пошло не так</h2>
+      <p class="err-text"></p>
+      <p>Перезапусти игру. Если повторяется — пришли скриншот.</p>
+      <button class="mbtn primary" onclick="location.reload()">🔄 Перезапустить</button>
+    </div>
+  </div>
 </div>
 
 <script src="js/config.js"></script>
