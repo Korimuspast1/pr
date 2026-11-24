@@ -49,7 +49,7 @@ ZT.Game.prototype = {
     this.nestTile=ZT.Map.forestPoint();
     this.resources={wood:60,stone:40,food:40,water:40,coins:20,medicine:5,ammo:20,scrap:10};
     this.enterGame();
-    this.notify('🏘 Город создан! Люди уже идут сюда...','good');
+    this.notify('🏘 Город создан ('+ZT.L(ZT.BIOMES[ZT.biome].name)+')! Люди уже идут сюда...','good');
     this.tutorialStep=0;
   },
   resetState(){
@@ -135,8 +135,11 @@ ZT.Game.prototype = {
     if(this.weatherT<=0){
       this.weatherT=50+Math.random()*70;
       const r=Math.random();
-      this.weather = r<0.5?'clear':r<0.7?'rain':r<0.85?'fog':'storm';
-      const names={clear:'☀️ Ясно',rain:'🌧️ Дождь',fog:'🌫️ Туман',storm:'⛈️ Гроза'};
+      const winter = ZT.BIOMES[ZT.biome] && ZT.BIOMES[ZT.biome].snow;
+      this.weather = winter
+        ? (r<0.4?'clear':r<0.75?'snow':r<0.9?'fog':'storm')
+        : (r<0.5?'clear':r<0.7?'rain':r<0.85?'fog':'storm');
+      const names={clear:'☀️ Ясно',rain:'🌧️ Дождь',snow:'❄️ Снег',fog:'🌫️ Туман',storm:'⛈️ Гроза'};
       this.notify(names[this.weather]);
     }
     this.audio.setMusicMode(this.isNight()||this.outbreak.active ? 'night' : 'day');
@@ -991,6 +994,22 @@ ZT.Game.prototype = {
     if(this.weather==='fog'){
       g.fillStyle='rgba(200,210,220,0.22)';
       g.fillRect(vx0,vy0,vx1-vx0,vy1-vy0);
+    }
+    // snow
+    if(this.weather==='snow'){
+      g.fillStyle='rgba(255,255,255,0.85)';
+      const n=70;
+      for(let i=0;i<n;i++){
+        const rx=vx0+((i*97+this.time*40)%(vx1-vx0));
+        const ry=vy0+((i*61+this.time*60)%(vy1-vy0));
+        g.fillRect(rx,ry,2,2);
+      }
+    }
+    // lightning flash during storm
+    if(this.weather==='storm' && Math.random()<0.02){
+      g.fillStyle='rgba(255,255,255,0.35)';
+      g.fillRect(vx0,vy0,vx1-vx0,vy1-vy0);
+      this.audio && this.audio.sfx('thunder');
     }
     // rain
     if(this.weather==='rain'||this.weather==='storm'){

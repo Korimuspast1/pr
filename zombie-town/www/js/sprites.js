@@ -13,53 +13,68 @@ ZT.Sprites = (function(){
   function px(g,x,y,w,h,col){ g.fillStyle=col; g.fillRect(x,y,w,h); }
   const S = 2; // pixel scale (16px art -> 32px tiles)
 
-  /* ================= TERRAIN TILES (32x32) ================= */
-  function tileGrass(){ return make(32,32,(g)=>{
-    px(g,0,0,32,32,'#62a84e');
-    for(let i=0;i<30;i++){ const x=(i*7+3)%31,y=(i*11+2)%31; px(g,x,y,2,2, i%3?'#52923f':'#72b85e'); }
-    px(g,6,22,2,4,'#52923f'); px(g,24,10,2,4,'#72b85e'); px(g,16,28,2,3,'#52923f');
-    px(g,2,14,3,2,'#72b85e');
+  /* ================= TERRAIN TILES (32x32, biome palettes) ================= */
+  function pal(){ return ZT.BIOMES[ZT.biome] || ZT.BIOMES.summer; }
+  function tileGrass(){ const P=pal(); return make(32,32,(g)=>{
+    px(g,0,0,32,32,P.grass);
+    for(let i=0;i<30;i++){ const x=(i*7+3)%31,y=(i*11+2)%31; px(g,x,y,2,2, i%3?P.grassD:P.grassL); }
+    px(g,6,22,2,4,P.grassD); px(g,24,10,2,4,P.grassL); px(g,16,28,2,3,P.grassD);
+    px(g,2,14,3,2,P.grassL);
+    if(P.snow){ px(g,8,6,6,2,'#fff'); px(g,20,20,8,2,'#fff'); px(g,4,26,5,2,'#f4f8fc'); }
   });}
-  function tileDirt(){ return make(32,32,(g)=>{
-    px(g,0,0,32,32,'#a07c4e');
-    for(let i=0;i<18;i++){ px(g,(i*9+2)%29,(i*13+3)%29,3,2, i%2?'#8a6a3f':'#b38d5c'); }
-    px(g,8,8,2,2,'#6e5433'); px(g,22,20,2,2,'#6e5433');
+  function tileDirt(){ const P=pal(); return make(32,32,(g)=>{
+    px(g,0,0,32,32,P.dirt);
+    for(let i=0;i<18;i++){ px(g,(i*9+2)%29,(i*13+3)%29,3,2, i%2?P.dirtD:P.dirt); }
+    px(g,8,8,2,2,P.dirtD); px(g,22,20,2,2,P.dirtD);
+    if(P.snow){ px(g,4,4,8,2,'#fff'); px(g,18,24,9,2,'#fff'); }
   });}
-  function tileRoad(){ return make(32,32,(g)=>{
-    px(g,0,0,32,32,'#8f8a7d');
-    for(let i=0;i<16;i++){ px(g,(i*11+1)%29,(i*7+2)%29,3,2,'#7d786c'); }
-    px(g,0,0,32,2,'#6e6a5f'); px(g,0,30,32,2,'#6e6a5f');
+  function tileRoad(){ const P=pal(); return make(32,32,(g)=>{
+    px(g,0,0,32,32, P.snow?'#a8b4c2':'#8f8a7d');
+    for(let i=0;i<16;i++){ px(g,(i*11+1)%29,(i*7+2)%29,3,2, P.snow?'#98a4b2':'#7d786c'); }
+    px(g,0,0,32,2, P.snow?'#8a96a4':'#6e6a5f'); px(g,0,30,32,2, P.snow?'#8a96a4':'#6e6a5f');
     px(g,14,4,4,8,'#e8e2cc'); px(g,14,20,4,8,'#e8e2cc');
+    if(P.snow){ px(g,4,12,6,2,'#fff'); px(g,22,8,6,2,'#fff'); }
   });}
-  function tileWater(){ return make(32,32,(g)=>{
-    px(g,0,0,32,32,'#3d7dc2');
-    px(g,3,7,11,2,'#63a5dd'); px(g,17,15,13,2,'#63a5dd'); px(g,6,24,9,2,'#2f66a3');
-    px(g,20,27,8,2,'#63a5dd'); px(g,10,11,6,2,'#2f66a3');
+  function tileWater(){ const P=pal(); return make(32,32,(g)=>{
+    px(g,0,0,32,32,P.water);
+    px(g,3,7,11,2,P.waterL); px(g,17,15,13,2,P.waterL); px(g,6,24,9,2,P.waterD);
+    px(g,20,27,8,2,P.waterL); px(g,10,11,6,2,P.waterD);
+    if(P.snow){ px(g,8,4,10,2,'#dcebf5'); px(g,18,20,9,2,'#dcebf5'); }
   });}
-  function tileTree(){ return make(32,32,(g)=>{
-    px(g,0,0,32,32,'#62a84e');
-    for(let i=0;i<10;i++){ px(g,(i*13+2)%29,(i*17+3)%29,2,2,'#52923f'); }
-    px(g,14,20,5,12,'#6b4a2a'); px(g,15,22,3,8,'#54371e');
-    px(g,7,5,19,16,'#2e6b2e'); px(g,10,2,13,5,'#3d8a3d');
-    px(g,9,9,5,5,'#57a857'); px(g,19,12,5,5,'#57a857'); px(g,13,16,4,4,'#57a857');
-    px(g,12,10,3,3,'#e74c3c'); px(g,20,16,3,3,'#e74c3c'); px(g,16,6,3,3,'#e74c3c');
+  function tileTree(){ const P=pal(); return make(32,32,(g)=>{
+    px(g,0,0,32,32,P.grass);
+    for(let i=0;i<10;i++){ px(g,(i*13+2)%29,(i*17+3)%29,2,2,P.grassD); }
+    if(P.pine){
+      // snowy pine (like the reference)
+      px(g,14,22,5,10,P.trunk);
+      px(g,10,16,13,7,P.tree); px(g,7,10,19,8,P.tree); px(g,10,4,13,7,P.tree);
+      px(g,12,16,9,2,'#fff'); px(g,9,10,15,2,'#fff'); px(g,12,4,9,2,'#fff');
+      px(g,14,2,5,3,P.treeL);
+    } else {
+      px(g,14,20,5,12,P.trunk); px(g,15,22,3,8,P.trunk);
+      px(g,7,5,19,16,P.tree); px(g,10,2,13,5,P.tree);
+      px(g,9,9,5,5,P.treeL); px(g,19,12,5,5,P.treeL); px(g,13,16,4,4,P.treeL);
+      if(!P.snow && ZT.biome==='summer'){ px(g,12,10,3,3,'#e74c3c'); px(g,20,16,3,3,'#e74c3c'); px(g,16,6,3,3,'#e74c3c'); }
+      if(ZT.biome==='autumn'){ px(g,11,8,4,4,'#e8a33d'); px(g,20,14,4,4,'#c96a1e'); }
+    }
   });}
-  function tileRock(){ return make(32,32,(g)=>{
-    px(g,0,0,32,32,'#62a84e');
-    for(let i=0;i<8;i++){ px(g,(i*11+2)%29,(i*7+3)%29,2,2,'#52923f'); }
+  function tileRock(){ const P=pal(); return make(32,32,(g)=>{
+    px(g,0,0,32,32,P.grass);
+    for(let i=0;i<8;i++){ px(g,(i*11+2)%29,(i*7+3)%29,2,2,P.grassD); }
     px(g,5,16,22,13,'#8d8d8d'); px(g,8,11,16,7,'#a8a8a8');
     px(g,11,14,6,3,'#c4c4c4'); px(g,18,20,6,3,'#6e6e6e'); px(g,7,24,8,3,'#6e6e6e');
+    if(P.snow){ px(g,10,11,10,3,'#fff'); px(g,14,16,6,2,'#fff'); }
   });}
-  function tileFlower(){ return make(32,32,(g)=>{
-    px(g,0,0,32,32,'#62a84e');
-    for(let i=0;i<12;i++){ px(g,(i*9+2)%29,(i*13+3)%29,2,2,'#52923f'); }
+  function tileFlower(){ const P=pal(); return make(32,32,(g)=>{
+    px(g,0,0,32,32,P.grass);
+    for(let i=0;i<12;i++){ px(g,(i*9+2)%29,(i*13+3)%29,2,2,P.grassD); }
     const cols=['#ff8a80','#fff176','#f48fb1','#ce93d8','#90caf9'];
     for(let i=0;i<6;i++){ const x=4+(i*5)%24,y=4+(i*8)%24; px(g,x,y,4,4,cols[i%5]); px(g,x+1,y+1,2,2,'#fff'); px(g,x+2,y+5,1,3,'#2e6b2e'); }
   });}
-  function tileSand(){ return make(32,32,(g)=>{
-    px(g,0,0,32,32,'#e3d29b');
-    for(let i=0;i<12;i++){ px(g,(i*11+2)%29,(i*7+3)%29,2,2,'#d2c184'); }
-    px(g,10,10,3,2,'#c4b078'); px(g,22,22,3,2,'#c4b078');
+  function tileSand(){ const P=pal(); return make(32,32,(g)=>{
+    px(g,0,0,32,32, P.snow?'#eef3f8':'#e3d29b');
+    for(let i=0;i<12;i++){ px(g,(i*11+2)%29,(i*7+3)%29,2,2, P.snow?'#dbe6f0':'#d2c184'); }
+    px(g,10,10,3,2, P.snow?'#c8d8e8':'#c4b078'); px(g,22,22,3,2, P.snow?'#c8d8e8':'#c4b078');
   });}
 
   /* ================= BUILDINGS ================= */
@@ -237,7 +252,7 @@ ZT.Sprites = (function(){
     cache[key]=c; return c;
   }
   function tileSprite(t){
-    const key='t_'+t;
+    const key='t_'+ZT.biome+'_'+t;
     if(cache[key]) return cache[key];
     const map={0:tileGrass,1:tileDirt,2:tileRoad,3:tileWater,4:tileTree,5:tileRock,6:tileFlower,7:tileSand};
     const c=(map[t]||tileGrass)(); cache[key]=c; return c;
@@ -264,9 +279,9 @@ ZT.Sprites = (function(){
     });
     cache[key]=c; return c;
   }
-  function personSprite(shirt, skin, opts){
-    opts=opts||{};
-    const key='p_'+shirt+'_'+skin+'_'+(opts.zombie?'z':'')+'_'+(opts.child?'c':'')+'_'+(opts.infected?'i':'');
+  function personSprite(shirt, skin, opts, frame){
+    opts=opts||{}; frame=frame||0;
+    const key='p_'+shirt+'_'+skin+'_'+(opts.zombie?'z':'')+'_'+(opts.child?'c':'')+'_'+(opts.infected?'i':'')+'_'+frame;
     if(cache[key]) return cache[key];
     const c=make(16,20,(g)=>{
       const s=skin, sh=shirt;
@@ -275,13 +290,18 @@ ZT.Sprites = (function(){
       if(opts.zombie){ px(g,6,3,1,1,'#000'); px(g,9,3,1,1,'#000'); px(g,7,5,2,1,'#000'); }
       else { px(g,6,3,1,1,'#263238'); px(g,9,3,1,1,'#263238'); }
       px(g,4,6,8,7, opts.infected?'#9ccc65':sh);          // body
-      px(g,4,13,3,6,'#37474f'); px(g,9,13,3,6,'#37474f'); // legs
-      px(g,3,7,1,5,opts.infected?'#9ccc65':sh); px(g,12,7,1,5,opts.infected?'#9ccc65':sh); // arms
+      // animated legs: frame 0 = left forward, frame 1 = right forward
+      if(frame===0){ px(g,3,13,3,6,'#37474f'); px(g,10,13,3,5,'#37474f'); }
+      else { px(g,4,13,3,5,'#37474f'); px(g,9,13,3,6,'#37474f'); }
+      // arms swing opposite to legs
+      if(frame===0){ px(g,3,7,1,5,opts.infected?'#9ccc65':sh); px(g,12,7,1,4,opts.infected?'#9ccc65':sh); }
+      else { px(g,3,7,1,4,opts.infected?'#9ccc65':sh); px(g,12,7,1,5,opts.infected?'#9ccc65':sh); }
     });
     cache[key]=c; return c;
   }
-  function zombieSprite(type){
-    const key='z_'+type;
+  function zombieSprite(type, frame){
+    frame=frame||0;
+    const key='z_'+type+'_'+frame;
     if(cache[key]) return cache[key];
     const def=ZT.ZOMBIES[type];
     const c=make(18,22,(g)=>{
@@ -290,8 +310,12 @@ ZT.Sprites = (function(){
       px(g,7,3,1,1,'#000'); px(g,11,3,1,1,'#000');
       px(g,8,5,3,1,'#000'); px(g,8,6,1,1,'#b71c1c');
       px(g,5,7,9,8,col); px(g,5,7,9,2,'#33691e');
-      px(g,5,15,3,6,'#37474f'); px(g,11,15,3,6,'#37474f');
-      px(g,3,8,2,6,col); px(g,14,8,2,6,col);
+      // shambling legs
+      if(frame===0){ px(g,4,15,3,6,'#37474f'); px(g,11,15,3,5,'#37474f'); }
+      else { px(g,5,15,3,5,'#37474f'); px(g,10,15,3,6,'#37474f'); }
+      // arms reaching forward, swaying
+      const ay = frame===0?8:9;
+      px(g,3,ay,2,6,col); px(g,14,ay,2,6,col);
       if(type==='brute'){ px(g,3,5,13,4,col); }
       if(type==='screamer'){ px(g,8,7,3,3,'#000'); }
     });

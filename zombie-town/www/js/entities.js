@@ -334,7 +334,8 @@ ZT.Citizen.prototype = {
     if(game) game.turnCitizen(this);
   },
   draw(g, game, cam){
-    const spr = ZT.Sprites.personSprite(this.shirt, this.skin, {zombie:this.infected>0, child:this.child, infected:this.infected>0});
+    const frame = this.moving ? (Math.floor(this.bob)%2) : 0;
+    const spr = ZT.Sprites.personSprite(this.shirt, this.skin, {zombie:this.infected>0, child:this.child, infected:this.infected>0}, frame);
     const bob = this.moving ? Math.sin(this.bob)*1.5 : 0;
     const sc = this.child?0.7:1;
     const w=16*sc, h=20*sc;
@@ -520,7 +521,8 @@ ZT.Zombie.prototype = {
     if(this.hp<=0){ this.dead=true; }
   },
   draw(g, game, cam){
-    const spr=ZT.Sprites.zombieSprite(this.type);
+    const frame = this.moving ? (Math.floor(this.bob)%2) : 0;
+    const spr=ZT.Sprites.zombieSprite(this.type, frame);
     const bob=this.moving?Math.sin(this.bob)*2:0;
     const w=18,h=22;
     g.drawImage(spr,this.x-w/2,this.y-h+4+bob,w,h);

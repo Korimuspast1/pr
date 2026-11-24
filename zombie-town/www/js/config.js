@@ -104,6 +104,24 @@ ZT.I18N = {
 ZT.t = function(key){ const lang = (ZT.settings && ZT.settings.lang) || 'ru'; return (ZT.I18N[lang] && ZT.I18N[lang][key]) || ZT.I18N.ru[key] || key; };
 ZT.L = function(obj){ if(!obj) return ''; const lang = (ZT.settings && ZT.settings.lang) || 'ru'; return obj[lang] || obj.ru || obj.en || ''; };
 
+/* Biomes — every new game picks one, so the world always looks different */
+ZT.BIOMES = {
+  summer: { name:{ru:'Лето',en:'Summer'}, grass:'#62a84e', grassD:'#52923f', grassL:'#72b85e',
+    dirt:'#a07c4e', dirtD:'#8a6a3f', water:'#3d7dc2', waterL:'#63a5dd', waterD:'#2f66a3',
+    tree:'#2e6b2e', treeL:'#57a857', trunk:'#6b4a2a', pine:false, snow:false },
+  autumn: { name:{ru:'Осень',en:'Autumn'}, grass:'#9a9a4a', grassD:'#84843c', grassL:'#b0b05c',
+    dirt:'#a07c4e', dirtD:'#8a6a3f', water:'#3d7dc2', waterL:'#63a5dd', waterD:'#2f66a3',
+    tree:'#c96a1e', treeL:'#e8a33d', trunk:'#6b4a2a', pine:false, snow:false },
+  winter: { name:{ru:'Зима',en:'Winter'}, grass:'#e6edf5', grassD:'#cfdbe8', grassL:'#ffffff',
+    dirt:'#b8c4d4', dirtD:'#9fb0c4', water:'#2e5f8a', waterL:'#4a86b8', waterD:'#1f4a6e',
+    tree:'#1f4a2e', treeL:'#2e6b3e', trunk:'#4a3421', pine:true, snow:true },
+  desert: { name:{ru:'Пустыня',en:'Desert'}, grass:'#e3d29b', grassD:'#d2c184', grassL:'#f0e2b0',
+    dirt:'#c9a86a', dirtD:'#b08d4f', water:'#3d7dc2', waterL:'#63a5dd', waterD:'#2f66a3',
+    tree:'#5a8a3c', treeL:'#74a84e', trunk:'#6b4a2a', pine:false, snow:false },
+};
+ZT.BIOME_KEYS = Object.keys(ZT.BIOMES);
+ZT.biome = 'summer';
+
 /* Default settings */
 ZT.settings = { sound:true, music:true, vibrate:true, particles:true, quality:'mid', lang:'ru', difficulty:'normal' };
 ZT.qualityCaps = { low:{citizens:60, zombies:70}, mid:{citizens:100, zombies:110}, high:{citizens:140, zombies:160} };

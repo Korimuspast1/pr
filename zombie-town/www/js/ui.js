@@ -52,7 +52,7 @@ ZT.UI = (function(){
     const h=Math.floor(game.timeOfDay*24), m=Math.floor((game.timeOfDay*24-h)*60);
     const icon = game.isNight()?'🌙':(h<7||h>18?'🌇':'☀️');
     $('time-label').textContent = icon+' '+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
-    const wIcon={clear:'☀️',rain:'🌧️',fog:'🌫️',storm:'⛈️'}[game.weather]||'☀️';
+    const wIcon={clear:'☀️',rain:'🌧️',snow:'❄️',fog:'🌫️',storm:'⛈️'}[game.weather]||'☀️';
     $('weather-label').textContent=wIcon;
     // alerts
     const alerts=[];

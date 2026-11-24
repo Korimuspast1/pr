@@ -1,6 +1,6 @@
 {
   "name": "cozy-pixel-zombie-town",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Cozy Pixel Zombie Town \u2014 autonomous city-builder survival sandbox for Android",
   "scripts": {
     "start": "npx serve www -l 8080",

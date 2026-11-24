@@ -70,37 +70,44 @@ ZT.Audio.prototype = {
       case 'death': this.tone(330,0.5,'sine',0.15,0,110); break;
       case 'upgrade': this.tone(523,0.1,'square',0.12); this.tone(659,0.1,'square',0.12,0.09); this.tone(784,0.1,'square',0.12,0.18); this.tone(1047,0.2,'square',0.12,0.27); break;
       case 'rain': this.noise(0.4,0.05,1500); break;
+      case 'thunder': this.noise(0.8,0.25,200); this.tone(60,0.7,'sine',0.2,0,40); break;
       case 'bird': this.tone(1200+Math.random()*600,0.08,'sine',0.05,0,1800); break;
       case 'error': this.tone(160,0.15,'square',0.12); break;
     }
   },
   startMusic(){
     if(!this.ctx || this.musicTimer) return;
-    const dayNotes=[262,294,330,392,440,392,330,294]; // C major pentatonic-ish cozy
-    const nightNotes=[220,208,196,185,196,208,220,233]; // tense minor
+    // cozy chord progression (C - Am - F - G) + pentatonic melody random walk
+    const chordsDay=[[262,330,392],[220,262,330],[175,220,262],[196,247,294]];
+    const chordsNight=[[220,262,330],[208,247,294],[196,233,294],[185,220,262]];
+    const scaleDay=[262,294,330,392,440,523,587,659];
+    const scaleNight=[220,233,262,294,330,349,392];
+    let melIdx=3;
+    const pluck=(freq,vol,dur,type)=>{
+      if(!this.ctx) return;
+      const t=this.ctx.currentTime;
+      const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+      o.type=type||'triangle'; o.frequency.value=freq;
+      g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+      o.connect(g); g.connect(this.musicGain); o.start(t); o.stop(t+dur+0.05);
+    };
     const play=()=>{
       if(!ZT.settings.music) return;
-      const notes = this.musicMode==='day' ? dayNotes : nightNotes;
-      const n=notes[this.step%notes.length];
-      // soft pluck
-      if(this.ctx){
-        const t=this.ctx.currentTime;
-        const o=this.ctx.createOscillator(), g=this.ctx.createGain();
-        o.type=this.musicMode==='day'?'triangle':'sawtooth';
-        o.frequency.value=n;
-        g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.5);
-        o.connect(g); g.connect(this.musicGain); o.start(t); o.stop(t+0.55);
-        // bass every 4 steps
-        if(this.step%4===0){
-          const o2=this.ctx.createOscillator(), g2=this.ctx.createGain();
-          o2.type='sine'; o2.frequency.value=n/2;
-          g2.gain.setValueAtTime(0.4,t); g2.gain.exponentialRampToValueAtTime(0.001,t+0.8);
-          o2.connect(g2); g2.connect(this.musicGain); o2.start(t); o2.stop(t+0.85);
-        }
+      const day=this.musicMode==='day';
+      const chords=day?chordsDay:chordsNight;
+      const scale=day?scaleDay:scaleNight;
+      const bar=Math.floor(this.step/8)%4;
+      const chord=chords[bar];
+      // pad chord at bar start
+      if(this.step%8===0){ chord.forEach(f=>pluck(f,0.10,1.6,'sine')); pluck(chord[0]/2,0.14,1.8,'sine'); }
+      // melody: random walk, plays on most steps
+      if(Math.random()<0.75){
+        melIdx=Math.max(0,Math.min(scale.length-1, melIdx+((Math.random()*3)|0)-1));
+        pluck(scale[melIdx], day?0.16:0.10, 0.45, day?'triangle':'sawtooth');
       }
       this.step++;
     };
-    this.musicTimer=setInterval(play, 420);
+    this.musicTimer=setInterval(play, 300);
   },
   setMusicMode(mode){ this.musicMode=mode; }
 };

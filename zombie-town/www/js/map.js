@@ -18,6 +18,8 @@ ZT.Map = (function(){
 
   function generate(newSeed){
     seed = newSeed || ((Math.random()*1e9)|0);
+    // every new game: random biome -> world always looks different
+    ZT.biome = ZT.BIOME_KEYS[(Math.random()*ZT.BIOME_KEYS.length)|0];
     tiles = new Uint8Array(W*H);
     // base grass with dirt patches
     for(let y=0;y<H;y++)for(let x=0;x<W;x++){
@@ -139,9 +141,9 @@ ZT.Map = (function(){
     for(let i=0;i<40;i++){ const x=(rng()*W)|0,y=(rng()*H)|0; if(getTile(x,y)===4) return {x,y}; }
     return edgePoint();
   }
-  function serialize(){ return { seed, tiles: Array.from(tiles) }; }
+  function serialize(){ return { seed, biome: ZT.biome, tiles: Array.from(tiles) }; }
   function deserialize(data){
-    seed=data.seed; tiles=new Uint8Array(data.tiles);
+    seed=data.seed; ZT.biome=data.biome||'summer'; tiles=new Uint8Array(data.tiles);
     if(tiles.length!==W*H){ const c=generate(seed); return c; }
     return { cx:(W/2)|0, cy:(H/2)|0 };
   }
