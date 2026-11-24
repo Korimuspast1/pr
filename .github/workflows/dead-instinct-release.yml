@@ -70,9 +70,8 @@ jobs:
           sudo apt-get install -y -qq zip unzip openssl
 
       - name: Сборка подписанного APK
-        env:
-          SDK: ${{ env.HOME }}/.cache/android-sdk
         run: |
+          export SDK="$HOME/.cache/android-sdk"
           set +e
           sh -x android/build.sh > build.log 2>&1
           rc=$?
