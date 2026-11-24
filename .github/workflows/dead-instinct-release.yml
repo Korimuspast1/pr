@@ -73,8 +73,19 @@ jobs:
         env:
           SDK: ${{ env.HOME }}/.cache/android-sdk
         run: |
-          set -o pipefail
-          sh -x android/build.sh 2>&1 | tee build.log
+          set +e
+          sh -x android/build.sh > build.log 2>&1
+          rc=$?
+          echo "--- build.log (хвост) ---"
+          tail -40 build.log
+          if [ $rc -ne 0 ]; then
+            # аннотации читаются через API даже когда логи недоступны
+            i=0
+            tail -30 build.log | tail -9 | while IFS= read -r line; do
+              echo "::error::$(printf '%s' "$line" | head -c 800)"
+            done
+            exit $rc
+          fi
           ls -la release/
 
       - name: Проверка APK
