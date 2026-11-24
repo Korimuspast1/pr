@@ -58,6 +58,10 @@ function newGame(chapter, opts) {
     weather: { rain: cfg.weather === 'rain' || cfg.weather === 'storm' ? 0.9 : 0.2, wind: 0.4, fog: cfg.weather === 'fog' ? 0.9 : cfg.weather === 'storm' ? 0.55 : 0.25 },
     instinctFlash: 0,
     dangerFlash: 0,
+    fear: 0.12,
+    fearPeak: 0,
+    heartT: 0,
+    fearSayT: 0,
     lastSfx: new Map(),
     rng: mulberry32(seed + 7),
     autoSave: 0,
@@ -70,15 +74,20 @@ function newGame(chapter, opts) {
   };
 
   // группа
-  for (const id of groupFor(chapter)) {
-    const d = NPCS.find(n => n.id === id); if (!d) continue;
+  const gids = groupFor(chapter);
+  gids.forEach((id, gi) => {
+    const d = NPCS.find(n => n.id === id); if (!d) return;
+    // сразу ставим на своё место в строю, иначе все появляются внутри игрока
+    const a0 = Math.PI * 0.75 + gi * 1.1;
+    let px = G.player.x + Math.cos(a0) * 1.4, py = G.player.y + Math.sin(a0) * 1.4;
+    if (collides(M, px, py, 0.24)) { px = G.player.x; py = G.player.y; }
     G.group.push({
       id: d.id, n: d.n, role: d.role, d: d.d, sk: Object.assign({ melee: 0, weapon: 0, med: 0, stealth: 0, craft: 0, gut: 0 }, d.sk),
-      hp: d.hp, maxHp: d.hp, x: G.player.x, y: G.player.y, target: null, path: [], pathI: 0,
+      hp: d.hp, maxHp: d.hp, x: px, y: py, target: null, path: [], pathI: 0, slot: gi * 1.1,
       dead: false, infected: false, bleed: 0, state: 'follow', trust: 0, col: d.col, hair: d.hair, sex: d.sex,
       cd: 0, lastSeen: 0, say: 0, sayText: '', sayT: 0, wanderT: 0, look: 0, anim: 0
     });
-  }
+  });
   G.flags.yanWounded = chapter >= 1;
   G.night = G.clock < 6 * 60 || G.clock > 20 * 60;
   if (G.night && G.weather.fog > 0.5) G.player.battery = 3;
@@ -702,15 +711,21 @@ function updateGroup(G, dt) {
     const d = Math.hypot(F.x - P.x, F.y - P.y);
     F.anim = (F.anim || 0) + dt * (d > 0.3 ? (P.stance === 'sprint' ? 9 : 5) : 0);
     const follow = P.stance === 'sprint' ? 1.9 : 1.45;
+    // у каждого спутника своё место в строю — не лезут друг на друга и на игрока
+    const slot = F.slot == null ? (F.slot = (G.group.indexOf(F) + 1) * (Math.PI * 2 / Math.max(3, G.group.length + 1))) : F.slot;
+    const back = Math.atan2(P.y - (F.y), P.x - (F.x));
+    const anchorA = (P.dir != null ? P.dir : 0) + Math.PI + slot;
+    const ax = P.x + Math.cos(anchorA) * 1.35, ay = P.y + Math.sin(anchorA) * 1.35;
+    const dA = Math.hypot(F.x - ax, F.y - ay);
     F.pathT = (F.pathT || 0) - dt;
-    if (d > 1.4) {
+    if (dA > 0.75) {
       if (F.pathT <= 0) {
-        F.pathT = 0.5;
-        F.path = findPath(G.M, F.x | 0, F.y | 0, P.x | 0, P.y | 0, 1400, false);
+        F.pathT = 0.45 + Math.random() * 0.2;
+        F.path = findPath(G.M, F.x | 0, F.y | 0, ax | 0, ay | 0, 1400, false);
         F.pathI = 0;
       }
-      // путь к игроку
-      moveAlongPath(G, F, dt, follow, 0.28);
+      const spd = clamp(0.2 + dA * 0.16, 0.2, P.stance === 'sprint' ? 1.9 : 1.0);
+      moveAlongPath(G, F, dt, spd, 0.26);
     } else if (d < 0.9) {
       // отойти, чтобы не толпиться
       const ang = Math.atan2(F.y - P.y, F.x - P.x);
@@ -1049,6 +1064,56 @@ function updateWorld(G, dt) {
   G.night = G.clock < 6 * 60 || G.clock > 20 * 60;
   // шум затихает
   G.player.noise = Math.max(0, G.player.noise - dt * 4);
+  updateFear(G, dt);
+}
+
+/* ---------- страх: близость стаи, темнота, раны ---------- */
+function updateFear(G, dt) {
+  const P = G.player;
+  let near = 0, nearest = 1e9;
+  for (const z of G.zombies) {
+    if (z.dead || z.stun > 0) continue;
+    const d = Math.hypot(z.x - P.x, z.y - P.y);
+    if (d < nearest) nearest = d;
+    if (d < 9) near += (9 - d) / 9;
+  }
+  let target = 0.1 + Math.min(0.5, near * 0.16);
+  if (nearest < 3.2) target += 0.3;                      // рядом, слышно дыхание
+  if (!P.torch || P.battery <= 0) target += 0.12;         // в темноте
+  else if (G.night) target += 0.05;
+  target += (1 - P.hp / P.maxHp) * 0.28;                 // кровь и боль
+  if (P.infect > 0) target += Math.min(0.24, P.infect / 100 * 0.9);
+  target -= (P.stance === 'sneak' ? 0.07 : 0) + (P.stance === 'breath' ? 0.16 : 0);
+  if (G.group.filter(n => !n.dead).length >= 2) target -= 0.04;  // не один
+  target = clamp(target, 0, 1);
+  // страх растёт быстро, отступает медленно
+  const k = target > G.fear ? 2.4 : 0.55;
+  G.fear = clamp(G.fear + (target - G.fear) * Math.min(1, dt * k), 0, 1);
+  G.fearPeak = Math.max(G.fearPeak * 0.999, G.fear);
+
+  // сердцебиение: чем страшнее, тем чаще
+  if (G.fear > 0.25) {
+    G.heartT -= dt;
+    if (G.heartT <= 0) {
+      G.heartT = 1.15 - G.fear * 0.62;
+      if (G.settings.sound && typeof SFX !== 'undefined' && SFX.heart) SFX.heart(G.fear);
+    }
+  } else G.heartT = 0.2;
+
+  // группа шепчет, когда страшно
+  if (G.fear > 0.62) {
+    G.fearSayT -= dt;
+    if (G.fearSayT <= 0) {
+      G.fearSayT = 16 + Math.random() * 14;
+      const alive = G.group.filter(n => !n.dead && !n.infected);
+      if (alive.length) {
+        const n = alive[(Math.random() * alive.length) | 0];
+        const lines = ['Не дыши… слышишь?', 'Оно рядом. Я чувствую.', 'Тише. Ради всего святого, тише.', 'У меня руки трясутся.', 'Не смотри ему в глаза.'];
+        n.sayText = lines[(Math.random() * lines.length) | 0];
+        n.sayT = 3.4;
+      }
+    }
+  }
 }
 
 /* ---------- сохранение ---------- */

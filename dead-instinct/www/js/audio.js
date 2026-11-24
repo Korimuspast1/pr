@@ -65,6 +65,8 @@ function noiseBurst(dur, vol, filterFreq, type, slideTo, when) {
   s.start(t0); s.stop(t0 + dur + 0.05);
 }
 
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
 /* ---------- отдельные звуки ---------- */
 function sfx(kind, arg) {
   if (!SND.ctx || !SND.enabled) return;
@@ -113,6 +115,7 @@ function sfx(kind, arg) {
 }
 
 /* ---------- атмосфера ---------- */
+
 function startAmbient(G) {
   sndInit();
   if (!SND.ctx || !SND.enabled) return;
@@ -189,4 +192,22 @@ function ambientTick(G, dt) {
 
 SND.click = function () { sfx('click'); };
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { SND, sfx, sndInit, startAmbient, stopAmbient, ambientTick };
+/* Сердцебиение с силой, зависящей от страха: два удара, тем громче, чем страшнее.
+   Отдельная функция, чтобы приём «сердце бьётся чаще» читался игроком. */
+function heart(fear) {
+  if (!SND.ctx || !SND.enabled) return;
+  const now = SND.ctx.currentTime;
+  const last = SND.last.get('heart-custom') || 0;
+  if (now - last < 0.34) return;
+  SND.last.set('heart-custom', now);
+  const f = clamp(fear, 0, 1);
+  const v1 = 0.1 + f * 0.3, v2 = v1 * 0.62;
+  tone(56 + f * 8, 'sine', 0.13, v1, 38);
+  setTimeout(() => tone(46 + f * 6, 'sine', 0.16, v2, 32), 165);
+  if (f > 0.75) setTimeout(() => tone(44, 'sine', 0.1, v2 * 0.5, 30), 330);
+}
+
+const SFX = { heart: heart, play: sfx };
+
+if (typeof module !== 'undefined' && module.exports) module.exports = { SND, sfx, sndInit, startAmbient, stopAmbient, ambientTick, SFX };
+if (typeof window !== 'undefined') { window.SFX = SFX; }

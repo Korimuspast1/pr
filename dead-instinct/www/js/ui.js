@@ -448,6 +448,15 @@ function renderHud(G, dt, now) {
   setBar('barTh', 1 - P.thirst / 100);
   setBar('barIn', P.infect / 100);
   $('barInWrap').style.display = P.infect > 0.5 ? 'block' : 'none';
+  // страх: иконка «сердце-чутьё» пульсирует и краснеет
+  const ib = $('iDanger');
+  if (ib && G.fear) {
+    const f = G.fear;
+    ib.style.filter = f > 0.5 ? 'drop-shadow(0 0 ' + (2 + f * 9).toFixed(0) + 'px rgba(190,30,30,' + (0.55 + f * 0.45).toFixed(2) + '))' : '';
+    ib.classList.toggle('fear', f > 0.62);
+  }
+  const fv = $('fearVeil');
+  if (fv) fv.style.opacity = G.fear > 0.55 ? ((G.fear - 0.55) * 1.35).toFixed(2) : '0';
   // цели
   if (now - UI.lastHud > 240) {
     UI.lastHud = now;

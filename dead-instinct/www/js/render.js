@@ -196,7 +196,13 @@ function render(G, dt) {
     CAM.y = lerp(CAM.y, CAM.ty, Math.min(1, dt * 6));
   }
   clampCam(G);
+  // от страха руки дрожат: слабая постоянная тряска, когда очень близко стая
+  const fearShake = (G.fear > 0.72 && G.settings.shake) ? (G.fear - 0.72) * 2.2 : 0;
   let shakeX = 0, shakeY = 0;
+  if (fearShake > 0) {
+    shakeX += Math.sin(RN.time * 27) * fearShake * 1.6;
+    shakeY += Math.cos(RN.time * 31) * fearShake * 1.6;
+  }
   if (CAM.shake > 0) {
     CAM.shake = Math.max(0, CAM.shake - dt * 3);
     if (G.settings.shake) { shakeX = (Math.random() - 0.5) * CAM.shake * 8; shakeY = (Math.random() - 0.5) * CAM.shake * 8; }
@@ -445,6 +451,8 @@ function render(G, dt) {
 
   // ---------- компас к цели ----------
   drawCompass(G, ctx);
+  // ---------- страх ----------
+  if (G.fear) drawFear(G, ctx);
 }
 
 function drawSpriteRotated(ctx, spr, sx, sy, z) {
@@ -589,6 +597,32 @@ function drawGrain(ctx) {
     ctx.fillRect((g.x * RN.W + Math.random() * 3) | 0, (g.y * RN.H + Math.random() * 3) | 0, 1, 1);
   }
   ctx.globalAlpha = 1;
+}
+
+/* ---------- страх: пульсирующая красная виньетка и «муть» ---------- */
+function drawFear(G, ctx) {
+  const f = G.fear;
+  if (f <= 0.18) return;
+  const beat = Math.pow(Math.max(0, Math.sin(RN.time * (3.6 + f * 6))), 3);
+  const k = clamp((f - 0.18) / 0.82, 0, 1);
+  const a = k * (0.34 + beat * 0.26);
+  const R = Math.hypot(RN.W, RN.H) * 0.5;
+  const grd = ctx.createRadialGradient(RN.W / 2, RN.H / 2, R * 0.34, RN.W / 2, RN.H / 2, R * 1.02);
+  grd.addColorStop(0, 'rgba(70,0,0,0)');
+  grd.addColorStop(1, 'rgba(96,6,6,' + a.toFixed(3) + ')');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, RN.W, RN.H);
+  // сужение поля зрения: чёрные углы
+  const g2 = ctx.createRadialGradient(RN.W / 2, RN.H / 2, R * 0.5, RN.W / 2, RN.H / 2, R * 1.05);
+  g2.addColorStop(0, 'rgba(0,0,0,0)');
+  g2.addColorStop(1, 'rgba(0,0,0,' + (k * 0.5).toFixed(3) + ')');
+  ctx.fillStyle = g2;
+  ctx.fillRect(0, 0, RN.W, RN.H);
+  // при пиковом страхе кровь пульсирует по краям
+  if (f > 0.85) {
+    ctx.fillStyle = 'rgba(120,0,0,' + ((f - 0.85) * beat * 1.1).toFixed(3) + ')';
+    ctx.fillRect(0, 0, RN.W, RN.H);
+  }
 }
 
 /* ---------- компас к цели ---------- */
