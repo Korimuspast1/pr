@@ -63,26 +63,78 @@ function initInput() {
     CAM.y += y * 6 * 0.016;
     CAM.manualT = 1.2;
   }, () => { });
-  // тап по экрану = действие/атака
+  // --- жесты на игровом поле: перетаскивание камеры, щипок, тап = удар ---
   const cv = $('cv');
-  let tapT = 0, tapX = 0, tapY = 0, moved = false;
+  const GEST = { mode: null, id: null, sx: 0, sy: 0, moved: false, t: 0, pinch: 0, camX: 0, camY: 0 };
+  const dist2 = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  const camDrag = (dx, dy) => {
+    if (!UI.G) return;
+    CAM.follow = false;
+    CAM.manualT = 2.2;
+    CAM.x -= dx / CAM.z;
+    CAM.y -= dy / CAM.z;
+    clampCam(UI.G);
+  };
   cv.addEventListener('touchstart', (e) => {
+    if (e.touches.length >= 2) {
+      GEST.mode = 'pinch'; GEST.pinch = dist2(e.touches[0], e.touches[1]);
+      GEST.t = performance.now(); GEST.moved = true;
+      return;
+    }
     const t = e.changedTouches[0];
-    if (t.clientX < window.innerWidth * 0.5) return; // левая половина — стик
-    tapT = performance.now(); tapX = t.clientX; tapY = t.clientY; moved = false;
+    // левая нижняя четверть — стик (его ловит сам стик), остальное — камера/удар
+    GEST.mode = 'drag'; GEST.id = t.identifier;
+    GEST.sx = t.clientX; GEST.sy = t.clientY; GEST.camX = t.clientX; GEST.camY = t.clientY;
+    GEST.moved = false; GEST.t = performance.now();
   }, { passive: true });
   cv.addEventListener('touchmove', (e) => {
-    const t = e.changedTouches[0];
-    if (Math.hypot(t.clientX - tapX, t.clientY - tapY) > 14) moved = true;
-  }, { passive: true });
-  cv.addEventListener('touchend', (e) => {
-    if (moved || !tapT) return;
-    if (performance.now() - tapT < 320) {
-      const t = e.changedTouches[0];
-      const w = screenToWorld(t.clientX, t.clientY);
-      if (UI.G) { GAME_INPUT.attack = true; GAME_INPUT.ax = w.x; GAME_INPUT.ay = w.y; }
+    if (GEST.mode === 'pinch' && e.touches.length >= 2) {
+      const d = dist2(e.touches[0], e.touches[1]);
+      const k = d / (GEST.pinch || d);
+      CAM.z = clamp(CAM.z * k, 18, 64);
+      GEST.pinch = d;
+      return;
     }
-    tapT = 0;
+    let t = null;
+    for (const ch of e.changedTouches) if (ch.identifier === GEST.id) t = ch;
+    if (!t) return;
+    const dx = t.clientX - GEST.camX, dy = t.clientY - GEST.camY;
+    if (Math.hypot(t.clientX - GEST.sx, t.clientY - GEST.sy) > 12) GEST.moved = true;
+    if (GEST.moved) { camDrag(dx, dy); GEST.camX = t.clientX; GEST.camY = t.clientY; e.preventDefault(); }
+  }, { passive: false });
+  const endTouch = (e) => {
+    if (GEST.mode === 'pinch' && e.touches.length >= 2) return;
+    if (GEST.mode !== 'drag') return;
+    const t = e.changedTouches[0];
+    if (!GEST.moved && t && performance.now() - GEST.t < 320) {
+      const w = screenToWorld(t.clientX, t.clientY);
+      if (UI.G) {
+        const G = UI.G;
+        // тап по объекту — обыскать/открыть, иначе — удар
+        if (Math.hypot(w.x - G.player.x, w.y - G.player.y) > 2.2 && UI.interTarget) doInteract();
+        else { GAME_INPUT.attack = true; GAME_INPUT.ax = w.x; GAME_INPUT.ay = w.y; }
+      }
+    }
+    GEST.mode = null; GEST.id = null;
+  };
+  cv.addEventListener('touchend', endTouch, { passive: true });
+  cv.addEventListener('touchcancel', endTouch, { passive: true });
+  // мышь: ЛКМ — удар, ПКМ/средняя — тащить камеру, колесо — зум
+  let mDown = null;
+  cv.addEventListener('mousedown', (e) => {
+    if (!UI.G) return;
+    if (e.button === 0) {
+      const w = screenToWorld(e.clientX, e.clientY);
+      GAME_INPUT.attack = true; GAME_INPUT.ax = w.x; GAME_INPUT.ay = w.y;
+    } else { mDown = { x: e.clientX, y: e.clientY }; }
+  });
+  cv.addEventListener('mousemove', (e) => {
+    if (mDown) { camDrag(e.clientX - mDown.x, e.clientY - mDown.y); mDown = { x: e.clientX, y: e.clientY }; }
+  });
+  window.addEventListener('mouseup', () => { mDown = null; });
+  window.addEventListener('wheel', (e) => {
+    if (!UI.G) return;
+    CAM.z = clamp(CAM.z - Math.sign(e.deltaY) * 2.5, 18, 64);
   }, { passive: true });
 
   // клавиатура
@@ -103,19 +155,11 @@ function initInput() {
     updateKeys(keys);
   });
   window.addEventListener('keyup', (e) => { keys.delete(e.key.toLowerCase()); updateKeys(keys); });
-  cv.addEventListener('mousemove', (e) => {
-    if (!UI.G || e.pointerType === 'touch') return;
-  });
   cv.addEventListener('mousedown', (e) => {
     if (!UI.G) return;
     const w = screenToWorld(e.clientX, e.clientY);
     GAME_INPUT.attack = true; GAME_INPUT.ax = w.x; GAME_INPUT.ay = w.y;
   });
-  window.addEventListener('wheel', (e) => {
-    if (!UI.G) return;
-    if (CAM.z > 18 && e.deltaY > 0) CAM.z -= 2;
-    if (CAM.z < 56 && e.deltaY < 0) CAM.z += 2;
-  }, { passive: true });
   // будильник первого касания для звука
   const unlock = () => { sndInit(); if (SND.ctx && SND.ctx.state === 'suspended') SND.ctx.resume(); };
   window.addEventListener('touchstart', unlock, { once: true });

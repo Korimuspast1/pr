@@ -1,9 +1,13 @@
 /* Soak-тест: каждый эпизод гоняется 3 минуты игрового времени с «ботом»,
    который ходит, бьёт, стреляет, ест и лечится. Ищем падения и проверяем поведение. */
 const fs = require('fs'), path = require('path');
-const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
-GlobalFonts.registerFromPath(path.join(__dirname, '../www/fonts/unifont.woff'), 'PixelRU');
-global.document = { createElement: () => createCanvas(1, 1), getElementById: () => null, addEventListener() { }, querySelectorAll: () => [] };
+/* Тест логики не требует canvas: все offscreen-канвасы подменяются заглушкой. */
+const fakeCanvas = () => ({
+  width: 1, height: 1,
+  getContext: () => new Proxy({ canvas: { width: 1, height: 1 }, createRadialGradient: () => ({ addColorStop() { } }), createLinearGradient: () => ({ addColorStop() { } }), measureText: () => ({ width: 10 }) }, { get: (t, k) => (k in t ? t[k] : () => { }), set: (t, k, v) => { t[k] = v; return true; } }),
+  toDataURL: () => 'data:,', toBuffer: () => Buffer.alloc(0)
+});
+global.document = { createElement: () => fakeCanvas(), getElementById: () => null, addEventListener() { }, querySelectorAll: () => [] };
 global.window = { innerWidth: 720, innerHeight: 1280, devicePixelRatio: 1, addEventListener() { } };
 global.performance = { now: () => 0 };
 const _ls = {};

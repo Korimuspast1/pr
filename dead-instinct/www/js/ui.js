@@ -442,6 +442,7 @@ function renderHud(G, dt, now) {
   }
   // полоски
   setBar('barHp', P.hp / P.maxHp);
+  const hpt = $('hpTxt'); if (hpt) hpt.textContent = Math.max(0, Math.round(P.hp));
   setBar('barSt', P.stamina / 100);
   setBar('barHu', 1 - P.hunger / 100);
   setBar('barTh', 1 - P.thirst / 100);

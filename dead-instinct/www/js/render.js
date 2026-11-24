@@ -128,10 +128,52 @@ function tileSprite(t, vx, vy) {
     case T.ROAD: R(0, 0, 16, 16, '#34343a'); R(0, 0, 16, 1, '#3e3e46'); for (let i = 0; i < 7; i++) R(rnd() * 15 | 0, rnd() * 15 | 0, 2, 1, '#2a2a2f'); if (rnd() < 0.25) R(rnd() * 14 | 0, rnd() * 14 | 0, 2, 2, '#414150'); break;
     case T.RUBBLE: R(0, 0, 16, 16, '#3a352c'); for (let i = 0; i < 9; i++) R(rnd() * 14 | 0, rnd() * 12 | 0, 2 + rnd() * 3 | 0, 2, rnd() < 0.5 ? '#5a5444' : '#47423a'); break;
     case T.FLOOR: R(0, 0, 16, 16, '#5e5448'); for (let i = 0; i < 4; i++) R(0, i * 4, 16, 1, '#4e453b'); if (rnd() < 0.3) R(rnd() * 12 | 0, rnd() * 12 | 0, 3, 3, '#6c6052'); R(0, 15, 16, 1, '#463e34'); break;
-    case T.WALL: R(0, 0, 16, 16, '#2a2622'); R(0, 0, 16, 12, '#5e564a'); for (let i = 0; i < 4; i++) R((i * 5 + (rnd() * 2 | 0)) % 14, 2 + (rnd() * 8 | 0), 4, 2, '#6a6254'); R(0, 9, 16, 3, '#4a443a'); R(0, 13, 16, 3, '#1f1c18'); break;
-    case T.DOOR: R(0, 0, 16, 16, '#2a2622'); R(2, 0, 12, 16, '#5a4630'); R(3, 2, 10, 12, '#6e5638'); R(12, 7, 2, 2, '#e8c86a'); break;
-    case T.TREE: R(0, 0, 16, 16, '#2c3a26'); for (let i = 0; i < 12; i++) R(rnd() * 12 | 0, rnd() * 12 | 0, 4, 4, rnd() < 0.5 ? '#223020' : '#3a4c2e'); R(6, 11, 4, 5, '#31281c'); break;
-    case T.CAR: R(0, 0, 16, 16, '#2c2c34'); R(1, 2, 14, 12, '#4a4a56'); R(2, 4, 12, 7, '#242c34'); R(3, 5, 10, 3, '#34485a'); R(2, 12, 12, 1, '#606070'); break;
+    case T.WALL: {
+      R(0, 0, 16, 16, '#211e1a');
+      R(0, 0, 16, 13, '#5a5448');
+      // кирпичная кладка
+      for (let row = 0; row < 3; row++) {
+        const y = 1 + row * 4;
+        R(0, y + 3, 16, 1, '#453f35');
+        const off = row % 2 ? 4 : 0;
+        for (let bx = off - 4; bx < 16; bx += 8) R(Math.max(0, bx), y, 7, 3, rnd() < 0.3 ? '#665f50' : '#5e5749');
+      }
+      R(0, 13, 16, 3, '#2c2924');
+      R(0, 15, 16, 1, '#15130f');
+      break;
+    }
+    case T.DOOR: {
+      R(0, 0, 16, 16, '#211f1b');
+      R(2, 0, 12, 16, '#3e3328');            // наличник
+      R(3, 1, 10, 14, '#6b5540');
+      R(4, 2, 8, 12, '#7d654c');             // полотно
+      R(4, 2, 8, 1, '#8e765a');
+      R(11, 7, 2, 2, '#e8c86a');             // ручка
+      R(5, 5, 2, 2, '#5d4a36');              // филёнка
+      break;
+    }
+    case T.TREE: {
+      R(0, 0, 16, 16, '#2a3624');
+      R(1, 9, 14, 6, 'rgba(0,0,0,0.35)');     // тень
+      R(2, 1, 12, 12, '#26331f');             // тёмный слой
+      R(3, 2, 9, 9, '#33452a');               // крона
+      R(4, 3, 4, 4, '#3f5433');               // свет
+      R(9, 6, 3, 3, '#2c3c24');
+      R(6, 12, 3, 4, '#3a2c1c');              // ствол
+      R(7, 13, 1, 3, '#4a3824');
+      break;
+    }
+    case T.CAR: {
+      R(0, 0, 16, 16, '#26262c');
+      R(1, 2, 14, 12, '#474752');            // кузов
+      R(2, 3, 12, 11, '#53535f');
+      R(3, 4, 10, 4, '#2b3540');              // лобовое
+      R(3, 9, 10, 4, '#252d36');              // заднее
+      R(2, 5, 1, 6, '#6a6a76'); R(13, 5, 1, 6, '#6a6a76'); // блики
+      R(1, 13, 2, 2, '#1a1a1e'); R(13, 13, 2, 2, '#1a1a1e'); // колёса
+      R(0, 7, 12, 1, '#7a1a1a');              // кровь на капоте
+      break;
+    }
     case T.BED: R(0, 0, 16, 16, '#4a443c'); R(1, 1, 14, 14, '#5a5a66'); R(2, 2, 12, 5, '#7c7c88'); R(2, 8, 12, 6, '#6e4040'); break;
     default: R(0, 0, 16, 16, '#2f3a2a');
   }
@@ -290,15 +332,18 @@ function render(G, dt) {
     const sx = ox + (o.x - 0.5) * z, sy = oy + (o.y - 0.8) * z;
     const frame = Math.floor((o.anim || 0) % 2);
     if (a.kind === 'p') {
-      const spr = spriteHuman('player', frame, { run: P.stance === 'sprint', armsForward: P.stance === 'sprint', bob: P.stance === 'crawl' ? 0 : 0, blood: P.hp < 50 });
-      drawSpriteRotated(ctx, spr, sx, sy, z, o.dir || 0);
+      const spr = spriteHuman('player', frame, {
+        dirName: dirNameOf(o.dir), walk: G._moving, armsForward: P.stance === 'sprint',
+        blood: P.hp < 50, bag: true
+      });
+      drawSpriteRotated(ctx, spr, sx, sy, z);
       // конус фонаря
       if (P.torch && P.battery > 0) drawTorch(ctx, o, z, ox, oy);
       // индикатор шума
       drawNoiseRing(ctx, o, z, ox, oy);
     } else if (a.kind === 'f') {
-      const spr = spriteHuman(o.id, frame, { run: false, blood: o.hp < o.maxHp * 0.5 });
-      drawSpriteRotated(ctx, spr, sx, sy, z, o.dir || 0);
+      const spr = spriteHuman(o.id, frame, { dirName: dirNameOf(o.dir), walk: true, blood: o.hp < o.maxHp * 0.5, bandage: o.hp < o.maxHp * 0.75 });
+      drawSpriteRotated(ctx, spr, sx, sy, z);
       // имя и полоска
       ctx.font = '9px PixelRU'; ctx.textAlign = 'center';
       ctx.fillStyle = o.sayT > 0 ? '#e8e4d8' : 'rgba(200,200,180,0.7)';
@@ -308,9 +353,9 @@ function render(G, dt) {
         ctx.fillStyle = o.hp / o.maxHp > 0.5 ? '#6a9a5a' : '#a44'; ctx.fillRect(sx + z * 0.15, sy - z * 0.1, z * 0.7 * (o.hp / o.maxHp), 3);
       }
     } else {
-      const spr = spriteZombie(o.kind, frame, {});
+      const spr = spriteZombie(o.kind, frame, { dirName: dirNameOf(o.dir) });
       if (!visible && sensed) ctx.globalAlpha = 0.35;
-      drawSpriteRotated(ctx, spr, sx, sy, z * (o.boss ? 1.25 : 1), o.dir || 0);
+      drawSpriteRotated(ctx, spr, sx, sy, z * (o.boss ? 1.25 : 1));
       ctx.globalAlpha = 1;
       if (!visible && sensed) {
         // силуэт-инстинкт
@@ -402,13 +447,8 @@ function render(G, dt) {
   drawCompass(G, ctx);
 }
 
-function drawSpriteRotated(ctx, spr, sx, sy, z, dir) {
-  ctx.save();
-  ctx.translate(sx + z * 0.5, sy + z * 0.5);
-  // у людей вид сверху-сбоку: зеркалим по горизонтали при движении влево
-  if (Math.cos(dir) < -0.2) ctx.scale(-1, 1);
-  ctx.drawImage(spr, -z * 0.5, -z * 0.62, z, z * 1.5);
-  ctx.restore();
+function drawSpriteRotated(ctx, spr, sx, sy, z) {
+  ctx.drawImage(spr, sx, sy - z * 0.42, z, z * 1.5);
 }
 
 function drawTorch(ctx, P, z, ox, oy) {

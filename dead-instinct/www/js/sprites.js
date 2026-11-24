@@ -30,60 +30,124 @@ const PAL = {
   zBrute: { skin: '#6a7a4a', skinDark: '#525f39', shirt: '#3a4030', shirt2: '#2f3427', pants: '#332f27', pants2: '#29261f', hair: '#242218', boot: '#1d1b16', blood: '#4a1414' }
 };
 
-/* ---------- человечек (вид сверху-сбоку), 16×24 ---------- */
+/* ---------- человечек: 4 направления, 16×24, пиксель-арт ---------- */
 function drawHumanTop(g, pal, frame, opts) {
   opts = opts || {};
-  const bob = opts.bob || 0, arm = opts.arm || 0;
-  const body = pal.shirt, body2 = pal.shirt2 || pal.shirt, skin = pal.skin, skin2 = pal.skinDark || pal.skin;
-  const pants = pal.pants, pants2 = pal.pants2 || pal.pants, boot = pal.boot || '#222';
-  const dir = opts.dir === undefined ? 0 : opts.dir;
-  const cx = 8;
+  const dirName = opts.dirName || 'down';         // down/up/left/right
+  const walk = opts.walk ? 1 : 0;
+  const swing = walk ? (frame % 2 ? 1 : -1) : 0;
+  const bob = walk ? (frame % 2 ? -1 : 0) : 0;
+  const skin = pal.skin, skin2 = pal.skinDark || pal.skin;
+  const shirt = pal.shirt, shirt2 = pal.shirt2 || pal.shirt;
+  const pants = pal.pants, pants2 = pal.pants2 || pal.pants;
+  const boot = pal.boot || '#1d1a17';
+  const hair = pal.hair || '#221c16';
+  const dead = !!opts.dead;
+
   // тень
-  g.fillStyle = 'rgba(0,0,0,0.35)';
-  g.fillRect(3, 22, 10, 2);
+  g.fillStyle = 'rgba(0,0,0,0.38)';
+  g.fillRect(4, 22, 8, 2);
+
+  const legY = 16 + bob;
   // ноги
-  const step = Math.sin(frame * (opts.run ? 10 : 6)) * (opts.run ? 2 : 1);
-  g.fillStyle = pants; g.fillRect(5, 16 + bob, 2, 5 + (step > 0 ? 0 : -1));
-  g.fillStyle = pants2; g.fillRect(9, 16 + bob, 2, 5 + (step > 0 ? -1 : 0));
-  g.fillStyle = boot; g.fillRect(5, 21 + bob, 3, 1); g.fillRect(9, 21 + bob, 3, 1);
+  g.fillStyle = pants;
+  g.fillRect(5, legY, 2, 5 - Math.abs(swing));
+  g.fillRect(9, legY, 2, 5 - (walk ? 1 - Math.abs(swing) : 0));
+  if (walk && swing > 0) { g.fillRect(4, legY + 3, 2, 2); g.fillRect(10, legY + 1, 2, 2); }
+  g.fillStyle = boot;
+  g.fillRect(5, legY + 5, 3, 1); g.fillRect(9, legY + 5, 3, 1);
+
   // корпус
-  g.fillStyle = body; g.fillRect(4, 9 + bob, 8, 8);
-  g.fillStyle = body2; g.fillRect(4, 9 + bob, 8, 2);
+  g.fillStyle = shirt; g.fillRect(4, 9 + bob, 8, 8);
+  g.fillStyle = shirt2; g.fillRect(4, 9 + bob, 8, 1);
+  // складки/ремень
+  g.fillStyle = shade(shirt, -18); g.fillRect(4, 14 + bob, 8, 1);
+  g.fillStyle = shade(pants, 14); g.fillRect(4, 16 + bob, 8, 1);
+  if (opts.bag) { g.fillStyle = '#3a3226'; g.fillRect(3, 10 + bob, 3, 5); g.fillStyle = '#524634'; g.fillRect(3, 10 + bob, 3, 1); }
+
   // руки
-  g.fillStyle = skin;
-  const ay = 10 + bob + (opts.armsUp ? -2 : 0);
-  if (opts.armsForward) { g.fillRect(1, ay, 3, 2); g.fillRect(12, ay, 3, 2); }
-  else { g.fillRect(2, ay, 2, 6); g.fillRect(12, ay, 2, 6); }
+  const armY = 10 + bob;
+  if (opts.armsForward) {
+    // вытянуты вперёд (зомби/бег)
+    g.fillStyle = skin;
+    if (dirName === 'up') { g.fillRect(2, armY - 2, 2, 5); g.fillRect(12, armY - 2, 2, 5); }
+    else if (dirName === 'left') { g.fillRect(1, armY, 5, 2); }
+    else if (dirName === 'right') { g.fillRect(10, armY, 5, 2); }
+    else { g.fillRect(1, armY + 1, 3, 2); g.fillRect(12, armY + 1, 3, 2); }
+  } else {
+    g.fillStyle = shirt;
+    g.fillRect(2, armY, 2, 4); g.fillRect(12, armY, 2, 4);
+    g.fillStyle = skin;
+    g.fillRect(2, armY + 4 + swing, 2, 2); g.fillRect(12, armY + 4 - swing, 2, 2);
+  }
+
   // голова
   const hy = 3 + bob;
-  g.fillStyle = skin; g.fillRect(5, hy, 6, 6);
-  g.fillStyle = (pal.hair || '#222'); 
-  if (opts.hood) { g.fillRect(4, hy - 1, 8, 4); g.fillStyle = body2; g.fillRect(4, hy - 1, 8, 1); }
-  else { g.fillRect(5, hy - 1, 6, 2); }
-  // глаза
-  g.fillStyle = opts.eyes || '#141210';
-  if (opts.dead) {
-    g.fillStyle = '#c9c2a0'; g.fillRect(6, hy + 2, 2, 2); g.fillRect(10, hy + 2, 2, 2);
-    g.fillStyle = '#2a1a1a'; g.fillRect(6, hy + 3, 1, 1); g.fillRect(11, hy + 3, 1, 1);
+  if (dirName === 'up') {
+    // затылок
+    g.fillStyle = skin2; g.fillRect(5, hy, 6, 6);
+    g.fillStyle = hair; g.fillRect(4, hy - 1, 8, 7);
+    g.fillStyle = shade(hair, 16); g.fillRect(5, hy, 6, 2);
+    // уши
+    g.fillStyle = skin2; g.fillRect(4, hy + 3, 1, 2); g.fillRect(11, hy + 3, 1, 2);
+  } else if (dirName === 'left' || dirName === 'right') {
+    const flip = dirName === 'left';
+    g.fillStyle = skin; g.fillRect(5, hy, 6, 6);
+    g.fillStyle = hair; g.fillRect(4, hy - 1, 8, 3);
+    g.fillRect(flip ? 9 : 4, hy + 1, 3, 5);          // волосы сзади
+    g.fillStyle = skin2; g.fillRect(flip ? 10 : 5, hy + 3, 1, 2); // ухо
+    g.fillStyle = dead ? '#d8d2b0' : '#141210';
+    g.fillRect(flip ? 5 : 9, hy + 2, 2, 2);          // глаз
+    if (dead) { g.fillStyle = '#a02a2a'; g.fillRect(flip ? 5 : 9, hy + 3, 1, 1); }
+    g.fillStyle = dead ? '#3a1414' : '#7a5240';
+    g.fillRect(flip ? 5 : 8, hy + 5, 2, 1);          // рот
   } else {
-    g.fillRect(6, hy + 2, 1, 1); g.fillRect(10, hy + 2, 1, 1);
+    // лицо
+    g.fillStyle = skin; g.fillRect(5, hy, 6, 6);
+    g.fillStyle = hair; g.fillRect(5, hy - 1, 6, 2); g.fillRect(4, hy, 1, 3); g.fillRect(11, hy, 1, 3);
+    g.fillStyle = dead ? '#d8d2b0' : '#141210';
+    g.fillRect(6, hy + 2, 1, 2); g.fillRect(9, hy + 2, 1, 2);
+    if (dead) { g.fillStyle = '#a02a2a'; g.fillRect(6, hy + 3, 1, 1); g.fillRect(9, hy + 3, 1, 1); }
+    g.fillStyle = shade(skin, -14); g.fillRect(8, hy + 3, 1, 2);   // нос
+    g.fillStyle = dead ? '#3a1414' : '#6e4434';
+    g.fillRect(7, hy + 5, 3, 1);
+    if (dead) { g.fillStyle = '#e8e2c0'; g.fillRect(7, hy + 5, 1, 1); g.fillRect(9, hy + 5, 1, 1); }
   }
-  // рот
-  g.fillStyle = opts.dead ? '#3a1414' : '#6a4434';
-  g.fillRect(7, hy + 4, 3, 1);
+  // шрам/повязка
+  if (opts.bandage) { g.fillStyle = '#d8d0bc'; g.fillRect(4, hy + 4, 8, 2); g.fillStyle = '#a02a2a'; g.fillRect(6, hy + 4, 1, 2); }
   // кровь
   if (opts.blood) {
     g.fillStyle = pal.blood || '#5a1414';
-    g.fillRect(4, 12 + bob, 2, 1); g.fillRect(9, 14 + bob, 2, 1); g.fillRect(6, hy + 5, 2, 1);
+    g.fillRect(4, 11 + bob, 2, 1); g.fillRect(9, 13 + bob, 2, 1); g.fillRect(6, hy + 6, 2, 1);
+    g.fillRect(12, 15 + bob, 1, 2);
   }
 }
 
+/* осветлить/затемнить hex-цвет */
+function shade(hex, amt) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  let r = (n >> 16) + amt, gg = ((n >> 8) & 255) + amt, b = (n & 255) + amt;
+  r = clamp(r, 0, 255); gg = clamp(gg, 0, 255); b = clamp(b, 0, 255);
+  return '#' + ((1 << 24) | (r << 16) | (gg << 8) | b).toString(16).slice(1);
+}
+
+function dirNameOf(dir) {
+  const a = Math.atan2(Math.sin(dir || 0), Math.cos(dir || 0));
+  if (a > -Math.PI * 0.75 && a <= -Math.PI * 0.25) return 'up';
+  if (a > Math.PI * 0.25 && a <= Math.PI * 0.75) return 'down';
+  if (a <= -Math.PI * 0.75 || a > Math.PI * 0.75) return 'left';
+  return 'right';
+}
+
 function spriteHuman(key, frame, opts) {
-  const ck = 'h_' + key + '_' + frame + '_' + JSON.stringify(opts || {});
+  opts = opts || {};
+  const dn = opts.dirName || 'down';
+  const ck = 'h_' + key + '_' + (frame & 1) + '_' + dn + '_' + (opts.walk ? 1 : 0) + (opts.armsForward ? 'a' : '') + (opts.blood ? 'b' : '') + (opts.bandage ? 'd' : '');
   if (SPR.cache.has(ck)) return SPR.cache.get(ck);
   const { c, g } = makeCanvas(16, 24);
   const pal = PAL[key] || PAL.player;
-  drawHumanTop(g, pal, frame, opts);
+  drawHumanTop(g, pal, frame & 1, Object.assign({}, opts, { dirName: dn }));
   SPR.cache.set(ck, c);
   return c;
 }
@@ -91,11 +155,12 @@ function spriteHuman(key, frame, opts) {
 /* ---------- зомби ---------- */
 function spriteZombie(kind, frame, opts) {
   opts = opts || {};
-  const ck = 'z_' + kind + '_' + frame + '_' + JSON.stringify(opts);
+  const dn = opts.dirName || 'down';
+  const ck = 'z_' + kind + '_' + (frame & 1) + '_' + dn;
   if (SPR.cache.has(ck)) return SPR.cache.get(ck);
   const { c, g } = makeCanvas(16, 24);
   const pal = PAL[kind === 'walker' ? 'zWalker' : kind === 'runner' ? 'zRunner' : kind === 'crawler' ? 'zCrawler' : kind === 'bloater' ? 'zBloater' : kind === 'screamer' ? 'zScreamer' : 'zBrute'];
-  const o = Object.assign({}, opts, { dead: true, blood: true, armsForward: kind !== 'crawler' });
+  const o = Object.assign({}, opts, { dead: true, blood: true, armsForward: kind !== 'crawler', walk: true, dirName: dn });
   if (kind === 'crawler') {
     // ползун: горизонтальное тело
     g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(2, 20, 12, 2);
