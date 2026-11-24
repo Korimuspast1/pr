@@ -63,10 +63,17 @@ jobs:
       - name: Тесты игровой логики
         run: node tools/soak.js
 
+      - name: Утилиты (zip/unzip/openssl)
+        run: |
+          set -e
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zip unzip openssl
+
       - name: Сборка подписанного APK
         env:
           SDK: ${{ env.HOME }}/.cache/android-sdk
         run: |
+          set -o pipefail
           sh -x android/build.sh 2>&1 | tee build.log
           ls -la release/
 

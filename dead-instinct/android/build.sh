@@ -9,7 +9,8 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SDK=${SDK:-$HOME/.cache/android-sdk}
 BT=${BUILD_TOOLS:-$SDK/bt/android-14}
 JAR=${ANDROID_JAR:-$SDK/pf/android-34/android.jar}
-[ -d /usr/lib/jvm/jdk-11/bin ] && PATH=/usr/lib/jvm/jdk-11/bin:$PATH
+# при set -e запись вида "cond && action" обрывает скрипт, если cond ложно
+if [ -d /usr/lib/jvm/jdk-11/bin ]; then PATH=/usr/lib/jvm/jdk-11/bin:$PATH; fi
 VERSION=$(sed -n "s/.*GAME_VERSION = '\([0-9.]*\)'.*/\1/p" "$ROOT/www/js/data.js" | head -1)
 [ -n "$VERSION" ] || { echo "не найдена версия игры (GAME_VERSION в www/js/data.js)"; exit 1; }
 # код версии: 1.0.0 -> 10000, 1.1.3 -> 10103; у каждого обновления он должен расти
@@ -21,6 +22,7 @@ OUT=$ROOT/release/DeadInstinct-$VERSION.apk
 echo "версия игры: $VERSION (код $CODE)"; echo "build-tools: $BT"; echo "android.jar: $JAR"
 for t in "$BT/aapt2" "$BT/d8" "$BT/zipalign" "$BT/apksigner" "$JAR"; do [ -e "$t" ] || { echo "не найдено: $t"; exit 1; }; done
 command -v java >/dev/null || { echo "нет java в PATH"; exit 1; }
+command -v zip >/dev/null || { echo "нет zip (apt-get install -y zip)"; exit 1; }
 java -version 2>&1 | head -2
 
 rm -rf "$W"; mkdir -p "$W/gen" "$W/classes" "$W/dex" "$W/assets" "$ROOT/release"
