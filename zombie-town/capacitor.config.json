@@ -1,0 +1,12 @@
+{
+  "appId": "com.zt.zombietown",
+  "appName": "Zombie Town",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

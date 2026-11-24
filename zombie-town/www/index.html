@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1a2b1a">
+<title>Cozy Pixel Zombie Town</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <!-- ======= HUD (top) ======= -->
+  <div id="hud" class="hidden">
+    <div id="resbar"></div>
+    <div id="hud-right">
+      <div id="clock"><span id="day-label">День 1</span><span id="time-label">☀️ 08:00</span><span id="weather-label">☀️</span></div>
+      <div id="speedbar">
+        <button class="sbtn" id="btn-pause" title="Пауза">⏸</button>
+        <button class="sbtn spd active" data-speed="1">1×</button>
+        <button class="sbtn spd" data-speed="2">2×</button>
+        <button class="sbtn spd" data-speed="4">4×</button>
+      </div>
+    </div>
+    <div id="alerts"></div>
+  </div>
+
+  <!-- ======= Notifications ======= -->
+  <div id="toasts"></div>
+
+  <!-- ======= Outbreak banner ======= -->
+  <div id="outbreak-banner" class="hidden">☣ <span id="outbreak-text">ВСПЫШКА!</span></div>
+
+  <!-- ======= Bottom action bar ======= -->
+  <div id="actionbar" class="hidden">
+    <button class="abtn" id="btn-build">🏗<span data-i18n="build">Стройка</span></button>
+    <button class="abtn" id="btn-pop">👥<span data-i18n="people">Люди</span></button>
+    <button class="abtn zombie" id="btn-zombie">🧟<span data-i18n="zombies">Зомби</span><span id="zombie-count" class="badge hidden">0</span></button>
+    <button class="abtn" id="btn-alarm">🚨<span data-i18n="alarm">Тревога</span></button>
+    <button class="abtn" id="btn-menu">☰<span data-i18n="menu">Меню</span></button>
+  </div>
+
+  <!-- ======= Placement bar ======= -->
+  <div id="placebar" class="hidden">
+    <span id="place-info"></span>
+    <button class="pbtn ok" id="btn-place-ok">✔ <span data-i18n="place">Поставить</span></button>
+    <button class="pbtn" id="btn-place-cancel">✖ <span data-i18n="cancel">Отмена</span></button>
+  </div>
+
+  <!-- ======= Build menu ======= -->
+  <div id="build-menu" class="panel hidden">
+    <div class="panel-head"><h2 data-i18n="build">Стройка</h2><button class="x" data-close="build-menu">✕</button></div>
+    <div id="build-tabs"></div>
+    <div id="build-grid"></div>
+  </div>
+
+  <!-- ======= Population panel ======= -->
+  <div id="pop-panel" class="panel hidden">
+    <div class="panel-head"><h2 data-i18n="people">Люди</h2><span id="pop-summary"></span><button class="x" data-close="pop-panel">✕</button></div>
+    <div id="pop-list"></div>
+  </div>
+
+  <!-- ======= Zombie spawn panel ======= -->
+  <div id="zombie-panel" class="panel hidden">
+    <div class="panel-head"><h2>🧟 <span data-i18n="zombies">Зомби</span></h2><button class="x" data-close="zombie-panel">✕</button></div>
+    <p class="hint" data-i18n="zombie-hint">Спавнь зомби в любой момент! Они пойдут к городу.</p>
+    <div class="zrow">
+      <button class="zbtn" id="z-spawn-1">🧟 ×1</button>
+      <button class="zbtn" id="z-spawn-5">🧟 ×5</button>
+      <button class="zbtn" id="z-spawn-20">🌊 Орда ×20</button>
+    </div>
+    <div class="zrow">
+      <label><span data-i18n="intensity">Интенсивность</span>: <b id="z-intensity-val">3</b></label>
+      <input type="range" id="z-intensity" min="1" max="5" value="3">
+    </div>
+    <div class="zrow">
+      <label><span data-i18n="spawnpoint">Точка спавна</span>:
+        <select id="z-spawnpoint">
+          <option value="edge" data-i18n="edge">Край карты</option>
+          <option value="forest" data-i18n="forest">Лес</option>
+          <option value="nest" data-i18n="nest">Гнездо зомби</option>
+        </select>
+      </label>
+    </div>
+    <button class="zbtn outbreak" id="z-outbreak">☣ <span data-i18n="outbreak">НАЧАТЬ ВСПЫШКУ</span></button>
+    <button class="zbtn" id="z-stop">🕊 <span data-i18n="calm">Успокоить город</span></button>
+    <div id="z-stats"></div>
+  </div>
+
+  <!-- ======= Inspector ======= -->
+  <div id="inspector" class="panel hidden">
+    <div class="panel-head"><h2 id="insp-title">—</h2><button class="x" data-close="inspector">✕</button></div>
+    <div id="insp-body"></div>
+  </div>
+
+  <!-- ======= Main menu ======= -->
+  <div id="main-menu" class="screen">
+    <div class="menu-card">
+      <div class="logo">🏘️🧟</div>
+      <h1>Cozy Pixel<br>Zombie Town</h1>
+      <p class="tagline" data-i18n="tagline">Город сам заселяется и растёт — от домиков до небоскрёбов. А зомби спавнишь ты, когда захочешь!</p>
+      <button class="mbtn primary" id="btn-new">▶ <span data-i18n="newgame">Новая игра</span></button>
+      <button class="mbtn" id="btn-continue">💾 <span data-i18n="continue">Продолжить</span></button>
+      <button class="mbtn" id="btn-howto">❓ <span data-i18n="howto">Как играть</span></button>
+      <button class="mbtn" id="btn-settings">⚙ <span data-i18n="settings">Настройки</span></button>
+      <p class="version">v1.0 · Android · offline</p>
+    </div>
+  </div>
+
+  <!-- ======= How to play ======= -->
+  <div id="howto" class="screen hidden">
+    <div class="menu-card wide">
+      <h2 data-i18n="howto">Как играть</h2>
+      <div class="howto-text" id="howto-text"></div>
+      <button class="mbtn" data-close="howto">✔ OK</button>
+    </div>
+  </div>
+
+  <!-- ======= Settings ======= -->
+  <div id="settings" class="screen hidden">
+    <div class="menu-card wide">
+      <h2 data-i18n="settings">Настройки</h2>
+      <label class="setrow"><span data-i18n="sound">Звук</span><input type="checkbox" id="set-sound" checked></label>
+      <label class="setrow"><span data-i18n="music">Музыка</span><input type="checkbox" id="set-music" checked></label>
+      <label class="setrow"><span data-i18n="vibration">Вибрация</span><input type="checkbox" id="set-vibrate" checked></label>
+      <label class="setrow"><span data-i18n="particles">Частицы</span><input type="checkbox" id="set-particles" checked></label>
+      <label class="setrow"><span data-i18n="quality">Качество (лимит жителей)</span>
+        <select id="set-quality"><option value="low">Низкое</option><option value="mid" selected>Среднее</option><option value="high">Высокое</option></select>
+      </label>
+      <label class="setrow"><span data-i18n="language">Язык / Language</span>
+        <select id="set-lang"><option value="ru">Русский</option><option value="en">English</option></select>
+      </label>
+      <label class="setrow"><span data-i18n="difficulty">Сложность вспышки</span>
+        <select id="set-difficulty"><option value="peaceful">🕊 Мирная</option><option value="easy">😊 Лёгкая</option><option value="normal" selected>😐 Нормальная</option><option value="hard">😈 Хардкор</option></select>
+      </label>
+      <button class="mbtn" data-close="settings">✔ OK</button>
+    </div>
+  </div>
+
+  <!-- ======= Pause / save menu ======= -->
+  <div id="pause-menu" class="screen hidden">
+    <div class="menu-card">
+      <h2 data-i18n="paused">Пауза</h2>
+      <button class="mbtn primary" id="btn-resume">▶ <span data-i18n="resume">Продолжить</span></button>
+      <button class="mbtn" id="btn-save">💾 <span data-i18n="save">Сохранить</span></button>
+      <button class="mbtn" id="btn-load">📂 <span data-i18n="load">Загрузить</span></button>
+      <button class="mbtn" id="btn-quit">🏠 <span data-i18n="tomenu">В меню</span></button>
+      <div id="save-slots"></div>
+    </div>
+  </div>
+
+  <!-- ======= Tutorial hint ======= -->
+  <div id="tutorial" class="hidden"></div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/map.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/buildings.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/save.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

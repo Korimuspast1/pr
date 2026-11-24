@@ -1,0 +1,114 @@
+/* Cozy Pixel Zombie Town — mobile-first UI */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#0d1a0d;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#fff;touch-action:none;overscroll-behavior:none}
+#app{position:fixed;inset:0}
+#game{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
+.hidden{display:none!important}
+button{font-family:inherit;color:inherit;border:none;cursor:pointer}
+button:active{transform:scale(.94)}
+
+/* ---------- HUD ---------- */
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:calc(6px + env(safe-area-inset-top)) 8px 6px;pointer-events:none;z-index:20}
+#resbar{display:flex;flex-wrap:wrap;gap:4px;max-width:62vw;pointer-events:auto}
+.res{display:flex;align-items:center;gap:3px;background:rgba(10,20,10,.78);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:3px 8px;font-size:14px;font-weight:700;min-height:30px}
+.res .cap{font-size:10px;opacity:.65;font-weight:400}
+.res.warn{background:rgba(120,20,20,.85);animation:pulse 1s infinite}
+@keyframes pulse{50%{background:rgba(180,30,30,.9)}}
+#hud-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;pointer-events:auto}
+#clock{display:flex;gap:6px;align-items:center;background:rgba(10,20,10,.78);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:4px 10px;font-size:14px;font-weight:700}
+#speedbar{display:flex;gap:4px}
+.sbtn{background:rgba(10,20,10,.78);border:1px solid rgba(255,255,255,.25);border-radius:10px;min-width:42px;min-height:38px;font-size:16px;font-weight:700}
+.sbtn.active{background:#4caf50;border-color:#8bc34a}
+#alerts{display:flex;gap:4px}
+.alert{background:rgba(180,30,30,.9);border-radius:10px;padding:4px 8px;font-size:13px;font-weight:700;animation:pulse 1s infinite}
+
+/* ---------- Toasts ---------- */
+#toasts{position:absolute;top:calc(52px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:4px;align-items:center;z-index:30;pointer-events:none;width:min(92vw,480px)}
+.toast{background:rgba(15,30,15,.92);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:7px 14px;font-size:14px;font-weight:600;text-align:center;animation:toastIn .25s;max-width:100%}
+.toast.bad{background:rgba(120,20,20,.92)}
+.toast.good{background:rgba(20,80,30,.92)}
+@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}}
+
+/* ---------- Outbreak banner ---------- */
+#outbreak-banner{position:absolute;top:calc(52px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:linear-gradient(90deg,#5a0000,#a00,#5a0000);border:2px solid #ff5252;border-radius:14px;padding:8px 22px;font-size:18px;font-weight:900;letter-spacing:1px;z-index:31;animation:pulse .8s infinite;text-align:center}
+
+/* ---------- Bottom action bar ---------- */
+#actionbar{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:6px;padding:6px 8px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(5,12,5,.9) 30%);z-index:20}
+.abtn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:64px;min-height:56px;background:rgba(20,40,20,.92);border:2px solid rgba(255,255,255,.25);border-radius:14px;font-size:22px}
+.abtn span{font-size:11px;font-weight:700}
+.abtn.zombie{background:rgba(70,15,15,.95);border-color:#ff5252}
+.abtn .badge{position:absolute;top:-6px;right:-6px;background:#ff1744;border-radius:50%;min-width:22px;height:22px;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* ---------- Placement bar ---------- */
+#placebar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));display:flex;gap:8px;align-items:center;background:rgba(10,20,10,.92);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:8px 12px;z-index:25;max-width:94vw}
+#place-info{font-size:14px;font-weight:700}
+.pbtn{min-height:44px;padding:0 16px;border-radius:10px;font-size:15px;font-weight:800;background:#37474f}
+.pbtn.ok{background:#2e7d32}
+
+/* ---------- Panels ---------- */
+.panel{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom));width:min(94vw,560px);max-height:62vh;background:rgba(12,24,12,.97);border:2px solid rgba(255,255,255,.22);border-radius:16px;z-index:26;display:flex;flex-direction:column;overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.15)}
+.panel-head h2{font-size:17px;flex:1}
+.panel-head .x{background:#37474f;border-radius:8px;min-width:36px;min-height:36px;font-size:15px}
+#pop-summary{font-size:13px;opacity:.85}
+#build-tabs{display:flex;gap:4px;padding:8px 10px 0;overflow-x:auto}
+.btab{background:#263238;border-radius:10px 10px 0 0;padding:8px 12px;font-size:13px;font-weight:700;white-space:nowrap;min-height:40px}
+.btab.active{background:#2e7d32}
+#build-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;padding:10px;overflow-y:auto}
+.bcard{background:#1b2e1b;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px;text-align:left;min-height:96px}
+.bcard .ic{font-size:30px}
+.bcard .nm{font-weight:800;font-size:14px;margin:2px 0}
+.bcard .ds{font-size:11px;opacity:.8;line-height:1.25}
+.bcard .cost{font-size:12px;font-weight:700;color:#ffd54f;margin-top:4px}
+.bcard.cant{opacity:.45}
+#pop-list{overflow-y:auto;padding:6px}
+.citizen-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;background:rgba(255,255,255,.05);margin-bottom:4px;min-height:48px}
+.citizen-row .face{font-size:26px}
+.citizen-row .info{flex:1;min-width:0}
+.citizen-row .nm{font-weight:800;font-size:14px}
+.citizen-row .sub{font-size:11px;opacity:.8}
+.bar{height:7px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden;margin-top:3px}
+.bar>i{display:block;height:100%;border-radius:4px}
+.bar.hp>i{background:#ef5350}.bar.mood>i{background:#66bb6a}.bar.hunger>i{background:#ffa726}
+.mini-btn{background:#37474f;border-radius:8px;min-width:38px;min-height:38px;font-size:15px}
+.hint{font-size:13px;opacity:.85;padding:8px 14px 0}
+.zrow{display:flex;gap:8px;align-items:center;padding:8px 14px;flex-wrap:wrap}
+.zrow label{font-size:14px;font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.zrow select,.zrow input[type=range]{min-height:40px;font-size:15px}
+.zbtn{flex:1;min-height:52px;border-radius:12px;background:#37474f;font-size:16px;font-weight:800;padding:0 10px}
+.zbtn.outbreak{background:linear-gradient(180deg,#b71c1c,#7f0000);border:2px solid #ff5252;margin:4px 14px 10px;font-size:18px}
+#z-stop{margin:0 14px 10px}
+#z-stats{padding:0 14px 12px;font-size:13px;opacity:.9}
+
+/* ---------- Inspector ---------- */
+#insp-body{padding:10px 14px;overflow-y:auto;font-size:14px}
+#insp-body .row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08);gap:8px}
+#insp-body .row b{font-weight:800}
+.ibtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.ibtns button{flex:1;min-height:46px;border-radius:10px;background:#37474f;font-weight:800;font-size:14px;padding:0 8px}
+.ibtns button.danger{background:#b71c1c}
+.ibtns button.good{background:#2e7d32}
+
+/* ---------- Screens / menus ---------- */
+.screen{position:absolute;inset:0;background:rgba(5,12,5,.88);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.menu-card{background:linear-gradient(180deg,#1b3a1b,#0f2410);border:2px solid rgba(255,255,255,.25);border-radius:20px;padding:22px 20px;text-align:center;width:min(92vw,380px);max-height:92vh;overflow-y:auto}
+.menu-card.wide{width:min(92vw,520px);text-align:left}
+.menu-card h1{font-size:30px;line-height:1.15;margin:6px 0;text-shadow:2px 2px 0 #000}
+.menu-card h2{font-size:22px;margin-bottom:12px;text-align:center}
+.logo{font-size:52px}
+.tagline{font-size:14px;opacity:.9;margin:8px 0 16px;line-height:1.4}
+.mbtn{display:block;width:100%;min-height:52px;margin:8px 0;border-radius:14px;background:#263238;font-size:17px;font-weight:800}
+.mbtn.primary{background:#2e7d32}
+.version{font-size:11px;opacity:.6;margin-top:12px}
+.setrow{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.1);font-size:15px;font-weight:600;gap:10px}
+.setrow input[type=checkbox]{width:26px;height:26px;accent-color:#4caf50}
+.setrow select{min-height:40px;font-size:15px;border-radius:8px;padding:0 8px}
+.howto-text{font-size:14px;line-height:1.55}
+.howto-text h3{margin:12px 0 4px;color:#a5d6a7}
+.howto-text li{margin-left:18px;margin-bottom:3px}
+.slot{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.07);border-radius:10px;padding:8px 10px;margin-top:6px;font-size:13px}
+.slot button{background:#37474f;border-radius:8px;min-height:38px;padding:0 12px;font-weight:700}
+
+/* ---------- Tutorial ---------- */
+#tutorial{position:absolute;left:50%;transform:translateX(-50%);top:calc(96px + env(safe-area-inset-top));background:rgba(255,213,79,.95);color:#222;border-radius:12px;padding:9px 16px;font-size:14px;font-weight:800;z-index:28;max-width:92vw;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+@media (max-height:420px){.panel{max-height:70vh}.abtn{min-height:48px;min-width:56px}.menu-card h1{font-size:24px}}

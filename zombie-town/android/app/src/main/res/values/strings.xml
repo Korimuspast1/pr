@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Zombie Town</string>
+    <string name="title_activity_main">Zombie Town</string>
+    <string name="package_name">com.zt.zombietown</string>
+    <string name="custom_url_scheme">com.zt.zombietown</string>
+</resources>

@@ -1,0 +1,17 @@
+{
+  "name": "cozy-pixel-zombie-town",
+  "version": "1.0.0",
+  "description": "Cozy Pixel Zombie Town — autonomous city-builder survival sandbox for Android",
+  "scripts": {
+    "start": "npx serve www -l 8080",
+    "sync": "npx cap sync",
+    "build:apk": "npx cap sync && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}
