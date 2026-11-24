@@ -311,7 +311,7 @@ ZT.Citizen.prototype = {
         break; }
     }
     separation(this, game.citizens, 10, dt);
-    if(this.follow){ game.camera.follow(this); }
+    // camera follow handled centrally in game.update via camera.follow property
   },
   takeDamage(dmg, fromZombie, game){
     if(this.dead) return;

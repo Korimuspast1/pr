@@ -46,7 +46,7 @@ ZT.Map = (function(){
     // town center clearing
     const cx=(W/2)|0, cy=(H/2)|0;
     for(let y=cy-4;y<cy+5;y++)for(let x=cx-5;x<cx+6;x++){
-      if(inBounds(x,y) && tiles[idx(x,y)]!==3) tiles[idx(x,y)] = (Math.abs(x-cx)<=2&&Math.abs(y-cy)<=2)?2:1;
+      if(inBounds(x,y)) tiles[idx(x,y)] = (Math.abs(x-cx)<=2&&Math.abs(y-cy)<=2)?2:1;
     }
     // a road crossing through center
     for(let x=2;x<W-2;x++){ if(tiles[idx(x,cy)]!==3) tiles[idx(x,cy)]=2; }
