@@ -1,17 +1,19 @@
 name: download-steam-trailer
 
-# запускается вручную: качает HLS-трейлер Steam и отдаёт mp4 артефактом
+# качает HLS-трейлер Steam и отдаёт mp4 артефактом.
+# запуск: запушить изменённый trailer-request.json (или вручную через Actions)
 on:
   workflow_dispatch:
     inputs:
-      master_url:
-        description: 'URL master-плейлиста (hls_264_master.m3u8)'
-        required: true
-        default: 'https://video.akamai.steamstatic.com/store_trailers/12130/914/7d17608b928efd9a78554e22fe6ab4979923a460/1750484484/hls_264_master.m3u8?t=1447351212'
       output_name:
         description: 'Имя выходного файла'
         required: true
         default: 'manhunt_trailer.mp4'
+  push:
+    branches:
+      - 'arena/**'
+    paths:
+      - 'trailer-request.json'
 
 concurrency:
   group: download-steam-trailer
@@ -28,11 +30,23 @@ jobs:
           python-version: '3.12'
       - name: ffmpeg
         run: ffmpeg -version | head -1
+      - name: читаем запрос
+        id: req
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          data = json.load(open('trailer-request.json'))
+          print("master_url=" + data["master_url"])
+          print("output_name=" + data.get("output_name", "trailer.mp4"))
+          PY
       - name: скачиваем и собираем трейлер
-        run: python3 -u scripts/steam_trailer_dl.py "${{ inputs.master_url }}" "${{ inputs.output_name }}"
+        run: |
+          python3 -u scripts/steam_trailer_dl.py \
+            "${{ steps.req.outputs.master_url }}" \
+            "${{ steps.req.outputs.output_name }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.output_name }}
-          path: ${{ inputs.output_name }}
+          name: ${{ steps.req.outputs.output_name }}
+          path: ${{ steps.req.outputs.output_name }}
           if-no-files-found: error
           retention-days: 7
