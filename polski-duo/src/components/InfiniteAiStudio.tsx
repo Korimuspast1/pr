@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrainCircuit, Infinity as InfinityIcon, Layers, Sparkles, TrendingUp, Zap } from 'lucide-react';
+import { BrainCircuit, Infinity as InfinityIcon, Layers, Mic, Sparkles, TrendingUp, Zap } from 'lucide-react';
 import { computeCefrLevel, computeGlobalMasteryScore, getWeakestSkill } from '../ai/localAiEngine';
 import { SKILL_META } from '../data/polishLexicon';
 import { LearnerAIState, SkillId } from '../types/learning';
@@ -7,7 +7,11 @@ import { MascotOrzel } from './MascotOrzel';
 
 interface InfiniteAiStudioProps {
   state: LearnerAIState;
-  onStartInfiniteStream: (skillFocus?: SkillId, customStartTier?: number) => void;
+  onStartInfiniteStream: (
+    skillFocus?: SkillId,
+    customStartTier?: number,
+    forceSpeaking?: boolean,
+  ) => void;
   onChangePhoneticsMode: (mode: LearnerAIState['showPhoneticsOverride']) => void;
 }
 
@@ -206,19 +210,36 @@ export const InfiniteAiStudio: React.FC<InfiniteAiStudioProps> = ({
         </label>
       </div>
 
-      {/* Launch Button */}
-      <button
-        onClick={() =>
-          onStartInfiniteStream(
-            selectedFocus === 'auto' ? undefined : selectedFocus,
-            startFromEasy ? 1.2 : undefined,
-          )
-        }
-        className="w-full duo-btn duo-btn-purple rounded-2xl py-4 px-6 font-black text-lg uppercase tracking-wider flex items-center justify-center gap-3"
-      >
-        <Sparkles className="w-6 h-6" />
-        ЗАПУСТИТЬ БЕСКОНЕЧНЫЙ ПОТОК ИИ
-      </button>
+      {/* Launch Buttons */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          onClick={() =>
+            onStartInfiniteStream(
+              selectedFocus === 'auto' ? undefined : selectedFocus,
+              startFromEasy ? 1.2 : undefined,
+              false,
+            )
+          }
+          className="w-full duo-btn duo-btn-purple rounded-2xl py-4 px-5 font-black text-base uppercase tracking-wider flex items-center justify-center gap-2.5"
+        >
+          <Sparkles className="w-5 h-5" />
+          ЗАПУСТИТЬ ПОТОК ИИ
+        </button>
+
+        <button
+          onClick={() =>
+            onStartInfiniteStream(
+              selectedFocus === 'auto' ? undefined : selectedFocus,
+              startFromEasy ? 1.2 : undefined,
+              true,
+            )
+          }
+          className="w-full duo-btn duo-btn-blue rounded-2xl py-4 px-5 font-black text-base uppercase tracking-wider flex items-center justify-center gap-2.5"
+        >
+          <Mic className="w-5 h-5" />
+          МИКРОФОН · ИИ-РЕЧЬ ∞
+        </button>
+      </div>
 
       {/* Progressive Difficulty Ladder */}
       <div className="rounded-2xl border-2 border-[#E5E5E5] bg-[#FFFDF9] p-5 space-y-3">

@@ -37,11 +37,15 @@
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- Required on Android 11+ (API 30+) so TextToSpeech can bind to system TTS engines -->
+    <!-- Required on Android 11+ (API 30+) for TTS and Speech Recognition service binding -->
     <queries>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 </manifest>

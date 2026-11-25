@@ -453,6 +453,7 @@ export function assembleAdaptiveLesson(
     targetTier?: number;
     count?: number;
     mode: 'path' | 'review' | 'infinite';
+    forceSpeaking?: boolean;
   },
 ): Exercise[] {
   const count = options.count ?? 7;
@@ -470,10 +471,22 @@ export function assembleAdaptiveLesson(
     const chosenSkill =
       options.skillFocus ?? (i % 3 === 1 ? getWeakestSkill(state) : undefined);
 
-    let ex = generateAdaptiveExercise(state, stepTier, chosenSkill, usedTypes);
+    let ex = generateAdaptiveExercise(
+      state,
+      stepTier,
+      chosenSkill,
+      usedTypes,
+      Boolean(options.forceSpeaking),
+    );
     let retries = 0;
     while (usedCorrect.has(ex.correctAnswer) && retries < 6) {
-      ex = generateAdaptiveExercise(state, stepTier, chosenSkill, usedTypes);
+      ex = generateAdaptiveExercise(
+        state,
+        stepTier,
+        chosenSkill,
+        usedTypes,
+        Boolean(options.forceSpeaking),
+      );
       retries++;
     }
     usedCorrect.add(ex.correctAnswer);

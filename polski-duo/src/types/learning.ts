@@ -86,7 +86,8 @@ export type ExerciseType =
   | 'type_translation'
   | 'cloze_grammar'
   | 'match_pairs'
-  | 'listening';
+  | 'listening'
+  | 'speaking';
 
 export interface MatchPair {
   id: string;
@@ -191,6 +192,7 @@ export interface PathNode {
   icon: string;
   isBoss?: boolean;
   isInfinite?: boolean;
+  isSpeaking?: boolean;
 }
 
 export interface PathSection {

@@ -17,6 +17,7 @@ import {
   Heart,
   Infinity as InfinityIcon,
   Languages,
+  Mic,
   Puzzle,
   ShieldCheck,
   Sparkles,
@@ -66,6 +67,8 @@ function renderNodeIcon(iconKey: string): React.ReactNode {
       return <Puzzle className={cls} />;
     case 'feather':
       return <Feather className={cls} />;
+    case 'mic':
+      return <Mic className={cls} />;
     case 'infinity':
       return <InfinityIcon className="w-9 h-9 stroke-[2.8]" />;
     default:
@@ -277,10 +280,15 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
                       </div>
                     )}
 
-                    <div className="mt-1 text-center max-w-[160px]">
+                    <div className="mt-1 text-center max-w-[165px]">
                       <div className="text-xs font-extrabold text-[#4B4B4B] leading-tight">
                         {node.title}
                       </div>
+                      {node.isSpeaking && (
+                        <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-[#DDF4FF] text-[#1899D6] text-[10px] font-black uppercase">
+                          <Mic className="w-2.5 h-2.5" /> Микрофон · ИИ
+                        </div>
+                      )}
                     </div>
 
                     {/* Popover Card when selected */}

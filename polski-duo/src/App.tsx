@@ -30,6 +30,7 @@ export const App: React.FC = () => {
       skillFocus: node.skillFocus,
       targetTier: node.targetTier,
       count: 6,
+      forceSpeaking: node.isSpeaking,
     });
     setActiveLesson({
       mode: 'path',
@@ -37,6 +38,7 @@ export const App: React.FC = () => {
       nodeId: node.id,
       skillFocus: node.skillFocus,
       initialExercises: exercises,
+      forceSpeaking: node.isSpeaking,
     });
   };
 
@@ -62,19 +64,30 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleStartInfiniteStream = (skillFocus?: SkillId, customStartTier?: number) => {
+  const handleStartInfiniteStream = (
+    skillFocus?: SkillId,
+    customStartTier?: number,
+    forceSpeaking = false,
+  ) => {
     let baseState = aiState;
     if (customStartTier !== undefined) {
       baseState = { ...aiState, currentTier: customStartTier };
       setAiState(baseState);
     }
-    const first = generateAdaptiveExercise(baseState, baseState.currentTier, skillFocus);
+    const first = generateAdaptiveExercise(
+      baseState,
+      baseState.currentTier,
+      skillFocus,
+      [],
+      forceSpeaking,
+    );
     setActiveLesson({
       mode: 'infinite',
-      title: 'Бесконечный поток ИИ',
+      title: forceSpeaking ? 'Бесконечный микрофон · ИИ-фонетист' : 'Бесконечный поток ИИ',
       skillFocus,
       initialExercises: [first],
       isInfinite: true,
+      forceSpeaking,
     });
   };
 

@@ -1,22 +1,39 @@
 package com.polskiorzel.app;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.os.Bundle;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
+import java.util.ArrayList;
 import java.util.Locale;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class MainActivity extends BridgeActivity {
+    private static final int REQ_RECORD_AUDIO = 4401;
+
     private TextToSpeech tts;
     private volatile boolean ttsReady = false;
     private volatile boolean ttsInitializing = false;
     private volatile boolean plSupported = false;
     private volatile String pendingText = null;
     private volatile float pendingRate = 0.92f;
+
+    private SpeechRecognizer speechRecognizer;
+    private volatile boolean sttListening = false;
+    private volatile boolean pendingStartAfterPermission = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +46,7 @@ public class MainActivity extends BridgeActivity {
             settings.setMediaPlaybackRequiresUserGesture(false);
             settings.setDomStorageEnabled(true);
             webView.addJavascriptInterface(new PolskiTtsBridge(), "PolskiAndroidTTS");
+            webView.addJavascriptInterface(new PolskiSttBridge(), "PolskiAndroidSTT");
         }
     }
 
@@ -65,8 +83,6 @@ public class MainActivity extends BridgeActivity {
                     plSupported = resShort != TextToSpeech.LANG_MISSING_DATA
                         && resShort != TextToSpeech.LANG_NOT_SUPPORTED;
                     if (!plSupported) {
-                        // Fall back to default locale only if Polish is strictly unavailable,
-                        // keeping TTS operational rather than silent.
                         tts.setLanguage(Locale.getDefault());
                     }
                 } else {
@@ -81,7 +97,6 @@ public class MainActivity extends BridgeActivity {
                     speakInternal(queued, queuedRate, false);
                 }
             } else if (enginePackage == null) {
-                // Retry explicitly with Google Speech Services if default engine failed
                 initTts("com.google.android.tts");
             }
         };
@@ -131,7 +146,6 @@ public class MainActivity extends BridgeActivity {
                     "polski_" + System.currentTimeMillis()
                 );
                 if (result == TextToSpeech.ERROR && allowReinit) {
-                    // Binder likely died in background; re-init and replay queued text
                     pendingText = text;
                     pendingRate = rate;
                     ttsReady = false;
@@ -148,8 +162,244 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
+    private void dispatchSttEvent(JSONObject payload) {
+        final String json = payload.toString();
+        runOnUiThread(() -> {
+            WebView webView = getBridge().getWebView();
+            if (webView != null) {
+                webView.evaluateJavascript(
+                    "window.__polskiSttEvent && window.__polskiSttEvent(" + json + ");",
+                    null
+                );
+            }
+        });
+    }
+
+    private void emitSttError(String code, String message) {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("type", "error");
+            obj.put("code", code);
+            obj.put("message", message);
+            dispatchSttEvent(obj);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void startNativeListening() {
+        runOnUiThread(() -> {
+            try {
+                if (!SpeechRecognizer.isRecognitionAvailable(getApplicationContext())) {
+                    emitSttError("unavailable", "Распознавание речи недоступно на устройстве (установите приложение Google).");
+                    return;
+                }
+
+                // Pause TTS so microphone doesn't pick up playback
+                if (tts != null) {
+                    try {
+                        tts.stop();
+                    } catch (Exception ignored) {
+                    }
+                }
+
+                if (speechRecognizer != null) {
+                    try {
+                        speechRecognizer.destroy();
+                    } catch (Exception ignored) {
+                    }
+                    speechRecognizer = null;
+                }
+
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(getApplicationContext());
+                speechRecognizer.setRecognitionListener(new RecognitionListener() {
+                    @Override
+                    public void onReadyForSpeech(Bundle params) {
+                        sttListening = true;
+                        try {
+                            JSONObject obj = new JSONObject();
+                            obj.put("type", "ready");
+                            dispatchSttEvent(obj);
+                        } catch (Exception ignored) {
+                        }
+                    }
+
+                    @Override
+                    public void onBeginningOfSpeech() {
+                        try {
+                            JSONObject obj = new JSONObject();
+                            obj.put("type", "speech_start");
+                            dispatchSttEvent(obj);
+                        } catch (Exception ignored) {
+                        }
+                    }
+
+                    @Override
+                    public void onRmsChanged(float rmsdB) {
+                        try {
+                            JSONObject obj = new JSONObject();
+                            obj.put("type", "rms");
+                            obj.put("value", rmsdB);
+                            dispatchSttEvent(obj);
+                        } catch (Exception ignored) {
+                        }
+                    }
+
+                    @Override
+                    public void onBufferReceived(byte[] buffer) {}
+
+                    @Override
+                    public void onEndOfSpeech() {
+                        try {
+                            JSONObject obj = new JSONObject();
+                            obj.put("type", "speech_end");
+                            dispatchSttEvent(obj);
+                        } catch (Exception ignored) {
+                        }
+                    }
+
+                    @Override
+                    public void onError(int error) {
+                        sttListening = false;
+                        String code = "unknown";
+                        String msg = "Не удалось распознать речь. Попробуйте ещё раз.";
+                        switch (error) {
+                            case SpeechRecognizer.ERROR_AUDIO:
+                                code = "audio";
+                                msg = "Ошибка записи с микрофона.";
+                                break;
+                            case SpeechRecognizer.ERROR_NETWORK:
+                            case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
+                                code = "network";
+                                msg = "Для распознавания речи проверьте подключение к интернету или офлайн-пакет pl-PL.";
+                                break;
+                            case SpeechRecognizer.ERROR_NO_MATCH:
+                                code = "no_match";
+                                msg = "Речь не распознана. Говорите чуть громче и ближе к микрофону.";
+                                break;
+                            case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
+                                code = "timeout";
+                                msg = "Микрофон не услышал голос. Нажмите и сразу произнесите фразу.";
+                                break;
+                            case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
+                                code = "busy";
+                                msg = "Микрофон занят, подождите секунду и попробуйте снова.";
+                                break;
+                            case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
+                                code = "permission_denied";
+                                msg = "Нет доступа к микрофону. Разрешите запись звука в настройках.";
+                                break;
+                            case SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED:
+                            case SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE:
+                                code = "language_unavailable";
+                                msg = "Польский язык распознавания (pl-PL) не найден в сервисе Google.";
+                                break;
+                            default:
+                                break;
+                        }
+                        emitSttError(code, msg);
+                    }
+
+                    @Override
+                    public void onResults(Bundle results) {
+                        sttListening = false;
+                        ArrayList<String> matches =
+                            results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                        float[] scores =
+                            results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES);
+
+                        if (matches == null || matches.isEmpty()) {
+                            emitSttError("no_match", "Речь не распознана. Попробуйте сказать чуть чётче.");
+                            return;
+                        }
+
+                        try {
+                            JSONObject obj = new JSONObject();
+                            obj.put("type", "result");
+                            JSONArray hyps = new JSONArray();
+                            for (String m : matches) {
+                                hyps.put(m);
+                            }
+                            obj.put("hypotheses", hyps);
+
+                            JSONArray confs = new JSONArray();
+                            if (scores != null) {
+                                for (float s : scores) {
+                                    confs.put(Math.max(0.0, Math.min(1.0, s)));
+                                }
+                            }
+                            obj.put("confidences", confs);
+                            dispatchSttEvent(obj);
+                        } catch (Exception e) {
+                            emitSttError("parse", "Ошибка обработки результата речи.");
+                        }
+                    }
+
+                    @Override
+                    public void onPartialResults(Bundle partialResults) {
+                        ArrayList<String> partial =
+                            partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                        if (partial != null && !partial.isEmpty()) {
+                            try {
+                                JSONObject obj = new JSONObject();
+                                obj.put("type", "partial");
+                                obj.put("text", partial.get(0));
+                                dispatchSttEvent(obj);
+                            } catch (Exception ignored) {
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onEvent(int eventType, Bundle params) {}
+                });
+
+                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pl-PL");
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pl-PL");
+                intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+                intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
+                intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L);
+                intent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L);
+                intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+
+                speechRecognizer.startListening(intent);
+            } catch (Exception e) {
+                sttListening = false;
+                emitSttError("exception", "Не удалось запустить микрофон: " + e.getMessage());
+            }
+        });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+        int requestCode,
+        @NonNull String[] permissions,
+        @NonNull int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_RECORD_AUDIO) {
+            boolean granted =
+                grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted && pendingStartAfterPermission) {
+                pendingStartAfterPermission = false;
+                startNativeListening();
+            } else if (!granted) {
+                pendingStartAfterPermission = false;
+                emitSttError("permission_denied", "Доступ к микрофону отклонён. Разрешите микрофон для разговорных уровней.");
+            }
+        }
+    }
+
     @Override
     public void onDestroy() {
+        if (speechRecognizer != null) {
+            try {
+                speechRecognizer.destroy();
+            } catch (Exception ignored) {
+            }
+            speechRecognizer = null;
+        }
         if (tts != null) {
             try {
                 tts.stop();
@@ -173,7 +423,6 @@ public class MainActivity extends BridgeActivity {
                 if (!ttsInitializing) {
                     runOnUiThread(() -> initTts(null));
                 }
-                // Queued for immediate playback once engine finishes binding
                 return true;
             }
             speakInternal(text, rate, true);
@@ -211,6 +460,62 @@ public class MainActivity extends BridgeActivity {
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(intent);
                 } catch (Exception ignored) {
+                }
+            });
+        }
+    }
+
+    private class PolskiSttBridge {
+        @JavascriptInterface
+        public boolean isAvailable() {
+            try {
+                return SpeechRecognizer.isRecognitionAvailable(getApplicationContext());
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public boolean isListening() {
+            return sttListening;
+        }
+
+        @JavascriptInterface
+        public void startListening() {
+            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+                pendingStartAfterPermission = true;
+                ActivityCompat.requestPermissions(
+                    MainActivity.this,
+                    new String[] { Manifest.permission.RECORD_AUDIO },
+                    REQ_RECORD_AUDIO
+                );
+                return;
+            }
+            startNativeListening();
+        }
+
+        @JavascriptInterface
+        public void stopListening() {
+            runOnUiThread(() -> {
+                if (speechRecognizer != null && sttListening) {
+                    try {
+                        speechRecognizer.stopListening();
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void cancelListening() {
+            sttListening = false;
+            runOnUiThread(() -> {
+                if (speechRecognizer != null) {
+                    try {
+                        speechRecognizer.cancel();
+                    } catch (Exception ignored) {
+                    }
                 }
             });
         }

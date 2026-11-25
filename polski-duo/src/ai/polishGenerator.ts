@@ -675,6 +675,34 @@ function makeListeningExercise(
   };
 }
 
+function makeSpeakingExercise(
+  plText: string,
+  ruText: string,
+  phoneticRu: string | undefined,
+  skill: SkillId,
+  tier: number,
+  itemIds: string[],
+  aiNote: string,
+  grammarTag = 'Говорение · ИИ-оценка речи',
+): Exercise {
+  return {
+    id: nextId('spk'),
+    type: 'speaking',
+    skill,
+    tier,
+    promptRu: 'Нажмите на микрофон и произнесите фразу по-польски:',
+    questionPl: plText,
+    questionRu: ruText,
+    phoneticHint: phoneticRu,
+    audioTextPl: plText,
+    correctAnswer: plText,
+    acceptedAnswers: [plText],
+    itemIds,
+    grammarTag,
+    aiNote,
+  };
+}
+
 function makeMatchPairsExercise(tier: number, skillFocus?: SkillId): Exercise {
   const candidates = LEXICON.filter((item) => {
     const tierOk = Math.abs(item.tier - Math.min(tier, 7)) <= 3;
@@ -710,6 +738,7 @@ export function generateAdaptiveExercise(
   targetTier: number,
   skillFocus?: SkillId,
   usedTypes: ExerciseType[] = [],
+  forceSpeaking = false,
 ): Exercise {
   const clampedTier = Math.max(1, Math.min(10, targetTier));
 
@@ -747,22 +776,73 @@ export function generateAdaptiveExercise(
   const chosenSent =
     sentCandidates.length > 0 ? pickRandom(sentCandidates) : pickRandom(SENTENCE_POOL);
 
+  // Dedicated Speaking / Microphone levels always produce rich spoken tasks
+  if (forceSpeaking) {
+    const usePhrase = clampedTier >= 2.0 || Math.random() < 0.65;
+    if (usePhrase) {
+      return makeSpeakingExercise(
+        chosenSent.pl,
+        chosenSent.ru,
+        chosenSent.phoneticRu !== chosenSent.pl.toLowerCase() ? chosenSent.phoneticRu : undefined,
+        chosenSent.skill,
+        chosenSent.tier,
+        chosenSent.itemIds,
+        chosenSent.aiNote,
+        chosenSent.grammarTag ? `Речь · ${chosenSent.grammarTag}` : 'Разговорная практика · ИИ',
+      );
+    }
+    return makeSpeakingExercise(
+      chosenLex.examplePl || chosenLex.pl,
+      chosenLex.examplePl ? chosenLex.exampleRu : chosenLex.ru,
+      chosenLex.phoneticRu,
+      chosenLex.skill,
+      chosenLex.tier,
+      [chosenLex.id],
+      chosenLex.falseFriendNote ?? `Произнесите вслух: «${chosenLex.pl}» [${chosenLex.phoneticRu}].`,
+      'Произношение · Микрофон',
+    );
+  }
+
   // Pick exercise type dynamically based on tier + avoiding repeating same type back-to-back
   const lastType = usedTypes[usedTypes.length - 1];
   const candidateTypes: ExerciseType[] = [];
 
   if (clampedTier < 2.2) {
-    candidateTypes.push('multiple_choice', 'multiple_choice', 'match_pairs', 'listening', 'word_tiles');
+    candidateTypes.push('multiple_choice', 'multiple_choice', 'match_pairs', 'listening', 'word_tiles', 'speaking');
   } else if (clampedTier < 4.5) {
-    candidateTypes.push('multiple_choice', 'word_tiles', 'cloze_grammar', 'match_pairs', 'listening', 'type_translation');
+    candidateTypes.push('multiple_choice', 'word_tiles', 'cloze_grammar', 'match_pairs', 'listening', 'type_translation', 'speaking');
   } else if (clampedTier < 7.0) {
-    candidateTypes.push('word_tiles', 'cloze_grammar', 'type_translation', 'multiple_choice', 'listening', 'match_pairs');
+    candidateTypes.push('word_tiles', 'cloze_grammar', 'type_translation', 'multiple_choice', 'listening', 'match_pairs', 'speaking');
   } else {
-    candidateTypes.push('type_translation', 'cloze_grammar', 'word_tiles', 'listening', 'multiple_choice');
+    candidateTypes.push('type_translation', 'cloze_grammar', 'word_tiles', 'listening', 'multiple_choice', 'speaking');
   }
 
   const filteredTypes = candidateTypes.filter((t) => t !== lastType);
   const chosenType = pickRandom(filteredTypes.length > 0 ? filteredTypes : candidateTypes);
+
+  if (chosenType === 'speaking') {
+    const useSentence = clampedTier >= 2.5 || Math.random() < 0.55;
+    if (useSentence) {
+      return makeSpeakingExercise(
+        chosenSent.pl,
+        chosenSent.ru,
+        undefined,
+        chosenSent.skill,
+        chosenSent.tier,
+        chosenSent.itemIds,
+        chosenSent.aiNote,
+      );
+    }
+    return makeSpeakingExercise(
+      chosenLex.pl,
+      chosenLex.ru,
+      chosenLex.phoneticRu,
+      chosenLex.skill,
+      chosenLex.tier,
+      [chosenLex.id],
+      chosenLex.falseFriendNote ?? `Скажите в микрофон: «${chosenLex.pl}» [${chosenLex.phoneticRu}].`,
+    );
+  }
 
   if (chosenType === 'match_pairs') {
     return makeMatchPairsExercise(clampedTier, skillFocus);

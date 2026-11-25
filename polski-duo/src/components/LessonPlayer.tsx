@@ -8,7 +8,10 @@ import {
   Heart,
   Infinity as InfinityIcon,
   Lightbulb,
+  Mic,
+  RotateCcw,
   Sparkles,
+  Square,
   Volume2,
   X,
   XCircle,
@@ -19,6 +22,7 @@ import {
   recordCompletedSession,
 } from '../ai/localAiEngine';
 import { generateAdaptiveExercise, generatePlacementQuestion } from '../ai/polishGenerator';
+import { analyzePolishSpeech, SpeechAiReport } from '../ai/speechAiEngine';
 import { LEXICON, SKILL_META } from '../data/polishLexicon';
 import {
   AnswerEvaluation,
@@ -34,6 +38,11 @@ import {
   speakPolish,
   SpeakStatus,
 } from '../utils/sound';
+import {
+  cancelPolishListening,
+  startPolishListening,
+  stopPolishListening,
+} from '../utils/speechInput';
 import { MascotOrzel } from './MascotOrzel';
 
 const POLISH_CHARS = ['ą', 'ć', 'ę', 'ł', 'ń', 'ó', 'ś', 'ź', 'ż'];
@@ -46,6 +55,7 @@ export interface LessonConfig {
   initialExercises: Exercise[];
   isInfinite?: boolean;
   isPlacement?: boolean;
+  forceSpeaking?: boolean;
 }
 
 interface LessonPlayerProps {
@@ -76,6 +86,13 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   const [hintLevel, setHintLevel] = useState<number>(0);
   const [speakingActive, setSpeakingActive] = useState<boolean>(false);
   const [speakStatus, setSpeakStatus] = useState<SpeakStatus | null>(null);
+
+  // Speaking / Microphone AI state
+  const [micListening, setMicListening] = useState<boolean>(false);
+  const [micRms, setMicRms] = useState<number>(0.15);
+  const [micPartial, setMicPartial] = useState<string>('');
+  const [micError, setMicError] = useState<string | null>(null);
+  const [speechReport, setSpeechReport] = useState<SpeechAiReport | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -115,9 +132,13 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
     if (currentExercise?.audioTextPl && currentExercise.type === 'listening') {
       triggerSpeak(currentExercise.audioTextPl, false);
     }
+    return () => {
+      cancelPolishListening();
+    };
   }, [index, currentExercise?.id]);
 
   const resetInputs = () => {
+    cancelPolishListening();
     setSelectedOption('');
     setTypedText('');
     setSelectedTiles([]);
@@ -127,6 +148,11 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
     setEvaluation(null);
     setHintLevel(0);
     setSpeakStatus(null);
+    setMicListening(false);
+    setMicRms(0.15);
+    setMicPartial('');
+    setMicError(null);
+    setSpeechReport(null);
   };
 
   const canCheck = useMemo(() => {
@@ -146,8 +172,11 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
     if (currentExercise.type === 'match_pairs') {
       return matchedIds.length === (currentExercise.pairs?.length ?? 5);
     }
+    if (currentExercise.type === 'speaking') {
+      return Boolean(speechReport);
+    }
     return false;
-  }, [currentExercise, evaluation, selectedOption, selectedTiles, typedText, matchedIds]);
+  }, [currentExercise, evaluation, selectedOption, selectedTiles, typedText, matchedIds, speechReport]);
 
   const handleTileTap = (tileIdx: number) => {
     if (evaluation) return;
@@ -190,8 +219,96 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
     }
   };
 
+  const handleMicToggle = () => {
+    if (!currentExercise || evaluation) return;
+
+    if (micListening) {
+      stopPolishListening();
+      setMicListening(false);
+      return;
+    }
+
+    setMicError(null);
+    setMicPartial('');
+    setSpeechReport(null);
+    setMicListening(true);
+    playUiSound('tap', aiState.soundEnabled);
+
+    startPolishListening({
+      onReady: () => {
+        setMicListening(true);
+      },
+      onRms: (level01) => {
+        setMicRms(level01);
+      },
+      onPartial: (text) => {
+        setMicPartial(text);
+      },
+      onResult: (hypotheses, confidences) => {
+        setMicListening(false);
+        setMicRms(0.15);
+        const report = analyzePolishSpeech(currentExercise.correctAnswer, hypotheses, confidences);
+        setSpeechReport(report);
+        if (report.isPass) {
+          playUiSound('correct', aiState.soundEnabled);
+        } else {
+          playUiSound('wrong', aiState.soundEnabled);
+        }
+      },
+      onError: (_code, message) => {
+        setMicListening(false);
+        setMicRms(0.15);
+        setMicError(message);
+      },
+    });
+  };
+
   const submitAnswer = (overrideAnswer?: string) => {
     if (!currentExercise || evaluation) return;
+
+    const responseMs = Math.max(500, Date.now() - questionStartRef.current);
+
+    if (currentExercise.type === 'speaking') {
+      const report = speechReport;
+      const isPass = overrideAnswer === 'SKIP_SPEAKING' ? true : Boolean(report?.isPass);
+      const result: AnswerEvaluation =
+        overrideAnswer === 'SKIP_SPEAKING'
+          ? {
+              isCorrect: true,
+              isMinorDiacriticSlip: true,
+              feedbackTitle: 'Задание пройдено в тихом режиме',
+              feedbackExplanation: currentExercise.aiNote,
+              correctDisplay: currentExercise.correctAnswer,
+            }
+          : {
+              isCorrect: isPass,
+              isMinorDiacriticSlip: Boolean(report && report.overallScore >= 62 && report.overallScore < 85),
+              errorKind: isPass ? undefined : 'diacritic_slip',
+              feedbackTitle: report?.headlineRu ?? 'Оценка речи завершена',
+              feedbackExplanation: `${report?.summaryRu ?? ''} ${report?.coachingTips[0] ?? ''}`.trim(),
+              correctDisplay: currentExercise.correctAnswer,
+            };
+
+      setEvaluation(result);
+      setAnsweredCount((c) => c + 1);
+      if (result.isCorrect) {
+        playUiSound('correct', aiState.soundEnabled);
+        setCorrectCount((c) => c + 1);
+        setCombo((c) => {
+          const next = c + 1;
+          setMaxCombo((m) => Math.max(m, next));
+          return next;
+        });
+      } else {
+        playUiSound('wrong', aiState.soundEnabled);
+        setCombo(0);
+      }
+
+      onUpdateState((prev) =>
+        applyExerciseOutcome(prev, currentExercise, result, responseMs, Boolean(config.isInfinite)),
+      );
+      return;
+    }
 
     let userAnswer = overrideAnswer ?? '';
     if (!overrideAnswer) {
@@ -212,7 +329,6 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
       }
     }
 
-    const responseMs = Math.max(500, Date.now() - questionStartRef.current);
     const result = evaluateAnswer(currentExercise, userAnswer, aiState.currentTier);
     setEvaluation(result);
     setAnsweredCount((c) => c + 1);
@@ -294,6 +410,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
         aiState.currentTier,
         config.skillFocus,
         [currentExercise.type],
+        Boolean(config.forceSpeaking),
       );
       setExercises((prev) => [...prev, nextEx]);
       setIndex((i) => i + 1);
@@ -887,7 +1004,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                 })}
               </div>
 
-              <div className="space-y-2.5">
+                <div className="space-y-2.5">
                 {shuffledRightPairs.map((p) => {
                   const matched = matchedIds.includes(p.id);
                   const selected = selectedPair?.side === 'right' && selectedPair.id === p.id;
@@ -909,6 +1026,223 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* === EXERCISE MECHANIC 6: SPEAKING (MICROPHONE + AI PRONUNCIATION ANALYZER) === */}
+          {currentExercise.type === 'speaking' && (
+            <div className="rounded-3xl border-2 border-[#E5E5E5] bg-white p-5 sm:p-6 space-y-5 shadow-xs">
+              {/* Mic Button + Live Voice Wave */}
+              <div className="flex flex-col items-center text-center gap-4">
+                <button
+                  type="button"
+                  disabled={Boolean(evaluation)}
+                  onClick={handleMicToggle}
+                  className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                    micListening
+                      ? 'bg-[#DC143C] text-white shadow-[0_6px_0_#A30D2B] scale-105'
+                      : evaluation
+                        ? 'bg-[#E5E5E5] text-[#AFAFAF] cursor-not-allowed'
+                        : 'bg-[#1CB0F6] hover:bg-[#18A0E0] text-white shadow-[0_6px_0_#1899D6] active:translate-y-[2px]'
+                  }`}
+                  aria-label={micListening ? 'Остановить запись' : 'Говорить в микрофон'}
+                >
+                  {micListening && (
+                    <span className="absolute -inset-3 rounded-full border-4 border-[#DC143C]/40 animate-ping pointer-events-none" />
+                  )}
+                  {micListening ? (
+                    <Square className="w-9 h-9 fill-white" />
+                  ) : (
+                    <Mic className="w-10 h-10 stroke-[2.5]" />
+                  )}
+                </button>
+
+                <div>
+                  <div className="text-base font-black text-[#3C3C3C]">
+                    {micListening
+                      ? 'Слушаю польскую речь... Нажмите, чтобы закончить'
+                      : speechReport
+                        ? 'ИИ-анализ произношения готов'
+                        : 'Нажмите на микрофон и произнесите фразу вслух'}
+                  </div>
+                  {micListening && (
+                    <div className="flex items-center justify-center gap-1.5 h-8 mt-3">
+                      {[0.45, 0.75, 1, 0.85, 0.6, 0.95, 0.7, 0.5, 0.88, 0.65].map((mult, idx) => (
+                        <span
+                          key={idx}
+                          className="w-1.5 rounded-full bg-[#1CB0F6] transition-all duration-100"
+                          style={{
+                            height: `${Math.max(6, Math.round(micRms * 28 * mult))}px`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {micPartial && micListening && (
+                    <div className="mt-2 px-3 py-1.5 rounded-xl bg-[#DDF4FF] text-[#1899D6] text-sm font-black inline-block">
+                      «{micPartial}»
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Error banner if mic failed / permission denied */}
+              {micError && (
+                <div className="rounded-2xl border-2 border-[#FFC800] bg-[#FFFDF2] p-3.5 text-center space-y-2">
+                  <div className="text-sm font-black text-[#B37800]">{micError}</div>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleMicToggle}
+                      className="px-3 py-1.5 rounded-xl bg-[#1CB0F6] text-white text-xs font-black cursor-pointer"
+                    >
+                      Попробовать микрофон снова
+                    </button>
+                    {!evaluation && (
+                      <button
+                        type="button"
+                        onClick={() => submitAnswer('SKIP_SPEAKING')}
+                        className="px-3 py-1.5 rounded-xl border border-[#E5E5E5] bg-white text-[#777777] text-xs font-black cursor-pointer"
+                      >
+                        Не могу говорить сейчас (пропустить)
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Powerful AI Pronunciation Diagnostic Card */}
+              {speechReport && (
+                <div
+                  className={`rounded-2xl border-2 p-4 space-y-3.5 animate-pop ${
+                    speechReport.verdict === 'excellent'
+                      ? 'bg-[#F2FFE5] border-[#58CC02]'
+                      : speechReport.verdict === 'good'
+                        ? 'bg-[#F0FAFF] border-[#1CB0F6]'
+                        : speechReport.verdict === 'almost'
+                          ? 'bg-[#FFFDF2] border-[#FFC800]'
+                          : 'bg-[#FFF2F4] border-[#DC143C]'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#777777]">
+                        <BrainCircuit className="w-4 h-4 text-[#CE82FF]" />
+                        ИИ-фонетист (G2P + акустика)
+                      </div>
+                      <div className="text-base sm:text-lg font-black text-[#3C3C3C] mt-0.5">
+                        {speechReport.headlineRu}
+                      </div>
+                    </div>
+
+                    <div
+                      className={`px-3.5 py-2 rounded-2xl font-black text-xl text-white ${
+                        speechReport.overallScore >= 85
+                          ? 'bg-[#58CC02]'
+                          : speechReport.overallScore >= 62
+                            ? 'bg-[#1CB0F6]'
+                            : speechReport.overallScore >= 46
+                              ? 'bg-[#FF9600]'
+                              : 'bg-[#DC143C]'
+                      }`}
+                    >
+                      {speechReport.overallScore}%
+                    </div>
+                  </div>
+
+                  {/* Heard transcript + sub-metrics */}
+                  <div className="rounded-xl bg-white/80 border border-[#E5E5E5] p-3 space-y-2">
+                    <div className="text-xs font-extrabold text-[#777777]">
+                      Распознано ИИ:{' '}
+                      <span className="text-[#3C3C3C] font-black">
+                        «{speechReport.bestTranscript}»
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-lg bg-[#F7F7F7] py-1.5 px-2">
+                        <div className="text-[10px] font-extrabold text-[#777777] uppercase">Фонетика</div>
+                        <div className="text-sm font-black text-[#3C3C3C]">{speechReport.pronunciationScore}%</div>
+                      </div>
+                      <div className="rounded-lg bg-[#F7F7F7] py-1.5 px-2">
+                        <div className="text-[10px] font-extrabold text-[#777777] uppercase">Полнота</div>
+                        <div className="text-sm font-black text-[#3C3C3C]">{speechReport.fluencyScore}%</div>
+                      </div>
+                      <div className="rounded-lg bg-[#F7F7F7] py-1.5 px-2">
+                        <div className="text-[10px] font-extrabold text-[#777777] uppercase">Чёткость</div>
+                        <div className="text-sm font-black text-[#3C3C3C]">{speechReport.acousticConfidence}%</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Word-by-word phonetic accuracy chips */}
+                  <div>
+                    <div className="text-[11px] font-black uppercase text-[#777777] mb-1.5">
+                      Разбор по словам:
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {speechReport.words.map((w, idx) => (
+                        <div
+                          key={`${w.targetWord}_${idx}`}
+                          className={`rounded-xl border px-3 py-1.5 text-xs font-black flex items-center gap-1.5 ${
+                            w.status === 'exact'
+                              ? 'bg-[#D7FFB8] border-[#58CC02] text-[#46A302]'
+                              : w.status === 'accent'
+                                ? 'bg-[#FFF5D6] border-[#FFC800] text-[#B37800]'
+                                : 'bg-[#FFE4E8] border-[#DC143C] text-[#A30D2B]'
+                          }`}
+                        >
+                          <span>{w.targetWord}</span>
+                          <span className="opacity-75">({w.score}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Coaching tips */}
+                  <div className="space-y-1">
+                    {speechReport.coachingTips.map((tip, i) => (
+                      <p key={i} className="text-xs font-bold text-[#4B4B4B] leading-snug">
+                        • {tip}
+                      </p>
+                    ))}
+                  </div>
+
+                  {!evaluation && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleMicToggle}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border-2 border-b-4 border-[#E5E5E5] bg-white hover:bg-[#F7F7F7] text-xs font-black text-[#3C3C3C] cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Сказать ещё раз
+                      </button>
+                      {!speechReport.isPass && (
+                        <button
+                          type="button"
+                          onClick={() => submitAnswer('SKIP_SPEAKING')}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold text-[#777777] hover:text-[#3C3C3C] cursor-pointer"
+                        >
+                          Пропустить сейчас
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Subtle quiet-environment skip before recording */}
+              {!speechReport && !micListening && !micError && !evaluation && (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => submitAnswer('SKIP_SPEAKING')}
+                    className="text-xs font-extrabold text-[#AFAFAF] hover:text-[#777777] underline cursor-pointer"
+                  >
+                    Не могу говорить сейчас — пропустить в тихом режиме
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
