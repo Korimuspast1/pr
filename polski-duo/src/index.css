@@ -1,0 +1,121 @@
+@import "tailwindcss";
+@import "@fontsource/nunito/400.css";
+@import "@fontsource/nunito/600.css";
+@import "@fontsource/nunito/700.css";
+@import "@fontsource/nunito/800.css";
+@import "@fontsource/nunito/900.css";
+
+@layer base {
+  body {
+    font-family: 'Nunito', 'DIN Next Rounded', ui-rounded, system-ui, -apple-system, sans-serif;
+    color: #3C3C3C;
+    background-color: #FFFFFF;
+  }
+}
+
+/* Tactile Duolingo 3D buttons */
+.duo-btn {
+  transition: transform 80ms ease, filter 120ms ease, box-shadow 80ms ease;
+  user-select: none;
+  cursor: pointer;
+}
+
+.duo-btn:active:not(:disabled) {
+  transform: translateY(3px);
+}
+
+.duo-btn-green {
+  background-color: #58CC02;
+  color: #FFFFFF;
+  border-bottom: 4px solid #46A302;
+}
+.duo-btn-green:hover:not(:disabled) {
+  background-color: #61E002;
+}
+.duo-btn-green:active:not(:disabled) {
+  border-bottom-width: 1px;
+  margin-top: 3px;
+}
+
+.duo-btn-crimson {
+  background-color: #DC143C;
+  color: #FFFFFF;
+  border-bottom: 4px solid #A30D2B;
+}
+.duo-btn-crimson:hover:not(:disabled) {
+  background-color: #E91E46;
+}
+.duo-btn-crimson:active:not(:disabled) {
+  border-bottom-width: 1px;
+  margin-top: 3px;
+}
+
+.duo-btn-blue {
+  background-color: #1CB0F6;
+  color: #FFFFFF;
+  border-bottom: 4px solid #1899D6;
+}
+.duo-btn-blue:hover:not(:disabled) {
+  background-color: #31BCFF;
+}
+.duo-btn-blue:active:not(:disabled) {
+  border-bottom-width: 1px;
+  margin-top: 3px;
+}
+
+.duo-btn-purple {
+  background-color: #CE82FF;
+  color: #FFFFFF;
+  border-bottom: 4px solid #A55EEA;
+}
+.duo-btn-purple:hover:not(:disabled) {
+  background-color: #D798FF;
+}
+.duo-btn-purple:active:not(:disabled) {
+  border-bottom-width: 1px;
+  margin-top: 3px;
+}
+
+.duo-btn-outline {
+  background-color: #FFFFFF;
+  color: #4B4B4B;
+  border: 2px solid #E5E5E5;
+  border-bottom: 4px solid #E5E5E5;
+}
+.duo-btn-outline:hover:not(:disabled) {
+  background-color: #F7F7F7;
+}
+.duo-btn-outline:active:not(:disabled) {
+  border-bottom-width: 2px;
+  margin-top: 2px;
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.92); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shakeWrong {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.animate-float {
+  animation: floatSlow 3.2s ease-in-out infinite;
+}
+
+.animate-pop {
+  animation: popIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-shake {
+  animation: shakeWrong 0.36s ease-in-out;
+}

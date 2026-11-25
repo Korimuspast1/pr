@@ -1,0 +1,26 @@
+{
+  "name": "polski-duo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PolskiOrzeł — приложение в стиле Duolingo для изучения польского языка русскоязычными с локальным адаптивным ИИ",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@fontsource/nunito": "^5.2.7",
+    "lucide-react": "^0.554.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.4",
+    "@vitejs/plugin-react": "^5.1.1"
+  }
+}
