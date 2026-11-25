@@ -25,18 +25,5 @@
   [10/12] 74766 B  (всего 676681 B)
   [11/12] 75540 B  (всего 752221 B)
   [12/12] 16956 B  (всего 769177 B)
-собираю mp4: ffmpeg -y -hide_banner -loglevel warning -i /home/runner/work/pr/pr/_video.mp4 -i /home/runner/work/pr/pr/_audio.mp4 -c copy -movflags +faststart manhunt_trailer.mp4
-Traceback (most recent call last):
-  File "/home/runner/work/pr/pr/scripts/steam_trailer_dl.py", line 157, in <module>
-    sys.exit(main())
-             ^^^^^^
-  File "/home/runner/work/pr/pr/scripts/steam_trailer_dl.py", line 138, in main
-    subprocess.run(cmd, check=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/subprocess.py", line 548, in run
-    with Popen(*popenargs, **kwargs) as process:
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/subprocess.py", line 1026, in __init__
-    self._execute_child(args, executable, preexec_fn, close_fds,
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/subprocess.py", line 1955, in _execute_child
-    raise child_exception_type(errno_num, err_msg, err_filename)
-FileNotFoundError: [Errno 2] No such file or directory: 'ffmpeg'
+собираю mp4: /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/imageio_ffmpeg/binaries/ffmpeg-linux-x86_64-v9.0.2 -y -hide_banner -loglevel warning -i /home/runner/work/pr/pr/_video.mp4 -i /home/runner/work/pr/pr/_audio.mp4 -c copy -movflags +faststart manhunt_trailer.mp4
+готово: manhunt_trailer.mp4 (4568178 B, 4.36 MiB)
