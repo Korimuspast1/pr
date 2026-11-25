@@ -20,20 +20,17 @@ export const TrainerView: React.FC<TrainerViewProps> = ({ model, onModelUpdated 
   const [sampleOutput, setSampleOutput] = useState('');
   const [temperature, setTemperature] = useState(0.35);
 
-  const timerRef = useRef<number | null>(null);
+  const trainingActiveRef = useRef(false);
   const tokensRef = useRef<number[]>([]);
 
   useEffect(() => {
     return () => {
-      if (timerRef.current) window.clearInterval(timerRef.current);
+      trainingActiveRef.current = false;
     };
   }, []);
 
   const stopTraining = () => {
-    if (timerRef.current) {
-      window.clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
+    trainingActiveRef.current = false;
     setTraining(false);
     onModelUpdated(model);
   };
@@ -44,49 +41,57 @@ export const TrainerView: React.FC<TrainerViewProps> = ({ model, onModelUpdated 
       return;
     }
 
+    let activeModel = model;
     // Ensure vocab covers all characters in custom corpus
     const missingChars = Array.from(new Set(Array.from(corpus))).filter(
-      (ch) => !model.charToId.has(ch),
+      (ch) => !activeModel.charToId.has(ch),
     );
     if (missingChars.length > 0) {
-      const nextVocab = [...model.vocab, ...missingChars];
+      const nextVocab = [...activeModel.vocab, ...missingChars];
       const rebuilt = new MiniTransformer(nextVocab, {
-        blockSize: model.config.blockSize,
-        dModel: model.config.dModel,
-        nHead: model.config.nHead,
-        nLayer: model.config.nLayer,
+        blockSize: activeModel.config.blockSize,
+        dModel: activeModel.config.dModel,
+        nHead: activeModel.config.nHead,
+        nLayer: activeModel.config.nLayer,
       });
-      tokensRef.current = rebuilt.encode(corpus);
+      activeModel = rebuilt;
       onModelUpdated(rebuilt);
       setStepCount(rebuilt.stepCount);
       setLoss(rebuilt.lastLoss);
       setLossHistory(rebuilt.lossHistory);
-    } else {
-      tokensRef.current = model.encode(corpus);
     }
 
+    tokensRef.current = activeModel.encode(corpus);
     if (tokensRef.current.length < 16) return;
 
+    trainingActiveRef.current = true;
     setTraining(true);
-    timerRef.current = window.setInterval(() => {
-      const l = model.trainStep(tokensRef.current, lr, 3);
-      setStepCount(model.stepCount);
+
+    const runNext = () => {
+      if (!trainingActiveRef.current) return;
+      const l = activeModel.trainStep(tokensRef.current, lr, 2);
+      setStepCount(activeModel.stepCount);
       setLoss(l);
-      setLossHistory([...model.lossHistory]);
-      if (model.stepCount % 15 === 0) {
-        onModelUpdated(model);
+      setLossHistory([...activeModel.lossHistory]);
+      if (activeModel.stepCount % 5 === 0) {
+        onModelUpdated(activeModel);
       }
-    }, 35);
+      if (trainingActiveRef.current) {
+        window.setTimeout(runNext, 25);
+      }
+    };
+
+    window.setTimeout(runNext, 20);
   };
 
   const handleResetFresh = () => {
     stopTraining();
-    const vocab = Array.from(new Set(Array.from(corpus)));
+    const vocab = MiniTransformer.buildVocab(corpus);
     const fresh = new MiniTransformer(vocab, {
-      blockSize: 40,
-      dModel: 48,
+      blockSize: 64,
+      dModel: 120,
       nHead: 4,
-      nLayer: 2,
+      nLayer: 4,
     });
     onModelUpdated(fresh);
     setStepCount(0);

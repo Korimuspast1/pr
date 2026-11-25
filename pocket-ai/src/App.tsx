@@ -27,7 +27,7 @@ import {
 } from './types/ai';
 
 const STATE_KEY = 'pocket_ai_studio_state_v1';
-const MINI_CP_KEY = 'pocket_ai_mini_checkpoint_v1';
+const MINI_CP_KEY = 'pocket_ai_mini_checkpoint_v2_500k';
 
 interface SavedStudioState {
   messages: ChatMessage[];

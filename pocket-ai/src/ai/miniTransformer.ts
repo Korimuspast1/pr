@@ -742,7 +742,7 @@ export class MiniTransformer {
       version: 1,
       config: { ...this.config },
       vocab: [...this.vocab],
-      weights: Array.from(this.params, (v) => Number(v.toFixed(5))),
+      weights: Array.from(this.params, (v) => Number(v.toFixed(4))),
       stepCount: this.stepCount,
       lastLoss: this.lastLoss,
       lossHistory: [...this.lossHistory],
