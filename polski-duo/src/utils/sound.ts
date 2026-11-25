@@ -13,6 +13,8 @@ declare global {
 }
 
 let audioCtx: AudioContext | null = null;
+let activeUtterance: SpeechSynthesisUtterance | null = null;
+let speakTimer: number | null = null;
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -83,7 +85,7 @@ function playSyllableFallbackChime(text: string): void {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(freq, start);
     gain.gain.setValueAtTime(0.001, start);
-    gain.gain.exponentialRampToValueAtTime(0.07, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.11, start + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.001, start + 0.13);
     osc.connect(gain);
     gain.connect(ctx.destination);
@@ -92,7 +94,11 @@ function playSyllableFallbackChime(text: string): void {
   });
 }
 
-export type SpeakStatus = 'android_tts' | 'android_needs_pl_pack' | 'web_speech' | 'fallback_chime';
+export type SpeakStatus =
+  | 'android_tts'
+  | 'android_needs_pl_pack'
+  | 'web_speech'
+  | 'fallback_chime';
 
 export function speakPolish(text: string, slow = false): SpeakStatus {
   if (typeof window === 'undefined' || !text.trim()) return 'fallback_chime';
@@ -102,8 +108,13 @@ export function speakPolish(text: string, slow = false): SpeakStatus {
   if (androidTts) {
     try {
       const rate = slow ? 0.65 : 0.92;
+      const ready = androidTts.isReady();
       const spoke = androidTts.speak(text, rate);
       if (spoke) {
+        if (!ready) {
+          // Queued in Java until TTS finishes binding; assume pl or prompt after
+          return 'android_tts';
+        }
         return androidTts.isPolishSupported() ? 'android_tts' : 'android_needs_pl_pack';
       }
     } catch {
@@ -111,19 +122,49 @@ export function speakPolish(text: string, slow = false): SpeakStatus {
     }
   }
 
-  // 2. Browser Web Speech API
+  // 2. Browser Web Speech API (avoids Chrome cancel()+speak() race bug)
   if ('speechSynthesis' in window) {
     try {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = 'pl-PL';
-      utter.rate = slow ? 0.65 : 0.92;
-      const voices = window.speechSynthesis.getVoices();
-      const plVoice = voices.find((v) => v.lang.toLowerCase().startsWith('pl'));
-      if (plVoice) {
-        utter.voice = plVoice;
+      const synth = window.speechSynthesis;
+      if (speakTimer !== null) {
+        window.clearTimeout(speakTimer);
+        speakTimer = null;
       }
-      window.speechSynthesis.speak(utter);
+
+      const startSpeaking = () => {
+        if (synth.paused) {
+          synth.resume();
+        }
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'pl-PL';
+        utter.rate = slow ? 0.65 : 0.92;
+        const voices = synth.getVoices();
+        const plVoice =
+          voices.find((v) => v.lang.toLowerCase() === 'pl-pl') ??
+          voices.find((v) => v.lang.toLowerCase().startsWith('pl'));
+        if (plVoice) {
+          utter.voice = plVoice;
+        }
+        activeUtterance = utter;
+        utter.onend = () => {
+          if (activeUtterance === utter) activeUtterance = null;
+        };
+        utter.onerror = () => {
+          if (activeUtterance === utter) activeUtterance = null;
+        };
+        synth.speak(utter);
+      };
+
+      if (synth.speaking || synth.pending) {
+        synth.cancel();
+        // Short delay prevents Chromium from dropping the new utterance right after cancel()
+        speakTimer = window.setTimeout(() => {
+          speakTimer = null;
+          startSpeaking();
+        }, 45);
+      } else {
+        startSpeaking();
+      }
       return 'web_speech';
     } catch {
       // fall through to chime

@@ -667,6 +667,22 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                         Произношение: {currentExercise.phoneticHint}
                       </div>
                     )}
+
+                    {currentExercise.type !== 'listening' &&
+                      (speakStatus === 'android_needs_pl_pack' || speakStatus === 'fallback_chime') && (
+                        <div className="mt-2 rounded-xl bg-[#FFFDF2] border border-[#FFC800] px-3 py-1.5 text-xs font-bold text-[#805500] flex flex-wrap items-center justify-between gap-2">
+                          <span>Голосовой пакет pl-PL не найден на устройстве</span>
+                          {canInstallAndroidPolishTts() && (
+                            <button
+                              type="button"
+                              onClick={openAndroidTtsInstaller}
+                              className="px-2 py-1 rounded-lg bg-[#1CB0F6] text-white font-black cursor-pointer"
+                            >
+                              Установить голос
+                            </button>
+                          )}
+                        </div>
+                      )}
                   </div>
                 </div>
               </div>
