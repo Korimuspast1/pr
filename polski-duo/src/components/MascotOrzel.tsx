@@ -1,9 +1,11 @@
 import React from 'react';
+import { MascotOutfit } from '../types/learning';
 
 interface MascotProps {
   mood?: 'happy' | 'cheering' | 'thinking' | 'oops' | 'ai';
   size?: number;
   className?: string;
+  outfit?: MascotOutfit;
 }
 
 export const PolishFlagBadge: React.FC<{ className?: string }> = ({ className = 'w-8 h-6' }) => (
@@ -17,10 +19,33 @@ export const MascotOrzel: React.FC<MascotProps> = ({
   mood = 'happy',
   size = 96,
   className = '',
+  outfit = 'classic',
 }) => {
   const isCheering = mood === 'cheering';
   const isThinking = mood === 'thinking' || mood === 'ai';
   const isOops = mood === 'oops';
+
+  const coatColor =
+    outfit === 'hussar'
+      ? '#991B1B'
+      : outfit === 'coffee'
+        ? '#6F4E37'
+        : outfit === 'student'
+          ? '#1899D6'
+          : outfit === 'king'
+            ? '#7E22CE'
+            : '#DC143C';
+
+  const coatStroke =
+    outfit === 'hussar'
+      ? '#7F1D1D'
+      : outfit === 'coffee'
+        ? '#4B3322'
+        : outfit === 'student'
+          ? '#0F6B99'
+          : outfit === 'king'
+            ? '#581C87'
+            : '#A30D2B';
 
   return (
     <svg
@@ -32,6 +57,15 @@ export const MascotOrzel: React.FC<MascotProps> = ({
       className={className}
       aria-label="Орлик Белик — маскот PolskiOrzeł"
     >
+      {/* Winged Hussar Back Feathers */}
+      {outfit === 'hussar' && (
+        <g>
+          <path d="M28 52 C10 18, 20 8, 36 30" stroke="#94A3B8" strokeWidth="5" strokeLinecap="round" />
+          <path d="M92 52 C110 18, 100 8, 84 30" stroke="#94A3B8" strokeWidth="5" strokeLinecap="round" />
+          <path d="M20 26 L31 24 M18 34 L31 32 M100 26 L89 24 M102 34 L89 32" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
+        </g>
+      )}
+
       {/* Soft shadow */}
       <ellipse cx="60" cy="111" rx="34" ry="6" fill="#000000" fillOpacity="0.08" />
 
@@ -59,21 +93,58 @@ export const MascotOrzel: React.FC<MascotProps> = ({
         strokeLinejoin="round"
       />
 
-      {/* Body (Crimson Polish Coat + White Chest) */}
-      <rect x="30" y="42" width="60" height="62" rx="30" fill="#DC143C" stroke="#A30D2B" strokeWidth="3" />
+      {/* Body */}
+      <rect x="30" y="42" width="60" height="62" rx="30" fill={coatColor} stroke={coatStroke} strokeWidth="3" />
       <ellipse cx="60" cy="78" rx="20" ry="20" fill="#FFFFFF" />
+
+      {/* King Ermine Spots */}
+      {outfit === 'king' && (
+        <g fill="#1E293B">
+          <circle cx="48" cy="78" r="1.8" />
+          <circle cx="72" cy="78" r="1.8" />
+          <circle cx="60" cy="88" r="1.8" />
+        </g>
+      )}
 
       {/* Head (White Eagle Plumage) */}
       <circle cx="60" cy="46" r="28" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="3" />
 
-      {/* Golden Polish Crown */}
-      <path
-        d="M44 21 L48 10 L55 18 L60 8 L65 18 L72 10 L76 21 Z"
-        fill="#FFC800"
-        stroke="#E5A900"
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-      />
+      {/* Headwear per outfit */}
+      {outfit === 'student' ? (
+        <g>
+          <polygon points="60,8 90,18 60,26 30,18" fill="#1E293B" stroke="#0F172A" strokeWidth="2" />
+          <rect x="44" y="19" width="32" height="6" rx="2" fill="#334155" />
+          <line x1="82" y1="19" x2="86" y2="30" stroke="#FFC800" strokeWidth="2.5" strokeLinecap="round" />
+        </g>
+      ) : outfit === 'coffee' ? (
+        <g>
+          <path d="M40 22 C40 12, 80 12, 80 22 Z" fill="#6F4E37" stroke="#4B3322" strokeWidth="2" />
+          <rect x="36" y="20" width="48" height="5" rx="2.5" fill="#4B3322" />
+        </g>
+      ) : outfit === 'hussar' ? (
+        <g>
+          <path d="M40 24 C42 10, 78 10, 80 24 Z" fill="#94A3B8" stroke="#475569" strokeWidth="2.2" />
+          <path d="M58 6 L62 6 L63 18 L57 18 Z" fill="#DC143C" />
+        </g>
+      ) : (
+        /* Golden Polish Crown (Classic & King with gems) */
+        <g>
+          <path
+            d="M44 21 L48 10 L55 18 L60 8 L65 18 L72 10 L76 21 Z"
+            fill="#FFC800"
+            stroke="#E5A900"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+          />
+          {outfit === 'king' && (
+            <>
+              <circle cx="60" cy="15" r="2.2" fill="#DC143C" />
+              <circle cx="51" cy="17" r="1.7" fill="#1CB0F6" />
+              <circle cx="69" cy="17" r="1.7" fill="#58CC02" />
+            </>
+          )}
+        </g>
+      )}
 
       {/* Polish Red-White Scarf */}
       <path
@@ -82,10 +153,7 @@ export const MascotOrzel: React.FC<MascotProps> = ({
         stroke="#CBD5E1"
         strokeWidth="2"
       />
-      <path
-        d="M36 68 Q60 77 84 68 L83 74 Q60 83 37 74 Z"
-        fill="#DC143C"
-      />
+      <path d="M36 68 Q60 77 84 68 L83 74 Q60 83 37 74 Z" fill="#DC143C" />
       <rect x="66" y="70" width="9" height="17" rx="4" fill="#DC143C" stroke="#A30D2B" strokeWidth="2" />
 
       {/* Eyes */}
@@ -106,6 +174,15 @@ export const MascotOrzel: React.FC<MascotProps> = ({
         </>
       )}
 
+      {/* Student Glasses */}
+      {outfit === 'student' && (
+        <g stroke="#334155" strokeWidth="2" fill="none">
+          <circle cx="48" cy="45" r="10" />
+          <circle cx="72" cy="45" r="10" />
+          <line x1="58" y1="45" x2="62" y2="45" />
+        </g>
+      )}
+
       {/* Eyebrows */}
       {isThinking && (
         <>
@@ -122,6 +199,15 @@ export const MascotOrzel: React.FC<MascotProps> = ({
         strokeWidth="2.2"
         strokeLinejoin="round"
       />
+
+      {/* Coffee Cup prop for coffee outfit */}
+      {outfit === 'coffee' && (
+        <g>
+          <rect x="82" y="76" width="16" height="14" rx="3" fill="#FFFFFF" stroke="#4B3322" strokeWidth="2" />
+          <path d="M98 79 C103 79, 103 87, 98 87" stroke="#4B3322" strokeWidth="2" fill="none" />
+          <path d="M87 72 Q89 68 87 65 M93 72 Q95 68 93 65" stroke="#94A3B8" strokeWidth="1.6" strokeLinecap="round" />
+        </g>
+      )}
 
       {/* AI Sparkle / Monocle for AI mode */}
       {mood === 'ai' && (

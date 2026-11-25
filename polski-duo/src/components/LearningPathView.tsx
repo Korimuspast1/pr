@@ -224,12 +224,12 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
                     {/* Mascot companion next to section's 2nd node */}
                     {nIdx === 1 && sIdx === 0 && (
                       <div className="hidden sm:block absolute -right-32 top-0 pointer-events-none">
-                        <MascotOrzel mood="happy" size={82} className="animate-float" />
+                        <MascotOrzel mood="happy" outfit={state.equippedOutfit} size={82} className="animate-float" />
                       </div>
                     )}
                     {nIdx === 1 && sIdx === 2 && (
                       <div className="hidden sm:block absolute -left-32 top-0 pointer-events-none">
-                        <MascotOrzel mood="thinking" size={82} />
+                        <MascotOrzel mood="thinking" outfit={state.equippedOutfit} size={82} />
                       </div>
                     )}
 

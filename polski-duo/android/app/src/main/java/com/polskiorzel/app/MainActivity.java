@@ -1,9 +1,15 @@
 package com.polskiorzel.app;
 
 import android.Manifest;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
@@ -17,12 +23,14 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Locale;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class MainActivity extends BridgeActivity {
     private static final int REQ_RECORD_AUDIO = 4401;
+    private static final int REQ_POST_NOTIFICATIONS = 4402;
 
     private TextToSpeech tts;
     private volatile boolean ttsReady = false;
@@ -47,6 +55,7 @@ public class MainActivity extends BridgeActivity {
             settings.setDomStorageEnabled(true);
             webView.addJavascriptInterface(new PolskiTtsBridge(), "PolskiAndroidTTS");
             webView.addJavascriptInterface(new PolskiSttBridge(), "PolskiAndroidSTT");
+            webView.addJavascriptInterface(new PolskiAppBridge(), "PolskiAndroidApp");
         }
     }
 
@@ -518,6 +527,108 @@ public class MainActivity extends BridgeActivity {
                     }
                 }
             });
+        }
+    }
+
+    private class PolskiAppBridge {
+        @JavascriptInterface
+        public String getAppVersion() {
+            try {
+                PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+                long code = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                    ? pInfo.getLongVersionCode()
+                    : pInfo.versionCode;
+                return pInfo.versionName + " (build " + code + ")";
+            } catch (Exception e) {
+                return "1.4.0";
+            }
+        }
+
+        @JavascriptInterface
+        public void openExternalUrl(String url) {
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (Exception ignored) {
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public boolean scheduleDailyReminder(int hour, int minute) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(
+                        MainActivity.this,
+                        new String[] { Manifest.permission.POST_NOTIFICATIONS },
+                        REQ_POST_NOTIFICATIONS
+                    );
+                }
+            }
+            try {
+                AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                if (am == null) return false;
+                Intent intent = new Intent(getApplicationContext(), DailyReminderReceiver.class);
+                PendingIntent pi = PendingIntent.getBroadcast(
+                    getApplicationContext(),
+                    7701,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                );
+                Calendar cal = Calendar.getInstance();
+                cal.set(Calendar.HOUR_OF_DAY, Math.max(0, Math.min(23, hour)));
+                cal.set(Calendar.MINUTE, Math.max(0, Math.min(59, minute)));
+                cal.set(Calendar.SECOND, 0);
+                if (cal.getTimeInMillis() <= System.currentTimeMillis()) {
+                    cal.add(Calendar.DAY_OF_YEAR, 1);
+                }
+                am.setInexactRepeating(
+                    AlarmManager.RTC_WAKEUP,
+                    cal.getTimeInMillis(),
+                    AlarmManager.INTERVAL_DAY,
+                    pi
+                );
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void cancelDailyReminder() {
+            try {
+                AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                if (am == null) return;
+                Intent intent = new Intent(getApplicationContext(), DailyReminderReceiver.class);
+                PendingIntent pi = PendingIntent.getBroadcast(
+                    getApplicationContext(),
+                    7701,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                );
+                am.cancel(pi);
+            } catch (Exception ignored) {
+            }
+        }
+
+        @JavascriptInterface
+        public void sendTestNotification() {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(
+                        MainActivity.this,
+                        new String[] { Manifest.permission.POST_NOTIFICATIONS },
+                        REQ_POST_NOTIFICATIONS
+                    );
+                    return;
+                }
+            }
+            Intent intent = new Intent(getApplicationContext(), DailyReminderReceiver.class);
+            sendBroadcast(intent);
         }
     }
 }

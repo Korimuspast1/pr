@@ -704,6 +704,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
             <div className="flex items-start gap-4">
               <MascotOrzel
                 mood={evaluation ? (evaluation.isCorrect ? 'cheering' : 'oops') : 'thinking'}
+                outfit={aiState.equippedOutfit}
                 size={76}
                 className="shrink-0 hidden sm:block"
               />

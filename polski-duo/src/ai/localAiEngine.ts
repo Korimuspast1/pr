@@ -71,6 +71,14 @@ export function createInitialAIState(): LearnerAIState {
     placementDone: false,
     soundEnabled: true,
     showPhoneticsOverride: 'auto',
+    equippedOutfit: 'classic',
+    unlockedOutfits: ['classic'],
+    equippedTheme: 'poland',
+    unlockedThemes: ['poland'],
+    xpBoostUntil: 0,
+    sprintBestScore: 0,
+    reminderEnabled: false,
+    reminderTime: '20:00',
   };
 }
 
@@ -435,9 +443,11 @@ export function applyExerciseOutcome(
     );
   }
 
-  // Hearts & XP (Infinite Hearts enabled across all modes)
+  // Hearts & XP (Infinite Hearts enabled across all modes, supports 2X XP booster)
   if (evaluation.isCorrect) {
-    const earned = isInfiniteMode ? 12 : 10;
+    const baseEarned = isInfiniteMode ? 12 : 10;
+    const multiplier = now < next.xpBoostUntil ? 2 : 1;
+    const earned = baseEarned * multiplier;
     next.xp += earned;
     next.dailyXp += earned;
   }
@@ -563,4 +573,98 @@ export function getDueReviewCount(state: LearnerAIState): number {
   return Object.values(state.itemMemory).filter(
     (m) => m.nextReviewAt <= now || m.strength < 0.55,
   ).length;
+}
+
+/**
+ * FSRS-style spaced repetition update for Sleep/Bedtime Flashcard review (#3).
+ * grade: 0 = forgot, 1 = hard, 2 = good, 3 = easy
+ */
+export function applyFlashcardReview(
+  prevState: LearnerAIState,
+  itemId: string,
+  skill: SkillId,
+  grade: 0 | 1 | 2 | 3,
+): LearnerAIState {
+  const now = Date.now();
+  const prevMem = prevState.itemMemory[itemId];
+  const prevStrength = prevMem?.strength ?? 0.3;
+  const intervalsMin = [5, 180, 1440, 4320]; // 5m, 3h, 1d, 3d
+  const mult = Math.max(1, (prevMem?.streak ?? 0) + 1);
+
+  const deltaStrength = grade === 0 ? -0.22 : grade === 1 ? 0.08 : grade === 2 ? 0.16 : 0.25;
+  const newStrength = Math.max(0.08, Math.min(0.99, prevStrength + deltaStrength));
+  const nextIntervalMs =
+    grade === 0
+      ? 5 * 60 * 1000
+      : intervalsMin[grade] * 60 * 1000 * Math.min(8, mult * (0.6 + newStrength));
+
+  const nextMem: ItemMemory = {
+    id: itemId,
+    strength: newStrength,
+    attempts: (prevMem?.attempts ?? 0) + 1,
+    mistakes: (prevMem?.mistakes ?? 0) + (grade === 0 ? 1 : 0),
+    streak: grade === 0 ? 0 : (prevMem?.streak ?? 0) + 1,
+    lastSeenAt: now,
+    nextReviewAt: now + nextIntervalMs,
+    avgResponseMs: prevMem?.avgResponseMs ?? 2000,
+  };
+
+  const xpGain = (grade === 0 ? 2 : 5) * (now < prevState.xpBoostUntil ? 2 : 1);
+
+  return {
+    ...prevState,
+    xp: prevState.xp + xpGain,
+    dailyXp: prevState.dailyXp + xpGain,
+    skillMastery: {
+      ...prevState.skillMastery,
+      [skill]: Math.max(
+        0.05,
+        Math.min(0.99, (prevState.skillMastery[skill] ?? 0.2) + (grade === 0 ? -0.02 : 0.015)),
+      ),
+    },
+    itemMemory: {
+      ...prevState.itemMemory,
+      [itemId]: nextMem,
+    },
+  };
+}
+
+export function exportAIStateJson(state: LearnerAIState): string {
+  return JSON.stringify(
+    {
+      app: 'PolskiOrzel',
+      exportedAt: new Date().toISOString(),
+      version: 2,
+      state,
+    },
+    null,
+    2,
+  );
+}
+
+export function importAIStateJson(raw: string): LearnerAIState | null {
+  try {
+    const parsed = JSON.parse(raw.trim()) as { state?: Partial<LearnerAIState> } | Partial<LearnerAIState>;
+    const candidate =
+      parsed && typeof parsed === 'object' && 'state' in parsed && parsed.state
+        ? parsed.state
+        : (parsed as Partial<LearnerAIState>);
+    if (!candidate || typeof candidate.xp !== 'number' || !candidate.skillMastery) {
+      return null;
+    }
+    const base = createInitialAIState();
+    return {
+      ...base,
+      ...candidate,
+      skillMastery: { ...base.skillMastery, ...candidate.skillMastery },
+      skillAttempts: { ...base.skillAttempts, ...(candidate.skillAttempts ?? {}) },
+      errorCounts: { ...base.errorCounts, ...(candidate.errorCounts ?? {}) },
+      itemMemory: candidate.itemMemory ?? {},
+      completedNodes: candidate.completedNodes ?? {},
+      sessions: candidate.sessions ?? [],
+      aiThoughts: candidate.aiThoughts?.length ? candidate.aiThoughts : base.aiThoughts,
+    };
+  } catch {
+    return null;
+  }
 }

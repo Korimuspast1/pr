@@ -138,10 +138,13 @@ export type ErrorKind =
   | 'word_order'
   | 'vocabulary_miss';
 
+export type MascotOutfit = 'classic' | 'hussar' | 'coffee' | 'student' | 'king';
+export type AppThemeId = 'poland' | 'krakow' | 'baltic';
+
 export interface SessionLog {
   id: string;
   timestamp: number;
-  mode: 'path' | 'infinite' | 'placement' | 'review';
+  mode: 'path' | 'infinite' | 'placement' | 'review' | 'sprint' | 'roleplay' | 'cards';
   unitTitle: string;
   xpEarned: number;
   accuracy: number;
@@ -180,6 +183,14 @@ export interface LearnerAIState {
   placementDone: boolean;
   soundEnabled: boolean;
   showPhoneticsOverride: 'auto' | 'always' | 'off';
+  equippedOutfit: MascotOutfit;
+  unlockedOutfits: MascotOutfit[];
+  equippedTheme: AppThemeId;
+  unlockedThemes: AppThemeId[];
+  xpBoostUntil: number;
+  sprintBestScore: number;
+  reminderEnabled: boolean;
+  reminderTime: string;
 }
 
 export interface PathNode {

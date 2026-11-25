@@ -10,7 +10,9 @@ import { GuidebookView } from './components/GuidebookView';
 import { InfiniteAiStudio } from './components/InfiniteAiStudio';
 import { LearningPathView } from './components/LearningPathView';
 import { LessonConfig, LessonPlayer } from './components/LessonPlayer';
+import { PracticeHubView } from './components/practice/PracticeHubView';
 import { RightPanel } from './components/RightPanel';
+import { SettingsModal } from './components/SettingsModal';
 import { NavTab, SidebarNav } from './components/SidebarNav';
 import { StatsDashboard } from './components/StatsDashboard';
 import { LearnerAIState, PathNode, SkillId } from './types/learning';
@@ -19,6 +21,7 @@ export const App: React.FC = () => {
   const [aiState, setAiState] = useState<LearnerAIState>(() => loadAIState());
   const [activeTab, setActiveTab] = useState<NavTab>('learn');
   const [activeLesson, setActiveLesson] = useState<LessonConfig | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     saveAIState(aiState);
@@ -97,8 +100,15 @@ export const App: React.FC = () => {
     saveAIState(fresh);
   };
 
+  const themeBg =
+    aiState.equippedTheme === 'krakow'
+      ? 'bg-[#FCF9FF]'
+      : aiState.equippedTheme === 'baltic'
+        ? 'bg-[#F8FCFF]'
+        : 'bg-white';
+
   return (
-    <div className="min-h-screen bg-white text-[#3C3C3C] flex">
+    <div className={`min-h-screen ${themeBg} text-[#3C3C3C] flex`}>
       <SidebarNav
         activeTab={activeTab}
         onSelectTab={setActiveTab}
@@ -106,6 +116,8 @@ export const App: React.FC = () => {
         onToggleSound={() =>
           setAiState((prev) => ({ ...prev, soundEnabled: !prev.soundEnabled }))
         }
+        onOpenSettings={() => setSettingsOpen(true)}
+        outfit={aiState.equippedOutfit}
       />
 
       <main className="flex-1 min-w-0">
@@ -117,6 +129,10 @@ export const App: React.FC = () => {
             onStartInfinite={() => setActiveTab('infinite')}
             onOpenGuide={() => setActiveTab('guide')}
           />
+        )}
+
+        {activeTab === 'practice' && (
+          <PracticeHubView state={aiState} onUpdateState={setAiState} />
         )}
 
         {activeTab === 'infinite' && (
@@ -153,6 +169,14 @@ export const App: React.FC = () => {
           aiState={aiState}
           onUpdateState={setAiState}
           onExit={() => setActiveLesson(null)}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsModal
+          state={aiState}
+          onUpdateState={setAiState}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
     </div>

@@ -77,7 +77,7 @@ export const InfiniteAiStudio: React.FC<InfiniteAiStudioProps> = ({
     <div className="max-w-[740px] mx-auto pb-28 md:pb-16 pt-6 px-4 space-y-6">
       {/* Hero Banner */}
       <div className="rounded-3xl border-2 border-[#CE82FF] bg-gradient-to-br from-[#FAF2FF] via-white to-[#FFE4E8]/40 p-6 flex flex-col sm:flex-row items-center gap-5">
-        <MascotOrzel mood="ai" size={104} className="shrink-0 animate-float" />
+        <MascotOrzel mood="ai" outfit={state.equippedOutfit} size={104} className="shrink-0 animate-float" />
         <div className="flex-1 text-center sm:text-left">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#CE82FF]/20 text-[#8549BA] text-xs font-black uppercase tracking-wider mb-2">
             <InfinityIcon className="w-4 h-4" />
