@@ -65,6 +65,7 @@ jobs:
           git add fake-gps/release/FakeGpsPro.apk
           if ! git diff --cached --quiet; then
             git commit -m "Build compiled FakeGpsPro.apk [skip ci]"
+            git checkout -- .
             git pull --rebase origin "${GITHUB_REF_NAME}"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi

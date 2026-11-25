@@ -22,34 +22,13 @@ function totalDistance(pts: LatLng[]): number {
   return d;
 }
 
-/**
- * Fetches real street-by-street geometry between waypoints using OSRM.
- * Automatically falls back to interpolated waypoints if offline.
- */
-export async function fetchRoadRoute(
-  waypoints: LatLng[],
-  speedKmh: number,
-): Promise<RoadRouteResult> {
-  if (waypoints.length < 2) {
-    return {
-      roadPoints: waypoints,
-      distanceMeters: 0,
-      durationSec: 0,
-      isRealRoad: false,
-    };
-  }
-
-  const profile = getOsrmProfile(speedKmh);
-  const coordStr = waypoints.map((p) => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
-  const url = `https://router.project-osrm.org/route/v1/${profile}/${coordStr}?overview=full&geometries=geojson`;
-
+async function queryOsrmUrl(url: string, timeoutMs: number): Promise<RoadRouteResult | null> {
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), 6500);
-
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, { signal: controller.signal });
     window.clearTimeout(timer);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) return null;
 
     const data = (await res.json()) as {
       code?: string;
@@ -74,11 +53,47 @@ export async function fetchRoadRoute(
         isRealRoad: true,
       };
     }
+    return null;
   } catch {
     window.clearTimeout(timer);
+    return null;
+  }
+}
+
+/**
+ * Fetches real street-by-street geometry between waypoints using OSRM.
+ * Uses dedicated OSM pedestrian/bike routers when walking/cycling and falls back
+ * to driving OSRM or offline geometry if unreachable.
+ */
+export async function fetchRoadRoute(
+  waypoints: LatLng[],
+  speedKmh: number,
+): Promise<RoadRouteResult> {
+  if (waypoints.length < 2) {
+    return {
+      roadPoints: waypoints,
+      distanceMeters: 0,
+      durationSec: 0,
+      isRealRoad: false,
+    };
   }
 
-  // Offline fallback: subdivide segments cleanly
+  const profile = getOsrmProfile(speedKmh);
+  const coordStr = waypoints.map((p) => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
+
+  const urls: string[] = [];
+  if (profile === 'foot') {
+    urls.push(`https://routing.openstreetmap.de/routed-foot/route/v1/driving/${coordStr}?overview=full&geometries=geojson`);
+  } else if (profile === 'bike') {
+    urls.push(`https://routing.openstreetmap.de/routed-bike/route/v1/driving/${coordStr}?overview=full&geometries=geojson`);
+  }
+  urls.push(`https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`);
+
+  for (const url of urls) {
+    const result = await queryOsrmUrl(url, 5500);
+    if (result) return result;
+  }
+
   const dist = Math.round(totalDistance(waypoints));
   return {
     roadPoints: waypoints,
