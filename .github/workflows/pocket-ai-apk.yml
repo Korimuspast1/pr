@@ -1,0 +1,71 @@
+name: Build PocketAI Studio APK
+
+on:
+  push:
+    branches:
+      - 'arena/**'
+    paths:
+      - 'pocket-ai/**'
+      - '.github/workflows/pocket-ai-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-pocket-ai-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install npm dependencies & build web bundle
+        working-directory: pocket-ai
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      - name: Build Android APK (Debug)
+        working-directory: pocket-ai/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Copy & verify APK
+        working-directory: pocket-ai
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/PocketAI.apk
+          ls -lh release/PocketAI.apk
+
+      - name: Upload PocketAI.apk artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PocketAI-APK
+          path: pocket-ai/release/PocketAI.apk
+
+      - name: Commit compiled APK to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pocket-ai/release/PocketAI.apk
+          if ! git diff --cached --quiet; then
+            git commit -m "Build compiled PocketAI.apk [skip ci]"
+            git checkout -- .
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
