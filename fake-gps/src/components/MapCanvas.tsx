@@ -15,10 +15,16 @@ interface MapCanvasProps {
   followTarget?: boolean;
 }
 
+const ESRI_STREET_URL =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const ESRI_SAT_URL =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+
 const TILE_LAYERS: Record<MapStyle, string> = {
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  osm: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  dark: ESRI_STREET_URL,
+  osm: OSM_URL,
+  satellite: ESRI_SAT_URL,
 };
 
 function createPinIcon(isSpoofing: boolean): L.DivIcon {
@@ -37,6 +43,27 @@ function createPinIcon(isSpoofing: boolean): L.DivIcon {
     iconSize: [26, 26],
     iconAnchor: [13, 13],
   });
+}
+
+function attachKeylessTileLayer(map: L.Map, style: MapStyle): L.TileLayer {
+  let errCount = 0;
+  let switchedToFallback = false;
+  const layer = L.tileLayer(TILE_LAYERS[style], {
+    maxZoom: 19,
+    crossOrigin: true,
+  });
+
+  if (style === 'osm') {
+    layer.on('tileerror', () => {
+      errCount += 1;
+      if (errCount >= 3 && !switchedToFallback) {
+        switchedToFallback = true;
+        layer.setUrl(ESRI_STREET_URL);
+      }
+    });
+  }
+
+  return layer.addTo(map);
 }
 
 export const MapCanvas: React.FC<MapCanvasProps> = ({
@@ -72,7 +99,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     });
     mapRef.current = map;
 
-    tileRef.current = L.tileLayer(TILE_LAYERS[mapStyle], { maxZoom: 19 }).addTo(map);
+    tileRef.current = attachKeylessTileLayer(map, mapStyle);
 
     circleRef.current = L.circle([target.lat, target.lng], {
       radius: Math.max(8, accuracyMeters),
@@ -113,7 +140,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     const map = mapRef.current;
     if (!map) return;
     if (tileRef.current) map.removeLayer(tileRef.current);
-    tileRef.current = L.tileLayer(TILE_LAYERS[mapStyle], { maxZoom: 19 }).addTo(map);
+    tileRef.current = attachKeylessTileLayer(map, mapStyle);
   }, [mapStyle]);
 
   useEffect(() => {
@@ -137,7 +164,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     }
   }, [target.lat, target.lng, isSpoofing, accuracyMeters, followTarget]);
 
-  // Draw real street-snapped road path + waypoint dots
+  // Draw real street-snapped / AI-synthesized road path + waypoint dots
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -165,7 +192,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
 
     waypoints.forEach((p, idx) => {
       const dot = L.circleMarker([p.lat, p.lng], {
-        radius: 6,
+        radius: 5.5,
         color: '#ffffff',
         weight: 2,
         fillColor: idx === 0 ? '#10b981' : idx === waypoints.length - 1 ? '#f43f5e' : '#f59e0b',
@@ -181,7 +208,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div className={`relative w-full h-full ${mapStyle === 'dark' ? 'dark-map-tiles' : ''}`}>
       <div ref={containerRef} className="w-full h-full z-0" />
 
       {/* Minimalist floating right controls */}

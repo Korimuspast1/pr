@@ -11,8 +11,13 @@ html, body, #root {
 }
 
 .leaflet-container {
-  background: #0f172a;
+  background: #0b1120;
   font-family: inherit;
+}
+
+/* Dark theme for keyless Esri/OSM street tiles without affecting markers or routes */
+.dark-map-tiles .leaflet-tile-pane {
+  filter: invert(93%) hue-rotate(180deg) brightness(95%) contrast(92%) saturate(82%);
 }
 
 @keyframes gps-pulse {

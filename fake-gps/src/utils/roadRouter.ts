@@ -1,3 +1,4 @@
+import { synthesizeAiStreetPath } from '../ai/gpsAiEngine';
 import { LatLng } from '../types/gps';
 import { distanceBetweenMeters } from './nativeMockGps';
 
@@ -61,9 +62,9 @@ async function queryOsrmUrl(url: string, timeoutMs: number): Promise<RoadRouteRe
 }
 
 /**
- * Fetches real street-by-street geometry between waypoints using OSRM.
- * Uses dedicated OSM pedestrian/bike routers when walking/cycling and falls back
- * to driving OSRM or offline geometry if unreachable.
+ * Fetches real street-by-street geometry between waypoints using keyless open OSRM
+ * (routing.openstreetmap.de / router.project-osrm.org). If offline, falls back to our
+ * embedded AI urban-block street synthesizer so the route never looks like a straight line.
  */
 export async function fetchRoadRoute(
   waypoints: LatLng[],
@@ -94,9 +95,11 @@ export async function fetchRoadRoute(
     if (result) return result;
   }
 
-  const dist = Math.round(totalDistance(waypoints));
+  // Offline / no-network fallback: AI generates realistic urban-block street turns
+  const aiRoad = synthesizeAiStreetPath(waypoints);
+  const dist = Math.round(totalDistance(aiRoad));
   return {
-    roadPoints: waypoints,
+    roadPoints: aiRoad,
     distanceMeters: dist,
     durationSec: Math.round(dist / Math.max(1, (speedKmh * 1000) / 3600)),
     isRealRoad: false,

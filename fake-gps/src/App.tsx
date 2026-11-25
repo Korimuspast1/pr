@@ -16,8 +16,8 @@ import {
 } from 'lucide-react';
 import {
   analyzeSpoofRealism,
+  composeAiRoutePlan,
   computeHumanizedSpeedKmh,
-  generateAiLoopWaypoints,
 } from './ai/gpsAiEngine';
 import { JoystickPad } from './components/JoystickPad';
 import { MapCanvas } from './components/MapCanvas';
@@ -115,13 +115,16 @@ export const App: React.FC = () => {
   const [followTarget, setFollowTarget] = useState(false);
   const [bearing, setBearing] = useState(0);
 
-  // Road routing state
+  // Road routing & AI route composer state
   const [waypoints, setWaypoints] = useState<LatLng[]>([]);
   const [roadPath, setRoadPath] = useState<LatLng[]>([]);
   const [routeDistanceM, setRouteDistanceM] = useState(0);
   const [isRealRoad, setIsRealRoad] = useState(true);
   const [routingBusy, setRoutingBusy] = useState(false);
   const [routePlaying, setRoutePlaying] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiRouteSummary, setAiRouteSummary] = useState<string | null>(null);
+  const [aiSeed, setAiSeed] = useState(0);
   const routeSegmentRef = useRef({ segIdx: 0, progressMeters: 0 });
 
   // Minimal search state
@@ -328,10 +331,15 @@ export const App: React.FC = () => {
     setRoutePlaying(true);
   };
 
-  const handleAiGenerateLoop = () => {
-    const loopPts = generateAiLoopWaypoints(target, config.speedKmh);
-    setWaypoints(loopPts);
-    showToast('ИИ строит маршрут по дорогам...');
+  const handleAiComposeRoute = async (overridePrompt?: string) => {
+    const query = overridePrompt !== undefined ? overridePrompt : aiPrompt;
+    setRoutingBusy(true);
+    const nextSeed = aiSeed + 1;
+    setAiSeed(nextSeed);
+    const plan = await composeAiRoutePlan(target, query, config.speedKmh, places, nextSeed);
+    setWaypoints(plan.waypoints);
+    setAiRouteSummary(plan.summary);
+    showToast(plan.summary);
   };
 
   const handleSearch = async (query: string) => {
@@ -554,16 +562,36 @@ export const App: React.FC = () => {
 
           {dockTab === 'route' && (
             <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAiComposeRoute();
+                  }}
+                  placeholder="ИИ-план: напр. 3 км, центр, север..."
+                  className="flex-1 rounded-xl bg-white/5 border border-white/15 px-3 py-1.5 text-xs text-white placeholder-slate-400 outline-none focus:border-violet-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleAiComposeRoute()}
+                  className="px-3 py-1.5 rounded-xl bg-violet-500/25 border border-violet-400/45 text-violet-200 font-bold text-xs flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5" /> ИИ-маршрут
+                </button>
+              </div>
+
               <div className="flex items-center justify-between gap-2 text-xs">
-                <div className="font-semibold text-slate-300">
+                <div className="font-semibold text-slate-300 truncate">
                   {routingBusy
-                    ? 'Строим маршрут по дорогам...'
+                    ? 'ИИ строит маршрут...'
                     : waypoints.length < 2
-                      ? 'Нажимайте точки на карте'
-                      : `${(routeDistanceM / 1000).toFixed(2)} км · ${isRealRoad ? 'по дорогам' : 'офлайн'}`}
+                      ? 'Тапайте карту или спросите ИИ'
+                      : `${(routeDistanceM / 1000).toFixed(2)} км · ${isRealRoad ? 'OSM-дороги' : 'ИИ-улицы'}`}
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   {[5, 18, 50].map((s) => (
                     <button
                       key={s}
@@ -584,10 +612,11 @@ export const App: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleAiGenerateLoop}
+                  onClick={() => handleAiComposeRoute('')}
                   className="px-3 py-2.5 rounded-2xl bg-violet-500/20 border border-violet-400/40 text-violet-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  title={aiRouteSummary ?? 'Сгенерировать новый маршрут вокруг точки'}
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> ИИ-круг
+                  <BrainCircuit className="w-3.5 h-3.5" /> ИИ-круг
                 </button>
 
                 {waypoints.length > 0 && (
@@ -598,6 +627,7 @@ export const App: React.FC = () => {
                       setRoutePlaying(false);
                       setWaypoints([]);
                       setRoadPath([]);
+                      setAiRouteSummary(null);
                     }}
                     className="p-2.5 rounded-2xl bg-white/10 text-slate-300 hover:text-rose-400 cursor-pointer"
                     title="Очистить"
