@@ -1,0 +1,42 @@
+видео: 1 поток(ов), аудио: да
+скачиваю видео (12 файлов)
+  [1/12] 842 B  (всего 842 B)
+  [2/12] 367924 B  (всего 368766 B)
+  [3/12] 413344 B  (всего 782110 B)
+  [4/12] 413441 B  (всего 1195551 B)
+  [5/12] 340478 B  (всего 1536029 B)
+  [6/12] 344099 B  (всего 1880128 B)
+  [7/12] 463019 B  (всего 2343147 B)
+  [8/12] 357685 B  (всего 2700832 B)
+  [9/12] 389924 B  (всего 3090756 B)
+  [10/12] 222319 B  (всего 3313075 B)
+  [11/12] 427348 B  (всего 3740423 B)
+  [12/12] 50731 B  (всего 3791154 B)
+скачиваю аудио (12 файлов)
+  [1/12] 765 B  (всего 765 B)
+  [2/12] 74053 B  (всего 74818 B)
+  [3/12] 74527 B  (всего 149345 B)
+  [4/12] 75472 B  (всего 224817 B)
+  [5/12] 78169 B  (всего 302986 B)
+  [6/12] 75569 B  (всего 378555 B)
+  [7/12] 75530 B  (всего 454085 B)
+  [8/12] 74130 B  (всего 528215 B)
+  [9/12] 73700 B  (всего 601915 B)
+  [10/12] 74766 B  (всего 676681 B)
+  [11/12] 75540 B  (всего 752221 B)
+  [12/12] 16956 B  (всего 769177 B)
+собираю mp4: ffmpeg -y -hide_banner -loglevel warning -i /home/runner/work/pr/pr/_video.mp4 -i /home/runner/work/pr/pr/_audio.mp4 -c copy -movflags +faststart manhunt_trailer.mp4
+Traceback (most recent call last):
+  File "/home/runner/work/pr/pr/scripts/steam_trailer_dl.py", line 157, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/runner/work/pr/pr/scripts/steam_trailer_dl.py", line 138, in main
+    subprocess.run(cmd, check=True)
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'ffmpeg'
