@@ -1,19 +1,17 @@
 name: download-steam-trailer
 
 # качает HLS-трейлер Steam и отдаёт mp4 артефактом.
-# запуск: запушить изменённый trailer-request.json (или вручную через Actions)
+# запуск: изменить trailer-request.json (push) или вручную через Actions
 on:
   workflow_dispatch:
-    inputs:
-      output_name:
-        description: 'Имя выходного файла'
-        required: true
-        default: 'manhunt_trailer.mp4'
   push:
     branches:
       - 'arena/**'
     paths:
       - 'trailer-request.json'
+
+permissions:
+  contents: write
 
 concurrency:
   group: download-steam-trailer
@@ -39,22 +37,29 @@ jobs:
           print("master_url=" + data["master_url"])
           print("output_name=" + data.get("output_name", "trailer.mp4"))
           PY
+      - name: проверка сети
+        run: |
+          set -x
+          getent hosts video.akamai.steamstatic.com || true
+          curl -sS -o /dev/null -w 'code=%{http_code}\n' --max-time 20 \
+            "${{ steps.req.outputs.master_url }}" || true
       - name: скачиваем и собираем трейлер
         run: |
           set -o pipefail
           python3 -u scripts/steam_trailer_dl.py \
             "${{ steps.req.outputs.master_url }}" \
-            "${{ steps.req.outputs.output_name }}" 2>&1 | tee trailer.log
-      - name: публикуем лог в ветку (для диагностики)
+            "${{ steps.req.outputs.output_name }}" 2>&1 | tee trailer-log.txt
+      - name: публикуем лог в ветку (диагностика)
         if: always()
         run: |
           git config user.name "trailer-bot"
           git config user.email "trailer-bot@users.noreply.github.com"
-          cp trailer.log trailer-log.txt 2>/dev/null || true
-          git add trailer-log.txt
+          touch trailer-log.txt
+          git add -f trailer-log.txt
           git diff --cached --quiet || git commit -m "trailer: log (${{ job.status }})"
           git push || true
       - uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: ${{ steps.req.outputs.output_name }}
           path: ${{ steps.req.outputs.output_name }}
