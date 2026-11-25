@@ -4,8 +4,10 @@ import {
   BrainCircuit,
   CheckCircle2,
   Flame,
+  Gauge,
   Heart,
   Infinity as InfinityIcon,
+  Lightbulb,
   Sparkles,
   Volume2,
   X,
@@ -17,7 +19,7 @@ import {
   recordCompletedSession,
 } from '../ai/localAiEngine';
 import { generateAdaptiveExercise, generatePlacementQuestion } from '../ai/polishGenerator';
-import { SKILL_META } from '../data/polishLexicon';
+import { LEXICON, SKILL_META } from '../data/polishLexicon';
 import {
   AnswerEvaluation,
   Exercise,
@@ -25,7 +27,13 @@ import {
   SessionLog,
   SkillId,
 } from '../types/learning';
-import { playUiSound, speakPolish } from '../utils/sound';
+import {
+  canInstallAndroidPolishTts,
+  openAndroidTtsInstaller,
+  playUiSound,
+  speakPolish,
+  SpeakStatus,
+} from '../utils/sound';
 import { MascotOrzel } from './MascotOrzel';
 
 const POLISH_CHARS = ['ą', 'ć', 'ę', 'ł', 'ń', 'ó', 'ś', 'ź', 'ż'];
@@ -65,6 +73,9 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   const [wrongPairShake, setWrongPairShake] = useState(false);
 
   const [evaluation, setEvaluation] = useState<AnswerEvaluation | null>(null);
+  const [hintLevel, setHintLevel] = useState<number>(0);
+  const [speakingActive, setSpeakingActive] = useState<boolean>(false);
+  const [speakStatus, setSpeakStatus] = useState<SpeakStatus | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -92,10 +103,17 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
     return arr;
   }, [currentExercise]);
 
+  const triggerSpeak = (text: string, slow = false) => {
+    const status = speakPolish(text, slow);
+    setSpeakStatus(status);
+    setSpeakingActive(true);
+    setTimeout(() => setSpeakingActive(false), 650);
+  };
+
   useEffect(() => {
     questionStartRef.current = Date.now();
     if (currentExercise?.audioTextPl && currentExercise.type === 'listening') {
-      speakPolish(currentExercise.audioTextPl);
+      triggerSpeak(currentExercise.audioTextPl, false);
     }
   }, [index, currentExercise?.id]);
 
@@ -107,6 +125,8 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
     setSelectedPair(null);
     setWrongPairShake(false);
     setEvaluation(null);
+    setHintLevel(0);
+    setSpeakStatus(null);
   };
 
   const canCheck = useMemo(() => {
@@ -305,6 +325,52 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
     resetInputs();
   };
 
+  // Compute progressive infinite AI hints for the current exercise
+  const hintDetails = useMemo(() => {
+    if (!currentExercise) return null;
+    const linkedLex = LEXICON.filter((l) => currentExercise.itemIds.includes(l.id));
+    const phonetics = linkedLex.map((l) => `${l.pl} [${l.phoneticRu}]`).join(' · ');
+
+    let step2Text = '';
+    let eliminatedOptions: string[] = [];
+
+    if (
+      (currentExercise.type === 'multiple_choice' || currentExercise.type === 'cloze_grammar') &&
+      currentExercise.options
+    ) {
+      eliminatedOptions = currentExercise.options
+        .filter((o) => o !== currentExercise.correctAnswer)
+        .slice(0, 2);
+      step2Text = 'ИИ убрал лишние варианты (режим 50/50)!';
+    } else if (currentExercise.type === 'match_pairs' && currentExercise.pairs?.length) {
+      const firstUnmatched =
+        currentExercise.pairs.find((p) => !matchedIds.includes(p.id)) ?? currentExercise.pairs[0];
+      step2Text = `Совпадающая пара: «${firstUnmatched.pl}» ↔ «${firstUnmatched.ru}».`;
+    } else {
+      const words = currentExercise.correctAnswer.trim().split(/\s+/);
+      if (words.length > 1) {
+        step2Text = `Начало фразы: «${words[0]} ${words.length > 2 ? words[1] : ''}...» (всего слов: ${words.length}).`;
+      } else {
+        const w = currentExercise.correctAnswer;
+        const prefix = w.slice(0, Math.max(1, Math.ceil(w.length / 2)));
+        step2Text = `Слово начинается на: «${prefix}...» (букв: ${w.length}).`;
+      }
+    }
+
+    return {
+      step1: currentExercise.aiNote + (phonetics ? ` Фонетика: ${phonetics}.` : ''),
+      step2: step2Text,
+      step3: `Точный ответ: «${currentExercise.correctAnswer}»`,
+      eliminatedOptions,
+    };
+  }, [currentExercise, matchedIds]);
+
+  const handleRequestHint = () => {
+    if (evaluation) return;
+    playUiSound('tap', aiState.soundEnabled);
+    setHintLevel((lvl) => (lvl >= 3 ? 3 : lvl + 1));
+  };
+
   // Lesson Finished Celebration Screen
   if (finished) {
     const accuracy = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 100;
@@ -437,25 +503,80 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
       {/* Main Exercise Body */}
       <main className="flex-1 overflow-y-auto px-4 py-4 flex flex-col items-center justify-center">
         <div className="max-w-2xl w-full space-y-6 animate-pop" key={currentExercise.id}>
-          {/* Skill & Grammar Pill */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg text-white"
-              style={{ backgroundColor: SKILL_META[currentExercise.skill].color }}
-            >
-              {SKILL_META[currentExercise.skill].shortLabel}
-            </span>
-            {currentExercise.grammarTag && (
-              <span className="text-[11px] font-extrabold px-2.5 py-1 rounded-lg bg-[#F1F5F9] text-[#4B4B4B]">
-                {currentExercise.grammarTag}
+          {/* Skill & Grammar Pill + Infinite Hint Button */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg text-white"
+                style={{ backgroundColor: SKILL_META[currentExercise.skill].color }}
+              >
+                {SKILL_META[currentExercise.skill].shortLabel}
               </span>
-            )}
-            {currentExercise.isFalseFriendTrap && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-lg bg-[#FFE4E8] text-[#DC143C]">
-                <AlertTriangle className="w-3 h-3" /> Ловушка для русских
-              </span>
+              {currentExercise.grammarTag && (
+                <span className="text-[11px] font-extrabold px-2.5 py-1 rounded-lg bg-[#F1F5F9] text-[#4B4B4B]">
+                  {currentExercise.grammarTag}
+                </span>
+              )}
+              {currentExercise.isFalseFriendTrap && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-lg bg-[#FFE4E8] text-[#DC143C]">
+                  <AlertTriangle className="w-3 h-3" /> Ловушка для русских
+                </span>
+              )}
+            </div>
+
+            {!evaluation && (
+              <button
+                type="button"
+                onClick={handleRequestHint}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 border-b-4 border-[#FFC800] bg-[#FFFDF2] hover:bg-[#FFF5CC] text-[#B37800] text-xs font-black cursor-pointer active:translate-y-[1px]"
+                title="Бесконечные подсказки ИИ на каждом уровне"
+              >
+                <Lightbulb className="w-4 h-4 fill-[#FFC800] text-[#E5A900]" />
+                <span>
+                  {hintLevel === 0
+                    ? 'Подсказка'
+                    : hintLevel < 3
+                      ? `Ещё подсказка (${hintLevel}/3)`
+                      : 'Подсказка 3/3'}
+                </span>
+                <InfinityIcon className="w-3.5 h-3.5 stroke-[2.8]" />
+              </button>
             )}
           </div>
+
+          {/* Progressive Infinite AI Hint Card */}
+          {hintLevel > 0 && hintDetails && (
+            <div className="rounded-2xl border-2 border-[#FFC800] bg-[#FFFDF2] p-3.5 space-y-1.5 animate-pop">
+              <div className="flex items-center justify-between text-[11px] font-black uppercase text-[#B37800]">
+                <span className="flex items-center gap-1.5">
+                  <Lightbulb className="w-3.5 h-3.5 fill-[#FFC800]" />
+                  Подсказка ИИ (Уровень {hintLevel}/3 · ∞)
+                </span>
+                {hintLevel < 3 && !evaluation && (
+                  <button
+                    type="button"
+                    onClick={handleRequestHint}
+                    className="underline cursor-pointer hover:text-[#805500]"
+                  >
+                    Показать подробнее →
+                  </button>
+                )}
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-[#4B4B4B] leading-snug">
+                {hintDetails.step1}
+              </p>
+              {hintLevel >= 2 && (
+                <p className="text-xs sm:text-sm font-extrabold text-[#1899D6]">
+                  {hintDetails.step2}
+                </p>
+              )}
+              {hintLevel >= 3 && (
+                <p className="text-xs sm:text-sm font-black text-[#46A302]">
+                  {hintDetails.step3}
+                </p>
+              )}
+            </div>
+          )}
 
           <h2 className="text-2xl sm:text-[26px] font-black text-[#3C3C3C] leading-snug">
             {currentExercise.promptRu}
@@ -472,13 +593,27 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
               <div className="flex-1 rounded-2xl border-2 border-[#E5E5E5] bg-white p-4 sm:p-5 relative shadow-xs">
                 <div className="flex items-center gap-3 flex-wrap">
                   {currentExercise.audioTextPl && (
-                    <button
-                      onClick={() => speakPolish(currentExercise.audioTextPl!)}
-                      className="w-11 h-11 rounded-xl duo-btn duo-btn-blue flex items-center justify-center shrink-0"
-                      title="Произнести по-польски"
-                    >
-                      <Volume2 className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => triggerSpeak(currentExercise.audioTextPl!, false)}
+                        className={`w-12 h-12 rounded-xl duo-btn duo-btn-blue flex items-center justify-center ${
+                          speakingActive ? 'ring-4 ring-[#84D8FF] scale-105' : ''
+                        }`}
+                        title="Произнести по-польски"
+                      >
+                        <Volume2 className="w-6 h-6" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => triggerSpeak(currentExercise.audioTextPl!, true)}
+                        className="h-12 px-3 rounded-xl duo-btn duo-btn-outline flex items-center gap-1.5 text-xs font-black text-[#1899D6]"
+                        title="Произнести медленно (0.65x)"
+                      >
+                        <Gauge className="w-4 h-4" />
+                        <span>0.65x</span>
+                      </button>
+                    </div>
                   )}
 
                   <div className="flex-1 min-w-[180px]">
@@ -490,6 +625,25 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                         {currentExercise.questionRu && (
                           <div className="text-sm font-bold text-[#777777] mt-1">
                             {currentExercise.questionRu}
+                          </div>
+                        )}
+                        {(speakStatus === 'android_needs_pl_pack' || speakStatus === 'fallback_chime') && (
+                          <div className="mt-2 rounded-xl bg-[#FFFDF2] border border-[#FFC800] px-3 py-2 text-xs font-bold text-[#805500] flex flex-wrap items-center justify-between gap-2">
+                            <span>
+                              Голосовой пакет pl-PL не найден. Произношение:{' '}
+                              <strong className="text-[#1899D6]">
+                                [{LEXICON.find((l) => currentExercise.itemIds.includes(l.id))?.phoneticRu ?? currentExercise.audioTextPl}]
+                              </strong>
+                            </span>
+                            {canInstallAndroidPolishTts() && (
+                              <button
+                                type="button"
+                                onClick={openAndroidTtsInstaller}
+                                className="px-2 py-1 rounded-lg bg-[#1CB0F6] text-white font-black cursor-pointer"
+                              >
+                                Установить голос
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -525,22 +679,28 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
               {currentExercise.options.map((opt, idx) => {
                 const isSelected = selectedOption === opt;
                 const isCorrectOpt = evaluation && opt === currentExercise.correctAnswer;
+                const isEliminated =
+                  !evaluation &&
+                  hintLevel >= 2 &&
+                  Boolean(hintDetails?.eliminatedOptions.includes(opt));
                 return (
                   <button
                     key={opt}
-                    disabled={Boolean(evaluation)}
+                    disabled={Boolean(evaluation) || isEliminated}
                     onClick={() => {
                       playUiSound('tap', aiState.soundEnabled);
                       setSelectedOption(opt);
                     }}
-                    className={`rounded-2xl border-2 border-b-4 p-4 text-left font-extrabold text-base flex items-center gap-3 transition-all cursor-pointer ${
-                      isCorrectOpt
-                        ? 'bg-[#D7FFB8] border-[#58CC02] text-[#46A302]'
-                        : isSelected && evaluation && !evaluation.isCorrect
-                          ? 'bg-[#FFE4E8] border-[#DC143C] text-[#DC143C]'
-                          : isSelected
-                            ? 'bg-[#DDF4FF] border-[#1CB0F6] text-[#1899D6]'
-                            : 'bg-white border-[#E5E5E5] hover:bg-[#F7F7F7] text-[#3C3C3C]'
+                    className={`rounded-2xl border-2 border-b-4 p-4 text-left font-extrabold text-base flex items-center gap-3 transition-all ${
+                      isEliminated
+                        ? 'bg-[#F7F7F7] border-[#E5E5E5] text-[#AFAFAF] opacity-45 line-through cursor-not-allowed'
+                        : isCorrectOpt
+                          ? 'bg-[#D7FFB8] border-[#58CC02] text-[#46A302] cursor-pointer'
+                          : isSelected && evaluation && !evaluation.isCorrect
+                            ? 'bg-[#FFE4E8] border-[#DC143C] text-[#DC143C] cursor-pointer'
+                            : isSelected
+                              ? 'bg-[#DDF4FF] border-[#1CB0F6] text-[#1899D6] cursor-pointer'
+                              : 'bg-white border-[#E5E5E5] hover:bg-[#F7F7F7] text-[#3C3C3C] cursor-pointer'
                     }`}
                   >
                     <span className="w-7 h-7 rounded-lg border-2 border-current/25 flex items-center justify-center text-xs font-black shrink-0">
@@ -567,18 +727,24 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 {currentExercise.options.map((opt) => {
                   const isSelected = selectedOption === opt;
+                  const isEliminated =
+                    !evaluation &&
+                    hintLevel >= 2 &&
+                    Boolean(hintDetails?.eliminatedOptions.includes(opt));
                   return (
                     <button
                       key={opt}
-                      disabled={Boolean(evaluation)}
+                      disabled={Boolean(evaluation) || isEliminated}
                       onClick={() => {
                         playUiSound('tap', aiState.soundEnabled);
                         setSelectedOption(opt);
                       }}
-                      className={`rounded-2xl border-2 border-b-4 py-3.5 px-4 font-black text-base cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#DDF4FF] border-[#1CB0F6] text-[#1899D6]'
-                          : 'bg-white border-[#E5E5E5] hover:bg-[#F7F7F7]'
+                      className={`rounded-2xl border-2 border-b-4 py-3.5 px-4 font-black text-base ${
+                        isEliminated
+                          ? 'bg-[#F7F7F7] border-[#E5E5E5] text-[#AFAFAF] opacity-45 line-through cursor-not-allowed'
+                          : isSelected
+                            ? 'bg-[#DDF4FF] border-[#1CB0F6] text-[#1899D6] cursor-pointer'
+                            : 'bg-white border-[#E5E5E5] hover:bg-[#F7F7F7] cursor-pointer'
                       }`}
                     >
                       {opt}
