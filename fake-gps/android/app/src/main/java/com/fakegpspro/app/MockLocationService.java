@@ -155,7 +155,8 @@ public class MockLocationService extends Service {
     }
 
     private void advanceRoute(double deltaSec) {
-        double speedMps = (liveSpeedKmh * 1000.0) / 3600.0;
+        double organicWave = 0.93 + Math.sin(System.currentTimeMillis() / 1700.0) * 0.07;
+        double speedMps = ((liveSpeedKmh * organicWave) * 1000.0) / 3600.0;
         double step = speedMps * deltaSec;
         while (step > 0 && routeWaypoints.size() >= 2) {
             if (routeSegIndex >= routeWaypoints.size() - 1) {

@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Navigation } from 'lucide-react';
 
 interface JoystickPadProps {
   speedKmh: number;
@@ -7,12 +6,7 @@ interface JoystickPadProps {
   onStep: (distanceMeters: number, bearingDeg: number) => void;
 }
 
-const SPEED_PRESETS = [
-  { label: 'Пешком', kmh: 5 },
-  { label: 'Вело', kmh: 18 },
-  { label: 'Авто', kmh: 50 },
-  { label: 'Турбо', kmh: 120 },
-];
+const SPEEDS = [5, 18, 50];
 
 export const JoystickPad: React.FC<JoystickPadProps> = ({
   speedKmh,
@@ -21,11 +15,11 @@ export const JoystickPad: React.FC<JoystickPadProps> = ({
 }) => {
   const padRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [knob, setKnob] = useState({ x: 0, y: 0 }); // normalized -1..1
+  const [knob, setKnob] = useState({ x: 0, y: 0 });
   const onStepRef = useRef(onStep);
   onStepRef.current = onStep;
 
-  const maxRadius = 38;
+  const maxRadius = 32;
 
   const updateFromPointer = (clientX: number, clientY: number) => {
     const el = padRef.current;
@@ -48,11 +42,9 @@ export const JoystickPad: React.FC<JoystickPadProps> = ({
     const interval = window.setInterval(() => {
       const mag = Math.hypot(knob.x, knob.y);
       if (mag < 0.12) return;
-      // Bearing: 0 = North (-y), 90 = East (+x)
       const bearing = ((Math.atan2(knob.x, -knob.y) * 180) / Math.PI + 360) % 360;
       const speedMps = (speedKmh * 1000) / 3600;
-      const stepMeters = speedMps * 0.2 * Math.min(1, mag);
-      onStepRef.current(stepMeters, bearing);
+      onStepRef.current(speedMps * 0.2 * Math.min(1, mag), bearing);
     }, 200);
     return () => window.clearInterval(interval);
   }, [dragging, knob, speedKmh]);
@@ -75,13 +67,7 @@ export const JoystickPad: React.FC<JoystickPadProps> = ({
   }, [dragging]);
 
   return (
-    <div className="rounded-2xl bg-slate-900/90 border border-slate-700/90 p-3 shadow-2xl backdrop-blur flex flex-col items-center gap-2.5 select-none">
-      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-300">
-        <Navigation className="w-3.5 h-3.5 text-emerald-400" />
-        <span>Джойстик · {speedKmh} км/ч</span>
-      </div>
-
-      {/* Circular Pad */}
+    <div className="rounded-3xl bg-slate-950/80 border border-white/15 p-2.5 shadow-2xl backdrop-blur-xl flex flex-col items-center gap-2 select-none">
       <div
         ref={padRef}
         onPointerDown={(e) => {
@@ -90,41 +76,31 @@ export const JoystickPad: React.FC<JoystickPadProps> = ({
           updateFromPointer(e.clientX, e.clientY);
         }}
         style={{ touchAction: 'none' }}
-        className="relative w-28 h-28 rounded-full bg-slate-950/90 border-2 border-slate-700 flex items-center justify-center cursor-grab active:cursor-grabbing"
+        className="relative w-24 h-24 rounded-full bg-white/5 border border-white/15 flex items-center justify-center cursor-grab active:cursor-grabbing"
       >
-        <span className="absolute top-1.5 text-[9px] font-black text-slate-500">N</span>
-        <span className="absolute bottom-1.5 text-[9px] font-black text-slate-500">S</span>
-        <span className="absolute left-2 text-[9px] font-black text-slate-500">W</span>
-        <span className="absolute right-2 text-[9px] font-black text-slate-500">E</span>
-
         <div
-          className={`w-11 h-11 rounded-full shadow-lg border-2 flex items-center justify-center transition-colors ${
-            dragging
-              ? 'bg-emerald-500 border-white'
-              : 'bg-sky-500 border-sky-200'
+          className={`w-9 h-9 rounded-full shadow-lg border-2 border-white transition-colors ${
+            dragging ? 'bg-emerald-400' : 'bg-sky-400'
           }`}
           style={{
             transform: `translate(${knob.x * maxRadius}px, ${knob.y * maxRadius}px)`,
           }}
-        >
-          <div className="w-3 h-3 rounded-full bg-white/80" />
-        </div>
+        />
       </div>
 
-      {/* Speed Chips */}
-      <div className="grid grid-cols-2 gap-1 w-full">
-        {SPEED_PRESETS.map((p) => (
+      <div className="flex items-center gap-1">
+        {SPEEDS.map((s) => (
           <button
-            key={p.kmh}
+            key={s}
             type="button"
-            onClick={() => onChangeSpeed(p.kmh)}
-            className={`px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-colors ${
-              speedKmh === p.kmh
-                ? 'bg-emerald-500 text-slate-950'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            onClick={() => onChangeSpeed(s)}
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer ${
+              speedKmh === s
+                ? 'bg-emerald-400 text-slate-950'
+                : 'bg-white/10 text-slate-300 hover:bg-white/20'
             }`}
           >
-            {p.label}
+            {s}
           </button>
         ))}
       </div>
