@@ -670,7 +670,8 @@ export class MiniTransformer {
   }
 
   /**
-   * Generates continuation text autoregressively from a prompt using temperature + top-k sampling.
+   * Generates continuation text autoregressively from a prompt using temperature,
+   * top-k sampling, and repetition penalty to avoid character loops.
    */
   generate(prompt: string, maxNewTokens = 140, temperature = 0.65, topK = 12): string {
     let ids = this.encode(prompt);
@@ -683,10 +684,21 @@ export class MiniTransformer {
       const lastOff = (ctx.length - 1) * this.config.vocabSize;
       const temp = Math.max(0.15, temperature);
 
-      // Extract top-k candidates
+      // Apply repetition penalty over the recent 18 generated tokens
+      const recent = out.slice(-18);
+      const counts = new Map<number, number>();
+      for (const id of recent) {
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+      }
+
       const pairs: Array<{ id: number; val: number }> = [];
       for (let v = 0; v < this.config.vocabSize; v++) {
-        pairs.push({ id: v, val: logits[lastOff + v] / temp });
+        let logit = logits[lastOff + v];
+        const freq = counts.get(v) ?? 0;
+        if (freq > 0) {
+          logit = logit > 0 ? logit / Math.pow(1.22, freq) : logit * Math.pow(1.22, freq);
+        }
+        pairs.push({ id: v, val: logit / temp });
       }
       pairs.sort((a, b) => b.val - a.val);
       const top = pairs.slice(0, Math.min(topK, pairs.length));
@@ -712,10 +724,13 @@ export class MiniTransformer {
       ids.push(chosen);
       out.push(chosen);
 
-      // Stop naturally if model emits a double newline or new "Вопрос:" turn
+      // Stop naturally if model emits a newline or starts a new turn
       const partial = this.decode(out);
       if (partial.includes('\n\n') || partial.includes('Вопрос:')) {
         return partial.replace(/(\n\n|Вопрос:).*$/s, '').trim();
+      }
+      if (prompt.endsWith('Ответ:') && partial.length > 18 && partial.endsWith('\n')) {
+        return partial.trim();
       }
     }
 

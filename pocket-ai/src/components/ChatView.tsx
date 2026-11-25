@@ -33,6 +33,27 @@ const STARTER_PROMPTS = [
   'Как мне скачать и улучшить Gemma 3 на телефоне?',
 ];
 
+function renderFormattedText(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return (
+        <strong key={idx} className="font-bold text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      return (
+        <code key={idx} className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-xs text-sky-300">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <React.Fragment key={idx}>{part}</React.Fragment>;
+  });
+}
+
 export const ChatView: React.FC<ChatViewProps> = ({
   messages,
   activeModelName,
@@ -164,7 +185,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   </div>
                 )}
 
-                <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                <div className="whitespace-pre-wrap break-words">
+                  {isUser ? msg.content : renderFormattedText(msg.content)}
+                </div>
 
                 {/* Metadata + RAG pills + Feedback buttons */}
                 {!isUser && (

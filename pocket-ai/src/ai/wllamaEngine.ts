@@ -62,16 +62,30 @@ class WllamaEngineService {
       await wllama.exit();
     }
 
-    await wllama.loadModelFromHF(
-      { repo, quant },
-      {
-        n_ctx: contextSize,
-        useCache: true,
-        progressCallback: ({ loaded, total }) => {
-          onProgress(loaded, total);
+    try {
+      await wllama.loadModelFromHF(
+        { repo, quant },
+        {
+          n_ctx: contextSize,
+          useCache: true,
+          progressCallback: ({ loaded, total }) => {
+            onProgress(loaded, total);
+          },
         },
-      },
-    );
+      );
+    } catch {
+      // Fallback: auto-detect any available GGUF quant in the HF repo
+      await wllama.loadModelFromHF(
+        { repo },
+        {
+          n_ctx: contextSize,
+          useCache: true,
+          progressCallback: ({ loaded, total }) => {
+            onProgress(loaded, total);
+          },
+        },
+      );
+    }
     this.loadedModelLabel = label;
   }
 

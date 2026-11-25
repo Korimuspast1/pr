@@ -208,6 +208,124 @@ function trySolveMathOrLogic(query: string): { steps: string; result: string } |
   return null;
 }
 
+function isGibberishInput(text: string): boolean {
+  const clean = text.trim().toLowerCase();
+  if (clean.length < 3) return false;
+  if (/^\d+$/.test(clean)) return false;
+
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length === 1 && clean.length >= 6) {
+    const letters = clean.replace(/[^a-zа-яё]/gi, '');
+    if (letters.length >= 6) {
+      const vowels = (letters.match(/[аеёиоуыэюяaeiouy]/gi) ?? []).length;
+      const ratio = vowels / letters.length;
+      const hasKnownWord = /(привет|пока|спасибо|помоги|сделай|расскажи|сколько|gemma|qwen|llama|модел|нейро|память|план|код|тест)/.test(
+        letters,
+      );
+      if (!hasKnownWord && (ratio < 0.2 || ratio > 0.72 || /(.)\1{3,}/.test(letters))) {
+        return true;
+      }
+      // Random keyboard rows like "кцупйукп" / "фывапрол" / "qwertyui"
+      if (!hasKnownWord && !/[аеёиоуыэюя][бвгджзйклмнпрстфхцчшщ][аеёиоуыэюя]/i.test(letters)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function tryBuiltInConversation(query: string, personaId: string): { steps: string; answer: string } | null {
+  const q = query.trim().toLowerCase();
+
+  // Percentage calculation ("15% от 200")
+  const pctMatch = q.match(/(\d+(?:[.,]\d+)?)\s*%\s*(?:от|of)\s*(\d+(?:[.,]\d+)?)/);
+  if (pctMatch) {
+    const p = Number.parseFloat(pctMatch[1].replace(',', '.'));
+    const base = Number.parseFloat(pctMatch[2].replace(',', '.'));
+    const ans = Number(((p / 100) * base).toFixed(4));
+    return {
+      steps: `Считаю ${p}% от ${base}: (${p} / 100) * ${base} = ${ans}.`,
+      answer: `${p}% от ${base} = **${ans}**.`,
+    };
+  }
+
+  // Greetings & identity
+  if (/^(привет|приветик|здравствуй|хай|ку|hello|hi|hey)\b/i.test(q) && q.length < 30) {
+    return {
+      steps: 'Распознано приветствие. Представляюсь кратко и по делу.',
+      answer:
+        'Привет! Я **PocketAI** — локальный ИИ-ассистент, работаю прямо на твоём устройстве без облака и API-ключей.\n\nМогу:\n• Отвечать с пошаговой проверкой логики и по твоей **RAG-базе знаний**;\n• Запускать скачанные модели **Gemma 3 / Qwen 2.5 / SmolLM2** во вкладке **«Модели»**;\n• Обучать свою мини-нейросеть во вкладке **«Своя ИИ»**.',
+    };
+  }
+
+  if (/(кто ты|ты кто|что ты такое|как тебя зовут)/.test(q)) {
+    return {
+      steps: 'Запрос о моей личности и назначении.',
+      answer:
+        'Я **PocketAI Studio** — твой персональный локальный ИИ. Сейчас активен встроенный гибридный режим (**PocketGPT-Mini + RAG + логический солвер**).\n\nЕсли хочешь полноценную большую LLM уровня GPT-класса прямо на телефоне, открой вкладку **«Модели»** и скачай **Gemma 3 270M** или **Gemma 3 1B** — они загрузятся в память устройства и будут работать офлайн.',
+    };
+  }
+
+  if (/(как ты сделан|из чего ты|на чем ты|как устроен|как ты работаешь)/.test(q)) {
+    return {
+      steps: 'Запрос об архитектуре PocketAI Studio.',
+      answer:
+        'Я устроен из трёх локальных слоёв:\n1. **Движок `llama.cpp` (WebAssembly)** — запускает реальные `.gguf` модели (**Gemma 3, Qwen 2.5, Llama 3.2**) прямо в браузере и Android APK.\n2. **Улучшитель ответа (`Think → RAG → Адаптер`)** — проверяет вычисления, подтягивает факты из твоих заметок и учитывает твои оценки (лайки/исправления).\n3. **Своя нейросеть Transformer GPT** — модель на `Float32Array` с механизмом внимания и оптимизатором AdamW, которую можно дообучать во вкладке **«Своя ИИ»**.',
+    };
+  }
+
+  if (/(как дела|как ты\??$|что нового)/.test(q)) {
+    return {
+      steps: 'Неформальный вопрос о состоянии.',
+      answer: 'Всё отлично! Работаю локально, память и адаптер на месте. Чем помочь?',
+    };
+  }
+
+  if (/(как скачать|где gemma|какую модель|какая модель лучше|установить gemma)/.test(q)) {
+    return {
+      steps: 'Подсказка по выбору и загрузке GGUF-моделей.',
+      answer:
+        'Чтобы запустить настоящую **Gemma** на телефоне или в браузере:\n1. Перейди во вкладку **«Модели»**.\n2. Нажми **«Скачать»** напротив **Gemma 3 270M IT (~250 МБ)** (быстрая) или **Gemma 3 1B IT (~806 МБ)** (самая умная).\n3. Модель сохранится в локальном кэше `OPFS` и больше не потребует интернета.',
+    };
+  }
+
+  if (/(что ты умеешь|функции|возможности|помощь|help)/.test(q)) {
+    return {
+      steps: 'Перечисление возможностей приложения.',
+      answer:
+        'Вот что я умею прямо сейчас:\n• Решать примеры и текстовые задачки (с проверкой шагов);\n• Искать ответы в твоей **Базе знаний (RAG)** во вкладке «Улучшить»;\n• Запоминать твои исправления (нажми дизлайк под любым ответом и введи эталон);\n• Запускать **Gemma 3 / Qwen / SmolLM2** из вкладки «Модели»;\n• Обучать твою собственную Transformer-нейросеть на любых текстах во вкладке «Своя ИИ».',
+    };
+  }
+
+  if (/(который час|сколько времени|какое сегодня число|дата|время)/.test(q)) {
+    const now = new Date();
+    return {
+      steps: 'Читаю системное время устройства.',
+      answer: `Сейчас **${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}**, дата: **${now.toLocaleDateString('ru-RU')}**.`,
+    };
+  }
+
+  if (/(план|чек-лист|чеклист|как дообучить|улучшить модель|улучшить нейросеть)/.test(q)) {
+    return {
+      steps: 'Формирую структурированный план из 3 шагов.',
+      answer:
+        personaId === 'concise'
+          ? '1. Скачай Gemma 3 270M/1B в «Модели».\n2. Добавь свои факты в RAG («Улучшить»).\n3. Исправляй ошибки через адаптер и включи «Глубокое мышление».'
+          : 'Вот чёткий план, как выжать максимум из локальной модели:\n1. **Включи «Глубокое мышление»** — модель начнёт проверять логику перед ответом.\n2. **Заполни RAG-память** своими заметками и правилами (вкладка «Улучшить»).\n3. **Обучи адаптер на исправлениях**: поправь 3–5 ответов вручную через иконку оценки, чтобы ИИ перенял твой стиль.',
+    };
+  }
+
+  if (/(код|функци|javascript|typescript|python|пример кода|совет по коду)/.test(q)) {
+    return {
+      steps: 'Подбираю практический шаблон и рекомендации по коду.',
+      answer:
+        'Для чистого кода держи 3 базовых правила:\n1. Разбивай логику на небольшие функции с понятными типами.\n2. Проверяй пустые входные данные и ошибки на границах.\n3. Для вычислений в JS/TS используй `Float32Array`.\n\nЕсли хочешь, чтобы я писал и отлаживал сложный код под твой проект — скачай **Qwen 2.5 0.5B** или **Gemma 3 1B** во вкладке **«Модели»**!',
+    };
+  }
+
+  return null;
+}
+
 /**
  * Built-in local hybrid response generator when running purely on PocketGPT-Mini
  * (before user downloads Gemma 3 / Qwen / SmolLM2 GGUF).
@@ -233,10 +351,22 @@ export function generateBuiltInReply(
     }
   }
 
+  // 0. Check for accidental keyboard mash / gibberish
+  if (isGibberishInput(userQuery)) {
+    thinkingSteps.push('2. Обнаружен случайный набор символов без читаемых слов.');
+    return {
+      answer:
+        'Похоже, сообщение набрано случайно или с опечаткой. Напиши вопрос обычными словами — и я с радостью отвечу!',
+      thinking: cfg.deepThink ? thinkingSteps.join('\n') : undefined,
+      ragTitles: [],
+      usedAdapterCount: 0,
+    };
+  }
+
   // 1. Exact/high-confidence user feedback correction takes highest priority
   if (cfg.useAdapter && adapterHits.length > 0) {
     const best = adapterHits[0];
-    if (similarityScore(userQuery, best.prompt) >= 0.45) {
+    if (similarityScore(userQuery, best.prompt) >= 0.42) {
       thinkingSteps.push('4. Найден эталонный ответ из твоего дообучения.');
       return {
         answer: best.idealReply,
@@ -247,9 +377,9 @@ export function generateBuiltInReply(
     }
   }
 
-  // 2. Logic & Arithmetic verifier (when deepThink is on or math query)
+  // 2. Logic & Arithmetic verifier
   const math = trySolveMathOrLogic(userQuery);
-  if (math && (cfg.deepThink || /сколько|вычисли|=|\+|-|\*/i.test(userQuery))) {
+  if (math) {
     thinkingSteps.push(`4. Проверка вычислений: ${math.steps}`);
     return {
       answer: math.result,
@@ -259,7 +389,19 @@ export function generateBuiltInReply(
     };
   }
 
-  // 3. RAG Knowledge Base synthesis
+  // 3. Built-in conversational intent engine
+  const conv = tryBuiltInConversation(userQuery, cfg.personaId);
+  if (conv) {
+    thinkingSteps.push(`4. ${conv.steps}`);
+    return {
+      answer: conv.answer,
+      thinking: cfg.deepThink ? thinkingSteps.join('\n') : undefined,
+      ragTitles: ragHits.map((n) => n.title),
+      usedAdapterCount: adapterHits.length,
+    };
+  }
+
+  // 4. RAG Knowledge Base synthesis
   if (cfg.useRag && ragHits.length > 0) {
     const facts = ragHits.map((n) => `**${n.title}**: ${n.content}`).join('\n\n');
     thinkingSteps.push('4. Сборка ответа на основе локальной базы знаний без выдумок.');
@@ -271,22 +413,14 @@ export function generateBuiltInReply(
     };
   }
 
-  // 4. Trained MiniTransformer neural generation
-  const neuralOut = miniModel.generate(
-    `Вопрос: ${userQuery}\nОтвет:`,
-    130,
-    Math.min(0.85, Math.max(0.2, cfg.temperature)),
-    8,
+  // 5. Honest helpful answer instead of raw char-level gibberish
+  thinkingSteps.push(
+    `4. Встроенная мини-модель (${miniModel.getParamCount()} весов) не нашла точного факта в локальной базе и не выдумывает ответ.`,
   );
-  thinkingSteps.push(`4. Генерация нейросетью PocketGPT-Mini (${miniModel.getParamCount()} весов, шаг ${miniModel.stepCount}).`);
-
-  const cleanNeural =
-    neuralOut && neuralOut.length >= 6
-      ? neuralOut
-      : 'Я работаю на встроенной мини-нейросети PocketGPT-Mini. Чтобы получить полные ответы уровня LLM, скачай Gemma 3 или Qwen 2.5 во вкладке «Модели», либо обучи меня на своих текстах во вкладке «Своя ИИ»!';
 
   return {
-    answer: cleanNeural,
+    answer:
+      `По запросу «${userQuery}» у меня пока нет точных знаний во встроенной памяти.\n\nЧтобы я отвечал на любые свободные темы как полноценная нейросеть:\n• Перейди во вкладку **«Модели»** и скачай **Gemma 3 270M** или **Qwen 2.5 0.5B** (работает 100% локально),\n• Либо нажми иконку дизлайка под этим сообщением и задай мне правильный ответ — я запомню его навсегда!`,
     thinking: cfg.deepThink ? thinkingSteps.join('\n') : undefined,
     ragTitles: [],
     usedAdapterCount: adapterHits.length,
