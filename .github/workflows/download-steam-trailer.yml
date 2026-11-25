@@ -41,9 +41,19 @@ jobs:
           PY
       - name: скачиваем и собираем трейлер
         run: |
+          set -o pipefail
           python3 -u scripts/steam_trailer_dl.py \
             "${{ steps.req.outputs.master_url }}" \
-            "${{ steps.req.outputs.output_name }}"
+            "${{ steps.req.outputs.output_name }}" 2>&1 | tee trailer.log
+      - name: публикуем лог в ветку (для диагностики)
+        if: always()
+        run: |
+          git config user.name "trailer-bot"
+          git config user.email "trailer-bot@users.noreply.github.com"
+          cp trailer.log trailer-log.txt 2>/dev/null || true
+          git add trailer-log.txt
+          git diff --cached --quiet || git commit -m "trailer: log (${{ job.status }})"
+          git push || true
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.req.outputs.output_name }}
