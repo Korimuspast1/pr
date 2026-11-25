@@ -11,6 +11,7 @@
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -21,6 +22,19 @@ UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
+
+
+def find_ffmpeg() -> str:
+    for name in ("ffmpeg",):
+        path = shutil.which(name)
+        if path:
+            return path
+    try:
+        import imageio_ffmpeg
+
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:  # noqa: BLE001
+        raise SystemExit("ffmpeg не найден: установите ffmpeg или imageio-ffmpeg")
 
 
 def fetch(url: str, retries: int = 6) -> bytes:
@@ -129,7 +143,7 @@ def main() -> int:
         inputs += ["-i", audio_path]
 
     cmd = [
-        "ffmpeg", "-y", "-hide_banner", "-loglevel", "warning",
+        find_ffmpeg(), "-y", "-hide_banner", "-loglevel", "warning",
         *inputs,
         "-c", "copy", "-movflags", "+faststart",
         args.output,
@@ -144,8 +158,11 @@ def main() -> int:
 
     size = os.path.getsize(args.output)
     print(f"готово: {args.output} ({size} B, {size / 1048576:.2f} MiB)", flush=True)
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe:
+        return 0
     subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries",
+        [ffprobe, "-v", "error", "-show_entries",
          "format=duration:stream=codec_name,width,height,sample_rate",
          "-of", "default=noprint_wrappers=1", args.output],
         check=False,
