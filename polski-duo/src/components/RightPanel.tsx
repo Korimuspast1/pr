@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrainCircuit, Flame, Gem, Heart, Sparkles, Target, Zap } from 'lucide-react';
+import { BrainCircuit, Flame, Gem, Heart, Infinity as InfinityIcon, Sparkles, Target, Zap } from 'lucide-react';
 import {
   computeCefrLevel,
   computeGlobalMasteryScore,
@@ -53,9 +53,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           <span>{state.gems}</span>
         </div>
 
-        <div className="flex items-center gap-1 font-extrabold text-[#FF4B4B]" title="Жизни">
+        <div className="flex items-center gap-1 font-extrabold text-[#FF4B4B]" title="Бесконечные сердечки">
           <Heart className="w-5 h-5 fill-[#FF4B4B]" />
-          <span>{state.hearts}</span>
+          <InfinityIcon className="w-4 h-4 stroke-[3]" />
         </div>
       </div>
 

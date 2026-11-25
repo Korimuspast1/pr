@@ -1,0 +1,34 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Polish Crimson Body -->
+    <path
+        android:fillColor="#DC143C"
+        android:pathData="M34,62 C34,47 46,38 60,38 C74,38 86,47 86,62 L86,76 C86,90 74,100 60,100 C46,100 34,90 34,76 Z" />
+    <!-- White Chest -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,78 A17,17 0 1,0 77,78 A17,17 0 1,0 43,78 Z" />
+    <!-- White Eagle Head -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,48 A24,24 0 1,0 84,48 A24,24 0 1,0 36,48 Z" />
+    <!-- Golden Crown -->
+    <path
+        android:fillColor="#FFC800"
+        android:pathData="M45,25 L49,15 L55,22 L60,13 L65,22 L71,15 L75,25 Z" />
+    <!-- Left Eye -->
+    <path
+        android:fillColor="#2B2D42"
+        android:pathData="M45,46 A4.2,4.2 0 1,0 53.4,46 A4.2,4.2 0 1,0 45,46 Z" />
+    <!-- Right Eye -->
+    <path
+        android:fillColor="#2B2D42"
+        android:pathData="M66.6,46 A4.2,4.2 0 1,0 75,46 A4.2,4.2 0 1,0 66.6,46 Z" />
+    <!-- Golden Beak -->
+    <path
+        android:fillColor="#FF9600"
+        android:pathData="M54,51 L66,51 L60,61 Z" />
+</vector>

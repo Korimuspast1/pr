@@ -1,0 +1,55 @@
+name: Build PolskiOrzel APK
+
+on:
+  push:
+    branches:
+      - 'arena/75344e87-pr'
+    paths:
+      - 'polski-duo/**'
+      - '.github/workflows/polski-orzel-apk.yml'
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install npm dependencies & build web bundle
+        working-directory: polski-duo
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      - name: Build Android APK (Debug)
+        working-directory: polski-duo/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Copy & verify APK
+        working-directory: polski-duo
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/PolskiOrzel.apk
+          ls -lh release/PolskiOrzel.apk
+
+      - name: Upload PolskiOrzel.apk artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PolskiOrzel-APK
+          path: polski-duo/release/PolskiOrzel.apk
+          if-no-files-found: error

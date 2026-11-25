@@ -426,9 +426,9 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
               Завершить ({answeredCount})
             </button>
           ) : (
-            <div className="flex items-center gap-1 font-black text-[#FF4B4B]">
+            <div className="flex items-center gap-1 font-black text-[#FF4B4B]" title="Бесконечные сердечки">
               <Heart className="w-5 h-5 fill-[#FF4B4B]" />
-              <span>{aiState.hearts}</span>
+              <InfinityIcon className="w-4 h-4 stroke-[3]" />
             </div>
           )}
         </div>

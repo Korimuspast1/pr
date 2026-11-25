@@ -435,14 +435,13 @@ export function applyExerciseOutcome(
     );
   }
 
-  // Hearts & XP
+  // Hearts & XP (Infinite Hearts enabled across all modes)
   if (evaluation.isCorrect) {
     const earned = isInfiniteMode ? 12 : 10;
     next.xp += earned;
     next.dailyXp += earned;
-  } else if (!isInfiniteMode) {
-    next.hearts = Math.max(0, next.hearts - 1);
   }
+  next.hearts = next.maxHearts;
 
   return next;
 }

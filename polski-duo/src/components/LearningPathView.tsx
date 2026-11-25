@@ -114,9 +114,9 @@ export const LearningPathView: React.FC<LearningPathViewProps> = ({
             <Gem className="w-4 h-4 fill-[#1CB0F6]" />
             {state.gems}
           </span>
-          <span className="flex items-center gap-1 text-[#FF4B4B]">
+          <span className="flex items-center gap-1 text-[#FF4B4B]" title="Бесконечные сердечки">
             <Heart className="w-4 h-4 fill-[#FF4B4B]" />
-            {state.hearts}
+            <InfinityIcon className="w-4 h-4 stroke-[3]" />
           </span>
         </div>
       </div>
