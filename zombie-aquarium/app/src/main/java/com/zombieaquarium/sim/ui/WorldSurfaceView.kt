@@ -518,19 +518,19 @@ class WorldSurfaceView @JvmOverloads constructor(
 
             for (st in sim.structures) {
                 if (st.x < minTx - 2 || st.x > maxTx + 2 || st.y < minTy - 2 || st.y > maxTy + 2) continue
-                addDrawItem(depth = st.x + st.y + 0.55f, kind = 2, structure = st)
+                addDrawItem(depth = st.x + st.y + 0.55f, kind = 2, st = st)
             }
 
             for (z in sim.zombies) {
                 if (!z.alive) continue
                 if (z.x < minTx - 2 || z.x > maxTx + 2 || z.y < minTy - 2 || z.y > maxTy + 2) continue
-                addDrawItem(depth = z.x + z.y, kind = 4, zombie = z)
+                addDrawItem(depth = z.x + z.y, kind = 4, z = z)
             }
 
             for (s in sim.survivors) {
                 if (!s.alive) continue
                 if (s.x < minTx - 2 || s.x > maxTx + 2 || s.y < minTy - 2 || s.y > maxTy + 2) continue
-                addDrawItem(depth = s.x + s.y, kind = 3, survivor = s)
+                addDrawItem(depth = s.x + s.y, kind = 3, s = s)
             }
 
             // Sort back-to-front in isometric depth!
