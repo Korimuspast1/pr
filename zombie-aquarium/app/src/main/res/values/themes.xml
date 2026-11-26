@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.ZombieAquarium" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">#10B981</item>
+        <item name="colorOnPrimary">#07120E</item>
+        <item name="colorSecondary">#F59E0B</item>
+        <item name="android:windowBackground">#090D12</item>
+        <item name="android:statusBarColor">#090D12</item>
+        <item name="android:navigationBarColor">#090D12</item>
+    </style>
+</resources>
