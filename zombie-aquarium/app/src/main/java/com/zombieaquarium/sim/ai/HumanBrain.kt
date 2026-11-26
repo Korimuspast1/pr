@@ -12,6 +12,7 @@ import com.zombieaquarium.sim.engine.WeaponType
 import com.zombieaquarium.sim.engine.WeatherType
 import com.zombieaquarium.sim.engine.WorldMap
 import com.zombieaquarium.sim.engine.WorldSimulation
+import com.zombieaquarium.sim.engine.ZombieType
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
