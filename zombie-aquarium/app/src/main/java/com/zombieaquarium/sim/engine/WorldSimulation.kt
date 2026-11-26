@@ -53,6 +53,8 @@ class WorldSimulation(val config: SimConfig) {
     private val beaconX = IntArray(128)
     private val beaconY = IntArray(128)
 
+    var prevIsNight: Boolean = false
+
     val isNight: Boolean
         get() = timeOfDay < 0.24f || timeOfDay > 0.80f
 
@@ -64,6 +66,7 @@ class WorldSimulation(val config: SimConfig) {
 
     init {
         populateWorld()
+        emitSound(SoundEventType.VO_INTRO, map.size * 0.5f, map.size * 0.5f)
         logChronicle("Старт", "Новый мир создан (Seed ${config.seed}). Выживших: ${survivors.size}, зомби: ${zombies.size}.")
     }
 
@@ -161,7 +164,12 @@ class WorldSimulation(val config: SimConfig) {
             }
             if (weather == WeatherType.STORM && rng.chance(0.014f)) {
                 lightningFlashTicks = 3
+                emitSound(SoundEventType.THUNDER, map.size * 0.5f, map.size * 0.5f)
             }
+            if (!prevIsNight && isNight) {
+                emitSound(SoundEventType.VO_NIGHT, map.size * 0.5f, map.size * 0.5f)
+            }
+            prevIsNight = isNight
 
             // 2. Camp structures (campfires, rain collectors)
             updateStructures()
@@ -297,6 +305,7 @@ class WorldSimulation(val config: SimConfig) {
         camps.add(camp)
         campsById[id] = camp
         joinCamp(founder, camp, forceRole = CampRole.LEADER)
+        emitSound(SoundEventType.VO_CAMP, building.centerX, building.centerY)
         logChronicle("Лагерь", "${founder.name} основал(а) лагерь «$campName» (${building.type.titleRu}).", building.centerX, building.centerY)
         return camp
     }
@@ -388,6 +397,8 @@ class WorldSimulation(val config: SimConfig) {
             }
         }
         logChronicle("Орда", "К городу движется мигрирующая орда ($count зомби)!", cx, cy)
+        emitSound(SoundEventType.VO_HORDE, cx, cy)
+        emitSound(SoundEventType.ZOMBIE_MOB, cx, cy)
     }
 
     // === God Mode Interventions ===

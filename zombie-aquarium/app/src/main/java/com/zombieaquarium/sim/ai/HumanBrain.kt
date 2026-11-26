@@ -724,13 +724,14 @@ object HumanBrain {
             GoapActionType.TREAT_SELF -> {
                 agent.fsmState = FsmState.HEALING
                 agent.currentActionIcon = "Лечит"
-                if (agent.bandages > 0) {
-                    agent.bandages--
-                    agent.bleeding = 0f
-                    agent.hp = min(100f, agent.hp + (if (agent.hasTrait(SurvivorTrait.MEDIC)) 38f else 26f))
-                    agent.limping = false
-                    agent.setThought("Перевязал рану.", 40)
-                }
+        if (agent.bandages > 0) {
+            agent.bandages--
+            agent.bleeding = 0f
+            agent.hp = min(100f, agent.hp + (if (agent.hasTrait(SurvivorTrait.MEDIC)) 38f else 26f))
+            agent.limping = false
+            sim.emitSound(SoundEventType.BANDAGE, agent.x, agent.y)
+            agent.setThought("Перевязал рану.", 40)
+        }
                 agent.goapPlan.removeFirstOrNull()
             }
 
@@ -870,6 +871,7 @@ object HumanBrain {
                 else -> SoundEventType.PISTOL
             }
             sim.emitSound(sType, agent.x, agent.y)
+            sim.emitSound(SoundEventType.SHELL_CASING, agent.x, agent.y)
             agent.setThought("Выстрел из ${weapon.titleRu}!", 30)
         } else {
             agent.stamina = max(0f, agent.stamina - 8f)
@@ -880,6 +882,7 @@ object HumanBrain {
         if (rng.chance(hitChance)) {
             target.hp -= weapon.damage
             target.hurtAnimTicks = 4
+            sim.emitSound(SoundEventType.SPLAT, target.x, target.y)
             sim.map.addBlood(target.x.toInt().coerceIn(0, sim.map.size - 1), target.y.toInt().coerceIn(0, sim.map.size - 1), 18f)
             repeat(3) {
                 sim.particles.spawn(
@@ -1041,11 +1044,14 @@ object HumanBrain {
             agent.y += (dy / d) * step
         }
 
-        // Emit movement noise
+        // Emit movement noise & subtle footstep audio when running
         val noiseR = when {
             sneaking -> if (agent.hasTrait(SurvivorTrait.STEALTH)) 2f else 3f
             fleeing -> 10f
             else -> 5f
+        }
+        if (fleeing && sim.tickCount % 4 == 0) {
+            sim.emitSound(SoundEventType.FOOTSTEP, agent.x, agent.y)
         }
         sim.map.addNoise(agent.x.toInt().coerceIn(0, sim.map.size - 1), agent.y.toInt().coerceIn(0, sim.map.size - 1), noiseR, if (fleeing) 32f else 12f)
         return false

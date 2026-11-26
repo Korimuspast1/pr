@@ -4,22 +4,25 @@
     android:layout_height="match_parent"
     android:background="#090D12">
 
-    <!-- Hardware-Accelerated Native Simulation Canvas -->
+    <!-- Hardware-Accelerated 2.5D Isometric Simulation Canvas -->
     <com.zombieaquarium.sim.ui.WorldSurfaceView
         android:id="@+id/worldSurface"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Top HUD Panel -->
+    <!-- Top HUD Panel (Aligned, zero clipping, status-bar inset safe) -->
     <LinearLayout
         android:id="@+id/topHud"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:background="#D90F172A"
+        android:background="#E60B111A"
         android:orientation="vertical"
-        android:padding="8dp">
+        android:paddingHorizontal="10dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="8dp">
 
+        <!-- Row 1: Clock / Weather + New World -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -31,7 +34,9 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="День 1 • 08:10 • Ясно"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="День 1 • 08:10 (День) • Ясно"
                 android:textColor="#F8FAFC"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -40,7 +45,9 @@
                 android:id="@+id/btnNewWorld"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
-                android:layout_height="34dp"
+                android:layout_height="30dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:minWidth="0dp"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="0dp"
@@ -48,143 +55,182 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
-        <LinearLayout
+        <!-- Row 2: Live Counters -->
+        <TextView
+            android:id="@+id/tvCounters"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Люди: 28  •  Лагеря: 0  •  Зомби: 180  •  Погибло: 0"
+            android:textColor="#94A3B8"
+            android:textSize="11sp" />
 
-            <TextView
-                android:id="@+id/tvCounters"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Люди: 28 • Лагеря: 0 • Зомби: 180 • Погибло: 0"
-                android:textColor="#94A3B8"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <!-- Speed & Overlay row -->
-        <HorizontalScrollView
+        <!-- Row 3: Equal-width Speed Controls -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:scrollbars="none">
+            android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+            <Button
+                android:id="@+id/btnSpeedPause"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:padding="0dp"
+                android:text="||"
+                android:textColor="#F8FAFC"
+                android:textSize="11sp" />
 
-                <Button
-                    android:id="@+id/btnSpeedPause"
-                    android:layout_width="40dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="4dp"
-                    android:backgroundTint="#1E293B"
-                    android:padding="0dp"
-                    android:text="||"
-                    android:textColor="#F8FAFC"
-                    android:textSize="11sp" />
+            <Button
+                android:id="@+id/btnSpeed1"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:backgroundTint="#10B981"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:padding="0dp"
+                android:text="x1"
+                android:textColor="#04120C"
+                android:textSize="11sp" />
 
-                <Button
-                    android:id="@+id/btnSpeed1"
-                    android:layout_width="42dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="4dp"
-                    android:backgroundTint="#10B981"
-                    android:padding="0dp"
-                    android:text="x1"
-                    android:textColor="#04120C"
-                    android:textSize="11sp" />
+            <Button
+                android:id="@+id/btnSpeed2"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:padding="0dp"
+                android:text="x2"
+                android:textColor="#F8FAFC"
+                android:textSize="11sp" />
 
-                <Button
-                    android:id="@+id/btnSpeed2"
-                    android:layout_width="42dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="4dp"
-                    android:backgroundTint="#1E293B"
-                    android:padding="0dp"
-                    android:text="x2"
-                    android:textColor="#F8FAFC"
-                    android:textSize="11sp" />
+            <Button
+                android:id="@+id/btnSpeed4"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:padding="0dp"
+                android:text="x4"
+                android:textColor="#F8FAFC"
+                android:textSize="11sp" />
 
-                <Button
-                    android:id="@+id/btnSpeed4"
-                    android:layout_width="42dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="4dp"
-                    android:backgroundTint="#1E293B"
-                    android:padding="0dp"
-                    android:text="x4"
-                    android:textColor="#F8FAFC"
-                    android:textSize="11sp" />
+            <Button
+                android:id="@+id/btnSpeed8"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_weight="1"
+                android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:padding="0dp"
+                android:text="x8"
+                android:textColor="#F8FAFC"
+                android:textSize="11sp" />
+        </LinearLayout>
 
-                <Button
-                    android:id="@+id/btnSpeed8"
-                    android:layout_width="42dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="10dp"
-                    android:backgroundTint="#1E293B"
-                    android:padding="0dp"
-                    android:text="x8"
-                    android:textColor="#F8FAFC"
-                    android:textSize="11sp" />
+        <!-- Row 4: Equal-width Tools & Audio -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:orientation="horizontal">
 
-                <Button
-                    android:id="@+id/btnOverlay"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="6dp"
-                    android:backgroundTint="#1E293B"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="0dp"
-                    android:text="Слой: Обычный"
-                    android:textColor="#38BDF8"
-                    android:textSize="11sp" />
+            <Button
+                android:id="@+id/btnOverlay"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1.15"
+                android:backgroundTint="#1E293B"
+                android:ellipsize="end"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="0dp"
+                android:text="Слой"
+                android:textColor="#38BDF8"
+                android:textSize="10.5sp" />
 
-                <Button
-                    android:id="@+id/btnChronicle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="6dp"
-                    android:backgroundTint="#1E293B"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="0dp"
-                    android:text="Хроника"
-                    android:textColor="#FBBF24"
-                    android:textSize="11sp" />
+            <Button
+                android:id="@+id/btnChronicle"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="0dp"
+                android:text="Хроника"
+                android:textColor="#FBBF24"
+                android:textSize="10.5sp" />
 
-                <Button
-                    android:id="@+id/btnGodToggle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="6dp"
-                    android:backgroundTint="#1E293B"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="0dp"
-                    android:text="Режим Бога"
-                    android:textColor="#F472B6"
-                    android:textSize="11sp" />
+            <Button
+                android:id="@+id/btnGodToggle"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="0.85"
+                android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="0dp"
+                android:text="Бог"
+                android:textColor="#F472B6"
+                android:textSize="10.5sp" />
 
-                <Button
-                    android:id="@+id/btnSoundToggle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:backgroundTint="#1E293B"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="0dp"
-                    android:text="Звук: Вкл"
-                    android:textColor="#34D399"
-                    android:textSize="11sp" />
-            </LinearLayout>
-        </HorizontalScrollView>
+            <Button
+                android:id="@+id/btnSoundToggle"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="0.95"
+                android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="0dp"
+                android:text="Звук"
+                android:textColor="#34D399"
+                android:textSize="10.5sp" />
+
+            <Button
+                android:id="@+id/btnMusicToggle"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_weight="0.95"
+                android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:maxLines="1"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="0dp"
+                android:text="Песня"
+                android:textColor="#A78BFA"
+                android:textSize="10.5sp" />
+        </LinearLayout>
 
         <!-- Active God Mode Hint -->
         <TextView
@@ -197,72 +243,74 @@
             android:textSize="11sp"
             android:visibility="gone" />
 
-        <!-- Collapsible God Mode Bar -->
-        <HorizontalScrollView
+        <!-- Collapsible God Mode Bar (4 equal buttons, zero clipping) -->
+        <LinearLayout
             android:id="@+id/godPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:scrollbars="none"
+            android:layout_marginTop="5dp"
+            android:orientation="horizontal"
             android:visibility="gone">
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
+            <Button
+                android:id="@+id/btnGodCrate"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:backgroundTint="#065F46"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="0dp"
+                android:text="+ Ящик"
+                android:textColor="#ECFDF5"
+                android:textSize="10.5sp" />
 
-                <Button
-                    android:id="@+id/btnGodCrate"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="6dp"
-                    android:backgroundTint="#065F46"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="0dp"
-                    android:text="+ Ящик припасов"
-                    android:textColor="#ECFDF5"
-                    android:textSize="11sp" />
+            <Button
+                android:id="@+id/btnGodHorde"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:backgroundTint="#7F1D1D"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="0dp"
+                android:text="+ Орда"
+                android:textColor="#FEF2F2"
+                android:textSize="10.5sp" />
 
-                <Button
-                    android:id="@+id/btnGodHorde"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="6dp"
-                    android:backgroundTint="#7F1D1D"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="0dp"
-                    android:text="+ Орда зомби"
-                    android:textColor="#FEF2F2"
-                    android:textSize="11sp" />
+            <Button
+                android:id="@+id/btnGodSurvivor"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:backgroundTint="#1E3A8A"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="0dp"
+                android:text="+ Чел"
+                android:textColor="#EFF6FF"
+                android:textSize="10.5sp" />
 
-                <Button
-                    android:id="@+id/btnGodSurvivor"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="6dp"
-                    android:backgroundTint="#1E3A8A"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="0dp"
-                    android:text="+ Выживший"
-                    android:textColor="#EFF6FF"
-                    android:textSize="11sp" />
-
-                <Button
-                    android:id="@+id/btnGodWeather"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:backgroundTint="#312E81"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="0dp"
-                    android:text="Сменить погоду"
-                    android:textColor="#EEF2FF"
-                    android:textSize="11sp" />
-            </LinearLayout>
-        </HorizontalScrollView>
+            <Button
+                android:id="@+id/btnGodWeather"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_weight="1"
+                android:backgroundTint="#312E81"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="0dp"
+                android:text="Погода"
+                android:textColor="#EEF2FF"
+                android:textSize="10.5sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- Bottom Inspector Sheet (Hidden when nothing selected) -->
@@ -271,7 +319,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="#EE0F172A"
+        android:background="#F20B111A"
         android:orientation="vertical"
         android:padding="12dp"
         android:visibility="gone">
@@ -312,6 +360,8 @@
                 android:layout_height="32dp"
                 android:layout_marginEnd="6dp"
                 android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:minWidth="0dp"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="0dp"
@@ -324,6 +374,8 @@
                 android:layout_width="34dp"
                 android:layout_height="32dp"
                 android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:padding="0dp"
                 android:text="X"
                 android:textColor="#F8FAFC"
@@ -345,6 +397,8 @@
                 android:layout_marginEnd="4dp"
                 android:layout_weight="1"
                 android:backgroundTint="#10B981"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:padding="0dp"
                 android:text="Разум"
                 android:textColor="#04120C"
@@ -357,6 +411,8 @@
                 android:layout_marginEnd="4dp"
                 android:layout_weight="1"
                 android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:padding="0dp"
                 android:text="Состояние"
                 android:textColor="#E2E8F0"
@@ -368,6 +424,8 @@
                 android:layout_height="32dp"
                 android:layout_weight="1"
                 android:backgroundTint="#1E293B"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:padding="0dp"
                 android:text="Биография"
                 android:textColor="#E2E8F0"
@@ -394,7 +452,7 @@
         android:id="@+id/chronicleDrawer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#E6090D12"
+        android:background="#F0090D12"
         android:orientation="vertical"
         android:padding="16dp"
         android:visibility="gone">
@@ -444,7 +502,7 @@
         android:id="@+id/setupOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#F5090D12"
+        android:background="#FA090D12"
         android:padding="18dp"
         android:visibility="visible">
 
@@ -465,7 +523,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Нативный симулятор выживания без HTML/WebView • Utility AI + GOAP + Туман знаний + Орды"
+                android:text="Нативная изометрия 2.5D • Utility AI + GOAP • Реальные звуки и озвучка"
                 android:textColor="#94A3B8"
                 android:textSize="12sp" />
 
@@ -506,7 +564,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Плотность зомби: Норма (1.0x)"
+                android:text="Плотность зомби: 1.0x"
                 android:textColor="#F8FAFC"
                 android:textSize="13sp" />
 
@@ -522,7 +580,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Ресурсы и лут: Стандарт (1.0x)"
+                android:text="Ресурсы и лут: 1.0x"
                 android:textColor="#F8FAFC"
                 android:textSize="13sp" />
 

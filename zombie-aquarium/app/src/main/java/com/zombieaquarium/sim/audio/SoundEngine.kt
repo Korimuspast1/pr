@@ -12,17 +12,31 @@ enum class SoundEventType {
     PISTOL,
     SHOTGUN,
     RIFLE,
+    SHELL_CASING,
+    RELOAD,
     MELEE,
     AXE_BUILD,
+    SPLAT,
     ZOMBIE_BITE,
     ZOMBIE_DIE,
     ZOMBIE_GROAN,
+    ZOMBIE_MOB,
     SCREAMER,
     DOOR_OPEN,
     DOOR_BREAK,
     GLASS_BREAK,
     HUMAN_DIE,
-    LOOT
+    FEMALE_SCREAM,
+    LOOT,
+    BANDAGE,
+    FOOTSTEP,
+    THUNDER,
+    VO_INTRO,
+    VO_HORDE,
+    VO_CAMP,
+    VO_BITE,
+    VO_NIGHT,
+    VO_BALLAD
 }
 
 data class SoundEvent(
@@ -39,6 +53,10 @@ class SoundEngine(context: Context) {
 
     private var rainPlayer: MediaPlayer? = null
     private var nightPlayer: MediaPlayer? = null
+    private var cityPlayer: MediaPlayer? = null
+    private var songPlayer: MediaPlayer? = null
+    private var voicePlayer: MediaPlayer? = null
+    private var lastVoiceMs = 0L
 
     @Volatile
     var muted: Boolean = false
@@ -47,6 +65,21 @@ class SoundEngine(context: Context) {
             if (value) {
                 rainPlayer?.setVolume(0f, 0f)
                 nightPlayer?.setVolume(0f, 0f)
+                cityPlayer?.setVolume(0f, 0f)
+                songPlayer?.setVolume(0f, 0f)
+                try {
+                    if (voicePlayer?.isPlaying == true) voicePlayer?.stop()
+                } catch (_: Throwable) {
+                }
+            }
+        }
+
+    @Volatile
+    var musicEnabled: Boolean = true
+        set(value) {
+            field = value
+            if (!value) {
+                songPlayer?.setVolume(0f, 0f)
             }
         }
 
@@ -56,25 +89,33 @@ class SoundEngine(context: Context) {
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
         soundPool = SoundPool.Builder()
-            .setMaxStreams(10)
+            .setMaxStreams(12)
             .setAudioAttributes(attrs)
             .build()
 
-        // Load real downloaded CC0/BSD-3-Clause audio clips from res/raw/
+        // 19 real short SFX clips loaded in low-latency SoundPool
         sfxMap[SoundEventType.PISTOL] = soundPool.load(appContext, R.raw.sfx_pistol, 1)
         sfxMap[SoundEventType.SHOTGUN] = soundPool.load(appContext, R.raw.sfx_shotgun, 1)
         sfxMap[SoundEventType.RIFLE] = soundPool.load(appContext, R.raw.sfx_rifle, 1)
+        sfxMap[SoundEventType.SHELL_CASING] = soundPool.load(appContext, R.raw.sfx_shell_casing, 1)
+        sfxMap[SoundEventType.RELOAD] = soundPool.load(appContext, R.raw.sfx_reload, 1)
         sfxMap[SoundEventType.MELEE] = soundPool.load(appContext, R.raw.sfx_melee, 1)
         sfxMap[SoundEventType.AXE_BUILD] = soundPool.load(appContext, R.raw.sfx_axe, 1)
+        sfxMap[SoundEventType.SPLAT] = soundPool.load(appContext, R.raw.sfx_splat, 1)
         sfxMap[SoundEventType.ZOMBIE_BITE] = soundPool.load(appContext, R.raw.sfx_zombie_bite, 1)
         sfxMap[SoundEventType.ZOMBIE_DIE] = soundPool.load(appContext, R.raw.sfx_zombie_die, 1)
         sfxMap[SoundEventType.ZOMBIE_GROAN] = soundPool.load(appContext, R.raw.sfx_zombie_groan, 1)
+        sfxMap[SoundEventType.ZOMBIE_MOB] = soundPool.load(appContext, R.raw.sfx_zombie_mob, 1)
         sfxMap[SoundEventType.SCREAMER] = soundPool.load(appContext, R.raw.sfx_screamer, 1)
         sfxMap[SoundEventType.DOOR_OPEN] = soundPool.load(appContext, R.raw.sfx_door_open, 1)
         sfxMap[SoundEventType.DOOR_BREAK] = soundPool.load(appContext, R.raw.sfx_door_break, 1)
         sfxMap[SoundEventType.GLASS_BREAK] = soundPool.load(appContext, R.raw.sfx_glass_break, 1)
         sfxMap[SoundEventType.HUMAN_DIE] = soundPool.load(appContext, R.raw.sfx_human_die, 1)
+        sfxMap[SoundEventType.FEMALE_SCREAM] = soundPool.load(appContext, R.raw.sfx_female_scream, 1)
         sfxMap[SoundEventType.LOOT] = soundPool.load(appContext, R.raw.sfx_loot, 1)
+        sfxMap[SoundEventType.BANDAGE] = soundPool.load(appContext, R.raw.sfx_bandage, 1)
+        sfxMap[SoundEventType.FOOTSTEP] = soundPool.load(appContext, R.raw.sfx_footstep, 1)
+        sfxMap[SoundEventType.THUNDER] = soundPool.load(appContext, R.raw.sfx_thunder, 1)
 
         try {
             rainPlayer = MediaPlayer.create(appContext, R.raw.sfx_rain_loop)?.apply {
@@ -85,6 +126,46 @@ class SoundEngine(context: Context) {
                 isLooping = true
                 setVolume(0f, 0f)
             }
+            cityPlayer = MediaPlayer.create(appContext, R.raw.sfx_city_loop)?.apply {
+                isLooping = true
+                setVolume(0f, 0f)
+            }
+            songPlayer = MediaPlayer.create(appContext, R.raw.sfx_campfire_song)?.apply {
+                isLooping = true
+                setVolume(0f, 0f)
+            }
+        } catch (_: Throwable) {
+        }
+    }
+
+    fun playVoiceClip(type: SoundEventType, force: Boolean = false) {
+        if (muted) return
+        val now = System.currentTimeMillis()
+        if (!force && now - lastVoiceMs < 7500L) return
+
+        val resId = when (type) {
+            SoundEventType.VO_INTRO -> R.raw.vo_intro
+            SoundEventType.VO_HORDE -> R.raw.vo_horde
+            SoundEventType.VO_CAMP -> R.raw.vo_camp
+            SoundEventType.VO_BITE -> R.raw.vo_bite
+            SoundEventType.VO_NIGHT -> R.raw.vo_night
+            SoundEventType.VO_BALLAD -> R.raw.vo_campfire_ballad
+            else -> return
+        }
+        lastVoiceMs = now
+        try {
+            voicePlayer?.release()
+            voicePlayer = MediaPlayer.create(appContext, resId)?.apply {
+                setVolume(0.88f, 0.88f)
+                setOnCompletionListener { mp ->
+                    try {
+                        mp.release()
+                    } catch (_: Throwable) {
+                    }
+                    if (voicePlayer === mp) voicePlayer = null
+                }
+                start()
+            }
         } catch (_: Throwable) {
         }
     }
@@ -92,29 +173,40 @@ class SoundEngine(context: Context) {
     fun playSpatial(events: List<SoundEvent>, camX: Float, camY: Float, audibleRadius: Float) {
         if (muted || events.isEmpty()) return
         val now = System.currentTimeMillis()
-        val rMax = audibleRadius.coerceAtLeast(18f)
+        val rMax = audibleRadius.coerceAtLeast(22f)
 
         for (i in 0 until events.size) {
             val ev = events[i]
+
+            // Handle Russian voiceover events separately
+            if (ev.type.name.startsWith("VO_")) {
+                playVoiceClip(ev.type, force = ev.type == SoundEventType.VO_INTRO)
+                continue
+            }
+
             val prev = lastPlayedMs[ev.type] ?: 0L
             val minGap = when (ev.type) {
-                SoundEventType.PISTOL, SoundEventType.SHOTGUN, SoundEventType.RIFLE -> 70L
-                SoundEventType.MELEE, SoundEventType.ZOMBIE_BITE -> 95L
+                SoundEventType.PISTOL, SoundEventType.SHOTGUN, SoundEventType.RIFLE -> 75L
+                SoundEventType.MELEE, SoundEventType.SPLAT, SoundEventType.ZOMBIE_BITE -> 105L
+                SoundEventType.FOOTSTEP -> 260L
+                SoundEventType.ZOMBIE_MOB -> 2800L
                 else -> 160L
             }
             if (now - prev < minGap) continue
 
+            val isGlobal = ev.type == SoundEventType.THUNDER || ev.type == SoundEventType.ZOMBIE_MOB
             val dx = ev.wx - camX
             val dy = ev.wy - camY
             val dist = sqrt(dx * dx + dy * dy)
-            if (dist > rMax) continue
+            if (!isGlobal && dist > rMax) continue
 
             val sfxId = sfxMap[ev.type] ?: continue
-            val att = (1f - dist / rMax).coerceIn(0.08f, 1f)
+            val att = if (isGlobal) 0.72f else (1f - dist / rMax).coerceIn(0.08f, 1f)
             val baseVol = when (ev.type) {
-                SoundEventType.PISTOL, SoundEventType.SHOTGUN, SoundEventType.RIFLE, SoundEventType.SCREAMER -> 0.85f
-                SoundEventType.DOOR_BREAK, SoundEventType.GLASS_BREAK -> 0.72f
-                else -> 0.52f
+                SoundEventType.PISTOL, SoundEventType.SHOTGUN, SoundEventType.RIFLE, SoundEventType.SCREAMER, SoundEventType.THUNDER -> 0.86f
+                SoundEventType.DOOR_BREAK, SoundEventType.GLASS_BREAK, SoundEventType.SPLAT -> 0.70f
+                SoundEventType.FOOTSTEP, SoundEventType.SHELL_CASING -> 0.34f
+                else -> 0.54f
             }
             val vol = (baseVol * att).coerceIn(0.05f, 1f)
             soundPool.play(sfxId, vol, vol, 1, 0, 1.0f)
@@ -126,6 +218,8 @@ class SoundEngine(context: Context) {
         if (muted || paused) {
             rainPlayer?.setVolume(0f, 0f)
             nightPlayer?.setVolume(0f, 0f)
+            cityPlayer?.setVolume(0f, 0f)
+            songPlayer?.setVolume(0f, 0f)
             return
         }
         val rainVol = when (weather) {
@@ -134,6 +228,8 @@ class SoundEngine(context: Context) {
             else -> 0f
         }
         val nightVol = if (isNight && rainVol == 0f) 0.16f else if (isNight) 0.06f else 0f
+        val cityVol = if (!isNight && rainVol == 0f) 0.13f else 0.04f
+        val songVol = if (musicEnabled) 0.26f else 0f
 
         rainPlayer?.let { p ->
             if (rainVol > 0f && !p.isPlaying) p.start()
@@ -143,12 +239,23 @@ class SoundEngine(context: Context) {
             if (nightVol > 0f && !p.isPlaying) p.start()
             p.setVolume(nightVol, nightVol)
         }
+        cityPlayer?.let { p ->
+            if (cityVol > 0f && !p.isPlaying) p.start()
+            p.setVolume(cityVol, cityVol)
+        }
+        songPlayer?.let { p ->
+            if (songVol > 0f && !p.isPlaying) p.start()
+            p.setVolume(songVol, songVol)
+        }
     }
 
     fun pause() {
         try {
             if (rainPlayer?.isPlaying == true) rainPlayer?.pause()
             if (nightPlayer?.isPlaying == true) nightPlayer?.pause()
+            if (cityPlayer?.isPlaying == true) cityPlayer?.pause()
+            if (songPlayer?.isPlaying == true) songPlayer?.pause()
+            if (voicePlayer?.isPlaying == true) voicePlayer?.pause()
         } catch (_: Throwable) {
         }
     }
@@ -158,6 +265,9 @@ class SoundEngine(context: Context) {
             soundPool.release()
             rainPlayer?.release()
             nightPlayer?.release()
+            cityPlayer?.release()
+            songPlayer?.release()
+            voicePlayer?.release()
         } catch (_: Throwable) {
         }
     }

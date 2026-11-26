@@ -196,6 +196,7 @@ object ZombieBrain {
             h.infectionTimerTicks = rng.nextRange(240, 420)
             h.setThought("Чёрт... меня укусили!", 65)
             h.addBio(sim.day, sim.formatTime(), "Получен укус зомби!")
+            sim.emitSound(SoundEventType.VO_BITE, h.x, h.y)
             sim.logChronicle("Заражение", "${h.name} получил(а) укус от ${z.type.titleRu}!", h.x, h.y)
         }
     }

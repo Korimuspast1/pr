@@ -401,9 +401,9 @@ class WorldSurfaceView @JvmOverloads constructor(
         val hh = 16f * zoom
         val tileW = hw * 2f
         val tileH = hh * 2f
-        val propW = IsoTextureAtlas.PROP_W * zoom
-        val propH = IsoTextureAtlas.PROP_H * zoom
-        val propBaseY = IsoTextureAtlas.PROP_BASE_Y * zoom
+        val propW = IsoTextureAtlas.PROP_W * 0.5f * zoom
+        val propH = IsoTextureAtlas.PROP_H * 0.5f * zoom
+        val propBaseY = IsoTextureAtlas.PROP_BASE_Y * 0.5f * zoom
 
         synchronized(sim.simLock) {
             val map = sim.map
@@ -474,10 +474,10 @@ class WorldSurfaceView @JvmOverloads constructor(
                         }
                     }
 
-                    // Queue 3D Wall / Tree / Car / Door
+                    // Queue 3D Wall / Tree / Car / Door at true isometric tile center depth (tx + 0.5 + ty + 0.5 = tx + ty + 1.0)
                     val wt = map.wall[idx]
                     if (wt != WallType.NONE) {
-                        addDrawItem(depth = tx + ty + 0.5f, kind = 0, tx = tx, ty = ty, wt = wt)
+                        addDrawItem(depth = tx + ty + 1.0f, kind = 0, tx = tx, ty = ty, wt = wt)
                     }
                 }
             }
@@ -512,13 +512,13 @@ class WorldSurfaceView @JvmOverloads constructor(
                 for (c in map.lootContainers) {
                     if (c.isEmpty()) continue
                     if (c.x < minTx || c.x > maxTx || c.y < minTy || c.y > maxTy) continue
-                    addDrawItem(depth = c.x + c.y + 0.52f, kind = 1, loot = c)
+                    addDrawItem(depth = c.x + c.y + 1.02f, kind = 1, loot = c)
                 }
             }
 
             for (st in sim.structures) {
                 if (st.x < minTx - 2 || st.x > maxTx + 2 || st.y < minTy - 2 || st.y > maxTy + 2) continue
-                addDrawItem(depth = st.x + st.y + 0.55f, kind = 2, st = st)
+                addDrawItem(depth = st.x + st.y + 1.04f, kind = 2, st = st)
             }
 
             for (z in sim.zombies) {

@@ -7,8 +7,11 @@ import android.widget.EditText
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.zombieaquarium.sim.R
 import com.zombieaquarium.sim.audio.SoundEngine
+import com.zombieaquarium.sim.audio.SoundEventType
 import com.zombieaquarium.sim.engine.OverlayMode
 import com.zombieaquarium.sim.engine.SimConfig
 import com.zombieaquarium.sim.engine.WeatherType
@@ -82,6 +85,7 @@ class MainActivity : AppCompatActivity() {
         setupOverlayAndGodButtons()
         setupInspector()
         setupWorldGeneratorScreen()
+        applySafeInsets()
 
         worldSurface.onSelectionChanged = { sel ->
             if (sel == null) {
@@ -99,6 +103,36 @@ class MainActivity : AppCompatActivity() {
             tvGodHint.visibility = View.GONE
             refreshHud()
         }
+    }
+
+    private fun applySafeInsets() {
+        val topHud = findViewById<View>(R.id.topHud)
+        val dp10 = (10 * resources.displayMetrics.density).toInt()
+        val dp12 = (12 * resources.displayMetrics.density).toInt()
+        val dp16 = (16 * resources.displayMetrics.density).toInt()
+        val dp18 = (18 * resources.displayMetrics.density).toInt()
+
+        ViewCompat.setOnApplyWindowInsetsListener(topHud) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            v.setPadding(dp10 + bars.left, dp10 + bars.top, dp10 + bars.right, dp10)
+            insets
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(inspectorSheet) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(dp12 + bars.left, dp12, dp12 + bars.right, dp12 + bars.bottom)
+            insets
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(chronicleDrawer) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(dp16 + bars.left, dp16 + bars.top, dp16 + bars.right, dp16 + bars.bottom)
+            insets
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(setupOverlay) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(dp18 + bars.left, dp18 + bars.top, dp18 + bars.right, dp18 + bars.bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(topHud)
     }
 
     private fun setupSpeedButtons() {
@@ -135,7 +169,12 @@ class MainActivity : AppCompatActivity() {
             val modes = OverlayMode.entries
             val next = modes[(worldSurface.overlayMode.ordinal + 1) % modes.size]
             worldSurface.overlayMode = next
-            btnOverlay.text = "Слой: ${next.titleRu.substringBefore(' ')}"
+            btnOverlay.text = when (next) {
+                OverlayMode.NORMAL -> "Слой"
+                OverlayMode.NOISE_LIGHT -> "Шум/Свет"
+                OverlayMode.FACTIONS -> "Лагеря"
+                OverlayMode.AGENT_MEMORY -> "Память"
+            }
         }
 
         findViewById<Button>(R.id.btnChronicle).setOnClickListener {
@@ -183,8 +222,18 @@ class MainActivity : AppCompatActivity() {
         val btnSound = findViewById<Button>(R.id.btnSoundToggle)
         btnSound.setOnClickListener {
             soundEngine.muted = !soundEngine.muted
-            btnSound.text = if (soundEngine.muted) "Звук: Выкл" else "Звук: Вкл"
+            btnSound.text = if (soundEngine.muted) "Без зв." else "Звук"
             btnSound.setTextColor(if (soundEngine.muted) 0xFF94A3B8.toInt() else 0xFF34D399.toInt())
+        }
+
+        val btnMusic = findViewById<Button>(R.id.btnMusicToggle)
+        btnMusic.setOnClickListener {
+            soundEngine.musicEnabled = !soundEngine.musicEnabled
+            btnMusic.text = if (soundEngine.musicEnabled) "Песня" else "Муз.Выкл"
+            btnMusic.setTextColor(if (soundEngine.musicEnabled) 0xFFA78BFA.toInt() else 0xFF94A3B8.toInt())
+            if (soundEngine.musicEnabled && !soundEngine.muted) {
+                soundEngine.playVoiceClip(SoundEventType.VO_BALLAD, force = true)
+            }
         }
     }
 
@@ -297,6 +346,7 @@ class MainActivity : AppCompatActivity() {
             setupOverlay.visibility = View.GONE
             updateSpeedHighlight(1)
             refreshHud()
+            soundEngine.playVoiceClip(SoundEventType.VO_INTRO, force = true)
         }
     }
 
