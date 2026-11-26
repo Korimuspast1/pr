@@ -1,5 +1,6 @@
 package com.zombieaquarium.sim.ai
 
+import com.zombieaquarium.sim.audio.SoundEventType
 import com.zombieaquarium.sim.engine.BuildingInfo
 import com.zombieaquarium.sim.engine.CampStructure
 import com.zombieaquarium.sim.engine.LootContainer
@@ -35,6 +36,9 @@ object HumanBrain {
         if (agent.actionCooldown > 0) agent.actionCooldown--
         if (agent.combatCooldown > 0) agent.combatCooldown--
         if (agent.thinkCooldown > 0) agent.thinkCooldown--
+        if (agent.attackAnimTicks > 0) agent.attackAnimTicks--
+        if (agent.hurtAnimTicks > 0) agent.hurtAnimTicks--
+        agent.isMovingNow = false
 
         // 2. Sensory scan (Strict Fog of Knowledge: only what agent sees!)
         val visRadius = computeVisionRadius(agent, sim)
@@ -769,6 +773,8 @@ object HumanBrain {
                     sim.map.wallHp[ti] = 220f
                     sim.map.addNoise(step.targetX, step.targetY, 10f, 35f)
                     sim.soundRings.spawn(step.targetX + 0.5f, step.targetY + 0.5f, 9f, 0xFFF59E0B.toInt())
+                    sim.emitSound(SoundEventType.AXE_BUILD, step.targetX + 0.5f, step.targetY + 0.5f)
+                    agent.attackAnimTicks = 6
                     agent.setThought("Проход заколочен!", 40)
                     agent.addBio(sim.day, sim.formatTime(), "Забаррикадировал(а) вход в убежище")
                 }
@@ -788,6 +794,8 @@ object HumanBrain {
                         rem -= fromInv
                         camp.storageWood = max(0, camp.storageWood - rem)
                         sim.addCampStructure(CampStructure(sim.nextStructureId++, sType, step.targetX, step.targetY, camp.id))
+                        sim.emitSound(SoundEventType.AXE_BUILD, step.targetX.toFloat(), step.targetY.toFloat())
+                        agent.attackAnimTicks = 6
                         agent.setThought("Построен ${sType.titleRu}!", 45)
                         sim.logChronicle("База", "В лагере «${camp.name}» ${agent.name} построил(а) ${sType.titleRu}.", step.targetX.toFloat(), step.targetY.toFloat())
                     }
@@ -840,6 +848,14 @@ object HumanBrain {
         rng: SimRng
     ) {
         agent.combatCooldown = weapon.cooldownTicks
+        agent.attackAnimTicks = 5
+        val adx = target.x - agent.x
+        val ady = target.y - agent.y
+        val alen = sqrt(adx * adx + ady * ady)
+        if (alen > 0.01f) {
+            agent.facingX = adx / alen
+            agent.facingY = ady / alen
+        }
         val accuracyPenalty = if (agent.stress > 65f) 0.72f else 1.0f
         val hitChance = (if (weapon.isFirearm) 0.88f else 0.94f) * accuracyPenalty
 
@@ -848,14 +864,22 @@ object HumanBrain {
             sim.tracers.spawn(agent.x, agent.y, target.x, target.y)
             sim.map.addNoise(agent.x.toInt(), agent.y.toInt(), weapon.noiseRadius, 95f)
             sim.soundRings.spawn(agent.x, agent.y, weapon.noiseRadius * 0.45f, 0xFFEF4444.toInt(), 1.0f)
+            val sType = when (weapon) {
+                WeaponType.SHOTGUN -> SoundEventType.SHOTGUN
+                WeaponType.RIFLE -> SoundEventType.RIFLE
+                else -> SoundEventType.PISTOL
+            }
+            sim.emitSound(sType, agent.x, agent.y)
             agent.setThought("Выстрел из ${weapon.titleRu}!", 30)
         } else {
             agent.stamina = max(0f, agent.stamina - 8f)
             sim.map.addNoise(agent.x.toInt(), agent.y.toInt(), weapon.noiseRadius, 24f)
+            sim.emitSound(if (weapon == WeaponType.AXE) SoundEventType.AXE_BUILD else SoundEventType.MELEE, agent.x, agent.y)
         }
 
         if (rng.chance(hitChance)) {
             target.hp -= weapon.damage
+            target.hurtAnimTicks = 4
             sim.map.addBlood(target.x.toInt().coerceIn(0, sim.map.size - 1), target.y.toInt().coerceIn(0, sim.map.size - 1), 18f)
             repeat(3) {
                 sim.particles.spawn(
@@ -896,6 +920,7 @@ object HumanBrain {
             }
         }
         c.searched = true
+        sim.emitSound(SoundEventType.LOOT, agent.x, agent.y)
 
         // Deposit surplus to camp storage if nearby
         val camp = sim.campsById[agent.campId]
@@ -985,6 +1010,7 @@ object HumanBrain {
         val ni = sim.map.idx(nx, ny)
         if (sim.map.wall[ni] == WallType.DOOR_CLOSED) {
             sim.map.wall[ni] = WallType.DOOR_OPEN
+            sim.emitSound(SoundEventType.DOOR_OPEN, nx + 0.5f, ny + 0.5f)
         }
 
         val tx = nx + 0.5f
@@ -993,6 +1019,12 @@ object HumanBrain {
         val dy = ty - agent.y
         val d = sqrt(dx * dx + dy * dy)
         val step = speed * dt
+        agent.isMovingNow = true
+        agent.animPhase += step * 2.7f
+        if (d > 0.001f) {
+            agent.facingX = dx / d
+            agent.facingY = dy / d
+        }
         if (d <= step + 0.08f) {
             agent.x = tx
             agent.y = ty

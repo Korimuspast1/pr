@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.os.Build
 import android.util.AttributeSet
@@ -15,14 +16,15 @@ import android.view.SurfaceView
 import com.zombieaquarium.sim.ai.MemoryKind
 import com.zombieaquarium.sim.ai.SurvivorAgent
 import com.zombieaquarium.sim.ai.ZombieAgent
-import com.zombieaquarium.sim.engine.BuildingInfo
+import com.zombieaquarium.sim.audio.SoundEngine
+import com.zombieaquarium.sim.audio.SoundEvent
+import com.zombieaquarium.sim.engine.CampStructure
+import com.zombieaquarium.sim.engine.LootContainer
 import com.zombieaquarium.sim.engine.OverlayMode
 import com.zombieaquarium.sim.engine.StructureType
-import com.zombieaquarium.sim.engine.TerrainType
 import com.zombieaquarium.sim.engine.WallType
 import com.zombieaquarium.sim.engine.WeatherType
 import com.zombieaquarium.sim.engine.WorldSimulation
-import com.zombieaquarium.sim.engine.ZombieType
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -37,6 +39,18 @@ enum class GodTool {
     NONE, SUPPLY_CRATE, HORDE, NEW_SURVIVOR
 }
 
+private class IsoDrawItem {
+    var depth: Float = 0f
+    var kind: Int = 0 // 0=wall/prop, 1=loot, 2=structure, 3=survivor, 4=zombie
+    var tx: Int = 0
+    var ty: Int = 0
+    var wallType: Byte = 0
+    var loot: LootContainer? = null
+    var structure: CampStructure? = null
+    var survivor: SurvivorAgent? = null
+    var zombie: ZombieAgent? = null
+}
+
 class WorldSurfaceView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -49,9 +63,12 @@ class WorldSurfaceView @JvmOverloads constructor(
             if (value != null) {
                 camX = value.map.size * 0.5f
                 camY = value.map.size * 0.5f
-                tilePx = 14f
+                zoom = 0.85f
             }
         }
+
+    @Volatile
+    var soundEngine: SoundEngine? = null
 
     @Volatile
     var overlayMode: OverlayMode = OverlayMode.NORMAL
@@ -67,14 +84,14 @@ class WorldSurfaceView @JvmOverloads constructor(
     var onGodActionDone: (() -> Unit)? = null
 
     private var renderThread: RenderLoopThread? = null
+    private val atlas = IsoTextureAtlas()
+    private val charRenderer = IsoCharacterRenderer()
 
-    // Camera in world tile coordinates
+    // Camera in world coordinates & isometric zoom
     @Volatile var camX: Float = 80f
     @Volatile var camY: Float = 80f
-    @Volatile var tilePx: Float = 14f
+    @Volatile var zoom: Float = 0.85f
 
-    private var downX = 0f
-    private var downY = 0f
     private var lastTouchX = 0f
     private var lastTouchY = 0f
     private var isPanning = false
@@ -82,48 +99,59 @@ class WorldSurfaceView @JvmOverloads constructor(
 
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            val factor = detector.scaleFactor
-            val oldPx = tilePx
-            val newPx = (oldPx * factor).coerceIn(3.5f, 44f)
+            val oldZoom = zoom
+            val newZoom = (oldZoom * detector.scaleFactor).coerceIn(0.24f, 2.35f)
             if (width > 0 && height > 0) {
                 val fx = detector.focusX - width * 0.5f
                 val fy = detector.focusY - height * 0.5f
-                camX += fx / oldPx - fx / newPx
-                camY += fy / oldPx - fy / newPx
+                val oldHw = 32f * oldZoom
+                val oldHh = 16f * oldZoom
+                val newHw = 32f * newZoom
+                val newHh = 16f * newZoom
+                val oldWx = (fx / oldHw + fy / oldHh) * 0.5f
+                val oldWy = (fy / oldHh - fx / oldHw) * 0.5f
+                val newWx = (fx / newHw + fy / newHh) * 0.5f
+                val newWy = (fy / newHh - fx / newHw) * 0.5f
+                camX += oldWx - newWx
+                camY += oldWy - newWy
             }
-            tilePx = newPx
+            zoom = newZoom
             clampCamera()
             return true
         }
     })
 
-    // Preallocated Paint objects (zero allocation during draw!)
-    private val tilePaint = Paint()
+    // Preallocated Paint, Rect, & Depth-Sort Pool (zero GC per frame)
+    private val bmpPaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeWidth = 2f; style = Paint.Style.STROKE }
     private val dashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        strokeWidth = 2.5f
+        strokeWidth = 2.6f
         style = Paint.Style.STROKE
         pathEffect = DashPathEffect(floatArrayOf(10f, 8f), 0f)
     }
-    private val agentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val fxPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2.5f }
-    private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
     }
     private val bubbleBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xCC0F172A.toInt() }
-    private val bubbleRect = RectF()
+    private val dstRect = RectF()
+    private val diamondPath = Path()
+
+    private val drawPool = Array(5500) { IsoDrawItem() }
+    private val activeDrawList = ArrayList<IsoDrawItem>(2400)
+    private val frameSounds = ArrayList<SoundEvent>(32)
 
     init {
         holder.addCallback(this)
         isFocusable = true
     }
 
-    fun centerOn(wx: Float, wy: Float, zoomPx: Float = 20f) {
+    fun centerOn(wx: Float, wy: Float, targetZoom: Float = 1.15f) {
         camX = wx
         camY = wy
-        tilePx = max(tilePx, zoomPx)
+        zoom = max(zoom, targetZoom)
         clampCamera()
     }
 
@@ -131,6 +159,22 @@ class WorldSurfaceView @JvmOverloads constructor(
         val sz = (simulation?.map?.size ?: 160).toFloat()
         camX = camX.coerceIn(0f, sz)
         camY = camY.coerceIn(0f, sz)
+    }
+
+    private fun worldToScreenX(wx: Float, wy: Float, halfScreenW: Float, halfW: Float): Float {
+        return halfScreenW + ((wx - camX) - (wy - camY)) * halfW
+    }
+
+    private fun worldToScreenY(wx: Float, wy: Float, halfScreenH: Float, halfH: Float): Float {
+        return halfScreenH + ((wx - camX) + (wy - camY)) * halfH
+    }
+
+    private fun screenToWorld(sx: Float, sy: Float): Pair<Float, Float> {
+        val halfW = 32f * zoom
+        val halfH = 16f * zoom
+        val a = (sx - width * 0.5f) / halfW
+        val b = (sy - height * 0.5f) / halfH
+        return (camX + (a + b) * 0.5f) to (camY + (b - a) * 0.5f)
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
@@ -156,8 +200,6 @@ class WorldSurfaceView @JvmOverloads constructor(
         scaleDetector.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                downX = event.x
-                downY = event.y
                 lastTouchX = event.x
                 lastTouchY = event.y
                 totalMoveDist = 0f
@@ -168,8 +210,12 @@ class WorldSurfaceView @JvmOverloads constructor(
                     val dx = event.x - lastTouchX
                     val dy = event.y - lastTouchY
                     totalMoveDist += abs(dx) + abs(dy)
-                    camX -= dx / tilePx
-                    camY -= dy / tilePx
+                    val halfW = 32f * zoom
+                    val halfH = 16f * zoom
+                    val da = -dx / halfW
+                    val db = -dy / halfH
+                    camX += (da + db) * 0.5f
+                    camY += (db - da) * 0.5f
                     clampCamera()
                     lastTouchX = event.x
                     lastTouchY = event.y
@@ -188,8 +234,7 @@ class WorldSurfaceView @JvmOverloads constructor(
 
     private fun handleTap(sx: Float, sy: Float) {
         val sim = simulation ?: return
-        val wx = camX + (sx - width * 0.5f) / tilePx
-        val wy = camY + (sy - height * 0.5f) / tilePx
+        val (wx, wy) = screenToWorld(sx, sy)
 
         when (activeGodTool) {
             GodTool.SUPPLY_CRATE -> {
@@ -213,16 +258,23 @@ class WorldSurfaceView @JvmOverloads constructor(
             GodTool.NONE -> {}
         }
 
-        val hitRadius = max(1.4f, 22f / tilePx)
-        val hitR2 = hitRadius * hitRadius
+        // Hit-test in screen space so tapping body/head above feet works intuitively in isometric view!
+        val hw = 32f * zoom
+        val hh = 16f * zoom
+        val hsw = width * 0.5f
+        val hsh = height * 0.5f
+        val tapRadiusPx = 38f
+        val tapR2 = tapRadiusPx * tapRadiusPx
         var picked: SelectionTarget? = null
 
         synchronized(sim.simLock) {
-            var bestD2 = hitR2
+            var bestD2 = tapR2
             for (s in sim.survivors) {
                 if (!s.alive) continue
-                val dx = s.x - wx
-                val dy = s.y - wy
+                val csx = worldToScreenX(s.x, s.y, hsw, hw)
+                val csy = worldToScreenY(s.x, s.y, hsh, hh) - 10f * zoom
+                val dx = csx - sx
+                val dy = csy - sy
                 val d2 = dx * dx + dy * dy
                 if (d2 < bestD2) {
                     bestD2 = d2
@@ -232,8 +284,10 @@ class WorldSurfaceView @JvmOverloads constructor(
             if (picked == null) {
                 for (z in sim.zombies) {
                     if (!z.alive) continue
-                    val dx = z.x - wx
-                    val dy = z.y - wy
+                    val csx = worldToScreenX(z.x, z.y, hsw, hw)
+                    val csy = worldToScreenY(z.x, z.y, hsh, hh) - 10f * zoom
+                    val dx = csx - sx
+                    val dy = csy - sy
                     val d2 = dx * dx + dy * dy
                     if (d2 < bestD2) {
                         bestD2 = d2
@@ -255,7 +309,7 @@ class WorldSurfaceView @JvmOverloads constructor(
         post { onSelectionChanged?.invoke(picked) }
     }
 
-    private inner class RenderLoopThread : Thread("ZombieAquariumLoop") {
+    private inner class RenderLoopThread : Thread("ZombieIsoLoop") {
         @Volatile var running = true
 
         override fun run() {
@@ -281,9 +335,17 @@ class WorldSurfaceView @JvmOverloads constructor(
                         }
                         if (steps >= 8) accumulator = 0f
                     }
+
+                    frameSounds.clear()
+                    sim.drainSounds(frameSounds)
+                    if (speed > 0) {
+                        soundEngine?.playSpatial(frameSounds, camX, camY, (22f / zoom).coerceIn(18f, 45f))
+                    }
+
                     hudAccum += frameDt
                     if (hudAccum >= 0.25f) {
                         hudAccum = 0f
+                        soundEngine?.updateAmbient(sim.weather, sim.isNight, speed == 0)
                         post { onHudTick?.invoke() }
                     }
                 }
@@ -291,7 +353,7 @@ class WorldSurfaceView @JvmOverloads constructor(
                 val canvas = lockBestCanvas()
                 if (canvas != null) {
                     try {
-                        drawWorld(canvas, sim)
+                        drawIsometricWorld(canvas, sim)
                     } finally {
                         holder.unlockCanvasAndPost(canvas)
                     }
@@ -325,354 +387,297 @@ class WorldSurfaceView @JvmOverloads constructor(
         }
     }
 
-    private fun drawWorld(canvas: Canvas, sim: WorldSimulation?) {
-        canvas.drawColor(0xFF090D12.toInt())
+    private fun drawIsometricWorld(canvas: Canvas, sim: WorldSimulation?) {
+        canvas.drawColor(0xFF070B10.toInt())
         if (sim == null) return
 
         val w = width.toFloat()
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
 
-        val px = tilePx
-        val halfW = (w * 0.5f) / px
-        val halfH = (h * 0.5f) / px
+        val hsw = w * 0.5f
+        val hsh = h * 0.5f
+        val hw = 32f * zoom
+        val hh = 16f * zoom
+        val tileW = hw * 2f
+        val tileH = hh * 2f
+        val propW = IsoTextureAtlas.PROP_W * zoom
+        val propH = IsoTextureAtlas.PROP_H * zoom
+        val propBaseY = IsoTextureAtlas.PROP_BASE_Y * zoom
 
         synchronized(sim.simLock) {
             val map = sim.map
-            val minTx = max(0, (camX - halfW - 1f).toInt())
-            val maxTx = min(map.size - 1, (camX + halfW + 1f).toInt())
-            val minTy = max(0, (camY - halfH - 1f).toInt())
-            val maxTy = min(map.size - 1, (camY + halfH + 1f).toInt())
+            // Compute conservative tile bounds covering isometric screen corners
+            val spanTiles = (max(w / tileW, h / tileH) + 6).toInt()
+            val minTx = max(0, (camX - spanTiles).toInt())
+            val maxTx = min(map.size - 1, (camX + spanTiles).toInt())
+            val minTy = max(0, (camY - spanTiles).toInt())
+            val maxTy = min(map.size - 1, (camY + spanTiles).toInt())
 
-            // 1. Visible Tiles & Walls
+            var poolIdx = 0
+            activeDrawList.clear()
+
+            fun addDrawItem(depth: Float, kind: Int, tx: Int = 0, ty: Int = 0, wt: Byte = 0, loot: LootContainer? = null, st: CampStructure? = null, s: SurvivorAgent? = null, z: ZombieAgent? = null) {
+                if (poolIdx >= drawPool.size) return
+                val item = drawPool[poolIdx++]
+                item.depth = depth
+                item.kind = kind
+                item.tx = tx
+                item.ty = ty
+                item.wallType = wt
+                item.loot = loot
+                item.structure = st
+                item.survivor = s
+                item.zombie = z
+                activeDrawList.add(item)
+            }
+
+            // 1. Ground Terrain Pass (Isometric Diamonds) + Collect Walls
             for (ty in minTy..maxTy) {
-                val sy = h * 0.5f + (ty - camY) * px
                 val rowOff = ty * map.size
                 for (tx in minTx..maxTx) {
-                    val sx = w * 0.5f + (tx - camX) * px
+                    val sx = worldToScreenX(tx.toFloat(), ty.toFloat(), hsw, hw)
+                    val sy = worldToScreenY(tx.toFloat(), ty.toFloat(), hsh, hh)
+                    if (sx < -tileW || sx > w + tileW || sy < -tileH * 2f || sy > h + tileH * 2f) continue
+
                     val idx = rowOff + tx
+                    val bmp = atlas.getTerrain(map.terrain[idx], tx, ty, sim.tickCount)
+                    dstRect.set(sx - hw, sy, sx + hw, sy + tileH)
+                    canvas.drawBitmap(bmp, null, dstRect, bmpPaint)
 
-                    tilePaint.color = terrainColor(map.terrain[idx])
-                    canvas.drawRect(sx, sy, sx + px + 0.7f, sy + px + 0.7f, tilePaint)
-
-                    // Road center dashed stripe when zoomed
-                    if (px >= 10f && map.terrain[idx] == TerrainType.ROAD && tx % 2 == 0 && ty % 2 == 0) {
-                        tilePaint.color = 0x55E2E8F0.toInt()
-                        canvas.drawRect(sx + px * 0.42f, sy + px * 0.42f, sx + px * 0.58f, sy + px * 0.58f, tilePaint)
+                    // Blood splatters on ground
+                    val bld = map.bloodField[idx]
+                    if (bld > 4f) {
+                        fxPaint.color = Color.argb(min(185, (bld * 2.4f).toInt()), 153, 27, 27)
+                        canvas.drawCircle(sx, sy + hh, 6f * zoom, fxPaint)
                     }
 
-                    // Walls / Doors / Windows / Trees / Cars
-                    val wt = map.wall[idx]
-                    if (wt != WallType.NONE) {
-                        drawWallTile(canvas, sx, sy, px, wt)
-                    }
-
-                    // Noise & Light overlay
+                    // Noise & Light Overlay
                     if (overlayMode == OverlayMode.NOISE_LIGHT) {
                         val n = map.noiseField[idx]
-                        if (n > 3f) {
-                            tilePaint.color = Color.argb(min(180, (n * 2.2f).toInt()), 245, 158, 11)
-                            canvas.drawRect(sx, sy, sx + px, sy + px, tilePaint)
-                        }
                         val l = map.lightField[idx]
-                        if (l > 3f) {
-                            tilePaint.color = Color.argb(min(140, (l * 1.8f).toInt()), 56, 189, 248)
-                            canvas.drawRect(sx, sy, sx + px, sy + px, tilePaint)
+                        if (n > 3f || l > 3f) {
+                            diamondPath.reset()
+                            diamondPath.moveTo(sx, sy)
+                            diamondPath.lineTo(sx + hw, sy + hh)
+                            diamondPath.lineTo(sx, sy + tileH)
+                            diamondPath.lineTo(sx - hw, sy + hh)
+                            diamondPath.close()
+                            if (n > 3f) {
+                                fxPaint.color = Color.argb(min(160, (n * 2f).toInt()), 245, 158, 11)
+                                canvas.drawPath(diamondPath, fxPaint)
+                            }
+                            if (l > 3f) {
+                                fxPaint.color = Color.argb(min(130, (l * 1.6f).toInt()), 56, 189, 248)
+                                canvas.drawPath(diamondPath, fxPaint)
+                            }
                         }
                     }
-                }
-            }
 
-            // 2. Loot containers (when zoomed in)
-            if (px >= 8f) {
-                for (c in map.lootContainers) {
-                    if (c.isEmpty()) continue
-                    if (c.x < minTx || c.x > maxTx || c.y < minTy || c.y > maxTy) continue
-                    val sx = w * 0.5f + (c.x + 0.5f - camX) * px
-                    val sy = h * 0.5f + (c.y + 0.5f - camY) * px
-                    tilePaint.color = if (c.weapon != null || c.antibiotics > 0) 0xFFF59E0B.toInt() else 0xFF38BDF8.toInt()
-                    val r = px * 0.22f
-                    canvas.drawRect(sx - r, sy - r, sx + r, sy + r, tilePaint)
-                }
-            }
-
-            // 3. Camp structures & Factions overlay
-            for (st in sim.structures) {
-                if (st.x < minTx - 2 || st.x > maxTx + 2 || st.y < minTy - 2 || st.y > maxTy + 2) continue
-                val sx = w * 0.5f + (st.x + 0.5f - camX) * px
-                val sy = h * 0.5f + (st.y + 0.5f - camY) * px
-                when (st.type) {
-                    StructureType.CAMPFIRE -> {
-                        if (st.fuelTicks > 0) {
-                            glowPaint.color = 0x33FB923C
-                            canvas.drawCircle(sx, sy, px * 3.8f, glowPaint)
-                            agentPaint.color = 0xFFF97316.toInt()
-                            canvas.drawCircle(sx, sy, px * 0.34f, agentPaint)
-                        } else {
-                            agentPaint.color = 0xFF78716C.toInt()
-                            canvas.drawCircle(sx, sy, px * 0.28f, agentPaint)
-                        }
-                    }
-                    StructureType.RAIN_COLLECTOR -> {
-                        agentPaint.color = 0xFF0EA5E9.toInt()
-                        canvas.drawCircle(sx, sy, px * 0.30f, agentPaint)
-                    }
-                    else -> {
-                        agentPaint.color = 0xFFA16207.toInt()
-                        canvas.drawCircle(sx, sy, px * 0.26f, agentPaint)
+                    // Queue 3D Wall / Tree / Car / Door
+                    val wt = map.wall[idx]
+                    if (wt != WallType.NONE) {
+                        addDrawItem(depth = tx + ty + 0.5f, kind = 0, tx = tx, ty = ty, wt = wt)
                     }
                 }
             }
 
+            // Faction territories overlay
             if (overlayMode == OverlayMode.FACTIONS) {
                 for (camp in sim.camps) {
                     val b = map.buildings.getOrNull(camp.homeBuildingId - 1) ?: continue
-                    val rx1 = w * 0.5f + (b.x1 - camX) * px
-                    val ry1 = h * 0.5f + (b.y1 - camY) * px
-                    val rx2 = w * 0.5f + (b.x2 + 1 - camX) * px
-                    val ry2 = h * 0.5f + (b.y2 + 1 - camY) * px
-                    tilePaint.color = (camp.color and 0x00FFFFFF) or 0x44000000
-                    canvas.drawRect(rx1, ry1, rx2, ry2, tilePaint)
+                    val p0x = worldToScreenX(b.x1.toFloat(), b.y1.toFloat(), hsw, hw)
+                    val p0y = worldToScreenY(b.x1.toFloat(), b.y1.toFloat(), hsh, hh)
+                    val p1x = worldToScreenX((b.x2 + 1).toFloat(), b.y1.toFloat(), hsw, hw)
+                    val p1y = worldToScreenY((b.x2 + 1).toFloat(), b.y1.toFloat(), hsh, hh)
+                    val p2x = worldToScreenX((b.x2 + 1).toFloat(), (b.y2 + 1).toFloat(), hsw, hw)
+                    val p2y = worldToScreenY((b.x2 + 1).toFloat(), (b.y2 + 1).toFloat(), hsh, hh)
+                    val p3x = worldToScreenX(b.x1.toFloat(), (b.y2 + 1).toFloat(), hsw, hw)
+                    val p3y = worldToScreenY(b.x1.toFloat(), (b.y2 + 1).toFloat(), hsh, hh)
+                    diamondPath.reset()
+                    diamondPath.moveTo(p0x, p0y)
+                    diamondPath.lineTo(p1x, p1y)
+                    diamondPath.lineTo(p2x, p2y)
+                    diamondPath.lineTo(p3x, p3y)
+                    diamondPath.close()
+                    fxPaint.color = (camp.color and 0x00FFFFFF) or 0x3A000000
+                    canvas.drawPath(diamondPath, fxPaint)
                     linePaint.color = camp.color
-                    canvas.drawRect(rx1, ry1, rx2, ry2, linePaint)
+                    canvas.drawPath(diamondPath, linePaint)
                 }
             }
 
-            // 4. Sound rings & Tracers
+            // 2. Collect Loot Crates, Camp Structures, Zombies & Survivors for 3D depth sorting
+            if (zoom >= 0.45f) {
+                for (c in map.lootContainers) {
+                    if (c.isEmpty()) continue
+                    if (c.x < minTx || c.x > maxTx || c.y < minTy || c.y > maxTy) continue
+                    addDrawItem(depth = c.x + c.y + 0.52f, kind = 1, loot = c)
+                }
+            }
+
+            for (st in sim.structures) {
+                if (st.x < minTx - 2 || st.x > maxTx + 2 || st.y < minTy - 2 || st.y > maxTy + 2) continue
+                addDrawItem(depth = st.x + st.y + 0.55f, kind = 2, structure = st)
+            }
+
+            for (z in sim.zombies) {
+                if (!z.alive) continue
+                if (z.x < minTx - 2 || z.x > maxTx + 2 || z.y < minTy - 2 || z.y > maxTy + 2) continue
+                addDrawItem(depth = z.x + z.y, kind = 4, zombie = z)
+            }
+
+            for (s in sim.survivors) {
+                if (!s.alive) continue
+                if (s.x < minTx - 2 || s.x > maxTx + 2 || s.y < minTy - 2 || s.y > maxTy + 2) continue
+                addDrawItem(depth = s.x + s.y, kind = 3, survivor = s)
+            }
+
+            // Sort back-to-front in isometric depth!
+            activeDrawList.sortBy { it.depth }
+
+            val sel = selectedTarget
+            for (i in 0 until activeDrawList.size) {
+                val item = activeDrawList[i]
+                when (item.kind) {
+                    0 -> {
+                        val bmp = atlas.getWall(item.wallType) ?: continue
+                        val sx = worldToScreenX(item.tx.toFloat(), item.ty.toFloat(), hsw, hw)
+                        val sy = worldToScreenY(item.tx.toFloat(), item.ty.toFloat(), hsh, hh) + hh
+                        dstRect.set(sx - propW * 0.5f, sy - propBaseY, sx + propW * 0.5f, sy + (propH - propBaseY))
+                        // Slightly translucent front building walls when zoomed in so interiors stay readable!
+                        if (zoom >= 0.7f && (item.wallType == WallType.WALL_BRICK || item.wallType == WallType.WALL_WOOD)) {
+                            bmpPaint.alpha = 215
+                            canvas.drawBitmap(bmp, null, dstRect, bmpPaint)
+                            bmpPaint.alpha = 255
+                        } else {
+                            canvas.drawBitmap(bmp, null, dstRect, bmpPaint)
+                        }
+                    }
+                    1 -> {
+                        val c = item.loot ?: continue
+                        val sx = worldToScreenX(c.x + 0.5f, c.y + 0.5f, hsw, hw)
+                        val sy = worldToScreenY(c.x + 0.5f, c.y + 0.5f, hsh, hh)
+                        val bmp = if (c.weapon != null || c.antibiotics > 0) atlas.crateHigh else atlas.crateNormal
+                        dstRect.set(sx - propW * 0.5f, sy - propBaseY, sx + propW * 0.5f, sy + (propH - propBaseY))
+                        canvas.drawBitmap(bmp, null, dstRect, bmpPaint)
+                    }
+                    2 -> {
+                        val st = item.structure ?: continue
+                        val sx = worldToScreenX(st.x + 0.5f, st.y + 0.5f, hsw, hw)
+                        val sy = worldToScreenY(st.x + 0.5f, st.y + 0.5f, hsh, hh)
+                        val bmp = when (st.type) {
+                            StructureType.CAMPFIRE -> if (st.fuelTicks > 0) atlas.campfireFrames[(sim.tickCount / 2) % 3] else atlas.campfireOut
+                            StructureType.RAIN_COLLECTOR -> atlas.rainCollector
+                            StructureType.SPIKE_TRAP -> atlas.spikeTrap
+                            else -> atlas.crateNormal
+                        }
+                        dstRect.set(sx - propW * 0.5f, sy - propBaseY, sx + propW * 0.5f, sy + (propH - propBaseY))
+                        canvas.drawBitmap(bmp, null, dstRect, bmpPaint)
+                    }
+                    3 -> {
+                        val s = item.survivor ?: continue
+                        val sx = worldToScreenX(s.x, s.y, hsw, hw)
+                        val sy = worldToScreenY(s.x, s.y, hsh, hh)
+                        val isSel = sel is SelectionTarget.Survivor && sel.id == s.id
+                        charRenderer.drawSurvivor(canvas, s, sim, sx, sy, zoom, isSel, textPaint, bubbleBgPaint)
+                    }
+                    4 -> {
+                        val z = item.zombie ?: continue
+                        val sx = worldToScreenX(z.x, z.y, hsw, hw)
+                        val sy = worldToScreenY(z.x, z.y, hsh, hh)
+                        val isSel = sel is SelectionTarget.Zombie && sel.id == z.id
+                        charRenderer.drawZombie(canvas, z, sx, sy, zoom, isSel)
+                    }
+                }
+            }
+
+            // 3. Sound rings, bullet tracers & particles in isometric space
             for (i in 0 until sim.soundRings.capacity) {
                 if (!sim.soundRings.active[i]) continue
-                val sx = w * 0.5f + (sim.soundRings.x[i] - camX) * px
-                val sy = h * 0.5f + (sim.soundRings.y[i] - camY) * px
+                val sx = worldToScreenX(sim.soundRings.x[i], sim.soundRings.y[i], hsw, hw)
+                val sy = worldToScreenY(sim.soundRings.x[i], sim.soundRings.y[i], hsh, hh)
                 val alpha = ((sim.soundRings.life[i] / sim.soundRings.maxLife[i]) * 190).toInt().coerceIn(0, 255)
                 ringPaint.color = (sim.soundRings.color[i] and 0x00FFFFFF) or (alpha shl 24)
-                canvas.drawCircle(sx, sy, sim.soundRings.radius[i] * px, ringPaint)
+                val rx = sim.soundRings.radius[i] * hw
+                val ry = sim.soundRings.radius[i] * hh
+                dstRect.set(sx - rx, sy - ry, sx + rx, sy + ry)
+                canvas.drawOval(dstRect, ringPaint)
             }
 
             for (i in 0 until sim.tracers.capacity) {
                 if (!sim.tracers.active[i]) continue
                 linePaint.color = sim.tracers.color[i]
                 canvas.drawLine(
-                    w * 0.5f + (sim.tracers.x1[i] - camX) * px,
-                    h * 0.5f + (sim.tracers.y1[i] - camY) * px,
-                    w * 0.5f + (sim.tracers.x2[i] - camX) * px,
-                    h * 0.5f + (sim.tracers.y2[i] - camY) * px,
+                    worldToScreenX(sim.tracers.x1[i], sim.tracers.y1[i], hsw, hw),
+                    worldToScreenY(sim.tracers.x1[i], sim.tracers.y1[i], hsh, hh) - 12f * zoom,
+                    worldToScreenX(sim.tracers.x2[i], sim.tracers.y2[i], hsw, hw),
+                    worldToScreenY(sim.tracers.x2[i], sim.tracers.y2[i], hsh, hh) - 12f * zoom,
                     linePaint
                 )
             }
 
-            // 5. Agent Memory Overlay (for selected survivor)
-            val sel = selectedTarget
+            for (i in 0 until sim.particles.capacity) {
+                if (!sim.particles.active[i]) continue
+                val sx = worldToScreenX(sim.particles.x[i], sim.particles.y[i], hsw, hw)
+                val sy = worldToScreenY(sim.particles.x[i], sim.particles.y[i], hsh, hh) - 8f * zoom
+                fxPaint.color = sim.particles.color[i]
+                canvas.drawCircle(sx, sy, sim.particles.size[i] * 22f * zoom, fxPaint)
+            }
+
+            // 4. Selected Agent Path & Fog-of-Knowledge Memory Overlay
             if (sel is SelectionTarget.Survivor) {
                 val s = sim.survivorsById[sel.id]
                 if (s != null && s.alive) {
-                    drawSelectedAgentPathAndMemory(canvas, s, sim, w, h, px)
+                    drawSelectedAgentOverlay(canvas, s, sim, hsw, hsh, hw, hh)
                 }
             }
 
-            // 6. Zombies
-            for (z in sim.zombies) {
-                if (!z.alive) continue
-                if (z.x < minTx - 1 || z.x > maxTx + 1 || z.y < minTy - 1 || z.y > maxTy + 1) continue
-                drawZombie(canvas, z, w, h, px, sel)
-            }
-
-            // 7. Survivors
-            for (s in sim.survivors) {
-                if (!s.alive) continue
-                if (s.x < minTx - 2 || s.x > maxTx + 2 || s.y < minTy - 2 || s.y > maxTy + 2) continue
-                drawSurvivor(canvas, s, sim, w, h, px, sel)
-            }
-
-            // 8. Particles
-            for (i in 0 until sim.particles.capacity) {
-                if (!sim.particles.active[i]) continue
-                val sx = w * 0.5f + (sim.particles.x[i] - camX) * px
-                val sy = h * 0.5f + (sim.particles.y[i] - camY) * px
-                agentPaint.color = sim.particles.color[i]
-                canvas.drawCircle(sx, sy, sim.particles.size[i] * px, agentPaint)
-            }
-
-            // 9. Day / Night & Weather atmosphere overlay
+            // 5. Weather Streaks & Day/Night Atmosphere
             drawAtmosphere(canvas, sim, w, h)
         }
     }
 
-    private fun drawWallTile(canvas: Canvas, sx: Float, sy: Float, px: Float, wt: Byte) {
-        when (wt) {
-            WallType.WALL_BRICK -> {
-                tilePaint.color = 0xFF475569.toInt()
-                canvas.drawRect(sx, sy, sx + px + 0.5f, sy + px + 0.5f, tilePaint)
-            }
-            WallType.WALL_WOOD -> {
-                tilePaint.color = 0xFF78350F.toInt()
-                canvas.drawRect(sx, sy, sx + px + 0.5f, sy + px + 0.5f, tilePaint)
-            }
-            WallType.DOOR_CLOSED -> {
-                tilePaint.color = 0xFFD97706.toInt()
-                canvas.drawRect(sx + px * 0.1f, sy + px * 0.1f, sx + px * 0.9f, sy + px * 0.9f, tilePaint)
-            }
-            WallType.DOOR_OPEN -> {
-                tilePaint.color = 0x55D97706
-                canvas.drawRect(sx + px * 0.1f, sy + px * 0.1f, sx + px * 0.35f, sy + px * 0.9f, tilePaint)
-            }
-            WallType.DOOR_BARRICADED -> {
-                tilePaint.color = 0xFF92400E.toInt()
-                canvas.drawRect(sx, sy, sx + px, sy + px, tilePaint)
-                tilePaint.color = 0xFFFBBF24.toInt()
-                canvas.drawRect(sx + px * 0.1f, sy + px * 0.2f, sx + px * 0.9f, sy + px * 0.35f, tilePaint)
-                canvas.drawRect(sx + px * 0.1f, sy + px * 0.65f, sx + px * 0.9f, sy + px * 0.8f, tilePaint)
-            }
-            WallType.WINDOW_INTACT -> {
-                tilePaint.color = 0xFF38BDF8.toInt()
-                canvas.drawRect(sx + px * 0.15f, sy + px * 0.15f, sx + px * 0.85f, sy + px * 0.85f, tilePaint)
-            }
-            WallType.WINDOW_BROKEN -> {
-                tilePaint.color = 0x5538BDF8
-                canvas.drawRect(sx + px * 0.15f, sy + px * 0.15f, sx + px * 0.85f, sy + px * 0.85f, tilePaint)
-            }
-            WallType.TREE -> {
-                agentPaint.color = 0xFF14532D.toInt()
-                canvas.drawCircle(sx + px * 0.5f, sy + px * 0.5f, px * 0.48f, agentPaint)
-                agentPaint.color = 0xFF166534.toInt()
-                canvas.drawCircle(sx + px * 0.45f, sy + px * 0.42f, px * 0.32f, agentPaint)
-            }
-            WallType.CAR_WRECK -> {
-                tilePaint.color = 0xFF64748B.toInt()
-                canvas.drawRect(sx + px * 0.08f, sy + px * 0.16f, sx + px * 0.92f, sy + px * 0.84f, tilePaint)
-            }
-        }
-    }
-
-    private fun drawZombie(
-        canvas: Canvas,
-        z: ZombieAgent,
-        w: Float,
-        h: Float,
-        px: Float,
-        sel: SelectionTarget?
-    ) {
-        val sx = w * 0.5f + (z.x - camX) * px
-        val sy = h * 0.5f + (z.y - camY) * px
-        val baseR = when (z.type) {
-            ZombieType.BRUTE -> px * 0.46f
-            ZombieType.RUNNER -> px * 0.34f
-            else -> px * 0.36f
-        }.coerceAtLeast(2.4f)
-
-        agentPaint.color = when (z.type) {
-            ZombieType.WALKER -> 0xFF65A30D.toInt()
-            ZombieType.RUNNER -> 0xFFEF4444.toInt()
-            ZombieType.SCREAMER -> 0xFFA855F7.toInt()
-            ZombieType.BRUTE -> 0xFF991B1B.toInt()
-        }
-        canvas.drawCircle(sx, sy, baseR, agentPaint)
-
-        if (sel is SelectionTarget.Zombie && sel.id == z.id) {
-            ringPaint.color = Color.WHITE
-            canvas.drawCircle(sx, sy, baseR + 4f, ringPaint)
-        }
-    }
-
-    private fun drawSurvivor(
+    private fun drawSelectedAgentOverlay(
         canvas: Canvas,
         s: SurvivorAgent,
         sim: WorldSimulation,
-        w: Float,
-        h: Float,
-        px: Float,
-        sel: SelectionTarget?
+        hsw: Float,
+        hsh: Float,
+        hw: Float,
+        hh: Float
     ) {
-        val sx = w * 0.5f + (s.x - camX) * px
-        val sy = h * 0.5f + (s.y - camY) * px
-        val r = (px * 0.40f).coerceAtLeast(3.2f)
-
-        // Flashlight beam glow at night
-        if (sim.isNight && s.hasFlashlight) {
-            glowPaint.color = 0x22FEF08A
-            canvas.drawCircle(sx, sy, px * 3.4f, glowPaint)
-        }
-
-        // Camp ring or infection ring
-        if (s.infected) {
-            ringPaint.color = 0xFFA3E635.toInt()
-            canvas.drawCircle(sx, sy, r + 3.5f, ringPaint)
-        } else if (s.bleeding > 0.3f) {
-            ringPaint.color = 0xFFEF4444.toInt()
-            canvas.drawCircle(sx, sy, r + 3f, ringPaint)
-        }
-
-        val campColor = sim.campsById[s.campId]?.color
-        if (campColor != null) {
-            ringPaint.color = campColor
-            canvas.drawCircle(sx, sy, r + 1.5f, ringPaint)
-        }
-
-        // Body
-        agentPaint.color = s.avatarColor
-        canvas.drawCircle(sx, sy, r, agentPaint)
-
-        // Selection ring
-        if (sel is SelectionTarget.Survivor && sel.id == s.id) {
-            ringPaint.color = Color.WHITE
-            canvas.drawCircle(sx, sy, r + 6f, ringPaint)
-        }
-
-        // Overhead name, action tag & thought bubble when zoomed in
-        if (px >= 13f) {
-            textPaint.textSize = (px * 0.52f).coerceIn(18f, 28f)
-            textPaint.color = Color.WHITE
-            canvas.drawText("${s.name} [${s.currentActionIcon}]", sx, sy - r - 6f, textPaint)
-
-            if (px >= 18f && s.thoughtTimer > 0 && s.thoughtText.isNotEmpty()) {
-                textPaint.textSize = 21f
-                val tw = textPaint.measureText(s.thoughtText)
-                bubbleRect.set(sx - tw * 0.5f - 10f, sy - r - 58f, sx + tw * 0.5f + 10f, sy - r - 28f)
-                canvas.drawRoundRect(bubbleRect, 8f, 8f, bubbleBgPaint)
-                textPaint.color = 0xFFE2E8F0.toInt()
-                canvas.drawText(s.thoughtText, sx, sy - r - 36f, textPaint)
-            }
-        }
-    }
-
-    private fun drawSelectedAgentPathAndMemory(
-        canvas: Canvas,
-        s: SurvivorAgent,
-        sim: WorldSimulation,
-        w: Float,
-        h: Float,
-        px: Float
-    ) {
-        // Draw current A* path
         if (s.currentPath.isNotEmpty() && s.pathCursor < s.currentPath.size) {
             dashPaint.color = 0xFF38BDF8.toInt()
-            var prevX = w * 0.5f + (s.x - camX) * px
-            var prevY = h * 0.5f + (s.y - camY) * px
+            var prevX = worldToScreenX(s.x, s.y, hsw, hw)
+            var prevY = worldToScreenY(s.x, s.y, hsh, hh)
             for (i in s.pathCursor until s.currentPath.size) {
                 val node = s.currentPath[i]
-                val nx = w * 0.5f + (node % sim.map.size + 0.5f - camX) * px
-                val ny = h * 0.5f + (node / sim.map.size + 0.5f - camY) * px
-                canvas.drawLine(prevX, prevY, nx, ny, dashPaint)
-                prevX = nx
-                prevY = ny
+                val nx = (node % sim.map.size) + 0.5f
+                val ny = (node / sim.map.size) + 0.5f
+                val sx = worldToScreenX(nx, ny, hsw, hw)
+                val sy = worldToScreenY(nx, ny, hsh, hh)
+                canvas.drawLine(prevX, prevY, sx, sy, dashPaint)
+                prevX = sx
+                prevY = sy
             }
         }
 
-        // Draw known memory markers when Agent Memory overlay is active (or always subtle pins)
         if (overlayMode == OverlayMode.AGENT_MEMORY) {
             for (m in s.memories) {
-                val mx = w * 0.5f + (m.x + 0.5f - camX) * px
-                val my = h * 0.5f + (m.y + 0.5f - camY) * px
-                agentPaint.color = when (m.kind) {
+                val mx = worldToScreenX(m.x + 0.5f, m.y + 0.5f, hsw, hw)
+                val my = worldToScreenY(m.x + 0.5f, m.y + 0.5f, hsh, hh) - 10f * zoom
+                fxPaint.color = when (m.kind) {
                     MemoryKind.HORDE -> 0xFFEF4444.toInt()
                     MemoryKind.MEDS -> 0xFFEC4899.toInt()
                     MemoryKind.WEAPON -> 0xFFF59E0B.toInt()
                     else -> 0xFF10B981.toInt()
                 }
-                canvas.drawCircle(mx, my, 8f, agentPaint)
-                if (px >= 10f) {
-                    textPaint.textSize = 20f
+                canvas.drawCircle(mx, my, 7f, fxPaint)
+                if (zoom >= 0.65f) {
+                    textPaint.textSize = 19f
                     textPaint.color = Color.WHITE
-                    canvas.drawText(m.kind.titleRu, mx, my - 12f, textPaint)
+                    canvas.drawText(m.kind.titleRu, mx, my - 11f, textPaint)
                 }
             }
         }
@@ -680,32 +685,25 @@ class WorldSurfaceView @JvmOverloads constructor(
 
     private fun drawAtmosphere(canvas: Canvas, sim: WorldSimulation, w: Float, h: Float) {
         val darknessAlpha = when {
-            sim.weather == WeatherType.STORM && sim.lightningFlashTicks > 0 -> 15
-            sim.timeOfDay < 0.22f || sim.timeOfDay > 0.84f -> 115
-            sim.timeOfDay < 0.28f || sim.timeOfDay > 0.76f -> 58
+            sim.weather == WeatherType.STORM && sim.lightningFlashTicks > 0 -> 14
+            sim.timeOfDay < 0.22f || sim.timeOfDay > 0.84f -> 112
+            sim.timeOfDay < 0.28f || sim.timeOfDay > 0.76f -> 56
             else -> 0
         }
         if (darknessAlpha > 0) {
             canvas.drawColor(Color.argb(darknessAlpha, 6, 10, 22))
         }
-        when (sim.weather) {
-            WeatherType.FOG -> canvas.drawColor(0x36CBD5E1)
-            WeatherType.RAIN, WeatherType.STORM -> canvas.drawColor(0x221E293B)
-            WeatherType.CLEAR -> {}
-        }
-    }
-
-    private fun terrainColor(t: Byte): Int {
-        return when (t) {
-            TerrainType.GRASS -> 0xFF1E2E20.toInt()
-            TerrainType.FOREST -> 0xFF162519.toInt()
-            TerrainType.WATER -> 0xFF1D4ED8.toInt()
-            TerrainType.BRIDGE -> 0xFF78350F.toInt()
-            TerrainType.ROAD -> 0xFF1F2937.toInt()
-            TerrainType.CONCRETE -> 0xFF334155.toInt()
-            TerrainType.WOOD_FLOOR -> 0xFF451A03.toInt()
-            TerrainType.TILE_FLOOR -> 0xFF273549.toInt()
-            else -> 0xFF111827.toInt()
+        if (sim.weather == WeatherType.FOG) {
+            canvas.drawColor(0x38CBD5E1)
+        } else if (sim.weather == WeatherType.RAIN || sim.weather == WeatherType.STORM) {
+            canvas.drawColor(0x220F172A)
+            linePaint.color = 0x5593C5FD
+            val off = (sim.tickCount * 29) % 120
+            for (i in 0..28) {
+                val rx = ((i * 97 + off * 3) % w.toInt().coerceAtLeast(100)).toFloat()
+                val ry = ((i * 131 + off * 7) % h.toInt().coerceAtLeast(100)).toFloat()
+                canvas.drawLine(rx, ry, rx - 10f, ry + 24f, linePaint)
+            }
         }
     }
 }

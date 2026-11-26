@@ -8,6 +8,8 @@ import com.zombieaquarium.sim.ai.SurvivorAgent
 import com.zombieaquarium.sim.ai.SurvivorTrait
 import com.zombieaquarium.sim.ai.ZombieAgent
 import com.zombieaquarium.sim.ai.ZombieBrain
+import com.zombieaquarium.sim.audio.SoundEvent
+import com.zombieaquarium.sim.audio.SoundEventType
 import kotlin.math.max
 import kotlin.math.min
 
@@ -22,6 +24,7 @@ class WorldSimulation(val config: SimConfig) {
     val particles = ParticlePool(512)
     val soundRings = SoundRingPool(64)
     val tracers = TracerPool(64)
+    val pendingSounds = ArrayList<SoundEvent>(32)
 
     val survivors = ArrayList<SurvivorAgent>()
     val survivorsById = HashMap<Int, SurvivorAgent>()
@@ -335,6 +338,7 @@ class WorldSimulation(val config: SimConfig) {
         if (!z.alive) return
         z.alive = false
         killedZombiesCount++
+        emitSound(SoundEventType.ZOMBIE_DIE, z.x, z.y)
         if (killer != null) {
             killer.addBio(day, formatTime(), "Уничтожил(а) зомби (${z.type.titleRu})")
         }
@@ -345,9 +349,24 @@ class WorldSimulation(val config: SimConfig) {
         agent.alive = false
         agent.causeOfDeath = cause
         deadSurvivorsCount++
+        emitSound(SoundEventType.HUMAN_DIE, agent.x, agent.y)
         campsById[agent.campId]?.memberIds?.remove(agent.id)
         agent.addBio(day, formatTime(), "Погиб(ла): $cause")
         logChronicle("Гибель", "${agent.name} погиб(ла): $cause.", agent.x, agent.y)
+    }
+
+    fun emitSound(type: SoundEventType, wx: Float, wy: Float) {
+        if (pendingSounds.size < 40) {
+            pendingSounds.add(SoundEvent(type, wx, wy))
+        }
+    }
+
+    fun drainSounds(out: MutableList<SoundEvent>) {
+        synchronized(simLock) {
+            if (pendingSounds.isEmpty()) return
+            out.addAll(pendingSounds)
+            pendingSounds.clear()
+        }
     }
 
     fun turnSurvivorIntoZombie(agent: SurvivorAgent, reason: String) {

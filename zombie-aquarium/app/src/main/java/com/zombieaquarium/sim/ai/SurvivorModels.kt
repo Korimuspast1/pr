@@ -174,6 +174,14 @@ data class SurvivorAgent(
     var currentActionIcon: String = "Ищет"
     val bioLog = ArrayList<String>()
 
+    // Visual animation state
+    var facingX: Float = 1f
+    var facingY: Float = 0f
+    var animPhase: Float = 0f
+    var attackAnimTicks: Int = 0
+    var hurtAnimTicks: Int = 0
+    var isMovingNow: Boolean = false
+
     fun hasTrait(trait: SurvivorTrait): Boolean = traits.contains(trait)
 
     fun activeWeapon(nearbyZombieCount: Int, isSneaking: Boolean): WeaponType {
@@ -263,7 +271,12 @@ data class ZombieAgent(
     var screamCooldown: Int = 0,
     var wanderVx: Float = 0f,
     var wanderVy: Float = 0f,
-    var wanderTimer: Int = 0
+    var wanderTimer: Int = 0,
+    var facingX: Float = 1f,
+    var facingY: Float = 0f,
+    var animPhase: Float = 0f,
+    var attackAnimTicks: Int = 0,
+    var hurtAnimTicks: Int = 0
 )
 
 data class ChronicleEvent(

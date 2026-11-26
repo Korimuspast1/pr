@@ -163,12 +163,25 @@
                     android:id="@+id/btnGodToggle"
                     android:layout_width="wrap_content"
                     android:layout_height="32dp"
+                    android:layout_marginEnd="6dp"
                     android:backgroundTint="#1E293B"
                     android:minWidth="0dp"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="0dp"
                     android:text="Режим Бога"
                     android:textColor="#F472B6"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btnSoundToggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:backgroundTint="#1E293B"
+                    android:minWidth="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="0dp"
+                    android:text="Звук: Вкл"
+                    android:textColor="#34D399"
                     android:textSize="11sp" />
             </LinearLayout>
         </HorizontalScrollView>

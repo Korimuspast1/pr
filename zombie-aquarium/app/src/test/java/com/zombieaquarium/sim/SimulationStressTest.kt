@@ -25,8 +25,13 @@ class SimulationStressTest {
         assertTrue("Expected survivors spawned", sim.survivors.size == 24)
         assertTrue("Expected zombies spawned", sim.zombies.size >= 45)
 
+        var sawSound = false
         for (tick in 1..650) {
             sim.stepFixedTick()
+            if (sim.pendingSounds.isNotEmpty()) {
+                sawSound = true
+                sim.pendingSounds.clear()
+            }
             if (tick == 120) {
                 sim.godDropSupplyCrate(64f, 64f)
                 sim.godSetWeather(WeatherType.STORM)
@@ -36,6 +41,8 @@ class SimulationStressTest {
                 sim.godSpawnSurvivor(70f, 70f)
             }
         }
+        assertTrue("Expected real sound events emitted during simulation", sawSound)
+        assertTrue("Expected character animations advancing", sim.survivors.any { it.animPhase > 0f })
 
         for (s in sim.survivors) {
             assertFalse("Survivor X NaN", s.x.isNaN())

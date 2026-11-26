@@ -1,5 +1,6 @@
 package com.zombieaquarium.sim.ai
 
+import com.zombieaquarium.sim.audio.SoundEventType
 import com.zombieaquarium.sim.engine.SimRng
 import com.zombieaquarium.sim.engine.TerrainType
 import com.zombieaquarium.sim.engine.WallType
@@ -24,6 +25,8 @@ object ZombieBrain {
         if (z.attackCooldown > 0) z.attackCooldown--
         if (z.screamCooldown > 0) z.screamCooldown--
         if (z.alertTimer > 0) z.alertTimer--
+        if (z.attackAnimTicks > 0) z.attackAnimTicks--
+        if (z.hurtAnimTicks > 0) z.hurtAnimTicks--
 
         // 1. Check nearby visible / audible survivors
         val sightRange = when {
@@ -50,6 +53,9 @@ object ZombieBrain {
             z.screamCooldown = 90
             sim.map.addNoise(z.x.toInt().coerceIn(0, sim.map.size - 1), z.y.toInt().coerceIn(0, sim.map.size - 1), 48f, 100f)
             sim.soundRings.spawn(z.x, z.y, 24f, 0xFFA855F7.toInt(), 1.2f)
+            sim.emitSound(SoundEventType.SCREAMER, z.x, z.y)
+        } else if (targetHuman != null && rng.chance(0.015f)) {
+            sim.emitSound(SoundEventType.ZOMBIE_GROAN, z.x, z.y)
         }
 
         var moveDx = 0f
@@ -124,6 +130,9 @@ object ZombieBrain {
         if (len > 0.01f) {
             moveDx /= len
             moveDy /= len
+            z.facingX = moveDx
+            z.facingY = moveDy
+            z.animPhase += speed * dt * 2.4f
             val nx = (z.x + moveDx * speed * dt).coerceIn(1f, sim.map.size - 2f)
             val ny = (z.y + moveDy * speed * dt).coerceIn(1f, sim.map.size - 2f)
             val ntx = nx.toInt()
@@ -139,11 +148,14 @@ object ZombieBrain {
                 // Siege doors, barricades, and windows!
                 if (z.attackCooldown <= 0) {
                     z.attackCooldown = 9
+                    z.attackAnimTicks = 5
                     sim.map.wallHp[nIdx] -= z.type.structureDamage
                     sim.map.addNoise(ntx, nty, 16f, 42f)
+                    sim.emitSound(SoundEventType.DOOR_BREAK, ntx + 0.5f, nty + 0.5f)
                     sim.particles.spawn(ntx + 0.5f, nty + 0.5f, rng.nextFloatRange(-1f, 1f), rng.nextFloatRange(-1f, 1f), 0.35f, 0xFFB45309.toInt(), 0.14f)
                     if (sim.map.wallHp[nIdx] <= 0f) {
                         sim.map.wall[nIdx] = if (w == WallType.WINDOW_INTACT) WallType.WINDOW_BROKEN else WallType.DOOR_OPEN
+                        sim.emitSound(if (w == WallType.WINDOW_INTACT) SoundEventType.GLASS_BREAK else SoundEventType.DOOR_BREAK, ntx + 0.5f, nty + 0.5f)
                         sim.soundRings.spawn(ntx + 0.5f, nty + 0.5f, 14f, 0xFFF59E0B.toInt(), 0.9f)
                         sim.logChronicle("Прорыв", "Зомби (${z.type.titleRu}) проломили преграду!", ntx.toFloat(), nty.toFloat())
                     }
@@ -162,7 +174,17 @@ object ZombieBrain {
     private fun attackSurvivor(z: ZombieAgent, h: SurvivorAgent, sim: WorldSimulation, rng: SimRng) {
         if (z.attackCooldown > 0) return
         z.attackCooldown = 10
+        z.attackAnimTicks = 5
+        val dx = h.x - z.x
+        val dy = h.y - z.y
+        val dl = sqrt(dx * dx + dy * dy)
+        if (dl > 0.01f) {
+            z.facingX = dx / dl
+            z.facingY = dy / dl
+        }
         h.hp -= z.type.attackDamage
+        h.hurtAnimTicks = 4
+        sim.emitSound(SoundEventType.ZOMBIE_BITE, h.x, h.y)
         sim.map.addBlood(h.x.toInt().coerceIn(0, sim.map.size - 1), h.y.toInt().coerceIn(0, sim.map.size - 1), 35f)
         repeat(4) {
             sim.particles.spawn(h.x, h.y, rng.nextFloatRange(-2f, 2f), rng.nextFloatRange(-2f, 2f), 0.5f, 0xFFEF4444.toInt(), 0.14f)

@@ -8,6 +8,7 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.zombieaquarium.sim.R
+import com.zombieaquarium.sim.audio.SoundEngine
 import com.zombieaquarium.sim.engine.OverlayMode
 import com.zombieaquarium.sim.engine.SimConfig
 import com.zombieaquarium.sim.engine.WeatherType
@@ -18,6 +19,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var worldSurface: WorldSurfaceView
     private var sim: WorldSimulation? = null
+    private lateinit var soundEngine: SoundEngine
 
     private lateinit var tvClockWeather: TextView
     private lateinit var tvCounters: TextView
@@ -50,6 +52,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         worldSurface = findViewById(R.id.worldSurface)
+        soundEngine = SoundEngine(this)
+        worldSurface.soundEngine = soundEngine
         tvClockWeather = findViewById(R.id.tvClockWeather)
         tvCounters = findViewById(R.id.tvCounters)
         tvGodHint = findViewById(R.id.tvGodHint)
@@ -175,6 +179,13 @@ class MainActivity : AppCompatActivity() {
             btnCancelSetup.visibility = if (sim != null) View.VISIBLE else View.GONE
             setupOverlay.visibility = View.VISIBLE
         }
+
+        val btnSound = findViewById<Button>(R.id.btnSoundToggle)
+        btnSound.setOnClickListener {
+            soundEngine.muted = !soundEngine.muted
+            btnSound.text = if (soundEngine.muted) "Звук: Выкл" else "Звук: Вкл"
+            btnSound.setTextColor(if (soundEngine.muted) 0xFF94A3B8.toInt() else 0xFF34D399.toInt())
+        }
     }
 
     private fun setupInspector() {
@@ -187,9 +198,9 @@ class MainActivity : AppCompatActivity() {
             val sel = worldSurface.selectedTarget ?: return@setOnClickListener
             synchronized(s.simLock) {
                 when (sel) {
-                    is SelectionTarget.Survivor -> s.survivorsById[sel.id]?.let { worldSurface.centerOn(it.x, it.y, 24f) }
-                    is SelectionTarget.Zombie -> s.zombiesById[sel.id]?.let { worldSurface.centerOn(it.x, it.y, 24f) }
-                    is SelectionTarget.Building -> s.map.buildings.getOrNull(sel.id - 1)?.let { worldSurface.centerOn(it.centerX, it.centerY, 18f) }
+                    is SelectionTarget.Survivor -> s.survivorsById[sel.id]?.let { worldSurface.centerOn(it.x, it.y, 1.25f) }
+                    is SelectionTarget.Zombie -> s.zombiesById[sel.id]?.let { worldSurface.centerOn(it.x, it.y, 1.25f) }
+                    is SelectionTarget.Building -> s.map.buildings.getOrNull(sel.id - 1)?.let { worldSurface.centerOn(it.centerX, it.centerY, 0.95f) }
                 }
             }
         }
@@ -422,5 +433,15 @@ class MainActivity : AppCompatActivity() {
         override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) = onChange(progress)
         override fun onStartTrackingTouch(seekBar: SeekBar?) {}
         override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+    }
+
+    override fun onPause() {
+        super.onPause()
+        soundEngine.pause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        soundEngine.release()
     }
 }
