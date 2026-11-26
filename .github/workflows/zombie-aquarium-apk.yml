@@ -32,7 +32,7 @@ jobs:
         run: |
           chmod +x gradlew
           if ! ./gradlew testDebugUnitTest --no-daemon > /tmp/gradle-test.log 2>&1; then
-            tail -n 40 /tmp/gradle-test.log | while IFS= read -r line; do
+            (grep -E "FAILED|Exception|Error|AssertionError|at com\.zombieaquarium" /tmp/gradle-test.log || tail -n 10 /tmp/gradle-test.log) | head -n 9 | while IFS= read -r line; do
               echo "::error::$line"
             done
             cat /tmp/gradle-test.log

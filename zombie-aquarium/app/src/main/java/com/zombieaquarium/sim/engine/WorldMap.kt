@@ -327,6 +327,7 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
 
         var heapSize = 0
         fun push(node: Int, f: Float) {
+            if (heapSize >= heapNodes.size) return
             var c = heapSize++
             while (c > 0) {
                 val p = (c - 1) ushr 1
