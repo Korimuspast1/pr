@@ -460,13 +460,15 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
             }
         }
 
-        // 2. Dense Urban Road Grid (main 3-tile avenues + 2-tile side streets) & bridges over river
-        val mainCols = listOf((size * 0.25f).toInt(), (size * 0.50f).toInt(), (size * 0.76f).toInt())
-        val mainRows = listOf((size * 0.25f).toInt(), (size * 0.50f).toInt(), (size * 0.76f).toInt())
-        val sideCols = listOf((size * 0.12f).toInt(), (size * 0.375f).toInt(), (size * 0.63f).toInt(), (size * 0.88f).toInt())
-        val sideRows = listOf((size * 0.12f).toInt(), (size * 0.375f).toInt(), (size * 0.63f).toInt(), (size * 0.88f).toInt())
+        // 2. Urban Road Grid (main 3-tile avenues + cross streets) & bridges over river
+        val roadCols = if (size >= 150) {
+            listOf((size * 0.16f).toInt(), (size * 0.34f).toInt(), (size * 0.50f).toInt(), (size * 0.66f).toInt(), (size * 0.84f).toInt())
+        } else {
+            listOf((size * 0.19f).toInt(), (size * 0.40f).toInt(), (size * 0.60f).toInt(), (size * 0.81f).toInt())
+        }
+        val roadRows = roadCols
 
-        for (rx in mainCols) {
+        for (rx in roadCols) {
             for (y in 0 until size) {
                 for (dx in -1..1) {
                     val x = rx + dx
@@ -477,31 +479,9 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
                 }
             }
         }
-        for (ry in mainRows) {
+        for (ry in roadRows) {
             for (x in 0 until size) {
                 for (dy in -1..1) {
-                    val y = ry + dy
-                    if (inBounds(x, y)) {
-                        val i = idx(x, y)
-                        terrain[i] = if (terrain[i] == TerrainType.WATER) TerrainType.BRIDGE else TerrainType.ROAD
-                    }
-                }
-            }
-        }
-        for (rx in sideCols) {
-            for (y in 0 until size) {
-                for (dx in 0..1) {
-                    val x = rx + dx
-                    if (inBounds(x, y)) {
-                        val i = idx(x, y)
-                        terrain[i] = if (terrain[i] == TerrainType.WATER) TerrainType.BRIDGE else TerrainType.ROAD
-                    }
-                }
-            }
-        }
-        for (ry in sideRows) {
-            for (x in 0 until size) {
-                for (dy in 0..1) {
                     val y = ry + dy
                     if (inBounds(x, y)) {
                         val i = idx(x, y)
@@ -540,33 +520,47 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
             }
         }
 
-        // 4. Generate dense neighborhoods of real houses & city buildings
-        val cityLots = ArrayList<Pair<Int, Int>>()
-        val step = 9
-        for (by in 4 until size - 10 step step) {
-            for (bx in 4 until size - 10 step step) {
-                cityLots.add(bx to by)
+        // 4. Generate dense neighborhoods of real houses & city buildings aligned to road blocks
+        val colBounds = ArrayList<Int>().apply { add(3); for (c in roadCols) { add(c - 2); add(c + 2) }; add(size - 4) }
+        val rowBounds = ArrayList<Int>().apply { add(3); for (r in roadRows) { add(r - 2); add(r + 2) }; add(size - 4) }
+
+        for (ri in 0 until rowBounds.size step 2) {
+            val by1 = rowBounds[ri]
+            val by2 = rowBounds[ri + 1]
+            if (by2 - by1 < 6) continue
+            for (ci in 0 until colBounds.size step 2) {
+                val bx1 = colBounds[ci]
+                val bx2 = colBounds[ci + 1]
+                if (bx2 - bx1 < 6) continue
+
+                var curY = by1
+                while (curY + 5 <= by2) {
+                    var curX = bx1
+                    var rowMaxH = 6
+                    while (curX + 5 <= bx2) {
+                        val distCenter = sqrt(
+                            ((curX - size * 0.5f) * (curX - size * 0.5f) + (curY - size * 0.5f) * (curY - size * 0.5f))
+                        ) / (size * 0.5f)
+
+                        val bType = pickBuildingType(distCenter, rng)
+                        val w = when (bType) {
+                            BuildingType.SUBURB_HOUSE, BuildingType.PHARMACY, BuildingType.GAS_STATION -> rng.nextRange(5, 6)
+                            else -> rng.nextRange(6, 7)
+                        }
+                        val h = (w + rng.nextRange(-1, 1)).coerceIn(5, 7)
+                        val x2 = curX + w
+                        val y2 = curY + h
+                        if (x2 <= bx2 && y2 <= by2 && canPlaceBuilding(curX, curY, x2, y2)) {
+                            placeBuilding(buildings.size + 1, bType, curX, curY, x2, y2, rng, lootRarity)
+                            curX = x2 + 3 // Leave 2-tile yard/alley between neighboring houses
+                            if (h + 2 > rowMaxH) rowMaxH = h + 2
+                        } else {
+                            curX += 3
+                        }
+                    }
+                    curY += rowMaxH + 1
+                }
             }
-        }
-
-        for ((rawBx, rawBy) in cityLots) {
-            val bx = rawBx + rng.nextRange(0, 1)
-            val by = rawBy + rng.nextRange(0, 1)
-            val distCenter = sqrt(
-                ((bx - size * 0.5f) * (bx - size * 0.5f) + (by - size * 0.5f) * (by - size * 0.5f))
-            ) / (size * 0.5f)
-
-            val bType = pickBuildingType(distCenter, rng)
-            val w = when (bType) {
-                BuildingType.SUBURB_HOUSE, BuildingType.PHARMACY, BuildingType.GAS_STATION -> rng.nextRange(5, 6)
-                else -> rng.nextRange(6, 7)
-            }
-            val h = (w + rng.nextRange(-1, 1)).coerceIn(5, 7)
-            val x2 = min(size - 4, bx + w)
-            val y2 = min(size - 4, by + h)
-            if (!canPlaceBuilding(bx, by, x2, y2)) continue
-
-            placeBuilding(buildings.size + 1, bType, bx, by, x2, y2, rng, lootRarity)
         }
     }
 
