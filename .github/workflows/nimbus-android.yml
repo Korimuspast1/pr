@@ -4,9 +4,9 @@ name: Nimbus Android
 # is downloaded from the pinned release before Gradle runs, so no Go toolchain and no NDK are
 # needed here.
 #
-# The runners' Android SDK is the one baked into the GitHub image; only the platform the build
-# asks for is installed on top, because a missing compileSdk is the failure that looks like a
-# code error and isn't one.
+# The SDK is set up by hand rather than by an action: the image's own copy (when it has one) is
+# reused, and cmdline-tools come from dl.google.com when it does not. A missing compileSdk is the
+# failure that reads like a code error and is not one, so the platform is installed up front.
 #
 # Failures are written back into the pull request as a comment and into the check run as
 # annotations, so a compile error can be read from the GitHub API instead of from a log download.
@@ -52,20 +52,39 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Android SDK
+        env:
+          # cmdline-tools 22.0 - the build android-actions/setup-android@v4 fetches, taken from
+          # dl.google.com directly so that no third-party action stands between us and the SDK.
+          CMDLINE_TOOLS_BUILD: '15859902'
         run: |
-          set -uo pipefail
-          # The runner image already carries an SDK with the licences accepted; the only thing the
-          # build needs on top of it is the platform it compiles against.
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-${COMPILE_SDK}" "platform-tools" || true
-          # Build logs cannot be downloaded from where this project is maintained, but check
-          # annotations can be read through the API - so what the SDK holds is reported as one.
-          installed=$(sdkmanager --list_installed 2>/dev/null | awk 'NR>2 {printf "%s ", $1}')
-          echo "::notice title=Android SDK::${installed:-sdkmanager listed nothing}"
-          case " ${installed} " in
-            *" platforms;android-${COMPILE_SDK} "*) ;;
-            *) echo "::error title=Android SDK::platforms;android-${COMPILE_SDK} is not installed" ;;
-          esac
+          set -euo pipefail
+          # The runner image's SDK, if it has one, is reused; only the missing parts are fetched.
+          root="${ANDROID_HOME:-$HOME/.android/sdk}"
+          if ! mkdir -p "$root" 2>/dev/null || [ ! -w "$root" ]; then
+            root="$HOME/.android/sdk"
+            mkdir -p "$root"
+          fi
+          sdkmanager="$root/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$sdkmanager" ]; then
+            zip=$(mktemp)
+            curl --fail --location --retry 3 --retry-delay 5 --connect-timeout 30 --output "$zip" \
+              "https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS_BUILD}_latest.zip"
+            rm -rf /tmp/cmdline-tools && mkdir -p /tmp/cmdline-tools
+            unzip -q "$zip" -d /tmp/cmdline-tools
+            mkdir -p "$root/cmdline-tools"
+            mv /tmp/cmdline-tools/cmdline-tools "$root/cmdline-tools/latest"
+            rm -f "$zip"
+          fi
+          yes | "$sdkmanager" --licenses > /dev/null
+          "$sdkmanager" "platforms;android-${COMPILE_SDK}" "build-tools;36.0.0" "platform-tools"
+          {
+            echo "ANDROID_HOME=$root"
+            echo "ANDROID_SDK_ROOT=$root"
+          } >> "$GITHUB_ENV"
+          echo "sdk.dir=$root" > local.properties
+          # Build logs are not reachable from where this project is maintained; check annotations
+          # are, so what ended up installed is reported as one.
+          echo "::notice title=Android SDK::$("$sdkmanager" --list_installed | awk 'NR>2 {printf "%s ", $1}')"
 
       - name: Fetch the sing-box core (libbox.aar)
         run: |
@@ -159,10 +178,33 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Android SDK
+        env:
+          CMDLINE_TOOLS_BUILD: '15859902'
         run: |
-          set -uo pipefail
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-${COMPILE_SDK}" "platform-tools" || true
+          set -euo pipefail
+          root="${ANDROID_HOME:-$HOME/.android/sdk}"
+          if ! mkdir -p "$root" 2>/dev/null || [ ! -w "$root" ]; then
+            root="$HOME/.android/sdk"
+            mkdir -p "$root"
+          fi
+          sdkmanager="$root/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$sdkmanager" ]; then
+            zip=$(mktemp)
+            curl --fail --location --retry 3 --retry-delay 5 --connect-timeout 30 --output "$zip" \
+              "https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS_BUILD}_latest.zip"
+            rm -rf /tmp/cmdline-tools && mkdir -p /tmp/cmdline-tools
+            unzip -q "$zip" -d /tmp/cmdline-tools
+            mkdir -p "$root/cmdline-tools"
+            mv /tmp/cmdline-tools/cmdline-tools "$root/cmdline-tools/latest"
+            rm -f "$zip"
+          fi
+          yes | "$sdkmanager" --licenses > /dev/null
+          "$sdkmanager" "platforms;android-${COMPILE_SDK}" "build-tools;36.0.0" "platform-tools"
+          {
+            echo "ANDROID_HOME=$root"
+            echo "ANDROID_SDK_ROOT=$root"
+          } >> "$GITHUB_ENV"
+          echo "sdk.dir=$root" > local.properties
 
       - name: Fetch the sing-box core (libbox.aar)
         run: |
