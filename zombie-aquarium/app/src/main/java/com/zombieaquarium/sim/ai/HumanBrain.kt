@@ -616,6 +616,11 @@ object HumanBrain {
                     agent.goapPlan.addLast(GoapStep(moveType, pt.first, pt.second, detail = "Разведка сектора"))
                 }
             }
+
+            UtilityGoal.SURVIVE_FLEE -> {
+                val pt = pickExploreTarget(agent, sim, rng)
+                agent.goapPlan.addLast(GoapStep(GoapActionType.FLEE_TO_SAFE, pt.first, pt.second, detail = "Отход в укрытие"))
+            }
         }
     }
 

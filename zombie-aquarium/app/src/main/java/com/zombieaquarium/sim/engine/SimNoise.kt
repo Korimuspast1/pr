@@ -3,7 +3,7 @@ package com.zombieaquarium.sim.engine
 import kotlin.math.floor
 
 class SimRng(seed: Long) {
-    private var state: Long = if (seed == 0L) 0x9E3779B97F4A7C15L else seed
+    private var state: Long = if (seed == 0L) -7046029254386353131L else seed
 
     fun nextLong(): Long {
         state += -7046029254386353131L // 0x9E3779B97F4A7C15

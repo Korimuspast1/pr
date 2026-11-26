@@ -1,6 +1,7 @@
 package com.zombieaquarium.sim.ai
 
 import com.zombieaquarium.sim.engine.WeaponType
+import com.zombieaquarium.sim.engine.ZombieType
 
 enum class SurvivorTrait(val titleRu: String, val descRu: String) {
     LEADER("Лидер", "Снижает панику союзников, создаёт лагерь и распределяет роли"),
