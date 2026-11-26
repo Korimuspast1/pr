@@ -55,6 +55,7 @@ enum class WeatherType(val titleRu: String) {
 
 enum class OverlayMode(val titleRu: String) {
     NORMAL("Обычный вид"),
+    INTERIORS("Без крыш"),
     NOISE_LIGHT("Шум и свет"),
     FACTIONS("Зоны лагерей"),
     AGENT_MEMORY("Память агента")

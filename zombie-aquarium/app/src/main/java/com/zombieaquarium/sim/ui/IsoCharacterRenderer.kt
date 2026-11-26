@@ -30,6 +30,7 @@ class IsoCharacterRenderer {
         sx: Float,
         sy: Float,
         scale: Float,
+        renderAlpha: Float,
         selected: Boolean,
         textPaint: Paint,
         bubblePaint: Paint
@@ -85,9 +86,10 @@ class IsoCharacterRenderer {
             return
         }
 
-        // Walk / sneak / idle bobbing
-        val stride = if (s.isMovingNow) sin(s.animPhase) * 4.5f * scale else 0f
-        val bob = if (s.isMovingNow) kotlin.math.abs(cos(s.animPhase)) * 1.8f * scale else 0f
+        // Walk / sneak / idle bobbing (60 FPS smooth phase)
+        val smoothPhase = if (s.isMovingNow) s.animPhase + renderAlpha * 0.55f else s.animPhase
+        val stride = if (s.isMovingNow) sin(smoothPhase) * 4.5f * scale else 0f
+        val bob = if (s.isMovingNow) kotlin.math.abs(cos(smoothPhase)) * 1.8f * scale else 0f
         val crouch = if (s.fsmState == FsmState.SNEAKING || s.fsmState == FsmState.LOOTING) 2.5f * scale else 0f
 
         // Legs
@@ -207,6 +209,7 @@ class IsoCharacterRenderer {
         sx: Float,
         sy: Float,
         scale: Float,
+        renderAlpha: Float,
         selected: Boolean
     ) {
         val bulk = when (z.type) {
@@ -239,7 +242,8 @@ class IsoCharacterRenderer {
             canvas.drawCircle(sx, sy - 10f * bulk, 13f * bulk, paint)
         }
 
-        val sway = sin(z.animPhase) * 3.5f * bulk
+        val smoothPhase = z.animPhase + renderAlpha * 0.45f
+        val sway = sin(smoothPhase) * 3.5f * bulk
         val lunge = if (z.attackAnimTicks > 0) (5 - z.attackAnimTicks) * 1.1f * bulk else 0f
 
         // Legs

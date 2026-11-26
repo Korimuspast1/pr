@@ -66,7 +66,6 @@ class WorldSimulation(val config: SimConfig) {
 
     init {
         populateWorld()
-        emitSound(SoundEventType.VO_INTRO, map.size * 0.5f, map.size * 0.5f)
         logChronicle("Старт", "Новый мир создан (Seed ${config.seed}). Выживших: ${survivors.size}, зомби: ${zombies.size}.")
     }
 
@@ -166,10 +165,23 @@ class WorldSimulation(val config: SimConfig) {
                 lightningFlashTicks = 3
                 emitSound(SoundEventType.THUNDER, map.size * 0.5f, map.size * 0.5f)
             }
-            if (!prevIsNight && isNight) {
-                emitSound(SoundEventType.VO_NIGHT, map.size * 0.5f, map.size * 0.5f)
-            }
             prevIsNight = isNight
+
+            // Snapshot previous positions for 60 FPS smooth render interpolation
+            for (i in 0 until survivors.size) {
+                val s = survivors[i]
+                if (s.alive) {
+                    s.prevX = s.x
+                    s.prevY = s.y
+                }
+            }
+            for (i in 0 until zombies.size) {
+                val z = zombies[i]
+                if (z.alive) {
+                    z.prevX = z.x
+                    z.prevY = z.y
+                }
+            }
 
             // 2. Camp structures (campfires, rain collectors)
             updateStructures()
@@ -305,7 +317,6 @@ class WorldSimulation(val config: SimConfig) {
         camps.add(camp)
         campsById[id] = camp
         joinCamp(founder, camp, forceRole = CampRole.LEADER)
-        emitSound(SoundEventType.VO_CAMP, building.centerX, building.centerY)
         logChronicle("Лагерь", "${founder.name} основал(а) лагерь «$campName» (${building.type.titleRu}).", building.centerX, building.centerY)
         return camp
     }
@@ -397,7 +408,6 @@ class WorldSimulation(val config: SimConfig) {
             }
         }
         logChronicle("Орда", "К городу движется мигрирующая орда ($count зомби)!", cx, cy)
-        emitSound(SoundEventType.VO_HORDE, cx, cy)
         emitSound(SoundEventType.ZOMBIE_MOB, cx, cy)
     }
 

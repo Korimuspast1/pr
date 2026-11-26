@@ -227,7 +227,7 @@
                 android:maxLines="1"
                 android:paddingHorizontal="4dp"
                 android:paddingVertical="0dp"
-                android:text="Песня"
+                android:text="Эмбиент"
                 android:textColor="#A78BFA"
                 android:textSize="10.5sp" />
         </LinearLayout>

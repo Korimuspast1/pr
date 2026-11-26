@@ -20,7 +20,7 @@ class SimulationStressTest {
             seed = 424242L
         )
         val sim = WorldSimulation(cfg)
-        assertTrue("Expected buildings generated", sim.map.buildings.isNotEmpty())
+        assertTrue("Expected dense town buildings generated", sim.map.buildings.size >= 35)
         assertTrue("Expected loot containers generated", sim.map.lootContainers.isNotEmpty())
         assertTrue("Expected survivors spawned", sim.survivors.size == 24)
         assertTrue("Expected zombies spawned", sim.zombies.size >= 45)

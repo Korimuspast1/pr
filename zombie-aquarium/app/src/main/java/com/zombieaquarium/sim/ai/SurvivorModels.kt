@@ -177,6 +177,8 @@ data class SurvivorAgent(
     // Visual animation state
     var facingX: Float = 1f
     var facingY: Float = 0f
+    var prevX: Float = x
+    var prevY: Float = y
     var animPhase: Float = 0f
     var attackAnimTicks: Int = 0
     var hurtAnimTicks: Int = 0
@@ -274,6 +276,8 @@ data class ZombieAgent(
     var wanderTimer: Int = 0,
     var facingX: Float = 1f,
     var facingY: Float = 0f,
+    var prevX: Float = x,
+    var prevY: Float = y,
     var animPhase: Float = 0f,
     var attackAnimTicks: Int = 0,
     var hurtAnimTicks: Int = 0

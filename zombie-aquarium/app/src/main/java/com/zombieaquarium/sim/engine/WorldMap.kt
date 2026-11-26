@@ -37,6 +37,10 @@ data class BuildingInfo(
     val y1: Int,
     val x2: Int,
     val y2: Int,
+    val stories: Int = 1,
+    val roofStyle: Int = 0, // 0=gabled pitched, 1=hipped pitched, 2=flat parapet, 3=commercial/awning
+    val roofColorIdx: Int = 0,
+    val facadeColorIdx: Int = 0,
     val doorTiles: MutableList<Int> = ArrayList(),
     val windowTiles: MutableList<Int> = ArrayList(),
     var claimedByCampId: Int = -1
@@ -456,11 +460,13 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
             }
         }
 
-        // 2. Road grid (2-3 avenues + cross streets) & bridges over river
-        val roadCols = listOf((size * 0.25f).toInt(), (size * 0.5f).toInt(), (size * 0.76f).toInt())
-        val roadRows = listOf((size * 0.25f).toInt(), (size * 0.5f).toInt(), (size * 0.76f).toInt())
+        // 2. Dense Urban Road Grid (main 3-tile avenues + 2-tile side streets) & bridges over river
+        val mainCols = listOf((size * 0.25f).toInt(), (size * 0.50f).toInt(), (size * 0.76f).toInt())
+        val mainRows = listOf((size * 0.25f).toInt(), (size * 0.50f).toInt(), (size * 0.76f).toInt())
+        val sideCols = listOf((size * 0.12f).toInt(), (size * 0.375f).toInt(), (size * 0.63f).toInt(), (size * 0.88f).toInt())
+        val sideRows = listOf((size * 0.12f).toInt(), (size * 0.375f).toInt(), (size * 0.63f).toInt(), (size * 0.88f).toInt())
 
-        for (rx in roadCols) {
+        for (rx in mainCols) {
             for (y in 0 until size) {
                 for (dx in -1..1) {
                     val x = rx + dx
@@ -471,9 +477,31 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
                 }
             }
         }
-        for (ry in roadRows) {
+        for (ry in mainRows) {
             for (x in 0 until size) {
                 for (dy in -1..1) {
+                    val y = ry + dy
+                    if (inBounds(x, y)) {
+                        val i = idx(x, y)
+                        terrain[i] = if (terrain[i] == TerrainType.WATER) TerrainType.BRIDGE else TerrainType.ROAD
+                    }
+                }
+            }
+        }
+        for (rx in sideCols) {
+            for (y in 0 until size) {
+                for (dx in 0..1) {
+                    val x = rx + dx
+                    if (inBounds(x, y)) {
+                        val i = idx(x, y)
+                        terrain[i] = if (terrain[i] == TerrainType.WATER) TerrainType.BRIDGE else TerrainType.ROAD
+                    }
+                }
+            }
+        }
+        for (ry in sideRows) {
+            for (x in 0 until size) {
+                for (dy in 0..1) {
                     val y = ry + dy
                     if (inBounds(x, y)) {
                         val i = idx(x, y)
@@ -490,8 +518,7 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
                 if (terrain[i] == TerrainType.FOREST && rng.chance(0.24f)) {
                     wall[i] = WallType.TREE
                     wallHp[i] = 60f
-                } else if (terrain[i] == TerrainType.ROAD && rng.chance(0.018f)) {
-                    // Don't block bridges completely
+                } else if (terrain[i] == TerrainType.ROAD && rng.chance(0.015f)) {
                     if (terrain[i] == TerrainType.ROAD && wall[i] == WallType.NONE) {
                         wall[i] = WallType.CAR_WRECK
                         wallHp[i] = 140f
@@ -513,27 +540,32 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
             }
         }
 
-        // 4. Generate districts and buildings
-        val cityBlocks = ArrayList<Pair<Int, Int>>()
-        val step = 15
-        for (by in 6 until size - 16 step step) {
-            for (bx in 6 until size - 16 step step) {
-                cityBlocks.add(bx to by)
+        // 4. Generate dense neighborhoods of real houses & city buildings
+        val cityLots = ArrayList<Pair<Int, Int>>()
+        val step = 9
+        for (by in 4 until size - 10 step step) {
+            for (bx in 4 until size - 10 step step) {
+                cityLots.add(bx to by)
             }
         }
 
-        for ((bx, by) in cityBlocks) {
-            val w = rng.nextRange(8, 12)
-            val h = rng.nextRange(7, 11)
-            val x2 = min(size - 4, bx + w)
-            val y2 = min(size - 4, by + h)
-            if (!canPlaceBuilding(bx, by, x2, y2)) continue
-
+        for ((rawBx, rawBy) in cityLots) {
+            val bx = rawBx + rng.nextRange(0, 1)
+            val by = rawBy + rng.nextRange(0, 1)
             val distCenter = sqrt(
                 ((bx - size * 0.5f) * (bx - size * 0.5f) + (by - size * 0.5f) * (by - size * 0.5f))
             ) / (size * 0.5f)
 
             val bType = pickBuildingType(distCenter, rng)
+            val w = when (bType) {
+                BuildingType.SUBURB_HOUSE, BuildingType.PHARMACY, BuildingType.GAS_STATION -> rng.nextRange(5, 6)
+                else -> rng.nextRange(6, 7)
+            }
+            val h = (w + rng.nextRange(-1, 1)).coerceIn(5, 7)
+            val x2 = min(size - 4, bx + w)
+            val y2 = min(size - 4, by + h)
+            if (!canPlaceBuilding(bx, by, x2, y2)) continue
+
             placeBuilding(buildings.size + 1, bType, bx, by, x2, y2, rng, lootRarity)
         }
     }
@@ -554,17 +586,17 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
         val roll = rng.nextFloat()
         return if (distNorm < 0.45f) {
             when {
-                roll < 0.24f -> BuildingType.APARTMENT
-                roll < 0.44f -> BuildingType.SUPERMARKET
-                roll < 0.60f -> BuildingType.PHARMACY
-                roll < 0.72f -> BuildingType.HOSPITAL
-                roll < 0.85f -> BuildingType.POLICE
+                roll < 0.28f -> BuildingType.APARTMENT
+                roll < 0.46f -> BuildingType.SUPERMARKET
+                roll < 0.62f -> BuildingType.PHARMACY
+                roll < 0.74f -> BuildingType.HOSPITAL
+                roll < 0.87f -> BuildingType.POLICE
                 else -> BuildingType.GAS_STATION
             }
         } else {
             when {
-                roll < 0.56f -> BuildingType.SUBURB_HOUSE
-                roll < 0.74f -> BuildingType.WAREHOUSE
+                roll < 0.62f -> BuildingType.SUBURB_HOUSE
+                roll < 0.76f -> BuildingType.WAREHOUSE
                 roll < 0.86f -> BuildingType.GAS_STATION
                 roll < 0.94f -> BuildingType.SUPERMARKET
                 else -> BuildingType.PHARMACY
@@ -582,12 +614,43 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
         rng: SimRng,
         lootRarity: Float
     ) {
-        val info = BuildingInfo(id, type, x1, y1, x2, y2)
+        val stories = when (type) {
+            BuildingType.APARTMENT, BuildingType.HOSPITAL, BuildingType.POLICE -> 2
+            else -> 1
+        }
+        val roofStyle = when (type) {
+            BuildingType.SUBURB_HOUSE -> if (rng.chance(0.7f)) 0 else 1
+            BuildingType.PHARMACY -> 1
+            BuildingType.APARTMENT, BuildingType.HOSPITAL, BuildingType.POLICE -> 2
+            BuildingType.SUPERMARKET, BuildingType.WAREHOUSE, BuildingType.GAS_STATION -> 3
+        }
+        val roofColorIdx = when (type) {
+            BuildingType.SUBURB_HOUSE -> rng.nextInt(4) // terracotta, slate, pine, cedar
+            BuildingType.HOSPITAL, BuildingType.PHARMACY -> 1
+            BuildingType.POLICE -> 2
+            else -> rng.nextInt(3)
+        }
+        val facadeColorIdx = rng.nextInt(4)
+        val info = BuildingInfo(id, type, x1, y1, x2, y2, stories, roofStyle, roofColorIdx, facadeColorIdx)
         val wallMat = if (type == BuildingType.SUBURB_HOUSE) WallType.WALL_WOOD else WallType.WALL_BRICK
         val floorMat = when (type) {
             BuildingType.SUBURB_HOUSE, BuildingType.APARTMENT -> TerrainType.WOOD_FLOOR
             BuildingType.WAREHOUSE, BuildingType.GAS_STATION -> TerrainType.CONCRETE
             else -> TerrainType.TILE_FLOOR
+        }
+
+        // Lay clean paved sidewalk / porch apron around building perimeter
+        for (y in max(1, y1 - 1)..min(size - 2, y2 + 1)) {
+            for (x in max(1, x1 - 1)..min(size - 2, x2 + 1)) {
+                val i = idx(x, y)
+                if (x in x1..x2 && y in y1..y2) continue
+                if (terrain[i] == TerrainType.GRASS || terrain[i] == TerrainType.FOREST) {
+                    if (wall[i] == WallType.TREE) wall[i] = WallType.NONE
+                    if (type != BuildingType.SUBURB_HOUSE || y == y2 + 1 || x == x2 + 1) {
+                        terrain[i] = TerrainType.CONCRETE
+                    }
+                }
+            }
         }
 
         for (y in y1..y2) {
@@ -606,36 +669,26 @@ class WorldMap(val size: Int, seed: Long, lootRarity: Float) {
             }
         }
 
-        // Interior dividing room wall for larger buildings
-        if (x2 - x1 >= 8 && y2 - y1 >= 7) {
-            val splitX = (x1 + x2) / 2
-            val doorY = y1 + (y2 - y1) / 2
-            for (y in y1 + 1 until y2) {
-                val i = idx(splitX, y)
-                if (y == doorY) {
-                    wall[i] = WallType.DOOR_CLOSED
-                    wallHp[i] = 75f
-                    info.doorTiles.add(i)
-                } else {
-                    wall[i] = WallType.WALL_WOOD
-                    wallHp[i] = 110f
-                }
-            }
-        }
-
-        // 2 exterior doors on opposite sides
+        // Front & back doors (placed on front-facing walls for clear street entry)
         val midX = (x1 + x2) / 2
         val midY = (y1 + y2) / 2
-        val d1 = idx(midX, y1)
-        val d2 = idx(midX, y2)
+        val d1 = idx(midX, y2)
+        val d2 = idx(x2, midY)
         wall[d1] = WallType.DOOR_CLOSED; wallHp[d1] = 85f; info.doorTiles.add(d1)
         wall[d2] = WallType.DOOR_CLOSED; wallHp[d2] = 85f; info.doorTiles.add(d2)
 
-        // Windows on side walls
-        val w1 = idx(x1, midY)
-        val w2 = idx(x2, midY)
-        wall[w1] = WallType.WINDOW_INTACT; wallHp[w1] = 40f; info.windowTiles.add(w1)
-        wall[w2] = WallType.WINDOW_INTACT; wallHp[w2] = 40f; info.windowTiles.add(w2)
+        // Windows along front & side facades
+        val winOffsets = listOf(x1 + 1, x2 - 1)
+        for (wx in winOffsets) {
+            if (wx != midX && wx in (x1 + 1) until x2) {
+                val wi = idx(wx, y2)
+                wall[wi] = WallType.WINDOW_INTACT; wallHp[wi] = 40f; info.windowTiles.add(wi)
+            }
+        }
+        val wLeft = idx(x1, midY)
+        val wTop = idx(midX, y1)
+        wall[wLeft] = WallType.WINDOW_INTACT; wallHp[wLeft] = 40f; info.windowTiles.add(wLeft)
+        wall[wTop] = WallType.WINDOW_INTACT; wallHp[wTop] = 40f; info.windowTiles.add(wTop)
 
         // Populate loot containers inside rooms
         val containerCount = when (type) {

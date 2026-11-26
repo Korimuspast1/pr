@@ -11,7 +11,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.zombieaquarium.sim.R
 import com.zombieaquarium.sim.audio.SoundEngine
-import com.zombieaquarium.sim.audio.SoundEventType
 import com.zombieaquarium.sim.engine.OverlayMode
 import com.zombieaquarium.sim.engine.SimConfig
 import com.zombieaquarium.sim.engine.WeatherType
@@ -171,6 +170,7 @@ class MainActivity : AppCompatActivity() {
             worldSurface.overlayMode = next
             btnOverlay.text = when (next) {
                 OverlayMode.NORMAL -> "Слой"
+                OverlayMode.INTERIORS -> "Без крыш"
                 OverlayMode.NOISE_LIGHT -> "Шум/Свет"
                 OverlayMode.FACTIONS -> "Лагеря"
                 OverlayMode.AGENT_MEMORY -> "Память"
@@ -228,12 +228,9 @@ class MainActivity : AppCompatActivity() {
 
         val btnMusic = findViewById<Button>(R.id.btnMusicToggle)
         btnMusic.setOnClickListener {
-            soundEngine.musicEnabled = !soundEngine.musicEnabled
-            btnMusic.text = if (soundEngine.musicEnabled) "Песня" else "Муз.Выкл"
-            btnMusic.setTextColor(if (soundEngine.musicEnabled) 0xFFA78BFA.toInt() else 0xFF94A3B8.toInt())
-            if (soundEngine.musicEnabled && !soundEngine.muted) {
-                soundEngine.playVoiceClip(SoundEventType.VO_BALLAD, force = true)
-            }
+            soundEngine.ambientEnabled = !soundEngine.ambientEnabled
+            btnMusic.text = if (soundEngine.ambientEnabled) "Эмбиент" else "Эмб.Выкл"
+            btnMusic.setTextColor(if (soundEngine.ambientEnabled) 0xFFA78BFA.toInt() else 0xFF94A3B8.toInt())
         }
     }
 
@@ -346,7 +343,6 @@ class MainActivity : AppCompatActivity() {
             setupOverlay.visibility = View.GONE
             updateSpeedHighlight(1)
             refreshHud()
-            soundEngine.playVoiceClip(SoundEventType.VO_INTRO, force = true)
         }
     }
 

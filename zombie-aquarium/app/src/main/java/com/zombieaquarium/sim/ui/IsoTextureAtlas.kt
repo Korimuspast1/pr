@@ -279,7 +279,7 @@ class IsoTextureAtlas {
     }
 
     private fun makeBrickWall(): Bitmap {
-        val bmp = makeIsoBlock(0xFF6E7F94.toInt(), 0xFF4C5B6E.toInt(), 0xFF334155.toInt(), 64f, wood = false)
+        val bmp = makeIsoBlock(0xFF94A3B8.toInt(), 0xFF7C4A3A.toInt(), 0xFF5C3428.toInt(), 64f, wood = false)
         val c = Canvas(bmp)
         val cx = PROP_W * 0.5f
         val by = PROP_BASE_Y
@@ -287,14 +287,25 @@ class IsoTextureAtlas {
         val hh = TILE_H * 0.5f
         val h = 64f
 
+        // Stone plinth at base
+        p.color = 0xFF475569.toInt()
+        val plinthL = Path().apply {
+            moveTo(cx - hw, by); lineTo(cx, by + hh); lineTo(cx, by + hh - 10f); lineTo(cx - hw, by - 10f); close()
+        }
+        c.drawPath(plinthL, p)
+        p.color = 0xFF334155.toInt()
+        val plinthR = Path().apply {
+            moveTo(cx, by + hh); lineTo(cx + hw, by); lineTo(cx + hw, by - 10f); lineTo(cx, by + hh - 10f); close()
+        }
+        c.drawPath(plinthR, p)
+
         // Staggered brick courses on both visible faces
-        p.color = 0x550F172A
-        p.strokeWidth = 1.6f
-        for (row in 1..6) {
+        p.color = 0x5529150E
+        p.strokeWidth = 1.5f
+        for (row in 2..6) {
             val dy = row * (h / 7f)
             c.drawLine(cx - hw + 2f, by - dy, cx - 1f, by + hh - dy, p)
             c.drawLine(cx + 1f, by + hh - dy, cx + hw - 2f, by - dy, p)
-            // Vertical brick joints
             val shift = if (row % 2 == 0) 0.25f else 0.5f
             for (k in 0..2) {
                 val frac = (shift + k * 0.35f).coerceIn(0.1f, 0.9f)
@@ -306,24 +317,29 @@ class IsoTextureAtlas {
                 c.drawLine(rx, ry, rx, ry + h / 7f, p)
             }
         }
-        // Roof coping rim highlight
-        p.color = 0x44FFFFFF
-        p.strokeWidth = 2f
-        c.drawLine(cx - hw + 2f, by - h, cx, by + hh - h, p)
-        c.drawLine(cx, by + hh - h, cx + hw - 2f, by - h, p)
+        // Architectural cornice trim
+        p.color = 0xFFCBD5E1.toInt()
+        p.strokeWidth = 3f
+        c.drawLine(cx - hw + 1f, by - h + 2f, cx, by + hh - h + 2f, p)
+        c.drawLine(cx, by + hh - h + 2f, cx + hw - 1f, by - h + 2f, p)
         return bmp
     }
 
     private fun makeWoodWall(): Bitmap {
-        val bmp = makeIsoBlock(0xFFA1581D.toInt(), 0xFF7B3E11.toInt(), 0xFF522709.toInt(), 56f, wood = true)
+        // Warm suburban clapboard siding instead of bright orange
+        val bmp = makeIsoBlock(0xFFD6CBB9.toInt(), 0xFFC2B299.toInt(), 0xFF9C8B72.toInt(), 58f, wood = true)
         val c = Canvas(bmp)
         val cx = PROP_W * 0.5f
         val by = PROP_BASE_Y
+        val hw = TILE_W * 0.5f
         val hh = TILE_H * 0.5f
-        // Vertical corner post
-        p.color = 0xFF3E1C05.toInt()
-        p.strokeWidth = 4f
-        c.drawLine(cx, by + hh, cx, by + hh - 56f, p)
+        // White corner trim & base foundation
+        p.color = 0xFF64748B.toInt()
+        c.drawLine(cx - hw, by - 4f, cx, by + hh - 4f, p)
+        c.drawLine(cx, by + hh - 4f, cx + hw, by - 4f, p)
+        p.color = 0xFFF1F5F9.toInt()
+        p.strokeWidth = 3.5f
+        c.drawLine(cx, by + hh - 2f, cx, by + hh - 58f, p)
         return bmp
     }
 
@@ -353,10 +369,10 @@ class IsoTextureAtlas {
         c.drawPath(diamondPath(cx, by - height, hw, hh), p)
 
         if (wood) {
-            p.color = 0x55290F02
-            p.strokeWidth = 2f
-            for (row in 1..4) {
-                val dy = row * (height / 5f)
+            p.color = 0x33291A0C
+            p.strokeWidth = 1.6f
+            for (row in 1..6) {
+                val dy = row * (height / 7f)
                 c.drawLine(cx - hw + 2f, by - dy, cx, by + hh - dy, p)
                 c.drawLine(cx, by + hh - dy, cx + hw - 2f, by - dy, p)
             }
@@ -373,7 +389,7 @@ class IsoTextureAtlas {
         val hh = TILE_H * 0.5f
 
         if (open) {
-            p.color = 0xFFB45309.toInt()
+            p.color = 0xFF78350F.toInt()
             val leaf = Path().apply {
                 moveTo(cx - hw * 0.42f, by - 4f)
                 lineTo(cx - hw * 0.1f, by + 4f)
@@ -385,20 +401,43 @@ class IsoTextureAtlas {
             return bmp
         }
 
-        val doorBody = makeIsoBlock(0xFFD97706.toInt(), 0xFFB45309.toInt(), 0xFF78350F.toInt(), 54f, wood = true)
-        c.drawBitmap(doorBody, 0f, 0f, null)
+        // Wall surround with recessed front door + transom light
+        val wallBase = makeIsoBlock(0xFF94A3B8.toInt(), 0xFF7A6A58.toInt(), 0xFF5A4C3E.toInt(), 58f, wood = false)
+        c.drawBitmap(wallBase, 0f, 0f, null)
 
-        // Brass doorknob
+        // Left-face door panel
+        p.color = 0xFF5C2D0C.toInt()
+        val doorL = Path().apply {
+            moveTo(cx - hw * 0.72f, by - 2f + hh * 0.28f)
+            lineTo(cx - hw * 0.28f, by - 2f + hh * 0.72f)
+            lineTo(cx - hw * 0.28f, by - 46f + hh * 0.72f)
+            lineTo(cx - hw * 0.72f, by - 46f + hh * 0.28f)
+            close()
+        }
+        c.drawPath(doorL, p)
+
+        // Right-face door panel
+        p.color = 0xFF431F07.toInt()
+        val doorR = Path().apply {
+            moveTo(cx + hw * 0.28f, by - 2f + hh * 0.72f)
+            lineTo(cx + hw * 0.72f, by - 2f + hh * 0.28f)
+            lineTo(cx + hw * 0.72f, by - 46f + hh * 0.28f)
+            lineTo(cx + hw * 0.28f, by - 46f + hh * 0.72f)
+            close()
+        }
+        c.drawPath(doorR, p)
+
+        // Brass doorknobs
         p.color = 0xFFFDE047.toInt()
-        c.drawCircle(cx - 16f, by - 12f, 4f, p)
+        c.drawCircle(cx - 24f, by - 6f, 3.2f, p)
+        c.drawCircle(cx + 24f, by - 6f, 3.2f, p)
 
         if (barricaded) {
-            p.color = 0xFFFBBF24.toInt()
-            p.strokeWidth = 6f
+            p.color = 0xFFD97706.toInt()
+            p.strokeWidth = 5.5f
             c.drawLine(cx - hw * 0.85f, by - 38f, cx + 4f, by + hh - 16f, p)
             c.drawLine(cx - hw * 0.85f, by - 14f, cx + 4f, by + hh - 42f, p)
             c.drawLine(cx + 4f, by + hh - 28f, cx + hw * 0.85f, by - 26f, p)
-            // Nails
             p.color = 0xFF1E293B.toInt()
             c.drawCircle(cx - hw * 0.72f, by - 34f, 2.5f, p)
             c.drawCircle(cx - hw * 0.72f, by - 18f, 2.5f, p)
@@ -409,27 +448,68 @@ class IsoTextureAtlas {
     private fun makeWindowProp(broken: Boolean): Bitmap {
         val bmp = Bitmap.createBitmap(PROP_W, PROP_H, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        val base = makeIsoBlock(0xFF64748B.toInt(), 0xFF475569.toInt(), 0xFF334155.toInt(), 26f, wood = false)
+        val base = makeIsoBlock(0xFF94A3B8.toInt(), 0xFF7D6E5D.toInt(), 0xFF5D5144.toInt(), 58f, wood = false)
         c.drawBitmap(base, 0f, 0f, null)
 
         val cx = PROP_W * 0.5f
         val by = PROP_BASE_Y
-        val hw = TILE_W * 0.48f
-        val hh = TILE_H * 0.48f
-        p.color = if (broken) 0x5538BDF8 else 0xAA7DD3FC.toInt()
-        val pane = Path().apply {
-            moveTo(cx - hw, by - 26f)
-            lineTo(cx, by + hh - 26f)
-            lineTo(cx, by + hh - 56f)
-            lineTo(cx - hw, by - 56f)
+        val hw = TILE_W * 0.5f
+        val hh = TILE_H * 0.5f
+
+        // Framed window on left face
+        p.color = 0xFFE2E8F0.toInt()
+        val frameL = Path().apply {
+            moveTo(cx - hw * 0.78f, by - 18f + hh * 0.22f)
+            lineTo(cx - hw * 0.22f, by - 18f + hh * 0.78f)
+            lineTo(cx - hw * 0.22f, by - 48f + hh * 0.78f)
+            lineTo(cx - hw * 0.78f, by - 48f + hh * 0.22f)
             close()
         }
-        c.drawPath(pane, p)
+        c.drawPath(frameL, p)
+
+        // Framed window on right face
+        p.color = 0xFFCBD5E1.toInt()
+        val frameR = Path().apply {
+            moveTo(cx + hw * 0.22f, by - 18f + hh * 0.78f)
+            lineTo(cx + hw * 0.78f, by - 18f + hh * 0.22f)
+            lineTo(cx + hw * 0.78f, by - 48f + hh * 0.22f)
+            lineTo(cx + hw * 0.22f, by - 48f + hh * 0.78f)
+            close()
+        }
+        c.drawPath(frameR, p)
+
+        // Glass panes
+        p.color = if (broken) 0xFF1E293B.toInt() else 0xFF38BDF8.toInt()
+        val paneL = Path().apply {
+            moveTo(cx - hw * 0.72f, by - 21f + hh * 0.28f)
+            lineTo(cx - hw * 0.28f, by - 21f + hh * 0.72f)
+            lineTo(cx - hw * 0.28f, by - 45f + hh * 0.72f)
+            lineTo(cx - hw * 0.72f, by - 45f + hh * 0.28f)
+            close()
+        }
+        c.drawPath(paneL, p)
+
+        p.color = if (broken) 0xFF0F172A.toInt() else 0xFF0284C7.toInt()
+        val paneR = Path().apply {
+            moveTo(cx + hw * 0.28f, by - 21f + hh * 0.72f)
+            lineTo(cx + hw * 0.72f, by - 21f + hh * 0.28f)
+            lineTo(cx + hw * 0.72f, by - 45f + hh * 0.28f)
+            lineTo(cx + hw * 0.28f, by - 45f + hh * 0.72f)
+            close()
+        }
+        c.drawPath(paneR, p)
+
         if (broken) {
-            p.color = 0xFFE0F2FE.toInt()
-            p.strokeWidth = 2.5f
-            c.drawLine(cx - 44f, by - 36f, cx - 22f, by - 22f, p)
-            c.drawLine(cx - 24f, by - 50f, cx - 8f, by - 20f, p)
+            p.color = 0xFFBAE6FD.toInt()
+            p.strokeWidth = 2.2f
+            c.drawLine(cx - 42f, by - 22f, cx - 22f, by - 12f, p)
+            c.drawLine(cx + 22f, by - 12f, cx + 42f, by - 24f, p)
+        } else {
+            // Window mullions
+            p.color = 0xFFE2E8F0.toInt()
+            p.strokeWidth = 2f
+            c.drawLine(cx - hw * 0.5f, by - 21f + hh * 0.5f, cx - hw * 0.5f, by - 45f + hh * 0.5f, p)
+            c.drawLine(cx + hw * 0.5f, by - 21f + hh * 0.5f, cx + hw * 0.5f, by - 45f + hh * 0.5f, p)
         }
         return bmp
     }
