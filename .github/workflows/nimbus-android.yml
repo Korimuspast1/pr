@@ -54,12 +54,18 @@ jobs:
       - name: Android SDK
         run: |
           set -uo pipefail
-          echo "ANDROID_HOME=${ANDROID_HOME:-unset} ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-unset}"
-          command -v sdkmanager || ls "${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools" || true
-          # The image ships with the licences accepted; do it again in case a fresh SDK is used.
+          # The runner image already carries an SDK with the licences accepted; the only thing the
+          # build needs on top of it is the platform it compiles against.
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager "platforms;android-${COMPILE_SDK}" "platform-tools" || true
-          sdkmanager --list_installed 2>/dev/null | head -30 || true
+          # Build logs cannot be downloaded from where this project is maintained, but check
+          # annotations can be read through the API - so what the SDK holds is reported as one.
+          installed=$(sdkmanager --list_installed 2>/dev/null | awk 'NR>2 {printf "%s ", $1}')
+          echo "::notice title=Android SDK::${installed:-sdkmanager listed nothing}"
+          case " ${installed} " in
+            *" platforms;android-${COMPILE_SDK} "*) ;;
+            *) echo "::error title=Android SDK::platforms;android-${COMPILE_SDK} is not installed" ;;
+          esac
 
       - name: Fetch the sing-box core (libbox.aar)
         run: |

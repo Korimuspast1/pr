@@ -17,7 +17,7 @@ fun getVersionProps(propName: String): String {
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    // No org.jetbrains.kotlin.android: AGP 9 has built-in Kotlin (see the root build file).
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
@@ -79,18 +79,23 @@ android {
             excludes += setOf("META-INF/*.version", "DebugProbesKt.bin", "kotlin-tooling-metadata.json")
         }
     }
-
-    testOptions {
-        unitTests.all {
-            it.systemProperty("nimbus.configDumpDir", "${layout.buildDirectory.get().asFile}/generated-configs")
-        }
-    }
 }
 
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
     }
+}
+
+// GeneratedConfigDump writes every config the unit tests build into this directory and the
+// workflow uploads it, so a generated sing-box config can be diffed without a phone. The test
+// writes nothing at all when the property is absent, which keeps a plain `gradlew test` clean.
+// Set on the tasks rather than through testOptions.unitTests.all: that DSL is gone in AGP 9.
+tasks.withType<Test>().configureEach {
+    systemProperty(
+        "nimbus.configDumpDir",
+        layout.buildDirectory.dir("generated-configs").get().asFile.absolutePath,
+    )
 }
 
 dependencies {
