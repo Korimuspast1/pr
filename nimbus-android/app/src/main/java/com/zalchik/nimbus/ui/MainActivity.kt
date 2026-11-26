@@ -9,7 +9,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewmodels.viewModel
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -70,7 +70,7 @@ import com.zalchik.nimbus.ui.theme.NimbusTheme
  * prompt, the QR scanner, the file picker, and installing an update.
  */
 class MainActivity : ComponentActivity() {
-    private lateinit var app: AppState
+    private val app: AppState by viewModels()
 
     /** Text arriving from another app: a deep link, a share, or an opened file. */
     private var pendingImport = mutableStateOf<String?>(null)
@@ -99,7 +99,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        app = viewModel<AppState>()
         handle(intent)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
