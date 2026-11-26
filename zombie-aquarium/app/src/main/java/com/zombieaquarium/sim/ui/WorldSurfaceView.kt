@@ -647,7 +647,7 @@ class WorldSurfaceView @JvmOverloads constructor(
                     if (b.x2 < minTx - 2 || b.x1 > maxTx + 2 || b.y2 < minTy - 2 || b.y1 > maxTy + 2) continue
                     if (b.id < occLimit && buildingOccupied[b.id]) continue
                     val roofDepth = max(b.x2 + b.y1, b.x1 + b.y2) + 0.05f
-                    addDrawItem(depth = roofDepth, kind = 5, building = b)
+                    addDrawItem(depth = roofDepth, kind = 5, b = b)
                 }
             }
 
