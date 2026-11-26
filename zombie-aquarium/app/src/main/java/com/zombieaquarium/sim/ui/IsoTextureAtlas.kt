@@ -47,6 +47,9 @@ class IsoTextureAtlas {
         terrainBitmaps[TerrainType.CONCRETE * 4] = makeConcreteTile()
         terrainBitmaps[TerrainType.WOOD_FLOOR * 4] = makeWoodFloorTile()
         terrainBitmaps[TerrainType.TILE_FLOOR * 4] = makeCheckTileFloor()
+        terrainBitmaps[TerrainType.SIDEWALK * 4] = makeSidewalkTile()
+        terrainBitmaps[TerrainType.DIRT_ROAD * 4] = makeDirtRoadTile()
+        terrainBitmaps[TerrainType.PLAZA * 4] = makePlazaTile()
 
         wallBitmaps[WallType.WALL_BRICK] = makeBrickWall()
         wallBitmaps[WallType.WALL_WOOD] = makeWoodWall()
@@ -235,6 +238,63 @@ class IsoTextureAtlas {
         c.drawLine(96f, 16f, 32f, 48f, p)
         p.style = Paint.Style.STROKE
         p.color = 0xFF475569.toInt()
+        c.drawPath(path, p)
+        p.style = Paint.Style.FILL
+        return bmp
+    }
+
+    private fun makeSidewalkTile(): Bitmap {
+        val bmp = Bitmap.createBitmap(TILE_W, TILE_H, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val path = diamondPath()
+        p.color = 0xFF64748B.toInt()
+        c.drawPath(path, p)
+        c.clipPath(path)
+        p.color = 0xFF475569.toInt()
+        p.strokeWidth = 1.6f
+        c.drawLine(32f, 16f, 96f, 48f, p)
+        c.drawLine(96f, 16f, 32f, 48f, p)
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = 2.2f
+        p.color = 0xFF94A3B8.toInt()
+        c.drawPath(path, p)
+        p.style = Paint.Style.FILL
+        return bmp
+    }
+
+    private fun makeDirtRoadTile(): Bitmap {
+        val bmp = Bitmap.createBitmap(TILE_W, TILE_H, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val path = diamondPath()
+        p.color = 0xFF5C4028.toInt()
+        c.drawPath(path, p)
+        c.clipPath(path)
+        val rng = Random(419)
+        repeat(20) {
+            p.color = if (it % 2 == 0) 0xFF47311E.toInt() else 0xFF6F4E32.toInt()
+            val x = rng.nextInt(16, TILE_W - 18).toFloat()
+            val y = rng.nextInt(10, TILE_H - 10).toFloat()
+            c.drawOval(x, y, x + 7f, y + 3.5f, p)
+        }
+        p.color = 0xFF3E2918.toInt()
+        p.strokeWidth = 2.2f
+        c.drawLine(28f, 26f, 88f, 42f, p)
+        c.drawLine(40f, 18f, 100f, 34f, p)
+        return bmp
+    }
+
+    private fun makePlazaTile(): Bitmap {
+        val bmp = Bitmap.createBitmap(TILE_W, TILE_H, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val path = diamondPath()
+        p.color = 0xFF78716C.toInt()
+        c.drawPath(path, p)
+        c.clipPath(path)
+        p.color = 0xFF57534E.toInt()
+        c.drawPath(diamondPath(TILE_W * 0.5f, TILE_H * 0.5f, TILE_W * 0.30f, TILE_H * 0.30f), p)
+        p.color = 0xFFA8A29E.toInt()
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = 1.4f
         c.drawPath(path, p)
         p.style = Paint.Style.FILL
         return bmp

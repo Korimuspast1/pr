@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +29,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvGodHint: TextView
     private lateinit var godPanel: View
     private lateinit var inspectorSheet: View
+    private lateinit var inspectorBarsRow: View
+    private lateinit var pbHp: ProgressBar
+    private lateinit var pbHunger: ProgressBar
+    private lateinit var pbThirst: ProgressBar
+    private lateinit var pbEnergy: ProgressBar
+    private lateinit var btnInspectFollow: Button
     private lateinit var tvInspectTitle: TextView
     private lateinit var tvInspectSub: TextView
     private lateinit var tvInspectBody: TextView
@@ -37,6 +44,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabBio: Button
     private lateinit var chronicleDrawer: View
     private lateinit var tvChronicleBody: TextView
+    private lateinit var tabDrawerChronicle: Button
+    private lateinit var tabDrawerCamps: Button
     private lateinit var setupOverlay: View
     private lateinit var btnCancelSetup: Button
 
@@ -48,6 +57,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnOverlay: Button
 
     private var inspectorTab = 0 // 0=Разум, 1=Состояние, 2=Биография
+    private var drawerTab = 0 // 0=События, 1=Лагеря
+    private var findCursor = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,6 +72,12 @@ class MainActivity : AppCompatActivity() {
         tvGodHint = findViewById(R.id.tvGodHint)
         godPanel = findViewById(R.id.godPanel)
         inspectorSheet = findViewById(R.id.inspectorSheet)
+        inspectorBarsRow = findViewById(R.id.inspectorBarsRow)
+        pbHp = findViewById(R.id.pbHp)
+        pbHunger = findViewById(R.id.pbHunger)
+        pbThirst = findViewById(R.id.pbThirst)
+        pbEnergy = findViewById(R.id.pbEnergy)
+        btnInspectFollow = findViewById(R.id.btnInspectFollow)
         tvInspectTitle = findViewById(R.id.tvInspectTitle)
         tvInspectSub = findViewById(R.id.tvInspectSub)
         tvInspectBody = findViewById(R.id.tvInspectBody)
@@ -70,6 +87,8 @@ class MainActivity : AppCompatActivity() {
         tabBio = findViewById(R.id.tabBio)
         chronicleDrawer = findViewById(R.id.chronicleDrawer)
         tvChronicleBody = findViewById(R.id.tvChronicleBody)
+        tabDrawerChronicle = findViewById(R.id.tabDrawerChronicle)
+        tabDrawerCamps = findViewById(R.id.tabDrawerCamps)
         setupOverlay = findViewById(R.id.setupOverlay)
         btnCancelSetup = findViewById(R.id.btnCancelSetup)
 
@@ -178,11 +197,53 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btnChronicle).setOnClickListener {
-            refreshChronicle()
+            refreshDrawer()
             chronicleDrawer.visibility = View.VISIBLE
         }
         findViewById<Button>(R.id.btnCloseChronicle).setOnClickListener {
             chronicleDrawer.visibility = View.GONE
+        }
+        tabDrawerChronicle.setOnClickListener {
+            drawerTab = 0
+            updateDrawerTabStyle()
+            refreshDrawer()
+        }
+        tabDrawerCamps.setOnClickListener {
+            drawerTab = 1
+            updateDrawerTabStyle()
+            refreshDrawer()
+        }
+        findViewById<Button>(R.id.btnJumpToCamp).setOnClickListener {
+            val s = sim ?: return@setOnClickListener
+            synchronized(s.simLock) {
+                val camp = s.camps.firstOrNull()
+                if (camp != null) {
+                    worldSurface.followSurvivorId = -1
+                    worldSurface.centerOn(camp.centerX.toFloat(), camp.centerY.toFloat(), 1.05f)
+                    chronicleDrawer.visibility = View.GONE
+                } else {
+                    val alive = s.survivors.firstOrNull { it.alive }
+                    if (alive != null) {
+                        worldSurface.centerOn(alive.x, alive.y, 1.15f)
+                        chronicleDrawer.visibility = View.GONE
+                    }
+                }
+            }
+        }
+        findViewById<Button>(R.id.btnRandomSurvivorHud).setOnClickListener {
+            val s = sim ?: return@setOnClickListener
+            synchronized(s.simLock) {
+                val living = s.survivors.filter { it.alive }
+                if (living.isNotEmpty()) {
+                    val chosen = living[findCursor % living.size]
+                    findCursor++
+                    worldSurface.selectedTarget = SelectionTarget.Survivor(chosen.id)
+                    worldSurface.followSurvivorId = chosen.id
+                    worldSurface.centerOn(chosen.x, chosen.y, 1.25f)
+                    inspectorSheet.visibility = View.VISIBLE
+                    refreshInspector()
+                }
+            }
         }
 
         findViewById<Button>(R.id.btnGodToggle).setOnClickListener {
@@ -237,7 +298,19 @@ class MainActivity : AppCompatActivity() {
     private fun setupInspector() {
         findViewById<Button>(R.id.btnInspectClose).setOnClickListener {
             worldSurface.selectedTarget = null
+            worldSurface.followSurvivorId = -1
             inspectorSheet.visibility = View.GONE
+        }
+        btnInspectFollow.setOnClickListener {
+            val sel = worldSurface.selectedTarget
+            if (sel is SelectionTarget.Survivor) {
+                if (worldSurface.followSurvivorId == sel.id) {
+                    worldSurface.followSurvivorId = -1
+                } else {
+                    worldSurface.followSurvivorId = sel.id
+                }
+                refreshInspector()
+            }
         }
         findViewById<Button>(R.id.btnInspectFocus).setOnClickListener {
             val s = sim ?: return@setOnClickListener
@@ -312,6 +385,17 @@ class MainActivity : AppCompatActivity() {
             tvRun.text = String.format("Доля бегунов / частота орд: %d%% / %.1fx", rPct, hFreq)
         })
 
+        fun applyPreset(mapIdx: Int, survProg: Int, zomProg: Int, lootProg: Int, runProg: Int) {
+            seekMap.progress = mapIdx
+            seekSurv.progress = survProg
+            seekZom.progress = zomProg
+            seekLoot.progress = lootProg
+            seekRun.progress = runProg
+        }
+        findViewById<Button>(R.id.btnPresetCalm).setOnClickListener { applyPreset(0, 12, 1, 9, 3) }
+        findViewById<Button>(R.id.btnPresetClassic).setOnClickListener { applyPreset(1, 16, 5, 5, 11) }
+        findViewById<Button>(R.id.btnPresetNightmare).setOnClickListener { applyPreset(2, 24, 13, 1, 23) }
+
         btnCancelSetup.setOnClickListener {
             setupOverlay.visibility = View.GONE
         }
@@ -339,6 +423,7 @@ class MainActivity : AppCompatActivity() {
             sim = newSim
             worldSurface.simulation = newSim
             worldSurface.selectedTarget = null
+            worldSurface.followSurvivorId = -1
             inspectorSheet.visibility = View.GONE
             setupOverlay.visibility = View.GONE
             updateSpeedHighlight(1)
@@ -351,24 +436,62 @@ class MainActivity : AppCompatActivity() {
         synchronized(s.simLock) {
             val phase = if (s.isNight) "Ночь" else "День"
             tvClockWeather.text = "День ${s.day} • ${s.formatTime()} ($phase) • ${s.weather.titleRu}"
-            tvCounters.text = "Люди: ${s.livingSurvivorsCount} • Лагеря: ${s.camps.size} • Зомби: ${s.livingZombiesCount} • Погибло: ${s.deadSurvivorsCount}"
+            tvCounters.text = "Люди: ${s.livingSurvivorsCount}  •  Лагеря: ${s.camps.size}  •  Зомби: ${s.livingZombiesCount}  •  Погибло: ${s.deadSurvivorsCount}"
         }
     }
 
-    private fun refreshChronicle() {
+    private fun updateDrawerTabStyle() {
+        if (drawerTab == 0) {
+            tabDrawerChronicle.setBackgroundColor(0xFFF59E0B.toInt())
+            tabDrawerChronicle.setTextColor(0xFF1F1202.toInt())
+            tabDrawerCamps.setBackgroundColor(0xFF1E293B.toInt())
+            tabDrawerCamps.setTextColor(0xFFE2E8F0.toInt())
+        } else {
+            tabDrawerChronicle.setBackgroundColor(0xFF1E293B.toInt())
+            tabDrawerChronicle.setTextColor(0xFFE2E8F0.toInt())
+            tabDrawerCamps.setBackgroundColor(0xFF10B981.toInt())
+            tabDrawerCamps.setTextColor(0xFF04120C.toInt())
+        }
+    }
+
+    private fun refreshDrawer() {
         val s = sim ?: return
         synchronized(s.simLock) {
-            if (s.chronicle.isEmpty()) {
-                tvChronicleBody.text = "Пока всё спокойно..."
-                return
+            if (drawerTab == 0) {
+                if (s.chronicle.isEmpty()) {
+                    tvChronicleBody.text = "Пока всё спокойно..."
+                    return
+                }
+                val sb = StringBuilder()
+                for (ev in s.chronicle) {
+                    sb.append("День ").append(ev.day).append(", ").append(ev.timeStr)
+                        .append(" [").append(ev.category).append("] — ")
+                        .append(ev.message).append("\n\n")
+                }
+                tvChronicleBody.text = sb.toString()
+            } else {
+                if (s.camps.isEmpty()) {
+                    tvChronicleBody.text = "Выжившие пока не объединились в укреплённые лагеря.\nОдиночки ищут припасы и союзников в домах."
+                    return
+                }
+                val sb = StringBuilder()
+                for (c in s.camps) {
+                    val b = s.map.buildings.getOrNull(c.homeBuildingId - 1)
+                    val bTitle = b?.type?.titleRu ?: "Убежище"
+                    val leader = s.survivorsById[c.leaderId]?.name ?: "—"
+                    sb.append("🏕 «").append(c.name).append("» (").append(bTitle).append(")\n")
+                    sb.append("   Лидер: ").append(leader).append(" • Участников: ").append(c.memberIds.size).append("\n")
+                    sb.append("   Склад: Еда=").append(c.storageFood)
+                        .append(", Вода=").append(c.storageWater)
+                        .append(", Доски=").append(c.storageWood).append("\n")
+                    val members = c.memberIds.mapNotNull { s.survivorsById[it] }.filter { it.alive }
+                    if (members.isNotEmpty()) {
+                        sb.append("   Состав: ").append(members.joinToString { "${it.name} (${it.role.titleRu})" }).append("\n")
+                    }
+                    sb.append("\n")
+                }
+                tvChronicleBody.text = sb.toString()
             }
-            val sb = StringBuilder()
-            for (ev in s.chronicle) {
-                sb.append("День ").append(ev.day).append(", ").append(ev.timeStr)
-                    .append(" [").append(ev.category).append("] — ")
-                    .append(ev.message).append("\n\n")
-            }
-            tvChronicleBody.text = sb.toString()
         }
     }
 
@@ -384,10 +507,23 @@ class MainActivity : AppCompatActivity() {
                         tvInspectTitle.text = "${agent?.name ?: "Выживший"} (Погиб)"
                         tvInspectSub.text = agent?.causeOfDeath ?: ""
                         inspectorTabRow.visibility = View.GONE
+                        inspectorBarsRow.visibility = View.GONE
+                        btnInspectFollow.visibility = View.GONE
                         tvInspectBody.text = agent?.bioLog?.joinToString("\n") ?: ""
                         return
                     }
                     inspectorTabRow.visibility = View.VISIBLE
+                    inspectorBarsRow.visibility = View.VISIBLE
+                    btnInspectFollow.visibility = View.VISIBLE
+                    val isFollowing = worldSurface.followSurvivorId == agent.id
+                    btnInspectFollow.text = if (isFollowing) "Слежу ✓" else "Следить"
+                    btnInspectFollow.setBackgroundColor(if (isFollowing) 0xFF065F46.toInt() else 0xFF1E293B.toInt())
+
+                    pbHp.progress = agent.hp.toInt().coerceIn(0, 100)
+                    pbHunger.progress = agent.hunger.toInt().coerceIn(0, 100)
+                    pbThirst.progress = agent.thirst.toInt().coerceIn(0, 100)
+                    pbEnergy.progress = agent.energy.toInt().coerceIn(0, 100)
+
                     val campName = s.campsById[agent.campId]?.name ?: "Одиночка"
                     tvInspectTitle.text = "${agent.name}, ${agent.age} лет • HP ${agent.hp.toInt()}%"
                     tvInspectSub.text = "$campName (${agent.role.titleRu}) • ${agent.traits.joinToString { it.titleRu }}"
@@ -449,6 +585,8 @@ class MainActivity : AppCompatActivity() {
                 is SelectionTarget.Zombie -> {
                     val z = s.zombiesById[sel.id]
                     inspectorTabRow.visibility = View.GONE
+                    inspectorBarsRow.visibility = View.GONE
+                    btnInspectFollow.visibility = View.GONE
                     tvInspectTitle.text = "${z?.type?.titleRu ?: "Зомби"} #${sel.id}"
                     tvInspectSub.text = if (z?.alive == true) "HP ${z.hp.toInt()} • Урон ${z.type.attackDamage.toInt()}" else "Уничтожен"
                     tvInspectBody.text = if (z != null && z.alive) {
@@ -460,6 +598,8 @@ class MainActivity : AppCompatActivity() {
                 is SelectionTarget.Building -> {
                     val b = s.map.buildings.getOrNull(sel.id - 1)
                     inspectorTabRow.visibility = View.GONE
+                    inspectorBarsRow.visibility = View.GONE
+                    btnInspectFollow.visibility = View.GONE
                     tvInspectTitle.text = b?.type?.titleRu ?: "Здание"
                     val camp = b?.let { s.campsById[it.claimedByCampId] }
                     tvInspectSub.text = if (camp != null) "База группы «${camp.name}» (${camp.memberIds.size} чел.)" else "Не занято"

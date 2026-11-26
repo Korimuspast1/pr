@@ -106,19 +106,29 @@ class WorldSimulation(val config: SimConfig) {
         val baseZombies = ((config.mapSize * config.mapSize) / 145f * config.zombieDensity).toInt().coerceIn(45, 520)
         repeat(baseZombies) {
             val pos = findWalkableSpawn(preferBuilding = rng.chance(0.25f))
-            val zType = pickZombieType()
+            val zType = pickZombieType(pos.first, pos.second)
             spawnZombieAt(pos.first + 0.5f, pos.second + 0.5f, zType)
         }
         rebuildGrids()
         rebuildFlowField()
     }
 
-    private fun pickZombieType(): ZombieType {
+    private fun pickZombieType(x: Int = -1, y: Int = -1): ZombieType {
+        if (x >= 0 && y >= 0) {
+            val bId = map.buildingId[map.idx(x.coerceIn(0, map.size - 1), y.coerceIn(0, map.size - 1))]
+            if (bId != -1) {
+                val b = map.buildings.getOrNull(bId - 1)
+                if (b != null && (b.type == BuildingType.POLICE || b.type == BuildingType.MILITARY_POST) && rng.chance(0.45f)) {
+                    return ZombieType.ARMORED
+                }
+            }
+        }
         val r = rng.nextFloat()
         return when {
             r < config.runnerRatio -> ZombieType.RUNNER
             r < config.runnerRatio + 0.08f -> ZombieType.SCREAMER
             r < config.runnerRatio + 0.14f -> ZombieType.BRUTE
+            r < config.runnerRatio + 0.21f -> ZombieType.ARMORED
             else -> ZombieType.WALKER
         }
     }
@@ -210,15 +220,22 @@ class WorldSimulation(val config: SimConfig) {
             soundRings.update(dt)
             tracers.update(dt)
 
-            // 7. Periodic migrating horde
+            // 7. Periodic migrating horde, supply airdrop & wandering newcomers
             val hordePeriod = max(240, (680 / config.hordeFrequency).toInt())
             if (tickCount % hordePeriod == 0 && livingZombiesCount < 580) {
                 spawnMigratingHorde()
+            }
+            if (tickCount % 780 == 0 && tickCount > 0) {
+                spawnSupplyAirdrop()
+            }
+            if (tickCount % 920 == 0 && tickCount > 0 && livingSurvivorsCount < config.initialSurvivors + 6) {
+                spawnNewcomerSurvivor()
             }
         }
     }
 
     private fun updateStructures() {
+        val trapBuf = IntArray(8)
         for (st in structures) {
             when (st.type) {
                 StructureType.CAMPFIRE -> {
@@ -238,9 +255,26 @@ class WorldSimulation(val config: SimConfig) {
                         }
                     }
                 }
+                StructureType.SPIKE_TRAP -> {
+                    if (st.hp > 0f && tickCount % 4 == 0) {
+                        val hitCount = zombieGrid.queryRadius(st.x + 0.5f, st.y + 0.5f, 1.35f, trapBuf)
+                        for (i in 0 until hitCount) {
+                            val z = zombiesById[trapBuf[i]] ?: continue
+                            if (!z.alive) continue
+                            z.hp -= 16f
+                            z.hurtAnimTicks = 3
+                            st.hp = max(0f, st.hp - 4f)
+                            particles.spawn(z.x, z.y, rng.nextFloatRange(-1f, 1f), rng.nextFloatRange(-1f, 1f), 0.35f, 0xFF991B1B.toInt(), 0.13f)
+                            if (z.hp <= 0f) {
+                                killZombie(z, null)
+                            }
+                        }
+                    }
+                }
                 else -> {}
             }
         }
+        structures.removeAll { it.type == StructureType.SPIKE_TRAP && it.hp <= 0f }
     }
 
     private fun rebuildGrids() {
@@ -409,6 +443,57 @@ class WorldSimulation(val config: SimConfig) {
         }
         logChronicle("Орда", "К городу движется мигрирующая орда ($count зомби)!", cx, cy)
         emitSound(SoundEventType.ZOMBIE_MOB, cx, cy)
+    }
+
+    private fun spawnSupplyAirdrop() {
+        val pos = findWalkableSpawn(preferBuilding = false)
+        val c = LootContainer(
+            id = map.lootContainers.size + 1,
+            x = pos.first,
+            y = pos.second,
+            buildingId = -1,
+            food = 4,
+            water = 4,
+            bandages = 3,
+            antibiotics = 2,
+            wood = 5,
+            ammo = 16,
+            weapon = if (rng.chance(0.55f)) WeaponType.CROSSBOW else WeaponType.RIFLE,
+            hasFlashlight = true
+        )
+        map.lootContainers.add(c)
+        map.lootByTile[map.idx(pos.first, pos.second)] = c
+        map.addNoise(pos.first, pos.second, 30f, 75f)
+        soundRings.spawn(pos.first + 0.5f, pos.second + 0.5f, 22f, 0xFF38BDF8.toInt(), 1.2f)
+        logChronicle("Груз", "Сброшен контейнер с припасами в квадрате (${pos.first}, ${pos.second})!", pos.first.toFloat(), pos.second.toFloat())
+    }
+
+    private fun spawnNewcomerSurvivor() {
+        val edge = rng.nextInt(4)
+        val ex = when (edge) { 0 -> 4; 1 -> map.size - 5; else -> rng.nextRange(8, map.size - 9) }
+        val ey = when (edge) { 2 -> 4; 3 -> map.size - 5; else -> rng.nextRange(8, map.size - 9) }
+        if (!map.isWalkableForHuman(ex, ey, allowClosedDoor = false)) return
+
+        val allTraits = SurvivorTrait.entries.toTypedArray()
+        val name = RUSSIAN_NAMES[nextEntityId % RUSSIAN_NAMES.size]
+        val t1 = allTraits[rng.nextInt(allTraits.size)]
+        val t2 = allTraits[(t1.ordinal + 3) % allTraits.size]
+        val s = SurvivorAgent(
+            id = nextEntityId++,
+            name = name,
+            age = rng.nextRange(20, 49),
+            avatarColor = SURVIVOR_COLORS[nextEntityId % SURVIVOR_COLORS.size],
+            x = ex + 0.5f,
+            y = ey + 0.5f,
+            traits = listOf(t1, t2)
+        ).apply {
+            meleeWeapon = if (rng.chance(0.5f)) WeaponType.MACHETE else WeaponType.BAT
+            hasFlashlight = true
+            addBio(day, formatTime(), "Пришёл(ла) в город с окраины")
+        }
+        survivors.add(s)
+        survivorsById[s.id] = s
+        logChronicle("Путник", "В город вошёл новый выживший: ${s.name}.", s.x, s.y)
     }
 
     // === God Mode Interventions ===

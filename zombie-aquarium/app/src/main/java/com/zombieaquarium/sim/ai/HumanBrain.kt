@@ -46,6 +46,8 @@ object HumanBrain {
         var visibleZombies = 0
         var closestZombie: ZombieAgent? = null
         var closestZDist2 = Float.MAX_VALUE
+        var priorityZombie: ZombieAgent? = null
+        var bestThreatScore = Float.NEGATIVE_INFINITY
 
         for (i in 0 until nearbyZombies) {
             val z = sim.zombiesById[queryBuf[i]] ?: continue
@@ -57,13 +59,62 @@ object HumanBrain {
                     closestZDist2 = d2
                     closestZombie = z
                 }
+                val typePriority = when (z.type) {
+                    ZombieType.RUNNER -> 5.0f
+                    ZombieType.SCREAMER -> 4.2f
+                    ZombieType.BRUTE -> 3.0f
+                    ZombieType.ARMORED -> 2.4f
+                    ZombieType.WALKER -> 1.8f
+                }
+                val threatScore = typePriority * 3f - sqrt(d2)
+                if (threatScore > bestThreatScore) {
+                    bestThreatScore = threatScore
+                    priorityZombie = z
+                }
             }
         }
+        val targetZombie = priorityZombie ?: closestZombie
         if (visibleZombies >= 4) {
             agent.remember(MemoryKind.HORDE, agent.x.toInt(), agent.y.toInt(), -1, sim.tickCount, "Орда ($visibleZombies)")
         }
 
-        // Scan nearby loot containers in sight
+        // Anti-stuck tracker
+        val movedDist2 = dist2(agent.x, agent.y, agent.lastPosX, agent.lastPosY)
+        if (agent.fsmState in listOf(FsmState.MOVING, FsmState.SNEAKING, FsmState.FLEEING) && movedDist2 < 0.004f) {
+            agent.stuckTicks++
+            if (agent.stuckTicks >= 12) {
+                agent.currentPath.clear()
+                agent.pathCursor = 0
+                agent.goapPlan.clear()
+                agent.stuckTicks = 0
+                // Nudge onto nearest walkable tile if clipped into an obstacle
+                val tx = agent.x.toInt().coerceIn(1, sim.map.size - 2)
+                val ty = agent.y.toInt().coerceIn(1, sim.map.size - 2)
+                for (dir in 0 until 8) {
+                    val nx = tx + WorldMap.DX8[dir]
+                    val ny = ty + WorldMap.DY8[dir]
+                    if (sim.map.inBounds(nx, ny) && sim.map.isWalkableForHuman(nx, ny)) {
+                        agent.x = nx + 0.5f
+                        agent.y = ny + 0.5f
+                        break
+                    }
+                }
+            }
+        } else {
+            agent.stuckTicks = 0
+        }
+        agent.lastPosX = agent.x
+        agent.lastPosY = agent.y
+
+        // Mark building as explored once stepped inside
+        val curTileX = agent.x.toInt().coerceIn(0, sim.map.size - 1)
+        val curTileY = agent.y.toInt().coerceIn(0, sim.map.size - 1)
+        val curBuildingId = sim.map.buildingId[sim.map.idx(curTileX, curTileY)]
+        if (curBuildingId != -1) {
+            agent.visitedBuildingIds.add(curBuildingId)
+        }
+
+        // Scan nearby loot containers in sight + opportunistic immediate looting
         scanVisibleWorld(agent, sim, visRadius)
 
         // Nearby survivors (for healing, camp formation, social sync, moral dilemmas)
@@ -88,19 +139,19 @@ object HumanBrain {
         updateStress(agent, visibleZombies, visibleAllies, sim)
 
         // 3. Reactive Interrupt Layer (immediate threats override slow plans!)
-        if (checkReactiveInterrupt(agent, visibleZombies, closestZombie, closestZDist2, sim, rng)) {
-            executeCurrentStep(agent, visibleZombies, closestZombie, sim, dt, rng)
+        if (checkReactiveInterrupt(agent, visibleZombies, targetZombie, closestZDist2, sim, rng)) {
+            executeCurrentStep(agent, visibleZombies, targetZombie, sim, dt, rng)
             return
         }
 
-        // 4. Utility AI + GOAP Re-planning when idle or cooldown ready
+        // 4. Utility AI + GOAP Re-planning with hysteresis (commit to active plans!)
         if (agent.goapPlan.isEmpty() || agent.thinkCooldown <= 0) {
-            evaluateUtilitiesAndPlan(agent, visibleZombies, closestZombie, visibleAllies, sim, rng)
-            agent.thinkCooldown = rng.nextRange(12, 22)
+            evaluateUtilitiesAndPlan(agent, visibleZombies, targetZombie, visibleAllies, sim, rng)
+            agent.thinkCooldown = rng.nextRange(18, 30)
         }
 
         // 5. Execute FSM / GOAP step
-        executeCurrentStep(agent, visibleZombies, closestZombie, sim, dt, rng)
+        executeCurrentStep(agent, visibleZombies, targetZombie, sim, dt, rng)
     }
 
     private fun updatePhysiology(agent: SurvivorAgent, sim: WorldSimulation, dt: Float, rng: SimRng) {
@@ -200,9 +251,9 @@ object HumanBrain {
         val minY = max(0, ay - r)
         val maxY = min(sim.map.size - 1, ay + r)
 
-        // Check loot containers in visible bounding box
-        for (y in minY..maxY step 2) {
-            for (x in minX..maxX step 2) {
+        // Full step-1 scan of loot containers in visible bounding box
+        for (y in minY..maxY) {
+            for (x in minX..maxX) {
                 val tileIdx = sim.map.idx(x, y)
                 val c = sim.map.lootByTile[tileIdx]
                 if (c != null && !c.isEmpty() && sim.map.hasLineOfSight(ax, ay, x, y, r)) {
@@ -211,6 +262,11 @@ object HumanBrain {
                     if (c.bandages > 0 || c.antibiotics > 0) agent.remember(MemoryKind.MEDS, x, y, c.buildingId, sim.tickCount, "Медицина")
                     if (c.weapon != null || c.ammo > 0) agent.remember(MemoryKind.WEAPON, x, y, c.buildingId, sim.tickCount, "Оружие")
                     if (c.wood > 0 || c.scrap > 0) agent.remember(MemoryKind.MATERIALS, x, y, c.buildingId, sim.tickCount, "Материалы")
+
+                    // Opportunistically loot adjacent container when not fleeing
+                    if (agent.fsmState != FsmState.FLEEING && abs(x - ax) <= 1 && abs(y - ay) <= 1) {
+                        takeLootFromContainer(agent, c, sim)
+                    }
                 }
             }
         }
@@ -399,8 +455,12 @@ object HumanBrain {
         scores.add(UtilityScore(UtilityGoal.EAT, eatScore, "Сытость ${agent.hunger.toInt()}%"))
         scores.add(UtilityScore(UtilityGoal.DRINK, drinkScore, "Жажда ${100 - agent.thirst.toInt()}%"))
 
-        // 4. Sleep & Warmth
-        var sleepScore = (100f - agent.energy) * (if (sim.isNight) 1.25f else 0.78f)
+        // 4. Sleep & Night/Storm Shelter
+        var sleepScore = (100f - agent.energy) * (if (sim.isNight) 1.35f else 0.72f)
+        val curTileIndoors = sim.map.buildingId[sim.map.idx(agent.x.toInt().coerceIn(0, sim.map.size - 1), agent.y.toInt().coerceIn(0, sim.map.size - 1))] != -1
+        if ((sim.isNight || sim.weather == WeatherType.STORM) && !curTileIndoors && !agent.hasFlashlight) {
+            sleepScore = max(sleepScore, 62f)
+        }
         if (visibleZombies > 0) sleepScore *= 0.25f
         scores.add(UtilityScore(UtilityGoal.SLEEP, sleepScore.coerceIn(0f, 100f), "Бодрость ${agent.energy.toInt()}%"))
 
@@ -408,28 +468,33 @@ object HumanBrain {
         scores.add(UtilityScore(UtilityGoal.WARM_UP, warmScore, "Тепло ${agent.warmth.toInt()}%"))
 
         // 5. Fight distant zombie if armed & brave
-        val fightScore = if (closestZombie != null && computeCourage(agent, visibleZombies) > 0.55f) {
-            58f + (if (agent.hasTrait(SurvivorTrait.BRAVE)) 18f else 0f)
+        val activeWep = agent.activeWeapon(visibleZombies, false)
+        val fightScore = if (closestZombie != null && computeCourage(agent, visibleZombies) > 0.50f) {
+            58f + (if (agent.hasTrait(SurvivorTrait.BRAVE)) 18f else 0f) + (if (activeWep.isFirearm && agent.ammo > 0) 14f else 0f)
         } else 0f
         scores.add(UtilityScore(UtilityGoal.FIGHT_THREAT, fightScore.coerceIn(0f, 100f), "Угроза рядом: $visibleZombies"))
 
-        // 6. Fortify / build camp
+        // 6. Fortify / build camp (campfires, rain collectors, spike traps, storage boxes)
         val camp = sim.campsById[agent.campId]
         var fortifyScore = if (camp != null) {
             var base = 36f
             if (agent.hasTrait(SurvivorTrait.ENGINEER) || agent.role == CampRole.BUILDER) base += 28f
             if (camp.memberIds.isNotEmpty() && !sim.hasCampStructure(camp.id, StructureType.CAMPFIRE)) base += 18f
+            if (!sim.hasCampStructure(camp.id, StructureType.SPIKE_TRAP) && agent.wood + camp.storageWood >= 4) base += 14f
             if (sim.needsDoorBarricade(camp)) base += 16f
             base
         } else 0f
         scores.add(UtilityScore(UtilityGoal.FORTIFY_CAMP, fortifyScore.coerceIn(0f, 100f),
             if (camp != null) "Укрепление «${camp.name}»" else "Нет лагеря"))
 
-        // 7. Scavenge supplies
+        // 7. Scavenge supplies (don't obsessively re-scavenge when well stocked!)
         var scavengeScore = 44f
-        if (agent.food == 0 || agent.water == 0) scavengeScore += 22f
-        if (agent.meleeWeapon == WeaponType.FISTS && agent.firearm == null) scavengeScore += 16f
+        if (agent.food == 0 || agent.water == 0) scavengeScore += 24f
+        if (agent.meleeWeapon == WeaponType.FISTS && agent.firearm == null) scavengeScore += 18f
         if (agent.role == CampRole.SCAVENGER) scavengeScore += 16f
+        if (agent.food >= 3 && agent.water >= 3 && agent.bandages >= 2 && agent.meleeWeapon != WeaponType.FISTS) {
+            scavengeScore -= 16f
+        }
         scores.add(UtilityScore(UtilityGoal.SCAVENGE, scavengeScore.coerceIn(0f, 100f), "Поиск еды/медицины/оружия"))
 
         // 8. Socialize & share memory
@@ -449,6 +514,14 @@ object HumanBrain {
         for (i in 0 until min(3, scores.size)) agent.topUtilities.add(scores[i])
 
         val winner = scores[0]
+        // Goal commitment hysteresis: don't abandon an active multi-step plan for a tiny score shift!
+        if (agent.goapPlan.isNotEmpty() && winner.goal != agent.activeGoal) {
+            val isEmergency = winner.goal == UtilityGoal.HEAL_SELF || winner.goal == UtilityGoal.FIGHT_THREAT || winner.score >= 86f
+            if (!isEmergency && winner.score < agent.lastGoalScore + 16f) {
+                return
+            }
+        }
+        agent.lastGoalScore = winner.score
         agent.activeGoal = winner.goal
         buildGoapPlanForGoal(agent, winner.goal, hurtAlly, closestZombie, talkAlly, camp, sim, rng)
     }
@@ -575,6 +648,16 @@ object HumanBrain {
                     } else if (agent.wood + camp.storageWood >= 3 && !sim.hasCampStructure(camp.id, StructureType.RAIN_COLLECTOR)) {
                         agent.goapPlan.addLast(GoapStep(GoapActionType.MOVE_TO, camp.centerX + 1, camp.centerY, detail = "Поставить дождесборник"))
                         agent.goapPlan.addLast(GoapStep(GoapActionType.BUILD_STRUCTURE, camp.centerX + 1, camp.centerY, 1, "Собрать дождесборник"))
+                    } else if (agent.wood + camp.storageWood >= 4 && !sim.hasCampStructure(camp.id, StructureType.SPIKE_TRAP)) {
+                        val b = sim.map.buildings.getOrNull(camp.homeBuildingId - 1)
+                        val doorTi = b?.doorTiles?.firstOrNull()
+                        val tx = if (doorTi != null) doorTi % sim.map.size else camp.centerX
+                        val ty = if (doorTi != null) (doorTi / sim.map.size + 1).coerceIn(2, sim.map.size - 3) else camp.centerY + 2
+                        agent.goapPlan.addLast(GoapStep(GoapActionType.MOVE_TO, tx, ty, detail = "К входу для ловушки"))
+                        agent.goapPlan.addLast(GoapStep(GoapActionType.BUILD_STRUCTURE, tx, ty, 2, "Поставить шипы"))
+                    } else if (agent.wood + camp.storageWood >= 3 && !sim.hasCampStructure(camp.id, StructureType.STORAGE_BOX)) {
+                        agent.goapPlan.addLast(GoapStep(GoapActionType.MOVE_TO, camp.centerX - 1, camp.centerY, detail = "Собрать ящик склада"))
+                        agent.goapPlan.addLast(GoapStep(GoapActionType.BUILD_STRUCTURE, camp.centerX - 1, camp.centerY, 3, "Поставить ящик"))
                     } else {
                         val mem = findBestMemory(agent, MemoryKind.MATERIALS, sim.tickCount)
                         if (mem != null) {
@@ -787,7 +870,12 @@ object HumanBrain {
                 agent.currentActionIcon = "Строит"
                 val camp = sim.campsById[agent.campId]
                 if (camp != null) {
-                    val sType = if (step.targetEntityId == 1) StructureType.RAIN_COLLECTOR else StructureType.CAMPFIRE
+                    val sType = when (step.targetEntityId) {
+                        1 -> StructureType.RAIN_COLLECTOR
+                        2 -> StructureType.SPIKE_TRAP
+                        3 -> StructureType.STORAGE_BOX
+                        else -> StructureType.CAMPFIRE
+                    }
                     if (agent.wood + camp.storageWood >= sType.woodCost) {
                         var rem = sType.woodCost
                         val fromInv = min(rem, agent.wood)
@@ -832,8 +920,25 @@ object HumanBrain {
                 if (d > weapon.rangeTiles) {
                     val speed = computeMoveSpeed(agent, false, false, sim)
                     moveAlongPath(agent, target.x.toInt(), target.y.toInt(), speed, dt, false, false, sim)
-                } else if (agent.combatCooldown <= 0) {
-                    performAttack(agent, target, weapon, sim, rng)
+                } else {
+                    // Smart ranged kiting: back away if zombie gets dangerously close while armed with ranged weapon!
+                    if (weapon.rangeTiles >= 4f && d < 2.3f && agent.stamina > 12f) {
+                        val kx = agent.x - target.x
+                        val ky = agent.y - target.y
+                        val klen = max(0.1f, sqrt(kx * kx + ky * ky))
+                        val stepDist = computeMoveSpeed(agent, false, false, sim) * 0.85f * dt
+                        val nx = (agent.x + (kx / klen) * stepDist).coerceIn(1.5f, sim.map.size - 2.5f)
+                        val ny = (agent.y + (ky / klen) * stepDist).coerceIn(1.5f, sim.map.size - 2.5f)
+                        if (sim.map.isWalkableForHuman(nx.toInt(), ny.toInt())) {
+                            agent.x = nx
+                            agent.y = ny
+                            agent.isMovingNow = true
+                            agent.animPhase += stepDist * 2.5f
+                        }
+                    }
+                    if (agent.combatCooldown <= 0) {
+                        performAttack(agent, target, weapon, sim, rng)
+                    }
                 }
             }
 
@@ -863,20 +968,24 @@ object HumanBrain {
         if (weapon.isFirearm && agent.ammo > 0) {
             agent.ammo--
             sim.tracers.spawn(agent.x, agent.y, target.x, target.y)
-            sim.map.addNoise(agent.x.toInt(), agent.y.toInt(), weapon.noiseRadius, 95f)
-            sim.soundRings.spawn(agent.x, agent.y, weapon.noiseRadius * 0.45f, 0xFFEF4444.toInt(), 1.0f)
-            val sType = when (weapon) {
-                WeaponType.SHOTGUN -> SoundEventType.SHOTGUN
-                WeaponType.RIFLE -> SoundEventType.RIFLE
-                else -> SoundEventType.PISTOL
+            sim.map.addNoise(agent.x.toInt(), agent.y.toInt(), weapon.noiseRadius, if (weapon == WeaponType.CROSSBOW) 18f else 95f)
+            if (weapon != WeaponType.CROSSBOW) {
+                sim.soundRings.spawn(agent.x, agent.y, weapon.noiseRadius * 0.45f, 0xFFEF4444.toInt(), 1.0f)
+                val sType = when (weapon) {
+                    WeaponType.SHOTGUN -> SoundEventType.SHOTGUN
+                    WeaponType.RIFLE -> SoundEventType.RIFLE
+                    else -> SoundEventType.PISTOL
+                }
+                sim.emitSound(sType, agent.x, agent.y)
+                sim.emitSound(SoundEventType.SHELL_CASING, agent.x, agent.y)
+            } else {
+                sim.emitSound(SoundEventType.MELEE, agent.x, agent.y)
             }
-            sim.emitSound(sType, agent.x, agent.y)
-            sim.emitSound(SoundEventType.SHELL_CASING, agent.x, agent.y)
             agent.setThought("Выстрел из ${weapon.titleRu}!", 30)
         } else {
             agent.stamina = max(0f, agent.stamina - 8f)
             sim.map.addNoise(agent.x.toInt(), agent.y.toInt(), weapon.noiseRadius, 24f)
-            sim.emitSound(if (weapon == WeaponType.AXE) SoundEventType.AXE_BUILD else SoundEventType.MELEE, agent.x, agent.y)
+            sim.emitSound(if (weapon == WeaponType.AXE || weapon == WeaponType.MACHETE) SoundEventType.AXE_BUILD else SoundEventType.MELEE, agent.x, agent.y)
         }
 
         if (rng.chance(hitChance)) {
@@ -970,7 +1079,8 @@ object HumanBrain {
         val tx = agent.x.toInt().coerceIn(0, sim.map.size - 1)
         val ty = agent.y.toInt().coerceIn(0, sim.map.size - 1)
         val t = sim.map.terrain[sim.map.idx(tx, ty)]
-        if (t == TerrainType.ROAD || t == TerrainType.BRIDGE) s *= 1.14f
+        if (t == TerrainType.ROAD || t == TerrainType.BRIDGE || t == TerrainType.SIDEWALK || t == TerrainType.PLAZA) s *= 1.14f
+        if (t == TerrainType.DIRT_ROAD) s *= 1.06f
         if (t == TerrainType.FOREST) s *= 0.85f
         return s
     }
@@ -1032,10 +1142,10 @@ object HumanBrain {
             agent.x = tx
             agent.y = ty
             agent.pathCursor++
-            // Close door behind when fleeing or sneaking!
+            // Close door behind when fleeing, sneaking, or at night!
             if (agent.pathCursor >= 2) {
                 val prev = agent.currentPath[agent.pathCursor - 2]
-                if (sim.map.wall[prev] == WallType.DOOR_OPEN && (fleeing || sneaking)) {
+                if (sim.map.wall[prev] == WallType.DOOR_OPEN && (fleeing || sneaking || sim.isNight)) {
                     sim.map.wall[prev] = WallType.DOOR_CLOSED
                 }
             }
@@ -1079,19 +1189,91 @@ object HumanBrain {
         if (camp != null && dist2(camp.centerX.toFloat(), camp.centerY.toFloat(), threat.x, threat.y) > 36f) {
             return camp.centerX to camp.centerY
         }
-        val dx = agent.x - threat.x
-        val dy = agent.y - threat.y
-        val len = max(0.1f, sqrt(dx * dx + dy * dy))
-        val ex = (agent.x + (dx / len) * 16f + rng.nextRange(-4, 4)).toInt().coerceIn(2, sim.map.size - 3)
-        val ey = (agent.y + (dy / len) * 16f + rng.nextRange(-4, 4)).toInt().coerceIn(2, sim.map.size - 3)
-        return ex to ey
+
+        // Try escaping into a nearby safe building away from the threat
+        var bestB: BuildingInfo? = null
+        var bestBScore = Float.NEGATIVE_INFINITY
+        for (b in sim.map.buildings) {
+            val dAgent = sqrt(dist2(agent.x, agent.y, b.centerX, b.centerY))
+            if (dAgent > 28f) continue
+            val dThreat = sqrt(dist2(threat.x, threat.y, b.centerX, b.centerY))
+            val danger = sim.map.dangerField[sim.map.idx(b.centerX.toInt(), b.centerY.toInt())]
+            val score = dThreat * 1.4f - dAgent - danger * 2f
+            if (score > bestBScore && dThreat > 6f) {
+                bestBScore = score
+                bestB = b
+            }
+        }
+        if (bestB != null && bestBScore > 4f) {
+            return bestB.centerX.toInt() to bestB.centerY.toInt()
+        }
+
+        // 8-way radial safety search avoiding water, walls, and danger
+        val threatAngle = kotlin.math.atan2((agent.y - threat.y).toDouble(), (agent.x - threat.x).toDouble())
+        var bestX = agent.x.toInt().coerceIn(2, sim.map.size - 3)
+        var bestY = agent.y.toInt().coerceIn(2, sim.map.size - 3)
+        var bestScore = Float.NEGATIVE_INFINITY
+
+        for (k in 0 until 8) {
+            val ang = threatAngle + (k - 3) * (Math.PI / 4.0)
+            val dist = 15.0 + rng.nextRange(-2, 3)
+            val cx = (agent.x + kotlin.math.cos(ang) * dist).toInt().coerceIn(2, sim.map.size - 3)
+            val cy = (agent.y + kotlin.math.sin(ang) * dist).toInt().coerceIn(2, sim.map.size - 3)
+            if (!sim.map.isWalkableForHuman(cx, cy)) continue
+            val dThreat = sqrt(dist2(threat.x, threat.y, cx.toFloat(), cy.toFloat()))
+            val danger = sim.map.dangerField[sim.map.idx(cx, cy)]
+            val roadBonus = if (sim.map.terrain[sim.map.idx(cx, cy)] == TerrainType.ROAD || sim.map.terrain[sim.map.idx(cx, cy)] == TerrainType.SIDEWALK) 3f else 0f
+            val score = dThreat - danger * 2.5f + roadBonus
+            if (score > bestScore) {
+                bestScore = score
+                bestX = cx
+                bestY = cy
+            }
+        }
+        return bestX to bestY
     }
 
     private fun pickExploreTarget(agent: SurvivorAgent, sim: WorldSimulation, rng: SimRng): Pair<Int, Int> {
-        // Bias toward unvisited buildings
-        if (sim.map.buildings.isNotEmpty() && rng.chance(0.7f)) {
-            val b = sim.map.buildings[rng.nextInt(sim.map.buildings.size)]
-            return b.centerX.toInt() to b.centerY.toInt()
+        // Smart need-weighted nearest-unvisited building selection!
+        if (sim.map.buildings.isNotEmpty()) {
+            var bestB: BuildingInfo? = null
+            var bestScore = Float.NEGATIVE_INFINITY
+            val needFood = agent.hunger < 65f || agent.food <= 1 || agent.water <= 1
+            val needMeds = agent.hp < 70f || agent.bleeding > 0f || agent.bandages == 0
+            val needWeapon = agent.meleeWeapon == WeaponType.FISTS || (agent.firearm == null && agent.ammo < 6)
+            val needMats = agent.campId != -1 && agent.wood < 4
+
+            for (b in sim.map.buildings) {
+                val visited = b.id in agent.visitedBuildingIds
+                val d = sqrt(dist2(agent.x, agent.y, b.centerX, b.centerY))
+                val danger = sim.map.dangerField[sim.map.idx(b.centerX.toInt(), b.centerY.toInt())]
+                var score = (if (visited) -45f else 55f) - d * 1.15f - danger * 3.5f
+
+                if (needFood && (b.type == com.zombieaquarium.sim.engine.BuildingType.SUPERMARKET || b.type == com.zombieaquarium.sim.engine.BuildingType.CAFE || b.type == com.zombieaquarium.sim.engine.BuildingType.COUNTRY_COTTAGE)) {
+                    score += 32f
+                }
+                if (needMeds && (b.type == com.zombieaquarium.sim.engine.BuildingType.HOSPITAL || b.type == com.zombieaquarium.sim.engine.BuildingType.PHARMACY)) {
+                    score += 36f
+                }
+                if (needWeapon && (b.type == com.zombieaquarium.sim.engine.BuildingType.POLICE || b.type == com.zombieaquarium.sim.engine.BuildingType.MILITARY_POST || b.type == com.zombieaquarium.sim.engine.BuildingType.HARDWARE_STORE)) {
+                    score += 34f
+                }
+                if (needMats && (b.type == com.zombieaquarium.sim.engine.BuildingType.WAREHOUSE || b.type == com.zombieaquarium.sim.engine.BuildingType.HARDWARE_STORE || b.type == com.zombieaquarium.sim.engine.BuildingType.GAS_STATION)) {
+                    score += 24f
+                }
+                score += rng.nextFloatRange(-4f, 4f)
+                if (score > bestScore) {
+                    bestScore = score
+                    bestB = b
+                }
+            }
+            if (bestB != null) {
+                // If all buildings visited once, clear memory partially so they revisit respawns/unsearched rooms
+                if (bestB.id in agent.visitedBuildingIds && agent.visitedBuildingIds.size >= sim.map.buildings.size) {
+                    agent.visitedBuildingIds.clear()
+                }
+                return bestB.centerX.toInt() to bestB.centerY.toInt()
+            }
         }
         val tx = (agent.x.toInt() + rng.nextRange(-26, 26)).coerceIn(3, sim.map.size - 4)
         val ty = (agent.y.toInt() + rng.nextRange(-26, 26)).coerceIn(3, sim.map.size - 4)

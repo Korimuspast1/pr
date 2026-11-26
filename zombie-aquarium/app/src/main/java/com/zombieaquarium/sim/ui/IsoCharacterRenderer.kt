@@ -145,14 +145,17 @@ class IsoCharacterRenderer {
         if (weapon != WeaponType.FISTS) {
             val wLen = when (weapon) {
                 WeaponType.KNIFE -> 5f
+                WeaponType.MACHETE -> 8.5f
                 WeaponType.PISTOL -> 5.5f
+                WeaponType.CROSSBOW -> 9.0f
                 WeaponType.BAT, WeaponType.AXE -> 9.5f
                 WeaponType.SHOTGUN, WeaponType.RIFLE -> 11.5f
                 else -> 0f
             } * scale
             strokePaint.color = when (weapon) {
                 WeaponType.BAT -> 0xFFB45309.toInt()
-                WeaponType.AXE -> 0xFFCBD5E1.toInt()
+                WeaponType.CROSSBOW -> 0xFF92400E.toInt()
+                WeaponType.AXE, WeaponType.MACHETE -> 0xFFCBD5E1.toInt()
                 WeaponType.PISTOL, WeaponType.SHOTGUN, WeaponType.RIFLE -> 0xFF1E293B.toInt()
                 else -> 0xFFE2E8F0.toInt()
             }
@@ -160,6 +163,13 @@ class IsoCharacterRenderer {
             val wx2 = handX + cos(armAngle) * wLen
             val wy2 = handY + sin(armAngle) * wLen
             canvas.drawLine(handX, handY, wx2, wy2, strokePaint)
+            if (weapon == WeaponType.CROSSBOW) {
+                strokePaint.color = 0xFF475569.toInt()
+                strokePaint.strokeWidth = 1.8f * scale
+                val perpX = -sin(armAngle) * 4.5f * scale
+                val perpY = cos(armAngle) * 4.5f * scale
+                canvas.drawLine(wx2 - perpX, wy2 - perpY, wx2 + perpX, wy2 + perpY, strokePaint)
+            }
 
             // Muzzle flash or slash arc!
             if (s.attackAnimTicks >= 4) {
@@ -214,6 +224,7 @@ class IsoCharacterRenderer {
     ) {
         val bulk = when (z.type) {
             ZombieType.BRUTE -> 1.38f
+            ZombieType.ARMORED -> 1.15f
             ZombieType.RUNNER -> 0.96f
             else -> 1.0f
         } * scale
@@ -258,15 +269,22 @@ class IsoCharacterRenderer {
             z.type == ZombieType.WALKER -> 0xFF4D7C0F.toInt()
             z.type == ZombieType.RUNNER -> 0xFFB91C1C.toInt()
             z.type == ZombieType.SCREAMER -> 0xFF7E22CE.toInt()
+            z.type == ZombieType.ARMORED -> 0xFF1E293B.toInt()
             else -> 0xFF7F1D1D.toInt()
         }
         ovalRect.set(sx - 5.5f * bulk, sy - 16f * bulk, sx + 5.5f * bulk, sy - 4f * bulk)
         canvas.drawRoundRect(ovalRect, 3f * bulk, 3f * bulk, paint)
+        if (z.type == ZombieType.ARMORED) {
+            paint.color = 0xFF475569.toInt()
+            ovalRect.set(sx - 4.5f * bulk, sy - 15f * bulk, sx + 4.5f * bulk, sy - 7f * bulk)
+            canvas.drawRoundRect(ovalRect, 2f * bulk, 2f * bulk, paint)
+        }
 
         // Outstretched zombie arms
         strokePaint.color = when (z.type) {
             ZombieType.RUNNER -> 0xFFFCA5A5.toInt()
             ZombieType.SCREAMER -> 0xFFD8B4FE.toInt()
+            ZombieType.ARMORED -> 0xFF64748B.toInt()
             else -> 0xFF84CC16.toInt()
         }
         strokePaint.strokeWidth = 2.6f * bulk
@@ -278,9 +296,15 @@ class IsoCharacterRenderer {
         paint.color = if (z.hurtAnimTicks > 0) Color.WHITE else when (z.type) {
             ZombieType.SCREAMER -> 0xFFC084FC.toInt()
             ZombieType.RUNNER -> 0xFFF87171.toInt()
+            ZombieType.ARMORED -> 0xFF334155.toInt()
             else -> 0xFFA3E635.toInt()
         }
         canvas.drawCircle(sx + sway * 0.12f, sy - 19f * bulk, 4.2f * bulk, paint)
+        if (z.type == ZombieType.ARMORED) {
+            paint.color = 0xFF0F172A.toInt()
+            ovalRect.set(sx - 4.5f * bulk, sy - 23.5f * bulk, sx + 4.5f * bulk, sy - 18.5f * bulk)
+            canvas.drawArc(ovalRect, 180f, 180f, true, paint)
+        }
 
         // Glowing eyes
         paint.color = if (z.type == ZombieType.SCREAMER) 0xFFE879F9.toInt() else 0xFFEF4444.toInt()

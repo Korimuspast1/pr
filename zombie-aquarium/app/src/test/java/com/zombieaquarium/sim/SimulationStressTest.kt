@@ -1,6 +1,8 @@
 package com.zombieaquarium.sim
 
+import com.zombieaquarium.sim.engine.BuildingType
 import com.zombieaquarium.sim.engine.SimConfig
+import com.zombieaquarium.sim.engine.TerrainType
 import com.zombieaquarium.sim.engine.WeatherType
 import com.zombieaquarium.sim.engine.WorldSimulation
 import org.junit.Assert.assertFalse
@@ -20,10 +22,12 @@ class SimulationStressTest {
             seed = 424242L
         )
         val sim = WorldSimulation(cfg)
-        assertTrue("Expected dense town buildings generated", sim.map.buildings.size >= 35)
+        assertTrue("Expected dense town & countryside buildings generated", sim.map.buildings.size >= 35)
         assertTrue("Expected loot containers generated", sim.map.lootContainers.isNotEmpty())
         assertTrue("Expected survivors spawned", sim.survivors.size == 24)
         assertTrue("Expected zombies spawned", sim.zombies.size >= 45)
+        assertTrue("Expected sidewalks & dirt country roads", sim.map.terrain.contains(TerrainType.SIDEWALK) && sim.map.terrain.contains(TerrainType.DIRT_ROAD))
+        assertTrue("Expected countryside cottages", sim.map.buildings.any { it.type == BuildingType.COUNTRY_COTTAGE })
 
         var sawSound = false
         for (tick in 1..650) {
@@ -43,6 +47,7 @@ class SimulationStressTest {
         }
         assertTrue("Expected real sound events emitted during simulation", sawSound)
         assertTrue("Expected character animations advancing", sim.survivors.any { it.animPhase > 0f })
+        assertTrue("Expected intelligent building exploration memory", sim.survivors.any { it.visitedBuildingIds.isNotEmpty() })
 
         for (s in sim.survivors) {
             assertFalse("Survivor X NaN", s.x.isNaN())

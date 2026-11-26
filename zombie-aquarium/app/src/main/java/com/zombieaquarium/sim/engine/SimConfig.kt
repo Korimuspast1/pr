@@ -19,6 +19,9 @@ object TerrainType {
     const val CONCRETE: Byte = 5
     const val WOOD_FLOOR: Byte = 6
     const val TILE_FLOOR: Byte = 7
+    const val SIDEWALK: Byte = 8
+    const val DIRT_ROAD: Byte = 9
+    const val PLAZA: Byte = 10
 }
 
 object WallType {
@@ -36,12 +39,17 @@ object WallType {
 }
 
 enum class BuildingType(val titleRu: String, val defensibility: Float) {
-    SUBURB_HOUSE("Частный дом", 1.25f),
+    SUBURB_HOUSE("Пригородный дом", 1.25f),
+    COUNTRY_COTTAGE("Загородный дом", 1.30f),
     APARTMENT("Многоэтажка", 0.9f),
     SUPERMARKET("Супермаркет", 0.75f),
+    CAFE("Кафе", 0.95f),
     PHARMACY("Аптека", 1.05f),
     HOSPITAL("Больница", 0.7f),
     POLICE("Полицейский участок", 1.15f),
+    SCHOOL("Школа", 0.85f),
+    HARDWARE_STORE("Строймаг", 1.05f),
+    MILITARY_POST("Блокпост", 1.35f),
     GAS_STATION("Заправка", 0.8f),
     WAREHOUSE("Склад", 1.0f)
 }
@@ -71,11 +79,13 @@ enum class WeaponType(
 ) {
     FISTS("Кулаки", false, 8f, 1.35f, 3f, 7),
     KNIFE("Нож", false, 18f, 1.45f, 2f, 5),
+    MACHETE("Мачете", false, 34f, 1.6f, 3f, 6),
     BAT("Бита / Лом", false, 28f, 1.6f, 5f, 8),
-    AXE("Топор", false, 38f, 1.65f, 6f, 10),
+    AXE("Топор", false, 40f, 1.65f, 6f, 10),
+    CROSSBOW("Арбалет", true, 58f, 10.5f, 4f, 12),
     PISTOL("Пистолет", true, 46f, 9.5f, 34f, 7),
-    SHOTGUN("Дробовик", true, 78f, 6.5f, 45f, 13),
-    RIFLE("Винтовка", true, 64f, 13.5f, 44f, 9)
+    SHOTGUN("Дробовик", true, 82f, 6.5f, 45f, 13),
+    RIFLE("Винтовка", true, 66f, 13.5f, 44f, 9)
 }
 
 enum class StructureType(val titleRu: String, val woodCost: Int, val scrapCost: Int) {
@@ -96,5 +106,6 @@ enum class ZombieType(
     WALKER("Бродяга", 75f, 1.45f, 14f, 6f),
     RUNNER("Бегун", 60f, 3.65f, 16f, 5f),
     SCREAMER("Крикун", 65f, 1.9f, 10f, 4f),
-    BRUTE("Громила", 240f, 1.25f, 30f, 22f)
+    BRUTE("Громила", 240f, 1.25f, 30f, 22f),
+    ARMORED("Спецназовец", 175f, 1.65f, 20f, 12f)
 }

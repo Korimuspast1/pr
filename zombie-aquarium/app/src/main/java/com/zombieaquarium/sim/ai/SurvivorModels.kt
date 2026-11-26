@@ -154,16 +154,21 @@ data class SurvivorAgent(
 
     // Personal Fog-of-Knowledge Memory
     val memories = ArrayList<MemoryEntry>()
+    val visitedBuildingIds = HashSet<Int>()
 
     // Brain state (Utility + GOAP + FSM)
     var fsmState: FsmState = FsmState.IDLE
     var activeGoal: UtilityGoal = UtilityGoal.EXPLORE
+    var lastGoalScore: Float = 0f
     val topUtilities = ArrayList<UtilityScore>(3)
     val goapPlan = ArrayDeque<GoapStep>()
     val currentPath = ArrayList<Int>()
     var pathCursor: Int = 0
     var targetX: Float = x
     var targetY: Float = y
+    var lastPosX: Float = x
+    var lastPosY: Float = y
+    var stuckTicks: Int = 0
 
     // Timers & overhead bubble
     var thinkCooldown: Int = 0
@@ -188,8 +193,11 @@ data class SurvivorAgent(
 
     fun activeWeapon(nearbyZombieCount: Int, isSneaking: Boolean): WeaponType {
         val gun = firearm
-        if (gun != null && ammo > 0 && (!isSneaking && (nearbyZombieCount >= 3 || stress > 58f || hp < 45f))) {
-            return gun
+        if (gun != null && ammo > 0) {
+            if (gun == WeaponType.CROSSBOW) return gun
+            if (!isSneaking && (nearbyZombieCount >= 2 || stress > 50f || hp < 55f)) {
+                return gun
+            }
         }
         return meleeWeapon
     }

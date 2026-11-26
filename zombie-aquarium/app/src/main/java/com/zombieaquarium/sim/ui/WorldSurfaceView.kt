@@ -85,6 +85,9 @@ class WorldSurfaceView @JvmOverloads constructor(
     var selectedTarget: SelectionTarget? = null
 
     @Volatile
+    var followSurvivorId: Int = -1
+
+    @Volatile
     var activeGodTool: GodTool = GodTool.NONE
 
     var onSelectionChanged: ((SelectionTarget?) -> Unit)? = null
@@ -263,6 +266,7 @@ class WorldSurfaceView @JvmOverloads constructor(
     }
 
     private fun applyPanDeltaPx(dx: Float, dy: Float) {
+        if (abs(dx) > 2f || abs(dy) > 2f) followSurvivorId = -1
         val halfW = 32f * zoom
         val halfH = 16f * zoom
         val da = -dx / halfW
@@ -383,6 +387,24 @@ class WorldSurfaceView @JvmOverloads constructor(
                         }
                         if (steps >= 8) accumulator = 0f
                         renderAlpha = (accumulator / WorldSimulation.TICK_DT).coerceIn(0f, 1f)
+                    }
+
+                    // Smooth follow camera lock on selected survivor
+                    val fid = followSurvivorId
+                    if (fid > 0) {
+                        synchronized(sim.simLock) {
+                            val fs = sim.survivorsById[fid]
+                            if (fs != null && fs.alive) {
+                                val rx = fs.prevX + (fs.x - fs.prevX) * renderAlpha
+                                val ry = fs.prevY + (fs.y - fs.prevY) * renderAlpha
+                                val lerp = (frameDt * 9f).coerceIn(0.08f, 0.45f)
+                                camX += (rx - camX) * lerp
+                                camY += (ry - camY) * lerp
+                                clampCamera()
+                            } else {
+                                followSurvivorId = -1
+                            }
+                        }
                     }
 
                     frameSounds.clear()
@@ -787,7 +809,7 @@ class WorldSurfaceView @JvmOverloads constructor(
         hw: Float,
         hh: Float
     ) {
-        val baseH = if (b.type == BuildingType.SUBURB_HOUSE) 29f * zoom else 32f * zoom
+        val baseH = if (b.type == BuildingType.SUBURB_HOUSE || b.type == BuildingType.COUNTRY_COTTAGE) 29f * zoom else 32f * zoom
         val storyH = if (b.stories == 2) 25f * zoom else 0f
         val eaveH = baseH + storyH
 
@@ -796,7 +818,7 @@ class WorldSurfaceView @JvmOverloads constructor(
         val x2 = (b.x2 + 1).toFloat()
         val y2 = (b.y2 + 1).toFloat()
 
-        // 2nd Story Facade (for Apartments, Hospitals, Police)
+        // 2nd Story Facade (for Apartments, Hospitals, Police, Schools)
         if (b.stories == 2) {
             val fLx = worldToScreenX(x1, y2, hsw, hw)
             val fLy = worldToScreenY(x1, y2, hsh, hh)
@@ -808,11 +830,13 @@ class WorldSurfaceView @JvmOverloads constructor(
             val wallLeftCol = when (b.type) {
                 BuildingType.HOSPITAL -> 0xFFD6DEE8.toInt()
                 BuildingType.POLICE -> 0xFF475569.toInt()
+                BuildingType.SCHOOL -> 0xFFB45309.toInt()
                 else -> 0xFF8C5341.toInt()
             }
             val wallRightCol = when (b.type) {
                 BuildingType.HOSPITAL -> 0xFFAEBAC9.toInt()
                 BuildingType.POLICE -> 0xFF334155.toInt()
+                BuildingType.SCHOOL -> 0xFF92400E.toInt()
                 else -> 0xFF693D30.toInt()
             }
 
@@ -1052,6 +1076,9 @@ class WorldSurfaceView @JvmOverloads constructor(
                     val awningCol = when (b.type) {
                         BuildingType.SUPERMARKET -> 0xFFDC2626.toInt()
                         BuildingType.GAS_STATION -> 0xFFF59E0B.toInt()
+                        BuildingType.CAFE -> 0xFF10B981.toInt()
+                        BuildingType.HARDWARE_STORE -> 0xFFEA580C.toInt()
+                        BuildingType.MILITARY_POST -> 0xFF4D7C0F.toInt()
                         else -> 0xFF0284C7.toInt()
                     }
                     val a1x = worldToScreenX(x1 + 0.6f, y2 + 0.05f, hsw, hw)
