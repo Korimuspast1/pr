@@ -7,6 +7,7 @@ import com.zalchik.nimbus.engine.Xray
 import com.zalchik.nimbus.util.arrOrEmpty
 import com.zalchik.nimbus.util.objects
 import com.zalchik.nimbus.util.str
+import com.zalchik.nimbus.util.strings
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals

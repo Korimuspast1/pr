@@ -9,6 +9,7 @@ import com.zalchik.nimbus.util.arrOrEmpty
 import com.zalchik.nimbus.util.objOrNull
 import com.zalchik.nimbus.util.objects
 import com.zalchik.nimbus.util.str
+import com.zalchik.nimbus.util.strings
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -490,13 +491,14 @@ class ConfigBuilderTests {
 
     @Test
     fun helperViewsOfABuiltConfig() {
-        val result = built(server = Fixtures.configServer())
+        val server = Fixtures.configServer()
+        val result = built(server = server)
         val tags = ConfigBuilder.tagsOf(result.config)
         assertTrue(tags.contains(ConfigBuilder.PROXY))
         assertTrue(tags.contains(ConfigBuilder.DIRECT))
         val addresses = ConfigBuilder.remoteAddresses(result.config)
         assertTrue(addresses.toString(), addresses.any { it.contains("a.example.com") })
-        val probes = ConfigBuilder.probeAddresses(result.config)
+        val probes = ConfigBuilder.probeAddresses(server)
         assertTrue(probes.isNotEmpty())
         assertTrue(ConfigBuilder.dump(result.config).contains("\"inbounds\""))
     }

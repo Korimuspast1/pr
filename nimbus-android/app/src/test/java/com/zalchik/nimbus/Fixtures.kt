@@ -117,9 +117,17 @@ object Fixtures {
         id: String = "p1",
         name: String = "Work",
         mode: String = RoutePreset.MODE_BYPASS,
+        provider: Boolean = true,
         packages: List<String> = emptyList(),
         sites: List<String> = emptyList(),
-    ) = RoutePreset(id, name, mode, packages = packages.toMutableList(), sites = sites.toMutableList())
+    ) = RoutePreset(
+        id,
+        name,
+        mode,
+        provider = provider,
+        packages = packages.toMutableList(),
+        sites = sites.toMutableList(),
+    )
 
     /** Every outbound in a built config, by tag. */
     fun outbounds(config: JSONObject): Map<String, JSONObject> {
