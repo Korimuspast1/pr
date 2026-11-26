@@ -319,7 +319,7 @@ fun ServersScreen(
     }
 
     qr?.let { (title, text) -> QrSheet(text, title) { qr = null } }
-    view?.let { (title, text) -> ReadOnlySheet(title, text) { view = null } }
+    view?.let { (title, text) -> ReadOnlySheet(title, text, onDismiss = { view = null }) }
 }
 
 /** The filter/sort menu that opens under the group chip. */

@@ -322,7 +322,9 @@ fun QrImage(text: String, modifier: Modifier = Modifier, size: Int = 260) {
     ) {
         val rows = modules.size
         val cols = modules.firstOrNull()?.size ?: rows
-        val cell = size.width / cols
+        // this.size, not the parameter of the same name: inside the Canvas lambda the receiver's
+        // Size is what the drawing is measured in.
+        val cell = this.size.width / cols.toFloat()
         for (y in 0 until rows) {
             for (x in 0 until cols) {
                 if (!modules[y][x]) continue

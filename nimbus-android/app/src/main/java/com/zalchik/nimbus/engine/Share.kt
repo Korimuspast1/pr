@@ -14,6 +14,7 @@ import com.zalchik.nimbus.util.objects
 import com.zalchik.nimbus.util.parseObject
 import com.zalchik.nimbus.util.percentEncode
 import com.zalchik.nimbus.util.str
+import com.zalchik.nimbus.util.strOrNull
 import com.zalchik.nimbus.util.stringify
 import org.json.JSONArray
 import org.json.JSONObject
@@ -237,7 +238,7 @@ object Share {
                     "publickey" to peer.str("publicKey"),
                     "presharedkey" to peer.str("preSharedKey"),
                     "address" to settings.listOfStrings("address").joinToString(","),
-                    "mtu" to settings.strOrNull("mtu") ?: "",
+                    "mtu" to (settings.strOrNull("mtu") ?: ""),
                     "reserved" to settings.arrOrEmpty("reserved").let { array ->
                         (0 until array.length()).joinToString(",") { array.opt(it).toString() }
                     },

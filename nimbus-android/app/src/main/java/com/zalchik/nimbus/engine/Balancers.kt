@@ -50,12 +50,12 @@ object Balancers {
         /** Node tags in member order: what the urltest group tests. */
         val nodeTags: MutableList<String> = mutableListOf(),
         var groupTag: String? = null,
-        val providerRules: List<JSONObject> = emptyList(),
+        var providerRules: List<JSONObject> = emptyList(),
         val ruleSets: Xray.RuleSets = Xray.RuleSets(),
-        val directDomains: List<String> = emptyList(),
-        val directRuleSets: List<String> = emptyList(),
-        val domainStrategy: String = "AsIs",
-        val ruDirect: Boolean = false,
+        var directDomains: List<String> = emptyList(),
+        var directRuleSets: List<String> = emptyList(),
+        var domainStrategy: String = "AsIs",
+        var ruDirect: Boolean = false,
         val unsupported: MutableList<String> = mutableListOf(),
     )
 
@@ -204,13 +204,17 @@ object Balancers {
     /** The source config's rules, pointed at the balancer group and its direct / block. */
     private fun providerRules(source: JSONObject?, mapping: Map<String, String>, converted: Converted): List<JSONObject> {
         if (source == null) return emptyList()
+        // Xray.matchersOf takes an Xray.Converted only as somewhere to register the rule sets the
+        // provider's rules mention; sharing this balancer's RuleSets is what puts them in the
+        // config the provider rules end up in.
+        val matchers = Xray.Converted(ruleSets = converted.ruleSets)
         val outbounds = source.arrOrEmpty("outbounds").objects()
         val protocols = outbounds.associate { it.str("tag") to it.str("protocol") }
         val ownBalancers = source.objOrNull("routing")?.arrOrEmpty("balancers")?.objects()
             ?.map { it.str("tag") }?.toSet() ?: emptySet()
         val rules = mutableListOf<JSONObject>()
         for (rule in source.objOrNull("routing")?.arrOrEmpty("rules")?.objects() ?: emptyList()) {
-            val match = Xray.matchersOf(rule, converted) ?: continue
+            val match = Xray.matchersOf(rule, matchers) ?: continue
             val out = rule.str("outboundTag")
             val balancerTag = rule.str("balancerTag")
             val protocol = protocols[out]

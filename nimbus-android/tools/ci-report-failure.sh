@@ -17,7 +17,9 @@ body=$(mktemp)
 payload=$(mktemp)
 trap 'rm -f "$body" "$payload"' EXIT
 
-compiler=$(grep -E '^e: |error: ' "$log" 2>/dev/null | head -60)
+# All of them, not a slice: the list is what the next commit is made of.
+compiler=$(grep -E '^e: ' "$log" 2>/dev/null | head -300)
+warnings=$(grep -cE '^w: ' "$log" 2>/dev/null || true)
 gradle_said=$(grep -B2 -A20 -E '^\* What went wrong' "$log" 2>/dev/null | head -70)
 
 {
@@ -29,6 +31,8 @@ gradle_said=$(grep -B2 -A20 -E '^\* What went wrong' "$log" 2>/dev/null | head -
     echo '```'
     if [ -n "$compiler" ]; then
         printf '%s\n' "$compiler"
+        echo
+        echo "всего: $(printf '%s\n' "$compiler" | grep -c '^e: ') ошибок, ${warnings:-0} предупреждений"
     else
         echo '(строк "e:" нет - до компиляции Kotlin не дошло)'
     fi

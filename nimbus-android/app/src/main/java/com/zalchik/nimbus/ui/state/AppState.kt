@@ -37,6 +37,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -78,7 +79,8 @@ class AppState(application: Application) : AndroidViewModel(application) {
     val offlineDelays = MutableStateFlow<Map<String, Int>>(emptyMap())
 
     private val notices = MutableStateFlow<List<Notice>>(emptyList())
-    val notice: StateFlow<Notice?> = notices.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val notice: StateFlow<Notice?> = notices.map { it.firstOrNull() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val service: StateFlow<com.zalchik.nimbus.bg.ServiceState> = ServiceController.state
     val logs: StateFlow<List<LogLine>> = ServiceController.logs

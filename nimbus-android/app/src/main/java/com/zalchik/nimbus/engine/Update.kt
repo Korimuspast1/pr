@@ -31,7 +31,7 @@ object Update {
     const val CHECKSUMS = "SHA256SUMS.txt"
     const val CHECK_HOURS = 6
 
-    class UpdateError(message: String) : Exception(message)
+    open class UpdateError(message: String) : Exception(message)
     class Cancelled(message: String) : UpdateError(message)
 
     data class Asset(val name: String, val url: String, val size: Long)
@@ -57,9 +57,12 @@ object Update {
         val new = parseVersion(version) ?: return false
         val cur = parseVersion(current) ?: return false
         val width = maxOf(new.size, cur.size)
-        val paddedNew = new + List(width - new.size) { 0 }
-        val paddedCur = cur + List(width - cur.size) { 0 }
-        return paddedNew > paddedCur
+        for (index in 0 until width) {
+            val mine = new.getOrElse(index) { 0 }
+            val theirs = cur.getOrElse(index) { 0 }
+            if (mine != theirs) return mine > theirs
+        }
+        return false
     }
 
     private val VERSION = Regex("\\s*v?(\\d+(?:\\.\\d+){0,3})\\s*")

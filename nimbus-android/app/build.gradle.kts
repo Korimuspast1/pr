@@ -84,6 +84,10 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
+        // Every sheet in the app is material3's ModalBottomSheet, which is still experimental, so
+        // the opt-in is a build-wide argument rather than an annotation on ten composables (and on
+        // every one written later). Anything else experimental stays opt-in per site.
+        freeCompilerArgs.add("-opt-in=androidx.compose.material3.ExperimentalMaterial3Api")
     }
 }
 

@@ -80,6 +80,9 @@ fun listOfJson(value: Json): List<Json> = when (value) {
 
 fun listOfStrings(value: Json): List<String> = listOfJson(value).map { it.toString() }
 
+/** The same, as an accessor: a key holding a string, or an array of them, or nothing. */
+fun JSONObject.listOfStrings(key: String): List<String> = listOfStrings(opt(key))
+
 // -- accessors that never throw ---------------------------------------------------------------
 
 fun JSONObject.str(key: String, fallback: String = ""): String = opt(key)?.let {

@@ -192,7 +192,7 @@ object ConfigBuilder {
         val outbounds = converted.outbounds.toMutableList()
         outbounds.add(obj("type" to "direct", "tag" to DIRECT))
         outbounds.add(obj("type" to "block", "tag" to BLOCK))
-        val proxyTag = if (converted.groupTag != null) converted.groupTag else PROXY
+        val proxyTag = converted.groupTag ?: PROXY
 
         val rules = mutableListOf<JSONObject>()
         rules += sniffRules(settings)

@@ -276,7 +276,7 @@ object Subscription {
                 }
             }
             val info = USERINFO.findAll(headers["subscription-userinfo"] ?: "")
-                .associate { it.groupValues[1] to it.groupValues[2].toLongOrNull() ?: 0L }
+                .associate { it.groupValues[1] to (it.groupValues[2].toLongOrNull() ?: 0L) }
             sub.upload = info["upload"] ?: 0
             sub.download = info["download"] ?: 0
             sub.total = info["total"] ?: 0

@@ -121,19 +121,19 @@ val PlexMono = FontFamily(
 
 val NimbusTypography = Typography(
     // Sizes follow the desktop's point sizes scaled to a phone's reading distance.
-    titleLarge = TextStyle(Montserrat, FontWeight.SemiBold, 22.sp, letterSpacing = (-0.3).sp),
-    titleMedium = TextStyle(Montserrat, FontWeight.SemiBold, 17.sp, letterSpacing = (-0.2).sp),
-    titleSmall = TextStyle(Montserrat, FontWeight.Medium, 15.sp),
-    bodyLarge = TextStyle(Montserrat, FontWeight.Normal, 15.sp, lineHeight = 21.sp),
-    bodyMedium = TextStyle(Montserrat, FontWeight.Normal, 13.5.sp, lineHeight = 19.sp),
-    bodySmall = TextStyle(Montserrat, FontWeight.Normal, 12.sp, lineHeight = 17.sp),
-    labelLarge = TextStyle(Montserrat, FontWeight.Medium, 13.sp),
-    labelMedium = TextStyle(Montserrat, FontWeight.Medium, 11.5.sp),
-    labelSmall = TextStyle(Montserrat, FontWeight.SemiBold, 10.sp, letterSpacing = 0.4.sp),
+    titleLarge = TextStyle(fontFamily = Montserrat, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, letterSpacing = (-0.3).sp),
+    titleMedium = TextStyle(fontFamily = Montserrat, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, letterSpacing = (-0.2).sp),
+    titleSmall = TextStyle(fontFamily = Montserrat, fontWeight = FontWeight.Medium, fontSize = 15.sp),
+    bodyLarge = TextStyle(fontFamily = Montserrat, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 21.sp),
+    bodyMedium = TextStyle(fontFamily = Montserrat, fontWeight = FontWeight.Normal, fontSize = 13.5.sp, lineHeight = 19.sp),
+    bodySmall = TextStyle(fontFamily = Montserrat, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 17.sp),
+    labelLarge = TextStyle(fontFamily = Montserrat, fontWeight = FontWeight.Medium, fontSize = 13.sp),
+    labelMedium = TextStyle(fontFamily = Montserrat, fontWeight = FontWeight.Medium, fontSize = 11.5.sp),
+    labelSmall = TextStyle(fontFamily = Montserrat, fontWeight = FontWeight.SemiBold, fontSize = 10.sp, letterSpacing = 0.4.sp),
 )
 
 /** Tabular numbers for speeds and delays, as the desktop's `tabular=True`. */
-val MonoStyle = TextStyle(PlexMono, FontWeight.Medium, 13.sp)
+val MonoStyle = TextStyle(fontFamily = PlexMono, fontWeight = FontWeight.Medium, fontSize = 13.sp)
 
 /** "dark" | "light" | "auto", as the setting spells it. */
 @Composable

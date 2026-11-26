@@ -379,7 +379,7 @@ object Xray {
                         objNonEmpty(
                             "type" to "http",
                             "host" to if (hosts.isEmpty()) null else JSONArray(hosts),
-                            "path" to paths.firstOrNull() ?: "/",
+                            "path" to (paths.firstOrNull() ?: "/"),
                             "method" to "GET",
                             "headers" to extraHeaders(request),
                         ),
@@ -740,7 +740,7 @@ object Xray {
         dnsDomains(config, converted)
         converted.rules.addAll(rules(config, converted))
         converted.groups.addAll(groups(config, interval, converted))
-        converted.domainStrategy = config.objOrNull("routing")?.str("domainStrategy", "AsIs").ifEmpty { "AsIs" }
+        converted.domainStrategy = config.objOrNull("routing")?.str("domainStrategy").orEmpty().ifEmpty { "AsIs" }
         return converted
     }
 
