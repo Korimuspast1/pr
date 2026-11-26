@@ -4,12 +4,16 @@ name: Nimbus Android
 # is downloaded from the pinned release before Gradle runs, so no Go toolchain and no NDK are
 # needed here.
 #
-# The SDK is set up by hand rather than by an action: the image's own copy (when it has one) is
-# reused, and cmdline-tools come from dl.google.com when it does not. A missing compileSdk is the
-# failure that reads like a code error and is not one, so the platform is installed up front.
+# Two things about this file are unusual, and both are because the run logs cannot be downloaded
+# from where this project is maintained (the log host is unreachable), while the REST API can be:
 #
-# Failures are written back into the pull request as a comment and into the check run as
-# annotations, so a compile error can be read from the GitHub API instead of from a log download.
+#   * every step that learns something - which SDK it found, which task it ran, which test failed
+#     and why - says so through ::notice/::error, which come back as check annotations;
+#   * a failed build edits one comment on the pull request per job instead of adding a new one,
+#     so the compiler errors and the failing tests are readable from the API.
+#
+# The SDK is set up by tools/ci-android-sdk.sh rather than by an action, and the Gradle task to run
+# is looked up by tools/ci-gradle.sh, because AGP 9 renamed the unit test tasks.
 
 on:
   push:
@@ -29,7 +33,7 @@ permissions:
 
 env:
   JAVA_VERSION: '17'
-  # What the build compiles against. Kept in one place: the SDK step below installs exactly this.
+  # What the build compiles against, kept in one place: the SDK step installs exactly this.
   COMPILE_SDK: '37'
 
 jobs:
@@ -52,8 +56,6 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Android SDK
-        # Everything this learns is reported as a check annotation, which the API serves even
-        # though the run logs cannot be downloaded from here.
         run: bash tools/ci-android-sdk.sh
 
       - name: Fetch the sing-box core (libbox.aar)
@@ -63,49 +65,30 @@ jobs:
           ls -l app/libs/
 
       - name: Unit tests
-        run: |
-          set -uo pipefail
-          ./gradlew --no-daemon --stacktrace :app:testReleaseUnitTest 2>&1 | tee ../gradle.log
-          exit "${PIPESTATUS[0]}"
+        # The first name that exists wins; AGP 8 called it testReleaseUnitTest, AGP 9 does not.
+        run: bash tools/ci-gradle.sh 'testReleaseUnitTest|testRelease|test'
+
+      - name: Read the test results
+        if: always()
+        run: python3 tools/ci_test_report.py
 
       - name: Annotate Kotlin errors
         if: failure()
         run: |
           set -uo pipefail
-          # "e: file:///path:line:col message" is what kotlinc prints; turn it into an annotation.
+          # "e: file:///path:line:col message" is what kotlinc prints; this makes it clickable.
           grep -E '^e: ' ../gradle.log 2>/dev/null | head -80 |
             sed -E 's|^e: file://([^:]+):([0-9]+):([0-9]+) (.*)$|::error file=\1,line=\2,col=\3::\4|' || true
-          grep -E '^(FAILURE|What went wrong|Caused by|Execution failed|A problem occurred)' ../gradle.log 2>/dev/null |
-            head -20 | sed -E 's|^(.*)$|::error::\1|' || true
+          grep -E '^(\* What went wrong|Execution failed|A problem occurred)' ../gradle.log 2>/dev/null |
+            head -10 | sed -E 's|^(.*)$|::error::\1|' || true
 
       - name: Report the failure in the pull request
         if: failure() && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          set -uo pipefail
-          body=$(mktemp)
-          {
-            echo "### Сборка упала: ${{ github.job }}"
-            echo
-            echo 'Ошибки компилятора:'
-            echo '```'
-            grep -E '^e: |error: ' ../gradle.log 2>/dev/null | head -60 || echo '(нет строк "e:" — см. хвост ниже)'
-            echo '```'
-            echo
-            echo '<details><summary>Что сказал Gradle и последние 150 строк</summary>'
-            echo
-            echo '```'
-            {
-              grep -A 12 -E '^\* What went wrong|^\* Where' ../gradle.log 2>/dev/null | head -60
-              echo '…'
-              tail -150 ../gradle.log 2>/dev/null
-            } || true
-            echo '```'
-            echo '</details>'
-          } > "$body"
-          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$body"
+          MARKER: '<!-- nimbus-android:${{ github.job }} -->'
+        run: bash tools/ci-report-failure.sh
 
       - name: Collect generated configs
         if: always()
@@ -120,7 +103,10 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: gradle-log
-          path: gradle.log
+          path: |
+            gradle.log
+            tasks.log
+            test-report.md
           if-no-files-found: ignore
 
   apk:
@@ -148,8 +134,6 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Android SDK
-        # Everything this learns is reported as a check annotation, which the API serves even
-        # though the run logs cannot be downloaded from here.
         run: bash tools/ci-android-sdk.sh
 
       - name: Fetch the sing-box core (libbox.aar)
@@ -158,10 +142,7 @@ jobs:
           . ./libbox.env.sh
 
       - name: Assemble
-        run: |
-          set -uo pipefail
-          ./gradlew --no-daemon --stacktrace :app:assembleRelease 2>&1 | tee ../gradle.log
-          exit "${PIPESTATUS[0]}"
+        run: bash tools/ci-gradle.sh 'assembleRelease|assemble'
 
       - name: Annotate Kotlin errors
         if: failure()
@@ -175,34 +156,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          set -uo pipefail
-          body=$(mktemp)
-          {
-            echo "### Сборка APK упала: ${{ matrix.abi }}"
-            echo '```'
-            grep -E '^e: |error: |^\* What went wrong' ../gradle.log 2>/dev/null | head -60 || true
-            echo '```'
-            echo '<details><summary>хвост лога</summary>'
-            echo
-            echo '```'
-            tail -120 ../gradle.log 2>/dev/null || true
-            echo '```'
-            echo '</details>'
-          } > "$body"
-          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$body"
+          MARKER: '<!-- nimbus-android:${{ github.job }} -->'
+        run: bash tools/ci-report-failure.sh
 
       - name: Rename
         run: |
-          set -euo pipefail
+          set -uo pipefail
           version=$(grep '^VERSION_NAME=' version.properties | cut -d= -f2)
-          found=$(ls app/build/outputs/apk/release/ | grep -- "-${{ matrix.abi }}-release.apk$" || true)
+          found=$(find app/build/outputs -name "*-${{ matrix.abi }}-release.apk" | head -1)
           if [ -z "$found" ]; then
-            echo "no APK for ${{ matrix.abi }} in:"; ls -R app/build/outputs/apk/release/; exit 1
+            echo "::error::no APK for ${{ matrix.abi }} under app/build/outputs"
+            find app/build/outputs -type f 2>/dev/null | head -30 |
+              sed -E 's|^(.*)$|::notice title=Build outputs::\1|'
+            exit 1
           fi
           mkdir -p dist
           # The name the in-app updater looks for: Nimbus-<version>-<abi>.apk (engine/Update.kt).
-          cp "app/build/outputs/apk/release/$found" "dist/Nimbus-${version}-${{ matrix.abi }}.apk"
+          cp "$found" "dist/Nimbus-${version}-${{ matrix.abi }}.apk"
+          echo "::notice title=APK::$found -> dist/Nimbus-${version}-${{ matrix.abi }}.apk"
 
       - uses: actions/upload-artifact@v5
         with:
