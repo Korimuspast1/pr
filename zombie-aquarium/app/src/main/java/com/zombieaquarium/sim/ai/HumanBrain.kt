@@ -666,7 +666,7 @@ object HumanBrain {
                 val speed = computeMoveSpeed(agent, sneaking, fleeing, sim)
                 val reached = moveAlongPath(agent, gx, gy, speed, dt, fleeing, sneaking, sim)
                 if (reached) {
-                    agent.goapPlan.removeFirst()
+                    agent.goapPlan.removeFirstOrNull()
                 }
             }
 
@@ -682,7 +682,7 @@ object HumanBrain {
                 agent.forgetNear(MemoryKind.MEDS, step.targetX, step.targetY)
                 agent.forgetNear(MemoryKind.WEAPON, step.targetX, step.targetY)
                 agent.forgetNear(MemoryKind.MATERIALS, step.targetX, step.targetY)
-                agent.goapPlan.removeFirst()
+                agent.goapPlan.removeFirstOrNull()
             }
 
             GoapActionType.EAT_INV -> {
@@ -700,7 +700,7 @@ object HumanBrain {
                     }
                 }
                 agent.setThought("Поел, стало легче.", 35)
-                agent.goapPlan.removeFirst()
+                agent.goapPlan.removeFirstOrNull()
             }
 
             GoapActionType.DRINK_INV -> {
@@ -714,7 +714,7 @@ object HumanBrain {
                         agent.thirst = min(100f, agent.thirst + 55f)
                     }
                 }
-                agent.goapPlan.removeFirst()
+                agent.goapPlan.removeFirstOrNull()
             }
 
             GoapActionType.TREAT_SELF -> {
@@ -727,7 +727,7 @@ object HumanBrain {
                     agent.limping = false
                     agent.setThought("Перевязал рану.", 40)
                 }
-                agent.goapPlan.removeFirst()
+                agent.goapPlan.removeFirstOrNull()
             }
 
             GoapActionType.TREAT_ALLY -> {
@@ -745,14 +745,14 @@ object HumanBrain {
                     agent.addBio(sim.day, sim.formatTime(), "Спас(ла) раненого ${ally.name}")
                     agent.setThought("Держись, ${ally.name}!", 45)
                 }
-                agent.goapPlan.removeFirst()
+                agent.goapPlan.removeFirstOrNull()
             }
 
             GoapActionType.SLEEP_TICK -> {
                 agent.fsmState = FsmState.SLEEPING
                 agent.currentActionIcon = "Спит"
                 if (agent.energy >= 88f && agent.warmth >= 60f) {
-                    agent.goapPlan.removeFirst()
+                    agent.goapPlan.removeFirstOrNull()
                     agent.fsmState = FsmState.IDLE
                 }
             }
@@ -772,7 +772,7 @@ object HumanBrain {
                     agent.setThought("Проход заколочен!", 40)
                     agent.addBio(sim.day, sim.formatTime(), "Забаррикадировал(а) вход в убежище")
                 }
-                agent.goapPlan.removeFirst()
+                agent.goapPlan.removeFirstOrNull()
             }
 
             GoapActionType.BUILD_STRUCTURE -> {
@@ -792,7 +792,7 @@ object HumanBrain {
                         sim.logChronicle("База", "В лагере «${camp.name}» ${agent.name} построил(а) ${sType.titleRu}.", step.targetX.toFloat(), step.targetY.toFloat())
                     }
                 }
-                agent.goapPlan.removeFirst()
+                agent.goapPlan.removeFirstOrNull()
             }
 
             GoapActionType.TALK_ALLY -> {
@@ -807,7 +807,7 @@ object HumanBrain {
                     ally.stress = max(0f, ally.stress - 8f)
                     agent.setThought("Обменялись картой с ${ally.name}.", 42)
                 }
-                agent.goapPlan.removeFirst()
+                agent.goapPlan.removeFirstOrNull()
             }
 
             GoapActionType.ATTACK_ZOMBIE -> {
@@ -815,7 +815,7 @@ object HumanBrain {
                 agent.currentActionIcon = "Бой"
                 val target = sim.zombiesById[step.targetEntityId] ?: closestZombie
                 if (target == null || !target.alive) {
-                    agent.goapPlan.removeFirst()
+                    agent.goapPlan.removeFirstOrNull()
                     return
                 }
                 val weapon = agent.activeWeapon(visibleZombies, false)
@@ -828,7 +828,7 @@ object HumanBrain {
                 }
             }
 
-            else -> agent.goapPlan.removeFirst()
+            else -> agent.goapPlan.removeFirstOrNull()
         }
     }
 
@@ -866,7 +866,7 @@ object HumanBrain {
             }
             if (target.hp <= 0f) {
                 sim.killZombie(target, agent)
-                agent.goapPlan.removeFirst()
+                agent.goapPlan.removeFirstOrNull()
             }
         }
     }
