@@ -130,7 +130,7 @@ class HappTests {
         assertEquals("subscription", Deeplink.parse(link(SUB, 4).replace("happ://", "crypt://"))?.kind)
         assertEquals(SUB, Deeplink.parse(link(link(SUB, 1), 4))?.payload)
 
-        val vless = Fixtures.VLESS_REALITY
+        val vless = Fixtures.LINKS.getValue("vless-reality")
         val configs = Deeplink.parse(link(vless, 4))
         assertEquals("configs", configs?.kind)
         assertEquals(vless, configs?.payload)

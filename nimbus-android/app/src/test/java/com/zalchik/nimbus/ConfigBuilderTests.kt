@@ -219,6 +219,31 @@ class ConfigBuilderTests {
     }
 
     @Test
+    fun aPresetCanNamePrivateAddresses() {
+        val config = built(
+            Fixtures.settings {
+                it.routePresets = mutableListOf(
+                    Fixtures.preset(sites = listOf("geoip:private", "example.com", "10.0.0.0/8"))
+                )
+                it.routePreset = "p1"
+            }
+        ).config
+        val rules = Fixtures.rules(config)
+        val privateRule = rules.firstOrNull { it.opt("ip_is_private") == true }
+        assertNotNull(privateRule)
+        assertEquals(ConfigBuilder.DIRECT, privateRule!!.str("outbound"))
+        // "private" is a matcher, not an address: it must never reach an ip_cidr list.
+        for (rule in rules) {
+            assertFalse(
+                rule.arrOrEmpty("ip_cidr").strings().toString(),
+                rule.arrOrEmpty("ip_cidr").strings().contains("private"),
+            )
+        }
+        assertTrue(rules.any { it.arrOrEmpty("ip_cidr").strings().contains("10.0.0.0/8") })
+        assertTrue(rules.any { it.arrOrEmpty("domain_suffix").strings().contains("example.com") })
+    }
+
+    @Test
     fun findProcessIsLeftOutWhenNothingNeedsIt() {
         assertNull(built().config.objOrNull("route")!!.opt("find_process"))
         val perApp = built(Fixtures.settings { it.perAppEnabled = true }).config
@@ -254,7 +279,9 @@ class ConfigBuilderTests {
         assertEquals("domain_regex" to "^a.*z$", ConfigBuilder.siteEntry("regexp:^a.*z$"))
         assertEquals("ip" to "1.2.3.4/32", ConfigBuilder.siteEntry("1.2.3.4"))
         assertEquals("ip" to "10.0.0.0/8", ConfigBuilder.siteEntry("10.0.0.0/8"))
-        assertEquals("ip" to "private", ConfigBuilder.siteEntry("geoip:private"))
+        // Xray's geoip:private is sing-box's own matcher: never a CIDR, and there is no
+        // geoip-private rule set to download either.
+        assertEquals("ip_is_private" to "true", ConfigBuilder.siteEntry("geoip:private"))
         assertNull(ConfigBuilder.siteEntry("# a comment"))
         assertNull(ConfigBuilder.siteEntry(""))
         val ruleSets = Xray.RuleSets()
