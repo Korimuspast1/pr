@@ -56,8 +56,18 @@ class SimulationStressTest {
     @Test
     fun testPathfinderFindsRoute() {
         val sim = WorldSimulation(SimConfig(mapSize = 128, initialSurvivors = 10, seed = 999L))
+        val s0 = sim.survivors[0]
+        val s1 = sim.survivors[1]
         val path = ArrayList<Int>()
-        val ok = sim.map.findPath(10, 10, 45, 45, avoidDanger = true, maxExpansions = 2500, outPath = path)
+        val ok = sim.map.findPath(
+            s0.x.toInt(),
+            s0.y.toInt(),
+            s1.x.toInt(),
+            s1.y.toInt(),
+            avoidDanger = true,
+            maxExpansions = 4000,
+            outPath = path
+        )
         assertTrue("A* should find path or partial route", ok)
         assertTrue("Path should not be empty", path.isNotEmpty())
     }

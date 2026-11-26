@@ -31,12 +31,26 @@ jobs:
         working-directory: zombie-aquarium
         run: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest --no-daemon
+          if ! ./gradlew testDebugUnitTest --no-daemon > /tmp/gradle-test.log 2>&1; then
+            tail -n 40 /tmp/gradle-test.log | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            cat /tmp/gradle-test.log
+            exit 1
+          fi
+          cat /tmp/gradle-test.log
 
       - name: Build Android APK (Debug)
         working-directory: zombie-aquarium
         run: |
-          ./gradlew assembleDebug --no-daemon
+          if ! ./gradlew assembleDebug --no-daemon > /tmp/gradle-build.log 2>&1; then
+            tail -n 40 /tmp/gradle-build.log | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            cat /tmp/gradle-build.log
+            exit 1
+          fi
+          cat /tmp/gradle-build.log
 
       - name: Copy & verify APK
         working-directory: zombie-aquarium
