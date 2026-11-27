@@ -1,0 +1,383 @@
+==============================================================================================================
+ PTTRMod.dll  —  полный IL-листинг с привязкой к исходникам (sequence points из PTTRMod.pdb)
+==============================================================================================================
+
+Формат строки:  IL_XXXX:  <инструкция>  <операнд>
+Перед группой инструкций — комментарий с позицией в исходнике (файл:строка:колонка).
+
+
+##############################################################################################################
+# TYPE <Module>   (служебный тип, методов и полей нет)
+##############################################################################################################
+
+##############################################################################################################
+# TYPE Microsoft.CodeAnalysis.EmbeddedAttribute  :  System.Attribute
+##############################################################################################################
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x06000001   .ctor() : void
+  // RVA 0x2050   file offset 0x0250   TINY header 1 B
+  // codeSize=7   maxStack=8   localVarSigTok=нет
+  // ----------------------------------------------------------------
+  IL_0000:   ldarg.0        
+  IL_0001:   call           System.Attribute::.ctor() -> void
+  IL_0006:   ret            
+
+##############################################################################################################
+# TYPE System.Runtime.CompilerServices.RefSafetyRulesAttribute  :  System.Attribute
+##############################################################################################################
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x06000002   .ctor(int arg0) : void
+  // RVA 0x2058   file offset 0x0258   TINY header 1 B
+  // codeSize=14   maxStack=8   localVarSigTok=нет
+  // ----------------------------------------------------------------
+  IL_0000:   ldarg.0        
+  IL_0001:   call           System.Attribute::.ctor() -> void
+  IL_0006:   ldarg.0        
+  IL_0007:   ldarg.1        
+  IL_0008:   stfld          Field::Version
+  IL_000D:   ret            
+
+##############################################################################################################
+# TYPE PTTRMod.Main  :  MelonLoader.MelonMod
+##############################################################################################################
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x06000003   OnInitializeMelon() : void
+  // RVA 0x2068   file offset 0x0268   FAT header 12 B
+  // codeSize=141   maxStack=10   localVarSigTok=нет
+  // ----------------------------------------------------------------
+  //   === Main.cs:22:13-23:72 ===
+  IL_0000:   ldstr          "PTTRMod"
+  IL_0005:   ldstr          "PTTR Mod"
+  IL_000A:   call           MelonLoader.MelonPreferences::CreateCategory(string, string) -> MelonLoader.MelonPreferences_Category
+  //   === Main.cs:25:13-25:83 ===
+  IL_000F:   dup            
+  IL_0010:   ldstr          "GodMode"
+  IL_0015:   ldc.i4.0       
+  IL_0016:   ldstr          "Ignore incoming damage"
+  IL_001B:   ldnull         
+  IL_001C:   ldc.i4.0       
+  IL_001D:   ldc.i4.0       
+  IL_001E:   ldnull         
+  IL_001F:   ldnull         
+  IL_0020:   callvirt       MelonLoader.MelonPreferences_Category::CreateEntry<bool>
+  IL_0025:   stsfld         Field::GodMode
+  //   === Main.cs:26:13-26:103 ===
+  IL_002A:   dup            
+  IL_002B:   ldstr          "DamageScale"
+  IL_0030:   ldc.r4         1.0
+  IL_0035:   ldstr          "Multiplier on damage the player deals"
+  IL_003A:   ldnull         
+  IL_003B:   ldc.i4.0       
+  IL_003C:   ldc.i4.0       
+  IL_003D:   ldnull         
+  IL_003E:   ldnull         
+  IL_003F:   callvirt       MelonLoader.MelonPreferences_Category::CreateEntry<float>
+  IL_0044:   stsfld         Field::DamageScale
+  //   === Main.cs:27:13-27:109 ===
+  IL_0049:   ldstr          "LogPlayerHealth"
+  IL_004E:   ldc.i4.0       
+  IL_004F:   ldstr          "Print player health every second"
+  IL_0054:   ldnull         
+  IL_0055:   ldc.i4.0       
+  IL_0056:   ldc.i4.0       
+  IL_0057:   ldnull         
+  IL_0058:   ldnull         
+  IL_0059:   callvirt       MelonLoader.MelonPreferences_Category::CreateEntry<bool>
+  IL_005E:   stsfld         Field::LogPlayerHealth
+  //   === Main.cs:29:13-29:53 ===
+  IL_0063:   ldsfld         Field::Patcher
+  IL_0068:   ldtoken        PTTRMod.Main
+  IL_006D:   call           System.Type::GetTypeFromHandle(System.RuntimeTypeHandle) -> System.Type
+  IL_0072:   callvirt       System.Type::get_Assembly() -> System.Reflection.Assembly
+  IL_0077:   callvirt       HarmonyLib.Harmony::PatchAll(System.Reflection.Assembly) -> void
+  //   === Main.cs:30:13-30:98 ===
+  IL_007C:   ldarg.0        
+  IL_007D:   call           MelonLoader.MelonBase::get_LoggerInstance() -> Instance
+  IL_0082:   ldstr          "PTTRMod ready. F1 godmode, F2 damage x5, F3 dump player state."
+  IL_0087:   callvirt       Instance::Msg(string) -> void
+  //   === Main.cs:31 ===
+  IL_008C:   ret            
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x06000004   OnUpdate() : void
+  // RVA 0x2104   file offset 0x0304   FAT header 12 B
+  // codeSize=228   maxStack=4   localVarSigTok=0x11000001
+  // locals: System.Runtime.CompilerServices.DefaultInterpolatedStringHandler
+  // ----------------------------------------------------------------
+  //   === Main.cs:35:13-35:46 ===
+  IL_0000:   ldc.i4         282
+  IL_0005:   call           UnityEngine.Input::GetKeyDown(UnityEngine.KeyCode) -> bool
+  IL_000A:   brfalse.s      IL_0061
+  //   === Main.cs:37:17-37:48 ===
+  IL_000C:   ldsfld         Field::GodMode
+  IL_0011:   ldsfld         Field::GodMode
+  IL_0016:   callvirt       MelonLoader.MelonPreferences_Entry`1<bool>::get_Value() -> !0
+  IL_001B:   ldc.i4.0       
+  IL_001C:   ceq            
+  IL_001E:   callvirt       MelonLoader.MelonPreferences_Entry`1<bool>::set_Value(!0) -> void
+  //   === Main.cs:38:17-38:41 ===
+  IL_0023:   call           MelonLoader.MelonPreferences::Save() -> void
+  //   === Main.cs:39:17-39:66 ===
+  IL_0028:   ldarg.0        
+  IL_0029:   call           MelonLoader.MelonBase::get_LoggerInstance() -> Instance
+  IL_002E:   ldloca.s       local(0x0000)
+  IL_0030:   ldc.i4.s       10
+  IL_0032:   ldc.i4.1       
+  IL_0033:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::.ctor(int, int) -> void
+  IL_0038:   ldloca.s       local(0x0000)
+  IL_003A:   ldstr          "GodMode = "
+  IL_003F:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral(string) -> void
+  IL_0044:   ldloca.s       local(0x0000)
+  IL_0046:   ldsfld         Field::GodMode
+  IL_004B:   callvirt       MelonLoader.MelonPreferences_Entry`1<bool>::get_Value() -> !0
+  IL_0050:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<bool>
+  IL_0055:   ldloca.s       local(0x0000)
+  IL_0057:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::ToStringAndClear() -> string
+  IL_005C:   callvirt       Instance::Msg(string) -> void
+  //   === Main.cs:42 ===
+  IL_0061:   ldc.i4         283    ; <== IL_000A
+  IL_0066:   call           UnityEngine.Input::GetKeyDown(UnityEngine.KeyCode) -> bool
+  IL_006B:   brfalse.s      IL_00D2
+  //   === Main.cs:44 ===
+  IL_006D:   ldsfld         Field::DamageScale
+  IL_0072:   ldsfld         Field::DamageScale
+  IL_0077:   callvirt       MelonLoader.MelonPreferences_Entry`1<float>::get_Value() -> !0
+  IL_007C:   ldc.r4         5.0
+  IL_0081:   bge.s          IL_008A
+  IL_0083:   ldc.r4         5.0
+  IL_0088:   br.s           IL_008F
+  IL_008A:   ldc.r4         1.0    ; <== IL_0081
+  IL_008F:   callvirt       MelonLoader.MelonPreferences_Entry`1<float>::set_Value(!0) -> void    ; <== IL_0088
+  //   === Main.cs:45 ===
+  IL_0094:   call           MelonLoader.MelonPreferences::Save() -> void
+  //   === Main.cs:46 ===
+  IL_0099:   ldarg.0        
+  IL_009A:   call           MelonLoader.MelonBase::get_LoggerInstance() -> Instance
+  IL_009F:   ldloca.s       local(0x0000)
+  IL_00A1:   ldc.i4.s       14
+  IL_00A3:   ldc.i4.1       
+  IL_00A4:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::.ctor(int, int) -> void
+  IL_00A9:   ldloca.s       local(0x0000)
+  IL_00AB:   ldstr          "DamageScale = "
+  IL_00B0:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral(string) -> void
+  IL_00B5:   ldloca.s       local(0x0000)
+  IL_00B7:   ldsfld         Field::DamageScale
+  IL_00BC:   callvirt       MelonLoader.MelonPreferences_Entry`1<float>::get_Value() -> !0
+  IL_00C1:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<float>
+  IL_00C6:   ldloca.s       local(0x0000)
+  IL_00C8:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::ToStringAndClear() -> string
+  IL_00CD:   callvirt       Instance::Msg(string) -> void
+  //   === Main.cs:49 ===
+  IL_00D2:   ldc.i4         284    ; <== IL_006B
+  IL_00D7:   call           UnityEngine.Input::GetKeyDown(UnityEngine.KeyCode) -> bool
+  IL_00DC:   brfalse.s      IL_00E3
+  //   === Main.cs:50 ===
+  IL_00DE:   call           MethodDef::DumpPlayerState
+  //   === Main.cs:51 ===
+  IL_00E3:   ret                ; <== IL_00DC
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x06000005   DumpPlayerState() : void
+  // RVA 0x21F4   file offset 0x03F4   FAT header 12 B
+  // codeSize=198   maxStack=3   localVarSigTok=0x11000002
+  // locals: PTTRPlayer, System.Runtime.CompilerServices.DefaultInterpolatedStringHandler
+  // ----------------------------------------------------------------
+  //   === Main.cs:55:13-55:83 ===
+  IL_0000:   call           UnityEngine.Object::FindObjectOfType<PTTRPlayer>
+  IL_0005:   stloc.0        
+  //   === Main.cs:56:13-56:32 ===
+  IL_0006:   ldloc.0        
+  IL_0007:   ldnull         
+  IL_0008:   call           UnityEngine.Object::op_Equality(UnityEngine.Object, UnityEngine.Object) -> bool
+  IL_000D:   brfalse.s      IL_001A
+  //   === Main.cs:58:17-58:60 ===
+  IL_000F:   ldstr          "No PTTRPlayer in scene."
+  IL_0014:   call           MelonLoader.MelonLogger::Msg(string) -> void
+  //   === Main.cs:59:17-59:24 ===
+  IL_0019:   ret            
+  //   === Main.cs:62 ===
+  IL_001A:   ldloca.s       local(0x0001)    ; <== IL_000D
+  IL_001C:   ldc.i4.s       16
+  IL_001E:   ldc.i4.1       
+  IL_001F:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::.ctor(int, int) -> void
+  IL_0024:   ldloca.s       local(0x0001)
+  IL_0026:   ldstr          "player.health = "
+  IL_002B:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral(string) -> void
+  IL_0030:   ldloca.s       local(0x0001)
+  IL_0032:   ldloc.0        
+  IL_0033:   callvirt       PTTRPlayer::get_health() -> float
+  IL_0038:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<float>
+  IL_003D:   ldloca.s       local(0x0001)
+  IL_003F:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::ToStringAndClear() -> string
+  IL_0044:   call           MelonLoader.MelonLogger::Msg(string) -> void
+  //   === Main.cs:63 ===
+  IL_0049:   ldloca.s       local(0x0001)
+  IL_004B:   ldc.i4.s       28
+  IL_004D:   ldc.i4.1       
+  IL_004E:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::.ctor(int, int) -> void
+  IL_0053:   ldloca.s       local(0x0001)
+  IL_0055:   ldstr          "player.transform.position = "
+  IL_005A:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral(string) -> void
+  IL_005F:   ldloca.s       local(0x0001)
+  IL_0061:   ldloc.0        
+  IL_0062:   callvirt       UnityEngine.Component::get_transform() -> UnityEngine.Transform
+  IL_0067:   callvirt       UnityEngine.Transform::get_position() -> UnityEngine.Vector3
+  IL_006C:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<UnityEngine.Vector3>
+  IL_0071:   ldloca.s       local(0x0001)
+  IL_0073:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::ToStringAndClear() -> string
+  IL_0078:   call           MelonLoader.MelonLogger::Msg(string) -> void
+  //   === Main.cs:64 ===
+  IL_007D:   ldloca.s       local(0x0001)
+  IL_007F:   ldc.i4.s       39
+  IL_0081:   ldc.i4.2       
+  IL_0082:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::.ctor(int, int) -> void
+  IL_0087:   ldloca.s       local(0x0001)
+  IL_0089:   ldstr          "player.healthBoost = "
+  IL_008E:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral(string) -> void
+  IL_0093:   ldloca.s       local(0x0001)
+  IL_0095:   ldloc.0        
+  IL_0096:   callvirt       PTTRPlayer::get_healthBoost() -> int
+  IL_009B:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<int>
+  IL_00A0:   ldloca.s       local(0x0001)
+  IL_00A2:   ldstr          ", damageUpgrade = "
+  IL_00A7:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral(string) -> void
+  IL_00AC:   ldloca.s       local(0x0001)
+  IL_00AE:   ldloc.0        
+  IL_00AF:   callvirt       PTTRPlayer::get_damageUpgrade() -> int
+  IL_00B4:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<int>
+  IL_00B9:   ldloca.s       local(0x0001)
+  IL_00BB:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::ToStringAndClear() -> string
+  IL_00C0:   call           MelonLoader.MelonLogger::Msg(string) -> void
+  //   === Main.cs:65 ===
+  IL_00C5:   ret            
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x06000006   .ctor() : void
+  // RVA 0x22C6   file offset 0x04C6   TINY header 1 B
+  // codeSize=7   maxStack=8   localVarSigTok=нет
+  // ----------------------------------------------------------------
+  IL_0000:   ldarg.0        
+  IL_0001:   call           MelonLoader.MelonMod::.ctor() -> void
+  IL_0006:   ret            
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x06000007   .cctor() : void
+  // RVA 0x22CE   file offset 0x04CE   TINY header 1 B
+  // codeSize=16   maxStack=8   localVarSigTok=нет
+  // ----------------------------------------------------------------
+  //   === Main.cs:17:9-18:58 ===
+  IL_0000:   ldstr          "com.olivia.pttrmod"
+  IL_0005:   newobj         HarmonyLib.Harmony::.ctor(string) -> void
+  IL_000A:   stsfld         Field::Patcher
+  IL_000F:   ret            
+
+##############################################################################################################
+# TYPE PTTRMod.SubtractHealthPatch  :  System.Object
+##############################################################################################################
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x06000008   Prefix(float amount) : bool
+  // RVA 0x22E0   file offset 0x04E0   FAT header 12 B
+  // codeSize=70   maxStack=3   localVarSigTok=0x11000001
+  // locals: System.Runtime.CompilerServices.DefaultInterpolatedStringHandler
+  // ----------------------------------------------------------------
+  //   === Patches.cs:12:13-12:37 ===
+  IL_0000:   ldsfld         Field::GodMode
+  IL_0005:   callvirt       MelonLoader.MelonPreferences_Entry`1<bool>::get_Value() -> !0
+  IL_000A:   brtrue.s       IL_000E
+  //   === Patches.cs:13:17-13:29 ===
+  IL_000C:   ldc.i4.1       
+  IL_000D:   ret            
+  //   === Patches.cs:15 ===
+  IL_000E:   ldloca.s       local(0x0000)    ; <== IL_000A
+  IL_0010:   ldc.i4.s       34
+  IL_0012:   ldc.i4.1       
+  IL_0013:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::.ctor(int, int) -> void
+  IL_0018:   ldloca.s       local(0x0000)
+  IL_001A:   ldstr          "[godmode] blocked SubtractHealth("
+  IL_001F:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral(string) -> void
+  IL_0024:   ldloca.s       local(0x0000)
+  IL_0026:   ldarg.0        
+  IL_0027:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<float>
+  IL_002C:   ldloca.s       local(0x0000)
+  IL_002E:   ldstr          ")"
+  IL_0033:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral(string) -> void
+  IL_0038:   ldloca.s       local(0x0000)
+  IL_003A:   call           System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::ToStringAndClear() -> string
+  IL_003F:   call           MelonLoader.MelonLogger::Msg(string) -> void
+  //   === Patches.cs:16 ===
+  IL_0044:   ldc.i4.0       
+  IL_0045:   ret            
+
+##############################################################################################################
+# TYPE PTTRMod.SetHealthPatch  :  System.Object
+##############################################################################################################
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x06000009   Prefix(float setHealthTo, bool loweringHealth) : bool
+  // RVA 0x2332   file offset 0x0532   TINY header 1 B
+  // codeSize=18   maxStack=8   localVarSigTok=нет
+  // ----------------------------------------------------------------
+  //   === Patches.cs:26:13-26:54 ===
+  IL_0000:   ldsfld         Field::GodMode
+  IL_0005:   callvirt       MelonLoader.MelonPreferences_Entry`1<bool>::get_Value() -> !0
+  IL_000A:   ldarg.1        
+  IL_000B:   and            
+  IL_000C:   brfalse.s      IL_0010
+  //   === Patches.cs:27:17-27:30 ===
+  IL_000E:   ldc.i4.0       
+  IL_000F:   ret            
+  //   === Patches.cs:29 ===
+  IL_0010:   ldc.i4.1           ; <== IL_000C
+  IL_0011:   ret            
+
+##############################################################################################################
+# TYPE PTTRMod.HitEnemyPatch  :  System.Object
+##############################################################################################################
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x0600000A   Prefix(ref float damage) : void
+  // RVA 0x2348   file offset 0x0548   FAT header 12 B
+  // codeSize=26   maxStack=3   localVarSigTok=0x11000003
+  // locals: float
+  // ----------------------------------------------------------------
+  //   === Patches.cs:39:13-39:50 ===
+  IL_0000:   ldsfld         Field::DamageScale
+  IL_0005:   callvirt       MelonLoader.MelonPreferences_Entry`1<float>::get_Value() -> !0
+  IL_000A:   stloc.0        
+  //   === Patches.cs:40:13-40:29 ===
+  IL_000B:   ldloc.0        
+  IL_000C:   ldc.r4         1.0
+  IL_0011:   beq.s          IL_0019
+  //   === Patches.cs:41:17-41:33 ===
+  IL_0013:   ldarg.0        
+  IL_0014:   ldarg.0        
+  IL_0015:   ldind.r4       
+  IL_0016:   ldloc.0        
+  IL_0017:   mul            
+  IL_0018:   stind.r4       
+  //   === Patches.cs:42 ===
+  IL_0019:   ret                ; <== IL_0011
+
+##############################################################################################################
+# TYPE PTTRMod.DiePatch  :  System.Object
+##############################################################################################################
+
+  // ----------------------------------------------------------------
+  // MethodDef 0x0600000B   Prefix() : bool
+  // RVA 0x236E   file offset 0x056E   TINY header 1 B
+  // codeSize=14   maxStack=8   localVarSigTok=нет
+  // ----------------------------------------------------------------
+  //   === Patches.cs:51:13-51:40 ===
+  IL_0000:   ldsfld         Field::GodMode
+  IL_0005:   callvirt       MelonLoader.MelonPreferences_Entry`1<bool>::get_Value() -> !0
+  IL_000A:   ldc.i4.0       
+  IL_000B:   ceq            
+  IL_000D:   ret            
+
+==============================================================================================================
+ Конец листинга
+==============================================================================================================

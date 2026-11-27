@@ -1,0 +1,460 @@
+##############################################################################################################
+#  PTTRMod.dll — ПОЛНЫЙ ДАМП МЕТАДАННЫХ .NET (ECMA-335 + Portable PDB)
+##############################################################################################################
+
+==============================================================================================================
+1. PE / COFF ЗАГОЛОВКИ
+==============================================================================================================
+
+Machine               : 0x014C  (IMAGE_FILE_MACHINE_I386 — стандарт для AnyCPU .NET)
+NumberOfSections      : 3
+TimeDateStamp         : 0xC0DE0F5E   (детерминированная сборка: поле занято хэшем)
+SizeOfOptionalHeader  : 224
+Characteristics       : 0x2022  (EXECUTABLE_IMAGE | 32BIT_MACHINE | DLL)
+Magic                 : 0x010B  (PE32)
+LinkerVersion         : 48.0
+ImageBase             : 0x10000000   SectionAlignment: 0x2000   FileAlignment: 0x200
+AddressOfEntryPoint   : 0x367E  (заглушка _CorDllMain)
+SizeOfImage           : 0x8000   SizeOfHeaders: 0x200   CheckSum: 0x0 (не рассчитан)
+Subsystem             : 3 (WINDOWS_CUI)   DllCharacteristics: 0x8560
+
+Секции:
+  Имя       VirtAddr  VirtSize  RawPtr  RawSize  Characteristics
+  .text     0x002000   0x01684   0x00200  0x01800  0x60000020
+  .rsrc     0x004000   0x002A0   0x01A00  0x00400  0x40000040
+  .reloc    0x006000   0x0000C   0x01E00  0x00200  0x42000040
+
+Data directories:
+  IMAGE_DIRECTORY_ENTRY_IMPORT       RVA=0x362B  Size=0x4F
+  IMAGE_DIRECTORY_ENTRY_RESOURCE     RVA=0x4000  Size=0x2A0
+  IMAGE_DIRECTORY_ENTRY_BASERELOC    RVA=0x6000  Size=0xC
+  IMAGE_DIRECTORY_ENTRY_DEBUG        RVA=0x3554  Size=0x54
+  IMAGE_DIRECTORY_ENTRY_IAT          RVA=0x2000  Size=0x8
+  IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR RVA=0x2008  Size=0x48
+
+Неуправляемые импорты:
+  mscoree.dll   : _CorDllMain
+
+Ресурс RT_VERSION (то, что видно в «Свойствах файла»):
+  FileDescription  : (пусто)
+  FileVersion      : 0.0.0.0
+  InternalName     : PTTRMod.dll
+  OriginalFilename : PTTRMod.dll
+  ProductVersion   : 0.0.0.0
+  Assembly Version : 0.0.0.0
+  Translation      : 0x0004 (en-US), codepage 0x04B0 (Unicode)
+  ВНИМАНИЕ: здесь 0.0.0.0, а в MelonInfo и в таблице Assembly — 1.0.0.
+
+==============================================================================================================
+2. CLR-ЗАГОЛОВОК (IMAGE_COR20_HEADER) и DEBUG-ДИРЕКТОРИЯ
+==============================================================================================================
+
+cb                    : 72
+RuntimeVersion        : 2.5   (CLR 2.5 в заголовке; строка метаданных v4.0.30319)
+MetaData              : RVA 0x2380  Size 0x11D4
+Flags                 : 0x0001  (COMIMAGE_FLAGS_ILONLY — только IL, без mixed-mode)
+EntryPointToken       : 0x00000000  (точки входа нет — это DLL)
+Resources             : RVA 0x0  Size 0x0  (встроенных ресурсов нет)
+StrongNameSignature   : RVA 0x0  Size 0x0  (сборка НЕ подписана)
+
+Debug-директория:
+  Type=2   SizeOfData=92  PointerToRawData=0x17A8
+    CodeView RSDS: GUID=353e7a0401dad747aa484142f38d877c  Age=1
+    Путь: E:\romagame\PTTR-Source\mods\PTTRMod\obj\Release\net6.0\PTTRMod.pdb
+  Type=19  SizeOfData=39  PointerToRawData=0x1804
+    Reproducible: algo='SHA256', digest=353E7A0401DAD7C7AA484142F38D877CA3397580236B3136419CA20D78A8298D
+  Type=16  SizeOfData=0   PointerToRawData=0x0
+
+Сверка DLL <-> PDB:
+  SHA256(PTTRMod.pdb с обнулённым 20-байтным #Pdb ID) = 353E7A0401DAD7C7AA484142F38D877CA3397580236B3136419CA20D78A8298D
+  Записано в DLL (debug type 19)                     = 353E7A0401DAD7C7AA484142F38D877CA3397580236B3136419CA20D78A8298D
+  RSDS GUID  = 353e7a0401dad747aa484142f38d877c
+  #Pdb ID    = 353e7a0401dad747aa484142f38d877c   stamp = a3397580
+  ИТОГ: хэш совпадает → PDB гарантированно от этой самой сборки (детерминированная сборка).
+
+==============================================================================================================
+3. METADATA ROOT и ПОТОКИ
+==============================================================================================================
+
+Signature             : 0x424A5342  ('BSJB')
+Version               : 1/1
+VersionString         : 'v4.0.30319'
+Flags                 : 0x0
+
+  Поток        Файловый offset   Размер
+  #~             0x005EC           1152
+  #Strings       0x00A6C           1424
+  #US            0x00FFC           808
+  #GUID          0x01324           16
+  #Blob          0x01334           1056
+
+  Таблица                  Строк   Смысл
+  Module                   1       файл модуля
+  TypeRef                  36      внешние типы
+  TypeDef                  8       объявленные типы
+  Field                    5       поля мода
+  MethodDef                11      методы
+  Param                    4       имена параметров Prefix()
+  MemberRef                39      вызываемые члены
+  CustomAttribute          17      атрибуты
+  DeclSecurity             1       RequestMinimum
+  StandAloneSig            3       сигнатуры локалов
+  TypeSpec                 2       два инстанса MelonPreferences_Entry<T>
+  Assembly                 1       сама сборка
+  AssemblyRef              6       ссылки
+  MethodSpec               7       generic-инстансы вызовов
+
+Отсутствуют напрочь: InterfaceImpl, Property/PropertyMap, Event/EventMap, NestedClass,
+GenericParam/GenericParamConstraint, MethodImpl, ModuleRef, ImplMap, FieldRVA, FieldLayout,
+ClassLayout, Constant, MethodSemantics, FieldMarshal, ManifestResource, File.
+Вывод: обычный маленький плагин — 1 класс мода, 4 статических класса-патчера, 2 служебных типа,
+сгенерированных компилятором (EmbeddedAttribute и RefSafetyRulesAttribute).
+
+==============================================================================================================
+4. ASSEMBLY / MODULE
+==============================================================================================================
+
+Assembly.Name       : PTTRMod
+Assembly.Version    : 0.0.0.0
+Assembly.Culture    : '' (нейтральная)
+Assembly.Flags      : 0x00000000
+Assembly.HashAlgId  : 0x00008004  (0x8004 = CALG_SHA1)
+Assembly.PublicKey  : нет
+Module.Name         : PTTRMod.dll
+Module.Mvid         : d47a5c73-b959-4bed-ac54-a68cf546ae34
+Module  Generation : 0
+
+Атрибуты уровня сборки (декодированы из блобов):
+  [assembly: CompilationRelaxations(8)]        // NoStringInterning
+  [assembly: RuntimeCompatibility(WrapNonExceptionThrows = true)]
+  [assembly: Debuggable((DebuggableAttribute.DebuggingModes)2)]   // IgnoreSymbolStoreSequencePoints — оптимизированный Release
+  [assembly: MelonInfo(typeof(PTTRMod.Main), "PTTR Mod", "1.0.0", "olivia")]
+  [assembly: MelonGame(null, null)]            // привязки к игре нет — грузится где угодно
+  [assembly: TargetFramework(".NETCoreApp,Version=v6.0", FrameworkDisplayName = ".NET 6.0")]
+  [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
+  [module: UnverifiableCode]
+
+DeclSecurity[1]: Action=8 (RequestMinimum), Parent=Assembly
+  PermissionSet = System.Security.Permissions.SecurityPermissionAttribute, System.Runtime,
+                  Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
+                  свойство SkipVerification = true
+
+==============================================================================================================
+5. ASSEMBLYREF — зависимости
+==============================================================================================================
+
+  #  Имя                          Версия     PublicKeyToken       Назначение
+  1  System.Runtime               6.0.0.0    b03f5f7f11d50a3a     базовая библиотека .NET 6 — все типы System.*
+  2  MelonLoader                  0.6.6.0    —                    загрузчик модов MelonLoader
+  3  0Harmony                     2.10.2.0   —                    движок патчинга Harmony 2
+  4  Assembly-CSharp              1.0.0.0    —                    игровая сборка, в ней класс PTTRPlayer
+  5  UnityEngine.InputLegacyModule 0.0.0.0    —                    ввод Unity (Input, KeyCode)
+  6  UnityEngine.CoreModule       0.0.0.0    —                    ядро Unity (Object, Component, Transform, Vector3)
+
+  TypeRef (36) — с указанием, из какой сборки взят каждый тип:
+    [ 1] System.Runtime.CompilerServices.CompilationRelaxationsAttribute <- System.Runtime
+    [ 2] System.Runtime.CompilerServices.RuntimeCompatibilityAttribute  <- System.Runtime
+    [ 3] System.Diagnostics.DebuggableAttribute                         <- System.Runtime
+    [ 4] DebuggingModes                                                 <- вложенный в DebuggableAttribute
+    [ 5] System.Type                                                    <- System.Runtime
+    [ 6] MelonLoader.MelonInfoAttribute                                 <- MelonLoader
+    [ 7] MelonLoader.MelonGameAttribute                                 <- MelonLoader
+    [ 8] System.Runtime.Versioning.TargetFrameworkAttribute             <- System.Runtime
+    [ 9] System.Security.Permissions.SecurityAction                     <- System.Runtime
+    [10] System.Security.Permissions.SecurityPermissionAttribute        <- System.Runtime
+    [11] System.Security.UnverifiableCodeAttribute                      <- System.Runtime
+    [12] System.Runtime.CompilerServices.CompilerGeneratedAttribute     <- System.Runtime
+    [13] System.Attribute                                               <- System.Runtime
+    [14] System.AttributeTargets                                        <- System.Runtime
+    [15] System.AttributeUsageAttribute                                 <- System.Runtime
+    [16] MelonLoader.MelonMod                                           <- MelonLoader
+    [17] MelonLoader.MelonPreferences_Entry`1                           <- MelonLoader
+    [18] HarmonyLib.Harmony                                             <- 0Harmony
+    [19] System.Runtime.CompilerServices.DefaultInterpolatedStringHandler <- System.Runtime
+    [20] PTTRPlayer                                                     <- Assembly-CSharp
+    [21] HarmonyLib.HarmonyPatch                                        <- 0Harmony
+    [22] System.Object                                                  <- System.Runtime
+    [23] MelonLoader.MelonPreferences                                   <- MelonLoader
+    [24] MelonLoader.MelonPreferences_Category                          <- MelonLoader
+    [25] MelonLoader.Preferences.ValueValidator                         <- MelonLoader
+    [26] System.RuntimeTypeHandle                                       <- System.Runtime
+    [27] System.Reflection.Assembly                                     <- System.Runtime
+    [28] MelonLoader.MelonBase                                          <- MelonLoader
+    [29] MelonLoader.MelonLogger                                        <- MelonLoader
+    [30] Instance                                                       <- вложенный в MelonLogger
+    [31] UnityEngine.Input                                              <- UnityEngine.InputLegacyModule
+    [32] UnityEngine.KeyCode                                            <- UnityEngine.CoreModule
+    [33] UnityEngine.Object                                             <- UnityEngine.CoreModule
+    [34] UnityEngine.Component                                          <- UnityEngine.CoreModule
+    [35] UnityEngine.Transform                                          <- UnityEngine.CoreModule
+    [36] UnityEngine.Vector3                                            <- UnityEngine.CoreModule
+
+==============================================================================================================
+6. TYPEDEF — объявленные типы
+==============================================================================================================
+
+  [1] <Module>
+       flags = 0x00000000   base = (нет)
+       fields  = []
+       methods = []
+  [2] Microsoft.CodeAnalysis.EmbeddedAttribute
+       flags = 0x00100100   base = System.Attribute
+       fields  = []
+       methods = ['.ctor']
+  [3] System.Runtime.CompilerServices.RefSafetyRulesAttribute
+       flags = 0x00100100   base = System.Attribute
+       fields  = ['Version']
+       methods = ['.ctor']
+  [4] PTTRMod.Main
+       flags = 0x00100001   base = MelonLoader.MelonMod
+       fields  = ['GodMode', 'DamageScale', 'LogPlayerHealth', 'Patcher']
+       methods = ['OnInitializeMelon', 'OnUpdate', 'DumpPlayerState', '.ctor', '.cctor']
+  [5] PTTRMod.SubtractHealthPatch
+       flags = 0x00100180   base = System.Object
+       fields  = []
+       methods = ['Prefix']
+  [6] PTTRMod.SetHealthPatch
+       flags = 0x00100180   base = System.Object
+       fields  = []
+       methods = ['Prefix']
+  [7] PTTRMod.HitEnemyPatch
+       flags = 0x00100180   base = System.Object
+       fields  = []
+       methods = ['Prefix']
+  [8] PTTRMod.DiePatch
+       flags = 0x00100180   base = System.Object
+       fields  = []
+       methods = ['Prefix']
+
+  Пояснение по типам 2 и 3: EmbeddedAttribute и RefSafetyRulesAttribute — это внутренние маркеры,
+  которые Roslyn (C# 13 / .NET 9 SDK) вставляет в каждую сборку. К логике мода они отношения не имеют.
+  4 статических класса-патчера (SubtractHealthPatch, SetHealthPatch, HitEnemyPatch, DiePatch)
+  имеют флаг BeforeFieldInit и Sealed|Abstract — так компилятор оформляет статические классы.
+
+==============================================================================================================
+7. FIELDS
+==============================================================================================================
+
+  #  Имя              Flags        Тип (из сигнатуры)
+  1  Version          0x0026       int
+     ↳ public readonly int (генерируется компилятором)
+  2  GodMode          0x0013       MelonLoader.MelonPreferences_Entry`1<bool>
+     ↳ internal static MelonPreferences_Entry<bool>
+  3  DamageScale      0x0013       MelonLoader.MelonPreferences_Entry`1<float>
+     ↳ internal static MelonPreferences_Entry<float>
+  4  LogPlayerHealth  0x0013       MelonLoader.MelonPreferences_Entry`1<bool>
+     ↳ internal static MelonPreferences_Entry<bool>
+  5  Patcher          0x0031       HarmonyLib.Harmony
+     ↳ private static readonly HarmonyLib.Harmony
+
+==============================================================================================================
+8. METHODS — сигнатуры и флаги
+==============================================================================================================
+
+  #   Тип::Имя                     Flags  ImplFlags  RVA     Сигнатура
+   1  EmbeddedAttribute     ::.ctor            0x1886 0x0000  0x2050  () -> void
+   2  RefSafetyRulesAttribute::.ctor            0x1886 0x0000  0x2058  (int arg0) -> void
+   3  Main                  ::OnInitializeMelon 0x00C6 0x0000  0x2068  () -> void
+   4  Main                  ::OnUpdate         0x00C6 0x0000  0x2104  () -> void
+   5  Main                  ::DumpPlayerState  0x0091 0x0000  0x21F4  () -> void
+   6  Main                  ::.ctor            0x1886 0x0000  0x22C6  () -> void
+   7  Main                  ::.cctor           0x1891 0x0000  0x22CE  () -> void
+   8  SubtractHealthPatch   ::Prefix           0x0091 0x0000  0x22E0  (float amount) -> bool
+   9  SetHealthPatch        ::Prefix           0x0091 0x0000  0x2332  (float setHealthTo, bool loweringHealth) -> bool
+  10  HitEnemyPatch         ::Prefix           0x0091 0x0000  0x2348  (ref float damage) -> void
+  11  DiePatch              ::Prefix           0x0091 0x0000  0x236E  () -> bool
+
+  Флаги методов (0x1886 / 0x00C6 / 0x0091 / 0x1891):
+   0x1886 = Public | HideBySig | SpecialName | RTSpecialName       -> .ctor
+   0x00C6 = Public | HideBySig | Virtual | NewSlot                 -> OnInitializeMelon, OnUpdate
+   0x0091 = Private | HideBySig | Static                          -> DumpPlayerState, Prefix x4
+   0x1891 = Private | HideBySig | Static | SpecialName | RTSpecialName -> .cctor
+   ImplFlags везде 0x0000 = IL | Managed.
+
+==============================================================================================================
+9. PARAM
+==============================================================================================================
+
+  [1] amount           sequence=1 flags=0x0000
+  [2] setHealthTo      sequence=1 flags=0x0000
+  [3] loweringHealth   sequence=2 flags=0x0000
+  [4] damage           sequence=1 flags=0x0000
+
+==============================================================================================================
+10. MEMBERREF — всё, что вызывается
+==============================================================================================================
+
+  [ 1] System.Runtime.CompilerServices.CompilationRelaxationsAttribute::.ctor(int) -> void
+  [ 2] System.Runtime.CompilerServices.RuntimeCompatibilityAttribute::.ctor() -> void
+  [ 3] System.Diagnostics.DebuggableAttribute::.ctor(DebuggingModes) -> void
+  [ 4] MelonLoader.MelonInfoAttribute::.ctor(System.Type, string, string, string, string) -> void
+  [ 5] MelonLoader.MelonGameAttribute::.ctor(string, string) -> void
+  [ 6] System.Runtime.Versioning.TargetFrameworkAttribute::.ctor(string) -> void
+  [ 7] System.Security.Permissions.SecurityPermissionAttribute::.ctor(System.Security.Permissions.SecurityAction) -> void
+  [ 8] System.Security.UnverifiableCodeAttribute::.ctor() -> void
+  [ 9] System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor() -> void
+  [10] System.AttributeUsageAttribute::.ctor(System.AttributeTargets) -> void
+  [11] HarmonyLib.HarmonyPatch::.ctor(System.Type, string) -> void
+  [12] System.Attribute::.ctor() -> void
+  [13] MelonLoader.MelonPreferences::CreateCategory(string, string) -> MelonLoader.MelonPreferences_Category
+  [14] MelonLoader.MelonPreferences_Category::CreateEntry(string, !!0, string, string, bool, bool, MelonLoader.Preferences.ValueValidator, string) -> MelonLoader.MelonPreferences_Entry`1<!!0>
+  [15] System.Type::GetTypeFromHandle(System.RuntimeTypeHandle) -> System.Type
+  [16] System.Type::get_Assembly() -> System.Reflection.Assembly
+  [17] HarmonyLib.Harmony::PatchAll(System.Reflection.Assembly) -> void
+  [18] MelonLoader.MelonBase::get_LoggerInstance() -> Instance
+  [19] Instance::Msg(string) -> void
+  [20] UnityEngine.Input::GetKeyDown(UnityEngine.KeyCode) -> bool
+  [21] MelonPreferences_Entry<T>[TypeSpec 1]::get_Value() -> !0
+  [22] MelonPreferences_Entry<T>[TypeSpec 1]::set_Value(!0) -> void
+  [23] MelonLoader.MelonPreferences::Save() -> void
+  [24] System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::.ctor(int, int) -> void
+  [25] System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendLiteral(string) -> void
+  [26] System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted(!!0) -> void
+  [27] System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::ToStringAndClear() -> string
+  [28] MelonPreferences_Entry<T>[TypeSpec 2]::get_Value() -> !0
+  [29] MelonPreferences_Entry<T>[TypeSpec 2]::set_Value(!0) -> void
+  [30] UnityEngine.Object::FindObjectOfType() -> !!0
+  [31] UnityEngine.Object::op_Equality(UnityEngine.Object, UnityEngine.Object) -> bool
+  [32] MelonLoader.MelonLogger::Msg(string) -> void
+  [33] PTTRPlayer::get_health() -> float
+  [34] UnityEngine.Component::get_transform() -> UnityEngine.Transform
+  [35] UnityEngine.Transform::get_position() -> UnityEngine.Vector3
+  [36] PTTRPlayer::get_healthBoost() -> int
+  [37] PTTRPlayer::get_damageUpgrade() -> int
+  [38] MelonLoader.MelonMod::.ctor() -> void
+  [39] HarmonyLib.Harmony::.ctor(string) -> void
+
+==============================================================================================================
+11. TYPESPEC / METHODSPEC / STANDALONESIG
+==============================================================================================================
+
+TypeSpec (обобщённые инстансы, нужны для полей и вызовов):
+  [1] MelonLoader.MelonPreferences_Entry`1<bool>
+  [2] MelonLoader.MelonPreferences_Entry`1<float>
+
+MethodSpec (generic-инстансы вызовов):
+  [1] MelonLoader.MelonPreferences_Category::CreateEntry<bool>
+  [2] MelonLoader.MelonPreferences_Category::CreateEntry<float>
+  [3] System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<bool>
+  [4] System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<float>
+  [5] UnityEngine.Object::FindObjectOfType<PTTRPlayer>
+  [6] System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<UnityEngine.Vector3>
+  [7] System.Runtime.CompilerServices.DefaultInterpolatedStringHandler::AppendFormatted<int>
+
+StandAloneSig (сигнатуры локальных переменных):
+  [1] System.Runtime.CompilerServices.DefaultInterpolatedStringHandler
+  [2] PTTRPlayer, System.Runtime.CompilerServices.DefaultInterpolatedStringHandler
+  [3] float
+
+==============================================================================================================
+12. CUSTOMATTRIBUTE — все 17 с расшифрованными аргументами
+==============================================================================================================
+
+  [ 1] parent = Module    PTTRMod.dll
+       ctor  = System.Security.UnverifiableCodeAttribute::.ctor
+       blob  = 01000000
+  [ 2] parent = Module    PTTRMod.dll
+       ctor  = MethodDef .ctor
+       blob  = 01000b0000000000
+  [ 3] parent = Assembly  PTTRMod
+       ctor  = System.Runtime.CompilerServices.CompilationRelaxationsAttribute::.ctor
+       blob  = 0100080000000000
+  [ 4] parent = Assembly  PTTRMod
+       ctor  = System.Runtime.CompilerServices.RuntimeCompatibilityAttribute::.ctor
+       blob  = 01000100540216577261704e6f6e457863657074696f6e5468726f777301
+  [ 5] parent = Assembly  PTTRMod
+       ctor  = System.Diagnostics.DebuggableAttribute::.ctor
+       blob  = 0100020000000000
+  [ 6] parent = Assembly  PTTRMod
+       ctor  = MelonLoader.MelonInfoAttribute::.ctor
+       blob  = 01000c505454524d6f642e4d61696e0850545452204d6f6405312e302e30066f6c69766961ff0000
+  [ 7] parent = Assembly  PTTRMod
+       ctor  = MelonLoader.MelonGameAttribute::.ctor
+       blob  = 0100ffff0000
+  [ 8] parent = Assembly  PTTRMod
+       ctor  = System.Runtime.Versioning.TargetFrameworkAttribute::.ctor
+       blob  = 0100182e4e4554436f72654170702c56657273696f6e3d76362e300100540e144672616d65776f726b446973706c61794e616d65082e4e455420362e30
+  [ 9] parent = TypeDef   Microsoft.CodeAnalysis.EmbeddedAttribute
+       ctor  = System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor
+       blob  = 01000000
+  [10] parent = TypeDef   Microsoft.CodeAnalysis.EmbeddedAttribute
+       ctor  = MethodDef .ctor
+       blob  = 01000000
+  [11] parent = TypeDef   System.Runtime.CompilerServices.RefSafetyRulesAttribute
+       ctor  = System.Runtime.CompilerServices.CompilerGeneratedAttribute::.ctor
+       blob  = 01000000
+  [12] parent = TypeDef   System.Runtime.CompilerServices.RefSafetyRulesAttribute
+       ctor  = MethodDef .ctor
+       blob  = 01000000
+  [13] parent = TypeDef   System.Runtime.CompilerServices.RefSafetyRulesAttribute
+       ctor  = System.AttributeUsageAttribute::.ctor
+       blob  = 010002000000020054020d416c6c6f774d756c7469706c6500540209496e6865726974656400
+  [14] parent = TypeDef   PTTRMod.SubtractHealthPatch
+       ctor  = HarmonyLib.HarmonyPatch::.ctor
+       blob  = 01005250545452506c617965722c20417373656d626c792d4353686172702c2056657273696f6e3d312e302e302e302c2043756c747572653d6e65757472616c2c205075626c69634b6579546f6b656e3d6e756c6c0e53756274726163744865616c74680000
+  [15] parent = TypeDef   PTTRMod.SetHealthPatch
+       ctor  = HarmonyLib.HarmonyPatch::.ctor
+       blob  = 01005250545452506c617965722c20417373656d626c792d4353686172702c2056657273696f6e3d312e302e302e302c2043756c747572653d6e65757472616c2c205075626c69634b6579546f6b656e3d6e756c6c095365744865616c74680000
+  [16] parent = TypeDef   PTTRMod.HitEnemyPatch
+       ctor  = HarmonyLib.HarmonyPatch::.ctor
+       blob  = 01005250545452506c617965722c20417373656d626c792d4353686172702c2056657273696f6e3d312e302e302e302c2043756c747572653d6e65757472616c2c205075626c69634b6579546f6b656e3d6e756c6c08486974456e656d790000
+  [17] parent = TypeDef   PTTRMod.DiePatch
+       ctor  = HarmonyLib.HarmonyPatch::.ctor
+       blob  = 01005250545452506c617965722c20417373656d626c792d4353686172702c2056657273696f6e3d312e302e302e302c2043756c747572653d6e65757472616c2c205075626c69634b6579546f6b656e3d6e756c6c034469650000
+
+  Пояснение к строкам 1–2 и 10/12 (ctor = MethodDef .ctor):
+   [1] [module: UnverifiableCode]
+   [2] [module: RefSafetyRules(11)]        blob 01 00 0B000000 00 -> int32 Version = 11
+   [10] [Microsoft.CodeAnalysis.Embedded]  на самом типе EmbeddedAttribute
+   [12] [Microsoft.CodeAnalysis.Embedded]  на типе RefSafetyRulesAttribute
+   Это стандартные маркеры Roslyn, к логике мода отношения не имеют.
+
+  Расшифровка ключевых блобов:
+   MelonInfo(6): 01 00  0C 'PTTRMod.Main'  08 'PTTR Mod'  05 '1.0.0'  06 'olivia'  FF 00 00
+       prolog│  │длина │тип          │имя       │версия  │автор    │null  │набор свойств(пусто)
+   MelonGame(7): 01 00  FF FF  00 00    →  (null, null)
+   Security(4):  01 00 01 00 54 02 16 WrapNonExceptionThrows 01  — RuntimeCompatibility
+   Debuggable(5):01 00 02 00 00 00 → DebuggingModes = 2 (IgnoreSymbolStoreSequencePoints), оптимизированный код
+   CompilationRelaxations(3): 01 00 08 00 00 00 → value=8
+   TargetFramework(8): 01 00 18 '.NETCoreApp,Version=v6.0' 01 00 54 0E 14 'FrameworkDisplayName' 08 '.NET 6.0'
+   AttributeUsage(13): 01 00 02 00 00 00 02 00 54 02 0D 'AllowMultiple' 00 54 02 09 'Inherited' 00
+   HarmonyPatch(14..17): 01 00 52 'PTTRPlayer, Assembly-CSharp, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'
+                        0E 'SubtractHealth' / 09 'SetHealth' / 08 'HitEnemy' / 03 'Die'   00 00
+
+==============================================================================================================
+13. USER STRINGS (#US) — все литералы кода
+==============================================================================================================
+
+   1. offset 0x0001  'PTTRMod'
+   2. offset 0x0011  'PTTR Mod'
+   3. offset 0x0023  'GodMode'
+   4. offset 0x0033  'Ignore incoming damage'
+   5. offset 0x0061  'DamageScale'
+   6. offset 0x0079  'Multiplier on damage the player deals'
+   7. offset 0x00C5  'LogPlayerHealth'
+   8. offset 0x00E5  'Print player health every second'
+   9. offset 0x0127  'PTTRMod ready. F1 godmode, F2 damage x5, F3 dump player state.'
+  10. offset 0x01A5  'GodMode = '
+  11. offset 0x01BB  'DamageScale = '
+  12. offset 0x01D9  'No PTTRPlayer in scene.'
+  13. offset 0x0209  'player.health = '
+  14. offset 0x022B  'player.transform.position = '
+  15. offset 0x0265  'player.healthBoost = '
+  16. offset 0x0291  ', damageUpgrade = '
+  17. offset 0x02B7  'com.olivia.pttrmod'
+  18. offset 0x02DD  '[godmode] blocked SubtractHealth('
+  19. offset 0x0321  ')'
+
+==============================================================================================================
+14. ИТОГОВАЯ СВОДКА
+==============================================================================================================
+
+  Что это: плагин MelonLoader для игры, чья игровая сборка называется Assembly-CSharp и содержит
+  класс PTTRPlayer (префикс PTTR = название игры; мод называется «PTTR Mod», версия 1.0.0, автор olivia).
+  Собран из C# в Release под net6.0, компилятор Roslyn 4.14 (SDK .NET 9.0.14), C# 13, unsafe=true.
+  Размер кода: 11 методов с телом, 739 байт IL, 0 блоков исключений, 0 встроенных ресурсов.
+  Внешние зависимости: MelonLoader 0.6.6, Harmony 2.10.2, Assembly-CSharp (игра), UnityEngine.
+  Вредоносного поведения нет: нет сети, нет файловых операций, нет рефлексии по строкам,
+  нет обфускации, нет DynamicMethod/Assembly.Load, нет P/Invoke, нет чтения памяти.
+  Всё, что делает мод — 3 читаемых настройки + 4 Harmony-патча на класс PTTRPlayer.
+

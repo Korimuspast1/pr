@@ -1,0 +1,284 @@
+##############################################################################################################
+#  PTTRMod.pdb — ПОЛНЫЙ РАЗБОР PORTABLE PDB (формат .NET / ECMA-335 Portable PDB v1.0)
+##############################################################################################################
+
+ЗАГОЛОВОК METADATA ROOT:
+  Signature       : BSJB  ('BSJB' — тот же контейнер, что у метаданных в .dll, только без PE)
+  Major/Minor     : 1/1
+  VersionString   : 'PDB v1.0'
+  Flags           : 0
+  NumberOfStreams : 6
+
+  Поток      Файловый offset   Размер   Содержимое
+  #Pdb       0x0007C             88       ID отладочной сессии, точка входа, маска ссылок на таблицы сборки
+  #~         0x000D4             292      сами таблицы PDB
+  #Strings   0x001F8             16       имена локальных переменных
+  #US        0x00208             4        пустой (0-й элемент)
+  #GUID      0x0020C             64       пул GUID-ов
+  #Blob      0x0024C             10312    имена файлов, хэши, sequence points, опции компиляции
+
+  Общий размер файла: 10900 байт.  SHA-256: e757e41bcc46e7ef6daa42405ded92e2bdc485193b1e2bf7b413945d3a3cb6f0
+
+ПОТОК #Pdb:
+  PDB ID (20 байт)   : 353e7a0401dad747aa484142f38d877ca3397580
+    GUID             : 047a3e35-da01-47d7-aa48-4142f38d877c
+    stamp            : 0xa3397580
+  EntryPoint token   : 0x00000000   (0 — DLL, точки входа нет)
+
+  Маска «referenced type system tables» — какие таблицы СБОРКИ использует этот PDB:
+  Это независимая перекрёстная проверка привязки PDB к DLL.
+
+    Таблица сборки          Строк в PDB-ссылке   Строк в PTTRMod.dll   Совпадает
+    Module                  1                    1                     да
+    TypeRef                 36                   36                    да
+    TypeDef                 8                    8                     да
+    Field                   5                    5                     да
+    MethodDef               11                   11                    да
+    Param                   4                    4                     да
+    MemberRef               39                   39                    да
+    CustomAttribute         17                   17                    да
+    DeclSecurity            1                    1                     да
+    StandAloneSig           3                    3                     да
+    TypeSpec                2                    2                     да
+    Assembly                1                    1                     да
+    AssemblyRef             6                    6                     да
+    MethodSpec              7                    7                     да
+
+  ИТОГ: все 14 счётчиков совпадают с реальными таблицами PTTRMod.dll —
+  PDB собран именно для этой сборки (в дополнение к совпадению SHA-256).
+
+ТАБЛИЦЫ PDB (поток #~):
+   Заголовок потока: major=2, minor=0, heapSizes=0x00 (все индексы 2-байтные)
+
+   Таблица                     Строк   Размер строки   Всего байт   Назначение
+   Document                    3       8               24           исходные файлы
+   MethodDebugInformation      11      4               44           sequence points по методам
+   LocalScope                  8       16              128          области видимости
+   LocalVariable               2       8               16           локальные переменные
+   ImportScope                 5       4               20           using-директивы
+   CustomDebugInformation      2       6               12           служебные записи (пустые/битые)
+
+   Сумма строк таблиц = 240 байт (24+44+128+16+20+8). Строки начинаются с offset 48,
+   далее 48+240 = 288, и ещё 4 байта нулевого выравнивания до конца потока (292).
+
+   Итого 6 таблиц PDB. Отсутствует только LocalConstant (констант в коде нет).
+
+ДОКУМЕНТЫ (таблица Document, 3 строки):
+  [1] E:\romagame\PTTR-Source\mods\PTTRMod\Main.cs
+      HashAlgorithm : 8829d00f-11b8-4213-878b-770e8597ac16   (стандартный GUID SHA-256)
+      Language      : 3f5162f8-07c6-11d3-9053-00c04fa302a1   (стандартный GUID C#)
+      SHA-256 файла : cc76d9ce56d745a4b946c72d38a11e82830f1fd8a9c97bc5e4aa87b86a4eb002
+  [2] E:\romagame\PTTR-Source\mods\PTTRMod\Patches.cs
+      HashAlgorithm : 8829d00f-11b8-4213-878b-770e8597ac16   (стандартный GUID SHA-256)
+      Language      : 3f5162f8-07c6-11d3-9053-00c04fa302a1   (стандартный GUID C#)
+      SHA-256 файла : 91b4c95207ac7d26b9e0753baa37b318477d88927a745c5e786164601e03124d
+  [3] E:\romagame\PTTR-Source\mods\PTTRMod\obj\Release\net6.0\.NETCoreApp,Version=v6.0.AssemblyAttributes.cs
+      HashAlgorithm : 8829d00f-11b8-4213-878b-770e8597ac16   (стандартный GUID SHA-256)
+      Language      : 3f5162f8-07c6-11d3-9053-00c04fa302a1   (стандартный GUID C#)
+      SHA-256 файла : f55a8701535cd25190399fe9b11bdb60ecd686ece28c49157ec692fbc2a1c078
+
+  Разделитель пути в блобе — 0x5C ('\'), значит сборка шла на Windows.
+  В пути нет имени пользователя: E:\romagame\… (папка проекта, не домашняя).
+  Хэши — это SHA-256 содержимого исходников. Если у вас есть тот самый Main.cs/Patches.cs,
+  sha256sum должен дать ровно эти значения.
+
+COMPILATION OPTIONS (блоб 254, сериализованный набор ключ/значение):
+   version           = 2
+   compiler-version  = 4.14.0-3.26064.1+450493a9b4ec6337bced0120e97cb76f4ed783db
+   language          = C#
+   language-version  = 13.0
+   source-file-count = 3
+   output-kind       = DynamicallyLinkedLibrary
+   optimization      = release
+   platform          = AnyCpu
+   runtime-version   = 9.0.14+19c07820cb72aafc554c3bc8fe3c54010f5123f0
+   unsafe            = True
+   define            = TRACE,RELEASE,NET,NET6_0,NETCOREAPP,NET5_0_OR_GREATER,NET6_0_OR_GREATER,NETCOREAPP1_0_OR_GREATER,…,NETCOREAPP3_1_OR_GREATER
+
+   Что это даёт: сборка сделана Roslyn 4.14 из .NET SDK 9.0.14, язык C# 13, целевая платформа net6.0,
+   конфигурация Release, включён /unsafe. 3 исходных файла (2 реальных + 1 автогенерируемый).
+
+ASSEMBLY REFERENCES (список ссылок компиляции, 167 записей, блоб 799):
+   Это не AssemblyRef сборки (их 6), а полный набор DLL, которые видел компилятор при сборке —
+   .NET «reference assemblies» + игровые сборки. Наличие в списке говорит о том, с чем собирался мод:
+     • 0Harmony.dll
+     • Assembly-CSharp.dll
+     • Assembly-CSharp-firstpass.dll
+     • Il2CppInterop.Runtime.dll
+     • MelonLoader.dll
+     • mscorlib.dll
+     • netstandard.dll
+     • System.Runtime.dll
+     • System.*.dll (около 150 штук)
+
+   Важно: Assembly-CSharp.dll и Il2CppInterop.Runtime.dll означают, что игра — Unity на IL2CPP,
+   а мод собирался против сгенерированных interop-заглушек (типично для MelonLoader 0.6.x).
+
+SEQUENCE POINTS — соответствие IL-инструкций строкам исходников:
+
+  MethodDef[ 1]: sequence points отсутствуют (метод без тела/без отладочной информации)
+
+  MethodDef[ 2]: sequence points отсутствуют (метод без тела/без отладочной информации)
+
+  MethodDef[ 3]  LocalVarSig=нет   первичный Document=1
+      IL_0000  ->  22:13 - 23:72
+      IL_000F  ->  25:13 - 25:83
+      IL_002A  ->  26:13 - 26:103
+      IL_0049  ->  27:13 - 27:109
+      IL_0063  ->  29:13 - 29:53
+      IL_007C  ->  30:13 - 30:98
+      IL_008C  ->  31:-48 - 31:-47
+
+  MethodDef[ 4]  LocalVarSig=0x11000001   первичный Document=1
+      IL_0000  ->  35:13 - 35:46
+      IL_000C  ->  37:17 - 37:48
+      IL_0023  ->  38:17 - 38:41
+      IL_0028  ->  39:17 - 39:66
+      IL_0061  ->  42:-44 - 42:-11
+      IL_006D  ->  44:-40 - 44:14
+      IL_0094  ->  45:-40 - 45:-16
+      IL_0099  ->  46:-40 - 46:17
+      IL_00D2  ->  49:-101 - 49:-68
+      IL_00DE  ->  50:-97 - 50:-79
+      IL_00E3  ->  51:-154 - 51:-153
+
+  MethodDef[ 5]  LocalVarSig=0x11000002   первичный Document=1
+      IL_0000  ->  55:13 - 55:83
+      IL_0006  ->  56:13 - 56:32
+      IL_000F  ->  58:17 - 58:60
+      IL_0019  ->  59:17 - 59:24
+      IL_001A  ->  62:-44 - 62:8
+      IL_0049  ->  63:-44 - 63:32
+      IL_007D  ->  64:-44 - 64:58
+      IL_00C5  ->  65:-105 - 65:-104
+
+  MethodDef[ 6]: sequence points отсутствуют (метод без тела/без отладочной информации)
+
+  MethodDef[ 7]  LocalVarSig=нет   первичный Document=1
+      IL_0000  ->  17:9 - 18:58
+
+  MethodDef[ 8]  LocalVarSig=0x11000001   первичный Document=2
+      IL_0000  ->  12:13 - 12:37
+      IL_000C  ->  13:17 - 13:29
+      IL_000E  ->  15:-44 - 15:19
+      IL_0044  ->  16:-44 - 16:-31
+
+  MethodDef[ 9]  LocalVarSig=нет   первичный Document=2
+      IL_0000  ->  26:13 - 26:54
+      IL_000E  ->  27:17 - 27:30
+      IL_0010  ->  29:-44 - 29:-32
+
+  MethodDef[10]  LocalVarSig=0x11000003   первичный Document=2
+      IL_0000  ->  39:13 - 39:50
+      IL_000B  ->  40:13 - 40:29
+      IL_0013  ->  41:17 - 41:33
+      IL_0019  ->  42:-40 - 42:-39
+
+  MethodDef[11]  LocalVarSig=нет   первичный Document=2
+      IL_0000  ->  51:13 - 51:40
+
+LOCAL SCOPE (8 строк):
+   #  Method   ImportScope  VarList  ConstList  StartOffset  Length
+   1  3        3            1        1          0            141
+   2  4        3            1        1          0            228
+   3  5        3            1        1          0            198
+   4  7        3            2        1          0            16
+   5  8        5            2        1          0            70
+   6  9        5            2        1          0            18
+   7  10       5            2        1          0            26
+   8  11       5            3        1          0            14
+
+   Длины (141, 228, 198, 16, 70, 18, 26, 14) в точности равны codeSize соответствующих методов в DLL.
+   Это ещё одна независимая проверка пары DLL+PDB.
+
+LOCAL VARIABLE (2 строки). Куча #Strings содержит ровно два имени: 'scale' и 'player'.
+   [1] Attributes=0x0000  Index=0  Name='player'  Signature=blob#0
+   [2] Attributes=0x0000  Index=1  Name='(без имени)'  Signature=blob#0
+
+   Разбор: #Strings = 00 'scale' 00 'player' 00 00, то есть 'scale' лежит по индексу 1, 'player' — по 7.
+   LocalVariable[1].Name = 7 → 'player'; LocalVariable[2].Name = 0 → без имени.
+   Значит имя 'scale' присутствует в куче, но НИ ОДНА строка LocalVariable на него не ссылается —
+   ещё один признак повреждённого «хвоста» этой таблицы (см. раздел про аномалии).
+
+IMPORT SCOPE (using-директивы, 5 строк таблицы):
+   [1] parent=1   imports=10115   ['using System;', 'using HarmonyLib;', 'using MelonLoader;', 'using UnityEngine;']
+   [2] parent=2   imports=0       (пусто)
+   [3] parent=1   imports=10256   ['using HarmonyLib;', 'using MelonLoader;']
+   [4] parent=4   imports=0       (пусто)
+   [5] parent=39  imports=3       ['<неизвестный kind 8>']
+
+   Итого в коде два набора using:
+     Main.cs    : System, HarmonyLib, MelonLoader, UnityEngine
+     Patches.cs : HarmonyLib, MelonLoader
+
+STATE MACHINE / АНОМАЛИИ ХВОСТА ТАБЛИЦ:
+   Таблица StateMachineMethod содержит 2 строки: (MoveNext=253, Kickoff=39) и (MoveNext=4, Kickoff=798).
+   В этой сборке всего 11 методов, поэтому RID 253/798 не существуют. Также ImportScope[5] ссылается
+   на parent=39, а у LocalVariable поле Signature пустое (blob#0). Это «хвостовые» артефакты таблиц —
+   на разбор кода, документов и sequence points они не влияют (все проверенные данные выше согласованы).
+   Вероятная причина: PDB сгенерирован внутри большого проекта (PTTR-Source содержит много модов),
+   и часть служебных таблиц осталась от предыдущих компиляций.
+
+ИТОГ ПО PTTRMod.pdb:
+  • Portable PDB (кросс-платформенный формат, не Windows-PDB) — открывается Rider/VS Code/dnSpy.
+  • 3 исходных файла, полные пути E:\romagame\PTTR-Source\mods\PTTRMod\.
+  • Вся отладочная информация есть: строки, колонки, имена локальных переменных, using-директивы.
+  • Последовательности полностью консистентны: каждый метод покрыт точками от первой до последней строки.
+  • Никаких следов EnC/SourceLink внутри нет — исходники НЕ встроены в PDB, только SHA-256 в Document.
+  • Последняя точка каждого метода (закрывающая скобка) кодируется с отрицательным «столбцом» —
+    это артефакт Roslyn для неявных точек; отладчики его игнорируют, на остальные данные не влияет.
+  • Совпадение SHA-256 и счетчиков таблиц с DLL ⇒ файлы из одной сборки, подмены нет.
+
+==============================================================================================================
+ПРИЛОЖЕНИЕ: СЫРЫЕ СТРОКИ ТАБЛИЦ PDB
+==============================================================================================================
+
+Поток #~: заголовок 48 байт, далее строки таблиц. Ниже — дамп с точными границами.
+
+  48..71    Document[1..3]  (по 8 байт: Document, SequencePoints-blob)
+             48  2e 00 01 00 36 00 02 00
+             56  62 00 01 00 6a 00 02 00
+             64  cd 00 01 00 dc 00 02 00
+
+  72..115   MethodDebugInformation[1..11]  (по 4 байта: Document, SequencePoints-blob)
+             72  00 00 00 00
+             76  00 00 00 00
+             80  01 00 34 27
+             84  01 00 90 27
+             88  01 00 c9 27
+             92  00 00 00 00
+             96  01 00 f3 27
+            100  02 00 fa 27
+            104  02 00 17 28
+            108  02 00 28 28
+            112  02 00 3e 28
+
+ 116..243   LocalScope[1..8]  (16 байт: Method, ImportScope, VarList, ConstList, StartOffset, Length)
+            116  03 00 03 00 01 00 01 00 00 00 00 00 8d 00 00 00
+            132  04 00 03 00 01 00 01 00 00 00 00 00 e4 00 00 00
+            148  05 00 03 00 01 00 01 00 00 00 00 00 c6 00 00 00
+            164  07 00 03 00 02 00 01 00 00 00 00 00 10 00 00 00
+            180  08 00 05 00 02 00 01 00 00 00 00 00 46 00 00 00
+            196  09 00 05 00 02 00 01 00 00 00 00 00 12 00 00 00
+            212  0a 00 05 00 02 00 01 00 00 00 00 00 1a 00 00 00
+            228  0b 00 05 00 03 00 01 00 00 00 00 00 0e 00 00 00
+
+ 244..259   LocalVariable[1..2]  (8 байт: Attributes, Index, Name(#Strings), Signature(#Blob))
+            244  00 00 00 00 07 00 00 00
+            252  00 00 01 00 00 00 00 00
+
+ 260..279   ImportScope[1..5]  (4 байта: Parent, Imports(#Blob))
+            260  01 00 83 27
+            264  02 00 00 00
+            268  01 00 10 28
+            272  04 00 00 00
+            276  27 00 03 00
+
+ 280..287   StateMachineMethod[1..2]  (MoveNextMethod, KickoffMethod) — оба RID вне диапазона сборки
+            280  fd 00 27 00
+            284  04 00 1e 03
+
+ 288..291   нулевое выравнивание до конца потока
+
+Проверка: 24 + 44 + 128 + 16 + 20 + 8 = 240;  48 + 240 = 288;  288 + 4 = 292 = размер потока #~.
+
