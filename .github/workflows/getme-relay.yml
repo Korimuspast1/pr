@@ -7,13 +7,23 @@ on:
 jobs:
   getme:
     runs-on: ubuntu-latest
-    outputs:
-      status: ${{ steps.getme.outputs.status }}
-      response: ${{ steps.getme.outputs.response }}
+    permissions:
+      contents: write
     steps:
+      - uses: actions/checkout@v4
       - id: getme
         run: |
-          STATUS=$(curl -sS "https://api.telegram.org/bot123:ABC/getMe" -o /tmp/result.json -w '%{http_code}')
-          RESP=$(base64 -w0 /tmp/result.json)
-          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
-          echo "response=$RESP" >> "$GITHUB_OUTPUT"
+          STATUS=$(curl -sS "https://api.telegram.org/bot123:ABC/getMe" -o result.json -w '%{http_code}')
+          echo "HTTP status: $STATUS" > status.txt
+          {
+            echo '### getMe relay'
+            echo '```json'
+            cat result.json
+            echo '```'
+            echo "HTTP status: $STATUS"
+          } >> "$GITHUB_STEP_SUMMARY"
+          git config user.name relay-bot
+          git config user.email relay@users.noreply.github.com
+          git add result.json status.txt
+          git commit -m "relay: getMe result"
+          git push
