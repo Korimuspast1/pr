@@ -20,9 +20,15 @@ on:
       - 'grust-android/**'
       - '.github/workflows/grust-android.yml'
   workflow_dispatch:
+    inputs:
+      smoke:
+        description: 'Только прогон на эмуляторе (APK уже собран)'
+        type: boolean
+        default: false
 
 permissions:
-  contents: write   # only used to attach the APK to a release on a tag
+  contents: write   # used to attach the APK to a release and to commit the screenshots
+  actions: write    # the build job asks for the smoke job through workflow_dispatch
   pull-requests: write
 
 concurrency:
@@ -36,6 +42,7 @@ env:
 jobs:
   build:
     name: Tests and APK
+    if: ${{ inputs.smoke != true }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -117,6 +124,17 @@ jobs:
             --repo "${{ github.repository }}"
           echo "::notice title=Release::Grust-${version}.apk at /releases/tag/$tag"
 
+      - name: Kick off the emulator smoke test
+        # workflow_dispatch is the only trigger the smoke job listens to, and a pull request from a
+        # fork could not use this token anyway - which is why this lives here and not in that job.
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run grust-android.yml --ref "${GITHUB_REF_NAME}" \
+            -f smoke=true --repo "${{ github.repository }}"
+          echo "::notice title=Smoke::requested on ${GITHUB_REF_NAME}"
+
       - name: Attach the APK to a release (tags only)
         if: startsWith(github.ref, 'refs/tags/')
         env:
@@ -127,3 +145,93 @@ jobs:
             --title "Грусть ${GITHUB_REF_NAME}" \
             --notes "Дневник настроения, дыхание и статистика. APK подписан debug-ключом - для установки вручную." \
             --repo "${{ github.repository }}"
+
+  smoke:
+    name: Emulator smoke test
+    # Started by the build job above through workflow_dispatch (with -f smoke=true), so that it runs
+    # on a push to any branch without the workflow having to listen to every push.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.smoke == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: grust-android
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Android SDK
+        run: bash tools/ci-android-sdk.sh
+
+      - name: Build the debug APK
+        run: bash tools/ci-gradle.sh 'assembleDebug'
+
+      - name: Enable KVM
+        # Without KVM the x86_64 emulator is unusably slow; this is the rule the other Android jobs
+        # in this repository use.
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Walk through the app on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          working-directory: grust-android
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: Nexus 6
+          emulator-boot-timeout: 1500
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          disable-spellchecker: true
+          script: |
+            set -o pipefail
+            apk=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+            bash tools/ci-smoke.sh "$apk" ../screenshots-capture | tee ../smoke.log
+
+      - name: Commit the screenshots
+        if: always()
+        continue-on-error: true
+        env:
+          GITHUB_REF_NAME_SAFE: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # A flat copy with fixed names is easier to link from the README than a timestamped tree.
+          rm -rf repo-screens && mkdir -p repo-screens
+          for f in ../screenshots-capture/*.png; do
+            [ -f "$f" ] && cp "$f" "repo-screens/$(basename "$f")"
+          done
+          ls -l repo-screens || true
+          if [ -n "$(ls -A repo-screens 2>/dev/null)" ]; then
+            git -C .. add -f grust-android/repo-screens
+            if ! git -C .. diff --cached --quiet; then
+              git -C .. commit -m "CI: screenshots of the app on API 34 [skip ci]"
+              git -C .. push origin "HEAD:${GITHUB_REF_NAME_SAFE}" || true
+            fi
+          fi
+
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: Grust-screenshots
+          path: |
+            screenshots-capture/*.png
+            smoke.log
+          if-no-files-found: ignore
+
+      - name: Say what happened
+        if: failure()
+        run: |
+          echo "::error title=Smoke::the run failed, see the artifact Grust-screenshots"
