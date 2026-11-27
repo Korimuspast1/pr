@@ -1,0 +1,104 @@
+name: Build Грусть APK
+
+# Builds the "Грусть" Android app (grust-android/). The runner has the Android SDK and a JDK, which
+# is what makes the APK buildable at all: the machine the code is written on has neither, so the
+# artifact is produced here and attached to a GitHub Release.
+#
+# Two conventions in this file come from the other Android jobs in this repository:
+#   * anything worth knowing is printed as ::notice / ::error, because the run logs are not
+#     downloadable from where the project is maintained and annotations are served by the API;
+#   * the SDK is installed by tools/ci-android-sdk.sh rather than by a third-party action.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'grust-android/**'
+      - '.github/workflows/grust-android.yml'
+  pull_request:
+    paths:
+      - 'grust-android/**'
+      - '.github/workflows/grust-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # only used to attach the APK to a release on a tag
+  pull-requests: write
+
+concurrency:
+  group: grust-android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '17'
+  COMPILE_SDK: '37'
+
+jobs:
+  build:
+    name: Tests and APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: grust-android
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Android SDK
+        run: bash tools/ci-android-sdk.sh
+
+      - name: Unit tests
+        run: bash tools/ci-gradle.sh 'testReleaseUnitTest|testRelease|test'
+
+      - name: Assemble the release APK
+        run: bash tools/ci-gradle.sh 'assembleRelease|assemble'
+
+      - name: Annotate Kotlin errors
+        if: failure()
+        run: |
+          set -uo pipefail
+          grep -E '^e: ' ../gradle.log 2>/dev/null | head -80 |
+            sed -E 's|^e: file://([^:]+):([0-9]+):([0-9]+) (.*)$|::error file=\1,line=\2,col=\3::\4|' || true
+          grep -E '^(\* What went wrong|Execution failed|A problem occurred)' ../gradle.log 2>/dev/null |
+            head -10 | sed -E 's|^(.*)$|::error::\1|' || true
+
+      - name: Name the artifact
+        run: |
+          set -euo pipefail
+          version=$(grep '^VERSION_NAME=' version.properties | cut -d= -f2)
+          found=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          if [ -z "$found" ]; then
+            echo "::error::no APK under app/build/outputs/apk/release"
+            find app/build/outputs -type f 2>/dev/null | head -30
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$found" "dist/Grust-${version}.apk"
+          # A checksum next to the file, so whoever downloads it can tell it arrived intact.
+          (cd dist && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          echo "::notice title=APK::dist/Grust-${version}.apk ($(du -h "dist/Grust-${version}.apk" | cut -f1))"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: Grust-APK
+          path: |
+            grust-android/dist/*.apk
+            grust-android/dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Attach the APK to a release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${GITHUB_REF_NAME}" dist/*.apk dist/SHA256SUMS.txt \
+            --title "Грусть ${GITHUB_REF_NAME}" \
+            --notes "Дневник настроения, дыхание и статистика. APK подписан debug-ключом - для установки вручную." \
+            --repo "${{ github.repository }}"
