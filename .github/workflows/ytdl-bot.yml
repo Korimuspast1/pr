@@ -76,6 +76,26 @@ jobs:
             echo "have=1" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: проверяем, что токен живой
+        if: steps.token.outputs.have == '1'
+        env:
+          YTDL_BOT_TOKEN: ${{ secrets.YTDL_BOT_TOKEN }}
+        run: |
+          set +e
+          out=$(cd ytdl-bot && python -c "
+import os, requests
+t = os.environ['YTDL_BOT_TOKEN']
+r = requests.get(f'https://api.telegram.org/bot{t}/getMe', timeout=20).json()
+print('ok:' + r['result']['username'] if r.get('ok') else 'bad:' + str(r.get('description')))
+" 2>&1)
+          echo "$out"
+          case "$out" in
+            ok:*) echo "::notice title=токен живой::$out" ;;
+            bad:Unauthorized)
+              echo "::error title=токен отозван::секрет YTDL_BOT_TOKEN содержит отозванный токен. обнови его: settings -> secrets -> actions -> YTDL_BOT_TOKEN -> update" ;;
+            *) echo "::error title=токен не принят::$out" ;;
+          esac
+
       - name: запускаем бота
         if: steps.token.outputs.have == '1'
         working-directory: ytdl-bot
@@ -83,4 +103,11 @@ jobs:
           YTDL_BOT_TOKEN: ${{ secrets.YTDL_BOT_TOKEN }}
           YTDL_COOKIES: ${{ secrets.YTDL_COOKIES }}
           YTDL_PROXY: ${{ secrets.YTDL_PROXY }}
-        run: python -u bot.py
+        run: |
+          set +e
+          python -u bot.py 2>&1 | tee /tmp/bot.log
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -ne 0 ]; then
+            echo "::error title=бот не стартовал::последние строки: $(tail -3 /tmp/bot.log | tr '\n' ' ' | cut -c1-400)"
+          fi
+          exit "$rc"
