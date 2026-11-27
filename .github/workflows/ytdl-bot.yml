@@ -4,6 +4,9 @@ name: ytdl-bot
 # у github actions один job максимум 6 часов — поэтому расписание, а не «вечный» процесс.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['ytdl-bot/**', '.github/workflows/ytdl-bot.yml']
   schedule:
     - cron: '0 */6 * * *'
 
