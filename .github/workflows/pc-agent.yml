@@ -39,20 +39,24 @@ jobs:
       - name: есть ли токен
         id: token
         env:
-          PC_AGENT_TOKEN: ${{ secrets.PC_AGENT_TOKEN }}
+          PC_AGENT_TOKEN: ${{ secrets.PC_AGENT_TOKEN || secrets.YTDL_BOT_TOKEN }}
         run: |
           if [ -z "$PC_AGENT_TOKEN" ]; then
             echo "have=0" >> "$GITHUB_OUTPUT"
-            echo "::error title=нужен токен::секрет PC_AGENT_TOKEN не задан. settings -> secrets and variables -> actions -> new repository secret, name: PC_AGENT_TOKEN"
+            echo "::error title=нужен токен::не нашёл ни PC_AGENT_TOKEN, ни YTDL_BOT_TOKEN. добавь любой из них в secrets"
           else
             echo "have=1" >> "$GITHUB_OUTPUT"
+            echo "::notice title=токен найден::агент стартует (секрет подхвачен автоматически)"
           fi
 
       - name: запускаем агента
         if: steps.token.outputs.have == '1'
         working-directory: pc-agent
         env:
-          PC_AGENT_TOKEN: ${{ secrets.PC_AGENT_TOKEN }}
-          PC_AGENT_ALLOWED: ${{ secrets.PC_AGENT_ALLOWED }}
+          # токен берём из любого из двух секретов, чтобы не перезаводить вручную
+          PC_AGENT_TOKEN: ${{ secrets.PC_AGENT_TOKEN || secrets.YTDL_BOT_TOKEN }}
+          # если список разрешённых не задан — агент работает в режиме «только
+          # сообщает chat_id», управление появится после добавления владельца
+          PC_AGENT_ALLOWED: ${{ secrets.PC_AGENT_ALLOWED || '*' }}
           PC_AGENT_WORKDIR: ${{ github.workspace }}
         run: python -u agent.py
