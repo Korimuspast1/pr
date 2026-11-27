@@ -1,0 +1,85 @@
+name: fetch-source-video
+
+on:
+  push:
+    branches: [arena/7de30c9c-pr]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-source-video
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    # only run when the commit message asks for it (avoids loops on bot commits)
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[dl-video]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install -q --upgrade yt-dlp
+          yt-dlp --version
+          ffmpeg -version | head -1
+
+      - name: Download source video
+        env:
+          URL: https://www.youtube.com/watch?v=40-Bp04QC6w
+        run: |
+          mkdir -p edits/source
+          set -x
+          ok=0
+          for CLIENT in "tv,web_safari" "default" "android_vr" "ios" "mweb"; do
+            echo "=== trying player_client=$CLIENT"
+            if yt-dlp --no-warnings --retries 5 --fragment-retries 10 \
+                 --extractor-args "youtube:player_client=$CLIENT" \
+                 -f "bv*[height<=1080][vcodec^=avc1]+ba/bv*[height<=1080]+ba/b[height<=1080]" \
+                 --merge-output-format mp4 \
+                 -o "edits/source/raw.mp4" "$URL"; then
+              ok=1; break
+            fi
+            sleep 5
+          done
+          test "$ok" = "1" || { echo "download failed"; exit 1; }
+          ls -lh edits/source/
+
+      - name: Transcode to a git-friendly size
+        run: |
+          set -e
+          ffprobe -v error -show_entries format=duration,size -of default=nw=1 edits/source/raw.mp4
+          # target: <= ~85 MB so the file stays under GitHub's 100 MB hard limit
+          for H in 720 600 480; do
+            ffmpeg -y -v error -i edits/source/raw.mp4 \
+              -vf "scale=-2:$H" -c:v libx264 -preset veryfast -crf 30 \
+              -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart \
+              edits/source/mono-vajbkoding.mp4
+            SZ=$(stat -c%s edits/source/mono-vajbkoding.mp4)
+            echo "height=$H size=$SZ"
+            if [ "$SZ" -lt 88000000 ]; then break; fi
+          done
+          rm -f edits/source/raw.mp4
+          ls -lh edits/source/
+          ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate,codec_name -of default=nw=1 edits/source/mono-vajbkoding.mp4
+          ffprobe -v error -show_entries format=duration -of default=nw=1 edits/source/mono-vajbkoding.mp4
+
+      - name: Push the file back to the branch
+        run: |
+          set -e
+          git config user.name "arena-bot"
+          git config user.email "arena-bot@users.noreply.github.com"
+          git add -f edits/source/mono-vajbkoding.mp4
+          git commit -m "bot: add source video [skip ci]"
+          git push origin HEAD:arena/7de30c9c-pr
