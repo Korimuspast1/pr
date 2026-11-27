@@ -10,9 +10,11 @@ on:
   schedule:
     - cron: '0 */6 * * *'
 
+# лок на ветку, а не общий: иначе живой бот держит очередь и деплой фикса
+# ждёт до 5.5 часов. новый прогон должен вытеснять старый.
 concurrency:
-  group: ytdl-bot
-  cancel-in-progress: false
+  group: ytdl-bot-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
