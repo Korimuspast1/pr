@@ -4,9 +4,10 @@ name: Build Грусть APK
 # is what makes the APK buildable at all: the machine the code is written on has neither, so the
 # artifact is produced here and published to a release.
 #
-# The emulator run that checks the app actually starts lives in grust-android-smoke.yml: it is a
-# separate workflow because it is triggered by this one finishing (workflow_run), and a workflow
-# cannot be triggered by its own completion.
+# The second job here runs the APK on an emulator and walks through every screen. It is in this
+# file rather than in a workflow of its own because a workflow_run trigger only fires once the
+# file exists on the default branch, and a self-triggered workflow_dispatch needs an Actions token
+# the automation that maintains this repository does not have.
 #
 # Two conventions in this file come from the other Android jobs in this repository:
 #   * anything worth knowing is printed as ::notice / ::error, because the run logs are not
@@ -131,3 +132,92 @@ jobs:
             --title "Грусть ${GITHUB_REF_NAME}" \
             --notes "Дневник настроения, дыхание и статистика. APK подписан debug-ключом - для установки вручную." \
             --repo "${{ github.repository }}"
+
+  smoke:
+    name: Emulator smoke test
+    # A failed build has nothing to smoke; a successful one is exactly what this job is for.
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      JAVA_VERSION: '17'
+      COMPILE_SDK: '37'
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+    defaults:
+      run:
+        working-directory: grust-android
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Android SDK
+        run: bash tools/ci-android-sdk.sh
+
+      - name: Build the debug APK
+        # The debug variant is what the release build was signed as, but with its own application
+        # id, so an already installed copy of the app is not overwritten by the test run.
+        run: bash tools/ci-gradle.sh 'assembleDebug'
+
+      - name: Enable KVM
+        # Without KVM the x86_64 emulator is unusably slow; this is the rule the other Android jobs
+        # in this repository use.
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Walk through the app on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          working-directory: grust-android
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: Nexus 6
+          emulator-boot-timeout: 1500
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          disable-spellchecker: true
+          script: |
+            set -o pipefail
+            apk=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+            bash tools/ci-smoke.sh "$apk" ../screenshots-capture 2>&1 | tee ../smoke.log
+
+      - name: Commit the screenshots
+        if: always()
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(ls -A ../screenshots-capture 2>/dev/null)" ]; then
+            echo "::notice title=Smoke::no screenshots to commit"
+            exit 0
+          fi
+          rm -rf screenshots && mkdir -p screenshots
+          cp ../screenshots-capture/*.png screenshots/
+          ls -l screenshots | sed -E 's|^(.*)$|::notice title=Screenshot::\1|'
+          git add -f screenshots
+          if git diff --cached --quiet; then
+            echo "::notice title=Smoke::screenshots unchanged"
+            exit 0
+          fi
+          git commit -m "CI: screenshots of the app on API 34 [skip ci]"
+          git push origin "HEAD:${BRANCH}"
+          echo "::notice title=Smoke::screenshots committed to ${BRANCH}"
+
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: Grust-screenshots
+          path: |
+            screenshots-capture/*.png
+            smoke.log
+          if-no-files-found: ignore
