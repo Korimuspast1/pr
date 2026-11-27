@@ -46,6 +46,20 @@ jobs:
       - name: самопроверка логики без сети
         run: python ytdl-bot/bot.py --selftest
 
+      - name: есть ли обход проверки «ты бот» (не обязательно)
+        env:
+          YTDL_COOKIES: ${{ secrets.YTDL_COOKIES }}
+          YTDL_PROXY: ${{ secrets.YTDL_PROXY }}
+        run: |
+          if [ -n "$YTDL_COOKIES" ]; then
+            echo "cookies: заданы — ютуб должен работать"
+          else
+            echo "::warning title=ютуб может не работать::YTDL_COOKIES не задан."
+            echo "на датацентровом IP github ютуб часто просит подтвердить, что ты не бот."
+            echo "лечится: settings -> secrets -> actions -> new repository secret YTDL_COOKIES"
+          fi
+          [ -n "$YTDL_PROXY" ] && echo "прокси: задан" || echo "прокси: не задан (не обязателен)"
+
       - name: проверка токена
         id: token
         env:
@@ -65,4 +79,6 @@ jobs:
         working-directory: ytdl-bot
         env:
           YTDL_BOT_TOKEN: ${{ secrets.YTDL_BOT_TOKEN }}
+          YTDL_COOKIES: ${{ secrets.YTDL_COOKIES }}
+          YTDL_PROXY: ${{ secrets.YTDL_PROXY }}
         run: python -u bot.py

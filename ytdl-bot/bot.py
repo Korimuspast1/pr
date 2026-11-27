@@ -53,6 +53,64 @@ QUALITY_LADDER = [
 
 URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
 
+# --- обход «Sign in to confirm you're not a bot» ------------------------------
+# датацентровые IP github-раннеров youtube помечает как ботов. порядок обхода:
+#   1) cookies из секрета YTDL_COOKIES  — самый надёжный, работает всегда
+#   2) перебор player_client'ов         — часто хватает одних android/tv
+#   3) прокси из секрета YTDL_PROXY     — если ни то, ни другое
+# строки cookies / прокси тоже принимаем из env (на случай запуска на VPS)
+def _cookies_file() -> Optional[Path]:
+    """достаёт cookies из env: путь к файлу, текст netscape или base64 от него"""
+    raw = os.environ.get("YTDL_COOKIES", "").strip()
+    for candidate in (os.environ.get("YTDL_COOKIES_FILE", "").strip(), raw):
+        if candidate and os.path.isfile(candidate):
+            return Path(candidate)
+    if not raw:
+        return None
+
+    text = raw
+    if "\t" not in text:                      # не netscape — возможно base64
+        compact = re.sub(r"\s+", "", text)
+        if re.fullmatch(r"[A-Za-z0-9+/]+={0,2}", compact):
+            try:
+                import base64
+                text = base64.b64decode(compact).decode("utf-8")
+            except Exception:                  # noqa: BLE001
+                return None
+    if "\t" not in text:                      # так и не cookies
+        return None
+
+    if not text.startswith("# Netscape"):
+        text = "# Netscape HTTP Cookie File\n" + text.lstrip("\n")
+    path = Path(tempfile.gettempdir()) / "ytdl-cookies.txt"
+    path.write_text(text, encoding="utf-8")
+    path.chmod(0o600)
+    return path
+
+
+def _proxy() -> Optional[str]:
+    val = os.environ.get("YTDL_PROXY", "").strip()
+    if not val:
+        return None
+    if "://" not in val:                             # «host:port:user:pass»
+        parts = val.split(":")
+        if len(parts) == 2:
+            val = f"http://{parts[0]}:{parts[1]}"
+        elif len(parts) == 4:
+            val = f"http://{parts[2]}:{parts[3]}@{parts[0]}:{parts[1]}"
+    return val
+
+
+# клиенты youtube по убыванию шанса пройти без cookies:
+# tv/tv_simply/android часто отдают форматы без проверки на бота
+YOUTUBE_CLIENTS = ["tv_simply", "tv", "android_vr", "android", "ios", "mweb", "web_safari", "web"]
+
+BOT_CHECK_MARKERS = (
+    "confirm you're not a bot", "confirm you’re not a bot",
+    "sign in to confirm", "cookies-from-browser", "use --cookies",
+    "requires authentication", "this video requires payment",
+)
+
 
 # --- ссылки ------------------------------------------------------------------
 def extract_host(url: str) -> str:
@@ -63,6 +121,11 @@ def extract_host(url: str) -> str:
 def is_allowed(url: str) -> bool:
     host = extract_host(url)
     return bool(host) and host in ALLOWED_HOSTS
+
+
+def is_youtube(url: str) -> bool:
+    host = extract_host(url)
+    return "youtube" in host or host == "youtu.be"
 
 
 def find_links(text: str) -> list:
@@ -180,7 +243,8 @@ def compress(src: Path, dst: Path, duration: float) -> Optional[Path]:
     return dst if dst.exists() and dst.stat().st_size > 0 else None
 
 
-def download(url: str, workdir: Path, quality: str, progress_cb) -> dict:
+def download(url: str, workdir: Path, quality: str, progress_cb,
+             client: Optional[str] = None) -> dict:
     """качает одним форматом из лестницы; возвращает {path,title,duration,webpage}"""
     import yt_dlp
 
@@ -213,6 +277,18 @@ def download(url: str, workdir: Path, quality: str, progress_cb) -> dict:
         "postprocessors": [{"key": "FFmpegVideoRemuxer", "preferedformat": "mp4"}],
         "socket_timeout": 30,
     }
+
+    # --- обход проверки «ты не бот» ---
+    if is_youtube(url):
+        # сначала пробуем без явного клиента: дефолт yt-dlp часто уже работает
+        if client:
+            opts["extractor_args"] = {"youtube": {"player_client": [client]}}
+    cookies = _cookies_file()
+    if cookies:
+        opts["cookiefile"] = str(cookies)
+    proxy = _proxy()
+    if proxy:
+        opts["proxy"] = proxy
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
         if info.get("entries"):                       # на всякий случай
@@ -230,39 +306,59 @@ def download(url: str, workdir: Path, quality: str, progress_cb) -> dict:
         }
 
 
+def _is_bot_check(err: str) -> bool:
+    low = err.lower()
+    return any(m in low for m in BOT_CHECK_MARKERS)
+
+
 def grab_best(url: str, workdir: Path, progress_cb) -> dict:
-    """перебирает лестницу качества, пока файл не влезет в лимит телеграма"""
+    """перебирает клиентов youtube и лестницу качества, пока файл не влезет в лимит"""
+    clients = ([None] + YOUTUBE_CLIENTS) if is_youtube(url) else [None]
     errors = []
-    for i, quality in enumerate(QUALITY_LADDER):
-        try:
-            res = download(url, workdir, quality, progress_cb)
-        except Exception as e:                        # noqa: BLE001
-            msg = str(e).splitlines()[0][:180]
-            errors.append(msg)
-            # если формат просто недоступен — пробуем ниже, иначе выходим
-            if "Requested format" in msg or "not available" in msg:
-                continue
-            raise RuntimeError(msg) from e
+    bot_blocked = False
 
-        path = res["path"]
-        size = path.stat().st_size
-        if size <= SAFE_UPLOAD:
-            res["size"] = size
-            res["compressed"] = False
-            return res
+    for client in clients:
+        for quality in QUALITY_LADDER:
+            try:
+                res = download(url, workdir, quality, progress_cb, client=client)
+            except Exception as e:                    # noqa: BLE001
+                msg = str(e).splitlines()[0][:180]
+                errors.append(msg)
+                if _is_bot_check(msg):
+                    bot_blocked = True
+                    # этот клиент упёрся в проверку — пробуем следующий
+                    break
+                if "Requested format" in msg or "not available" in msg:
+                    continue
+                raise RuntimeError(msg) from e
 
-        # не влезло: пробуем сжать именно этот файл
-        small = compress(path, workdir / "small.mp4", float(res["duration"] or 0))
-        if small and small.stat().st_size <= SAFE_UPLOAD:
-            res["path"] = small
-            res["size"] = small.stat().st_size
-            res["compressed"] = True
-            return res
+            path = res["path"]
+            size = path.stat().st_size
+            if size <= SAFE_UPLOAD:
+                res["size"] = size
+                res["compressed"] = False
+                res["client"] = client or "default"
+                return res
 
-        # иначе чистим и идём на следующую ступень
-        for f in workdir.glob("video.*"):
-            f.unlink(missing_ok=True)
-        errors.append(f"{quality[:24]}…: {human(size)} > лимита")
+            small = compress(path, workdir / "small.mp4", float(res["duration"] or 0))
+            if small and small.stat().st_size <= SAFE_UPLOAD:
+                res["path"] = small
+                res["size"] = small.stat().st_size
+                res["compressed"] = True
+                res["client"] = client or "default"
+                return res
+
+            for f in workdir.glob("video.*"):
+                f.unlink(missing_ok=True)
+            errors.append(f"{quality[:24]}…: {human(size)} > лимита")
+
+    if bot_blocked:
+        raise RuntimeError(
+            "ютуб просит подтвердить, что я не бот (датацентровый IP github). "
+            "нужны cookies: добавь секрет YTDL_COOKIES с cookies.txt из браузера "
+            "(или YTDL_PROXY с прокси). было перепробовано клиентов: "
+            + ", ".join(str(c or "default") for c in clients)
+        )
     raise RuntimeError("не удалось уложиться в 50 МБ: " + "; ".join(errors[-2:]))
 
 
@@ -335,6 +431,10 @@ def handle(tg: Tg, msg: dict, stats: dict):
     except Exception as e:                            # noqa: BLE001
         err = str(e).splitlines()[0][:220]
         print(f"[error] {url}: {err}")
+        if _is_bot_check(err):
+            err = ("ютуб не пускает без входа: с этого сервера он видит бота. "
+                   "нужны cookies — попроси владельца добавить секрет YTDL_COOKIES. "
+                   "tiktok / instagram / vk при этом работают как обычно.")
         stats["fail"] += 1
         if note_id:
             tg.edit(chat_id, note_id, f"не вышло.\n{err}")
@@ -367,6 +467,15 @@ def selftest() -> int:
     check("si-хвост срезан",
           normalize("https://youtu.be/abc?si=track") == "https://youtu.be/abc")
     check("лестница качества не пустая", len(QUALITY_LADDER) >= 3)
+    check("клиенты ютуба заданы", len(YOUTUBE_CLIENTS) >= 5)
+    check("проверка «ты бот» распознаётся",
+          _is_bot_check("ERROR: Sign in to confirm you're not a bot"))
+    check("проверка «ты бот» (юникод-апостроф)",
+          _is_bot_check("Sign in to confirm you’re not a bot"))
+    check("обычная 404 не считается проверкой на бота",
+          not _is_bot_check("HTTP Error 404: Not Found"))
+    check("youtu.be опознан как ютуб", is_youtube("https://youtu.be/abc"))
+    check("tiktok не опознан как ютуб", not is_youtube("https://vm.tiktok.com/x"))
     check("лимит ниже телеграмовского", SAFE_UPLOAD < TELEGRAM_LIMIT)
 
     bad = [n for n, ok in checks if not ok]
