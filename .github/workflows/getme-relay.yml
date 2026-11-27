@@ -1,6 +1,9 @@
 name: getMe relay
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/getme-relay.yml'
 jobs:
   getme:
     runs-on: ubuntu-latest
@@ -12,5 +15,5 @@ jobs:
         run: |
           STATUS=$(curl -sS "https://api.telegram.org/bot123:ABC/getMe" -o /tmp/result.json -w '%{http_code}')
           RESP=$(base64 -w0 /tmp/result.json)
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
           echo "response=$RESP" >> "$GITHUB_OUTPUT"
