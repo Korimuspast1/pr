@@ -188,7 +188,9 @@ jobs:
           # One `bash` call to a file in the repository rather than an inline script: the action
           # runs `script` with /bin/sh, and multiline shell inside YAML hides its quoting mistakes
           # until a runner has booted an emulator to discover them.
-          script: bash grust-android/tools/run-smoke.sh
+          # The path is absolute: the step has working-directory: grust-android, so a path
+          # relative to the repository root would not resolve (exit 127, as the first fixed run did).
+          script: bash "$GITHUB_WORKSPACE/grust-android/tools/run-smoke.sh"
 
       - name: Show what the emulator run saw
         # The run logs of this repository cannot be downloaded from where it is maintained, so
