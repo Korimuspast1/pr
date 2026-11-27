@@ -97,7 +97,7 @@ jobs:
             rm -f edits/source/raw.mp4*
             yt-dlp -v --no-warnings --no-playlist --retries 3 --fragment-retries 10 \
               --proxy "$1" --socket-timeout 30 \
-              -f "bv*[height<=1080]+ba/b[height<=1080]" \
+              -f "bv*[height<=1080]+ba/b" -S "res:1080,codec:avc1" \
               --merge-output-format mp4 -o "edits/source/raw.mp4" "$URL"
           }
 
@@ -133,7 +133,7 @@ jobs:
         run: |
           set -e
           ffprobe -v error -show_entries format=duration,size -of default=nw=1 edits/source/raw.mp4
-          for H in 720 600 480; do
+          for H in 1080 900 720 600; do
             ffmpeg -y -v error -i edits/source/raw.mp4 -vf "scale=-2:$H" \
               -c:v libx264 -preset veryfast -crf 30 -pix_fmt yuv420p \
               -c:a aac -b:a 96k -movflags +faststart edits/source/mono-vajbkoding.mp4
