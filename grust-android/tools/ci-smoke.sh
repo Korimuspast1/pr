@@ -64,6 +64,7 @@ shot() {
 # Center of the first node whose text contains $1, as "x y".
 center_of() {
     local wanted="$1"
+    sleep 1
     adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
     adb pull /sdcard/ui.xml /tmp/ui.xml >/dev/null 2>&1 || return 1
     python3 - "$wanted" <<'PY'
@@ -92,16 +93,36 @@ sys.exit(1)
 PY
 }
 
+# Screen size, read once: a swipe has to happen inside the screen, and the emulator profiles this
+# app is tested on do not all have the same one.
+screen_size=$(adb shell wm size 2>/dev/null | grep -oE '[0-9]+x[0-9]+' | tail -1)
+screen_w=${screen_size%x*}
+screen_h=${screen_size#*x}
+[ -n "${screen_w:-}" ] || screen_w=1080
+[ -n "${screen_h:-}" ] || screen_h=1920
+
+# A tap on the element whose text contains $1. If it is not on the current screen the page is
+# scrolled down and the search repeated - the "Сохранить день" button sits below the fold on a
+# phone-sized window, and a smoke test that cannot scroll would report it missing.
 tap() {
     local label="$1"
     local point
-    if ! point=$(center_of "$label"); then
-        fail "no element with text \"$label\" on screen"
-        return 1
-    fi
-    # shellcheck disable=SC2086
-    adb shell input tap $point >/dev/null
-    sleep 2
+    local attempt
+    for attempt in 1 2 3 4; do
+        if point=$(center_of "$label"); then
+            # shellcheck disable=SC2086
+            adb shell input tap $point >/dev/null
+            sleep 2
+            return 0
+        fi
+        if [ "$attempt" -lt 4 ]; then
+            adb shell input swipe $((screen_w / 2)) $((screen_h * 85 / 100)) \
+                $((screen_w / 2)) $((screen_h * 45 / 100)) 250 >/dev/null
+            sleep 1
+        fi
+    done
+    fail "no element with text \"$label\" on screen"
+    return 1
 }
 
 step "screens"

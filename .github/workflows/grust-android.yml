@@ -233,7 +233,15 @@ jobs:
             exit 0
           fi
           git commit -m "CI: screenshots of the app on API 34 [skip ci]"
-          git push origin "HEAD:${BRANCH}"
+          # The checkout of a pull request is a merge commit, so HEAD is not a fast-forward of the
+          # branch; the commit is rebuilt on top of the branch tip instead.
+          git fetch --no-tags origin "+refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}" || true
+          if git reset --soft "origin/${BRANCH}" 2>/dev/null; then
+            git commit -q -m "CI: screenshots of the app on API 34 [skip ci]"
+          else
+            echo "::notice title=Smoke::no origin/${BRANCH} to rebuild on, pushing HEAD as is"
+          fi
+          git push origin "HEAD:refs/heads/${BRANCH}"
           echo "::notice title=Smoke::screenshots committed to ${BRANCH}"
 
       - uses: actions/upload-artifact@v5
