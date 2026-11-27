@@ -1,0 +1,79 @@
+
+===== trying invidious
+invidious: https://inv.nadeko.net/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: HTTPError HTTP Error 500: Internal Server Error
+invidious: https://inv.nadeko.net/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: HTTPError HTTP Error 500: Internal Server Error
+invidious: https://invidious.nerdvpn.de/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: RemoteDisconnected Remote end closed connection without response
+invidious: https://invidious.nerdvpn.de/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: RemoteDisconnected Remote end closed connection without response
+invidious: https://yt.chocolatemoo53.com/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: HTTPError HTTP Error 400: Bad Request
+invidious: https://yt.chocolatemoo53.com/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: HTTPError HTTP Error 400: Bad Request
+invidious: https://invidious.tiekoetter.com/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: HTTPError HTTP Error 403: Forbidden
+invidious: https://invidious.tiekoetter.com/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: HTTPError HTTP Error 403: Forbidden
+invidious: https://inv-ygg.nadeko.net/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: URLError <urlopen error [Errno 101] Network is unreachable>
+invidious: https://inv-ygg.nadeko.net/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: URLError <urlopen error [Errno 101] Network is unreachable>
+invidious: https://inv.nadeko.ygg/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: URLError <urlopen error [Errno -2] Name or service not known>
+invidious: https://inv.nadeko.ygg/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: URLError <urlopen error [Errno -2] Name or service not known>
+invidious: https://yewtu.be/latest_version?id=40-Bp04QC6w&itag=18&local=true
+invidious: https://yewtu.be/latest_version?id=40-Bp04QC6w&itag=22&local=true
+invidious: https://iv.melmac.space/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: URLError <urlopen error [Errno 101] Network is unreachable>
+invidious: https://iv.melmac.space/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: URLError <urlopen error [Errno 101] Network is unreachable>
+invidious: https://invidious.f5.si/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: HTTPError HTTP Error 530: <none>
+invidious: https://invidious.f5.si/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: HTTPError HTTP Error 530: <none>
+invidious: https://invidious.privacyredirectcom/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: URLError <urlopen error [Errno -2] Name or service not known>
+invidious: https://invidious.privacyredirectcom/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: URLError <urlopen error [Errno -2] Name or service not known>
+invidious: https://invidious.jing.rocks/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: URLError <urlopen error [Errno -2] Name or service not known>
+invidious: https://invidious.jing.rocks/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: URLError <urlopen error [Errno -2] Name or service not known>
+invidious: https://yt.artemislena.eu/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: URLError <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1011)>
+invidious: https://yt.artemislena.eu/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: URLError <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1011)>
+invidious: https://invidious.lunivers.trade/latest_version?id=40-Bp04QC6w&itag=18&local=true
+  download error: URLError <urlopen error timed out>
+invidious: https://invidious.lunivers.trade/latest_version?id=40-Bp04QC6w&itag=22&local=true
+  download error: URLError <urlopen error timed out>
+
+===== trying piped
+piped err https://pipedapi.kavin.rocks HTTPError HTTP Error 403: Forbidden
+piped err https://api.piped.private.coffee HTTPError HTTP Error 500: Internal Server Error
+piped err https://pipedapi.adminforge.de HTTPError HTTP Error 403: Forbidden
+piped err https://pipedapi.drgns.space URLError <urlopen error [Errno -2] Name or service not known>
+piped err https://pipedapi.leptons.xyz HTTPError HTTP Error 502: Bad Gateway
+piped err https://pipedapi.orangenet.cc HTTPError HTTP Error 502: Bad Gateway
+piped err https://pipedapi.reallyaweso.me JSONDecodeError Expecting value: line 1 column 1 (char 0)
+piped err https://piped-api.lunar.icu HTTPError HTTP Error 502: Bad Gateway
+
+===== trying cobalt
+cobalt err https://cobalt-api.kwiatekmiki.com URLError <urlopen error [Errno -5] No address associated with hostname>
+cobalt err https://cobalt-backend.canine.tools HTTPError HTTP Error 400: Bad Request
+cobalt err https://cobalt.api.timelessnesses.me HTTPError HTTP Error 404: Not Found
+cobalt err https://api.cobalt.best JSONDecodeError Expecting value: line 1 column 1 (char 0)
+cobalt err https://cobalt-api.ayo.tf HTTPError HTTP Error 530: <none>
+cobalt err https://cobalt.255x.ru URLError <urlopen error timed out>
+cobalt err https://api.cobalt.tools HTTPError HTTP Error 400: Bad Request
+cobalt err https://cobalt-api.3kh0.net URLError <urlopen error [Errno -5] No address associated with hostname>
+cobalt err https://dl.khyerdev.ru URLError <urlopen error [Errno -2] Name or service not known>
+ALL STRATEGIES FAILED
+===== fallback: yt-dlp on runner ip
+[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
+[youtube] 40-Bp04QC6w: Downloading webpage
+[youtube] 40-Bp04QC6w: Downloading visionos player API JSON
+ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
