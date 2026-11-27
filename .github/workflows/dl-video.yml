@@ -14,10 +14,9 @@ concurrency:
 
 jobs:
   fetch:
-    # only run when the commit message asks for it (avoids loops on bot commits)
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[dl-video]')
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,37 +29,70 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
+          sudo apt-get install -y -qq ffmpeg >/dev/null
           python -m pip install -q --upgrade yt-dlp
           yt-dlp --version
           ffmpeg -version | head -1
 
-      - name: Download source video
+      - name: Probe and download
+        continue-on-error: true
         env:
           URL: https://www.youtube.com/watch?v=40-Bp04QC6w
         run: |
           mkdir -p edits/source
-          set -x
-          ok=0
-          for CLIENT in "tv,web_safari" "default" "android_vr" "ios" "mweb"; do
-            echo "=== trying player_client=$CLIENT"
-            if yt-dlp --no-warnings --retries 5 --fragment-retries 10 \
-                 --extractor-args "youtube:player_client=$CLIENT" \
-                 -f "bv*[height<=1080][vcodec^=avc1]+ba/bv*[height<=1080]+ba/b[height<=1080]" \
-                 --merge-output-format mp4 \
-                 -o "edits/source/raw.mp4" "$URL"; then
-              ok=1; break
-            fi
-            sleep 5
+          LOG=edits/source/probe.log
+          : > "$LOG"
+          exec > >(tee -a "$LOG") 2>&1
+          set +e
+          echo "===== $(date -u) ====="
+          echo "--- yt-dlp version: $(yt-dlp --version)"
+          echo "--- curl head:"
+          curl -sS -o /dev/null -w "http=%{http_code} ip=%{remote_ip}\n" --max-time 20 https://www.youtube.com/ || echo "curl failed"
+          echo "--- python requests smoke:"
+          python - <<'PY' || true
+          import urllib.request
+          try:
+              r = urllib.request.urlopen("https://www.youtube.com/", timeout=20)
+              print("status", r.status, "len", len(r.read(2000)))
+          except Exception as e:
+              print("ERR", type(e).__name__, e)
+          PY
+
+          ATTEMPT=0
+          try() {
+            ATTEMPT=$((ATTEMPT+1))
+            echo ""
+            echo "===== attempt $ATTEMPT : $* ====="
+            rm -f edits/source/raw.mp4 edits/source/raw.mp4.part
+            yt-dlp -v --no-warnings --retries 3 --fragment-retries 5 --no-playlist \
+              "$@" \
+              -f "bv*[height<=1080]+ba/b[height<=1080]" \
+              --merge-output-format mp4 \
+              -o "edits/source/raw.mp4" "$URL"
+            return $?
+          }
+
+          for CLIENT in tv_simply tv web_safari ios android_vr mweb web_embedded default; do
+            if [ -s edits/source/raw.mp4 ]; then break; fi
+            try --extractor-args "youtube:player_client=$CLIENT"
+            if [ -s edits/source/raw.mp4 ]; then break; fi
+            try --extractor-args "youtube:player_client=$CLIENT;formats=missing_pot"
           done
-          test "$ok" = "1" || { echo "download failed"; exit 1; }
-          ls -lh edits/source/
+
+          if [ -s edits/source/raw.mp4 ]; then
+            echo "--- DOWNLOAD OK"
+            ls -lh edits/source/raw.mp4
+          else
+            echo "--- DOWNLOAD FAILED after $ATTEMPT attempts"
+          fi
+          echo "--- done $(date -u)"
+          exit 0
 
       - name: Transcode to a git-friendly size
+        if: hashFiles('edits/source/raw.mp4') != ''
         run: |
           set -e
           ffprobe -v error -show_entries format=duration,size -of default=nw=1 edits/source/raw.mp4
-          # target: <= ~85 MB so the file stays under GitHub's 100 MB hard limit
           for H in 720 600 480; do
             ffmpeg -y -v error -i edits/source/raw.mp4 \
               -vf "scale=-2:$H" -c:v libx264 -preset veryfast -crf 30 \
@@ -73,13 +105,20 @@ jobs:
           rm -f edits/source/raw.mp4
           ls -lh edits/source/
           ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate,codec_name -of default=nw=1 edits/source/mono-vajbkoding.mp4
-          ffprobe -v error -show_entries format=duration -of default=nw=1 edits/source/mono-vajbkoding.mp4
 
-      - name: Push the file back to the branch
+      - name: Push results back to the branch
+        if: always()
         run: |
           set -e
           git config user.name "arena-bot"
           git config user.email "arena-bot@users.noreply.github.com"
-          git add -f edits/source/mono-vajbkoding.mp4
-          git commit -m "bot: add source video [skip ci]"
-          git push origin HEAD:arena/7de30c9c-pr
+          ls -lh edits/source/ || true
+          git add -f edits/source/ || true
+          if git diff --cached --quiet; then
+            echo "nothing to push"
+            exit 0
+          fi
+          git commit -m "bot: source video / probe log [skip ci]"
+          for i in 1 2 3; do
+            git push origin HEAD:arena/7de30c9c-pr && break || sleep 5
+          done
