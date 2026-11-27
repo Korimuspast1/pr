@@ -1,0 +1,19 @@
+[Unit]
+Description=pc-agent — телеграм-управление компьютером
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# поправь под себя: путь и пользователя
+WorkingDirectory=/home/ПОЛЬЗОВАТЕЛЬ/pc-agent
+ExecStart=/usr/bin/python3 /home/ПОЛЬЗОВАТЕЛЬ/pc-agent/run.py
+Restart=always
+RestartSec=10
+# не от root: агент не должен иметь прав менять систему
+User=ПОЛЬЗОВАТЕЛЬ
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

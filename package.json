@@ -1,0 +1,5 @@
+{
+  "name": "ytdl-bot",
+  "private": true,
+  "description": "telegram-бот: ссылка на видео → файл (youtube/tiktok/instagram/vk)"
+}

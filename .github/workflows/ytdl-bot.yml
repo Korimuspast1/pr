@@ -1,23 +1,12 @@
 name: ytdl-bot
 
-# живёт сменами по ~5.5 часа, потом сама поднимается заново.
-# у github actions один job максимум 6 часов — поэтому расписание, а не «вечный» процесс.
+# ВЫКЛЮЧЕН: бот переехал на компьютер владельца (pc-agent/), там он и живёт.
+# на раннере держать его нельзя — он конфликтует с локальным за один токен
+# (Telegram отдаёт getUpdates только одному получателю).
 on:
   workflow_dispatch:
-  push:
-    branches: ['main', 'arena/**']
-    paths: ['ytdl-bot/**', '.github/workflows/ytdl-bot.yml']
-  schedule:
-    - cron: '0 */6 * * *'
-
-# лок на ветку, а не общий: иначе живой бот держит очередь и деплой фикса
-# ждёт до 5.5 часов. новый прогон должен вытеснять старый.
-concurrency:
-  group: ytdl-bot-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: read
+    inputs: {}
+    # запуск оставлен только чтобы руками проверить сборку, по умолчанию ничего не делает
 
 jobs:
   run:
@@ -93,7 +82,7 @@ jobs:
           esac
 
       - name: запускаем бота
-        if: steps.token.outputs.have == '1'
+        if: false
         working-directory: ytdl-bot
         env:
           YTDL_BOT_TOKEN: ${{ secrets.YTDL_BOT_TOKEN }}

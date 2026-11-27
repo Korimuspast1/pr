@@ -1,0 +1,14 @@
+# fly.io: бот живёт 24/7 в контейнере, токен — через `fly secrets set`
+app = "ytdl-bot"
+primary_region = "fra"
+
+[build]
+  builder = "paketobuildpacks/builder:base"
+
+[env]
+  PYTHONUNBUFFERED = "1"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
