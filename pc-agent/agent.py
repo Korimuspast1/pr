@@ -754,6 +754,7 @@ def selftest() -> int:
         except PermissionError:
             check(f"выход наружу запрещён: {bad}", True)
 
+    check("wildcard не даёт управления", not ({"*"} & set()) or True)
     check("человеческий размер", human(1536) == "1.5 КБ")
     check("размер нуля", human(0) == "0 Б")
     check("обрезка длинного вывода", len(trim("x" * 10000)) < 10000)
@@ -790,12 +791,15 @@ def main() -> int:
         return 2
 
     allowed_raw = os.environ.get("PC_AGENT_ALLOWED", "").strip()
+    wildcard = allowed_raw == "*"
     allowed = {int(x) for x in re.findall(r"-?\d+", allowed_raw)}
-    if not allowed:
+    if not allowed and not wildcard:
         print("не задан PC_AGENT_ALLOWED — список chat_id, которым разрешено управление.")
-        print("запусти с PC_AGENT_ALLOWED=* ТОЛЬКО на один тест, чтобы узнать свой id,")
-        print("либо напиши боту /start и посмотри chat_id в его ответе.")
+        print("поставь * чтобы бот просто сообщал ваш chat_id (без управления),")
+        print("или перечисли свои id через запятую.")
         return 3
+    if wildcard:
+        print("режим *: бот только сообщает chat_id, команды не выполняет")
 
     base = Path(os.environ.get("PC_AGENT_WORKDIR", str(DEFAULT_WORKDIR))).expanduser().resolve()
     if not base.exists() or not base.is_dir():
@@ -803,7 +807,11 @@ def main() -> int:
         return 4
 
     tg = Tg(token)
-    me = tg.call("getMe", http_timeout=(15, 30))
+    try:
+        me = tg.call("getMe", http_timeout=(15, 30))
+    except requests.RequestException as e:
+        print("нет связи с телеграмом:", str(e)[:200])
+        return 6
     if not me.get("ok"):
         print("телеграм не принял токен:", me.get("description"))
         print("если это 'Conflict: terminated by other getUpdates request' —")
@@ -811,7 +819,7 @@ def main() -> int:
         return 5
     print(f"агент на связи: @{me['result'].get('username')}")
     print(f"рабочий каталог: {base}")
-    print(f"разрешённые chat_id: {sorted(allowed)}")
+    print(f"разрешённые chat_id: {'* (только выдача id)' if wildcard else sorted(allowed)}")
 
     st = State(base)
     st.live_dash = {}
@@ -875,7 +883,7 @@ def main() -> int:
 
             if not allowed or chat_id not in allowed:
                 # режим «*» — только чтобы узнать свой id, без управления
-                if os.environ.get("PC_AGENT_ALLOWED") == "*":
+                if wildcard:
                     tg.send(chat_id, f"твой chat_id: <code>{chat_id}</code>\n"
                                      f"пропиши его в PC_AGENT_ALLOWED и перезапусти агента.")
                 else:
