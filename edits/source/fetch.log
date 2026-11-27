@@ -1,3 +1,36 @@
+===== direct (no proxy)
+[debug] Command-line config: ['-v', '--no-warnings', '--no-playlist', '--retries', '2', '-f', 'bv*[height<=720]+ba/b[height<=720]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
+[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
+[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
+[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1018-aws-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
+[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
+[debug] Optional libraries: sqlite3-3.46.1
+[debug] JS runtimes: none
+[debug] Proxy map: {}
+[debug] Request Handlers: urllib
+[debug] Plugin directories: none
+[debug] Loaded 1744 extractors
+[debug] [youtube] [pot] PO Token Providers: none
+[debug] [youtube] [pot] PO Token Cache Providers: memory
+[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
+[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
+[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
+[youtube] 40-Bp04QC6w: Downloading webpage
+[debug] WARNING: [youtube] 40-Bp04QC6w: Unable to download webpage: HTTP Error 429: Too Many Requests (caused by <HTTPError 429: Too Many Requests>)
+[youtube] 40-Bp04QC6w: Downloading initial data API JSON
+[debug] WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[youtube] 40-Bp04QC6w: Downloading visionos player API JSON
+[debug] [youtube] 40-Bp04QC6w: visionos player response playability status: UNPLAYABLE
+ERROR: [youtube] 40-Bp04QC6w: This content isn’t available.
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
+    ie_result = self._real_extract(url)
+                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
+    self.raise_no_formats(reason, expected=True)
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
+    raise ExtractorError(msg, expected=expected, video_id=video_id)
+
+===== public frontends
 
 ===== trying invidious
 invidious: https://inv.nadeko.net/latest_version?id=40-Bp04QC6w&itag=18&local=true
@@ -5,13 +38,13 @@ invidious: https://inv.nadeko.net/latest_version?id=40-Bp04QC6w&itag=18&local=tr
 invidious: https://inv.nadeko.net/latest_version?id=40-Bp04QC6w&itag=22&local=true
   download error: HTTPError HTTP Error 500: Internal Server Error
 invidious: https://invidious.nerdvpn.de/latest_version?id=40-Bp04QC6w&itag=18&local=true
-  download error: RemoteDisconnected Remote end closed connection without response
+  download error: HTTPError HTTP Error 403: Forbidden
 invidious: https://invidious.nerdvpn.de/latest_version?id=40-Bp04QC6w&itag=22&local=true
-  download error: RemoteDisconnected Remote end closed connection without response
+  download error: HTTPError HTTP Error 403: Forbidden
 invidious: https://yt.chocolatemoo53.com/latest_version?id=40-Bp04QC6w&itag=18&local=true
-  download error: HTTPError HTTP Error 400: Bad Request
+  download error: HTTPError HTTP Error 403: Forbidden
 invidious: https://yt.chocolatemoo53.com/latest_version?id=40-Bp04QC6w&itag=22&local=true
-  download error: HTTPError HTTP Error 400: Bad Request
+  download error: HTTPError HTTP Error 403: Forbidden
 invidious: https://invidious.tiekoetter.com/latest_version?id=40-Bp04QC6w&itag=18&local=true
   download error: HTTPError HTTP Error 403: Forbidden
 invidious: https://invidious.tiekoetter.com/latest_version?id=40-Bp04QC6w&itag=22&local=true
@@ -72,8 +105,4 @@ cobalt err https://api.cobalt.tools HTTPError HTTP Error 400: Bad Request
 cobalt err https://cobalt-api.3kh0.net URLError <urlopen error [Errno -5] No address associated with hostname>
 cobalt err https://dl.khyerdev.ru URLError <urlopen error [Errno -2] Name or service not known>
 ALL STRATEGIES FAILED
-===== fallback: yt-dlp on runner ip
-[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-[youtube] 40-Bp04QC6w: Downloading webpage
-[youtube] 40-Bp04QC6w: Downloading visionos player API JSON
-ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
+--- DOWNLOAD FAILED
