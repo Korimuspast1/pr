@@ -1,0 +1,3 @@
+telegram_getme 401
+telegram_root 302
+telegram_host 000curl-failed
