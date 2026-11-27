@@ -1,0 +1,16 @@
+name: getMe relay
+on:
+  workflow_dispatch:
+jobs:
+  getme:
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.getme.outputs.status }}
+      response: ${{ steps.getme.outputs.response }}
+    steps:
+      - id: getme
+        run: |
+          STATUS=$(curl -sS "https://api.telegram.org/bot123:ABC/getMe" -o /tmp/result.json -w '%{http_code}')
+          RESP=$(base64 -w0 /tmp/result.json)
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "response=$RESP" >> "$GITHUB_OUTPUT"
