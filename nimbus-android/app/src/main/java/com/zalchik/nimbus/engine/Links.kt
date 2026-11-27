@@ -151,7 +151,7 @@ object Links {
             "grpc" -> transport = objNonEmpty(
                 "type" to "grpc",
                 "service_name" to percentDecode(query["serviceName"] ?: ""),
-                "permit_without_stream" to (query["permitWithoutStream"] == "true"),
+                "permit_without_stream" to true.takeIf { query["permitWithoutStream"] == "true" },
             )
 
             "quic" -> transport = obj("type" to "quic")
@@ -203,6 +203,8 @@ object Links {
 
     private fun vless(link: String, tag: String): ParsedLink {
         val (parts, query, host, port, name) = split(link)
+        val uuid = percentDecode(parts.username)
+        if (uuid.isEmpty()) throw LinkError("missing uuid")
         val stream = stream(query)
         val outbound = withStream(
             objNonEmpty(
@@ -210,7 +212,7 @@ object Links {
                 "tag" to tag,
                 "server" to host,
                 "server_port" to port,
-                "uuid" to percentDecode(parts.username),
+                "uuid" to uuid,
                 "flow" to query["flow"]?.takeIf { it.isNotEmpty() },
                 "packet_encoding" to query["packetEncoding"]?.takeIf { it.isNotEmpty() },
             ),
@@ -225,6 +227,8 @@ object Links {
         if (json == null) {
             // Some panels emit vmess in vless-style URL form.
             val (parts, query, host, port, name) = split(link)
+            val uuid = percentDecode(parts.username)
+            if (uuid.isEmpty()) throw LinkError("missing uuid")
             val stream = stream(query)
             val outbound = withStream(
                 objNonEmpty(
@@ -232,7 +236,7 @@ object Links {
                     "tag" to tag,
                     "server" to host,
                     "server_port" to port,
-                    "uuid" to percentDecode(parts.username),
+                    "uuid" to uuid,
                     "security" to (query["encryption"]?.takeIf { it.isNotEmpty() } ?: "auto"),
                 ),
                 stream,
@@ -255,6 +259,8 @@ object Links {
             "permitWithoutStream" to json.str("permitWithoutStream"),
         )
         val stream = stream(query)
+        val uuid = json.str("id")
+        if (uuid.isEmpty()) throw LinkError("missing uuid")
         val alterId = json.int("aid")
         val server = json.str("add")
         val port = json.str("port").toIntOrNull() ?: json.int("port")
@@ -264,7 +270,7 @@ object Links {
                 "tag" to tag,
                 "server" to server,
                 "server_port" to port,
-                "uuid" to json.str("id"),
+                "uuid" to uuid,
                 "security" to json.str("scy").ifEmpty { "auto" },
                 // aid is Xray's alterId; sing-box wants it only when a server still uses one.
                 "alter_id" to if (alterId > 0) alterId else null,
@@ -277,6 +283,8 @@ object Links {
 
     private fun trojan(link: String, tag: String): ParsedLink {
         val (parts, query, host, port, name) = split(link)
+        val password = percentDecode(parts.username)
+        if (password.isEmpty()) throw LinkError("missing password")
         val withSecurity = query.toMutableMap()
         withSecurity.putIfAbsent("security", "tls")
         val stream = stream(withSecurity)
@@ -286,7 +294,7 @@ object Links {
                 "tag" to tag,
                 "server" to host,
                 "server_port" to port,
-                "password" to percentDecode(parts.username),
+                "password" to password,
             ),
             stream,
         )

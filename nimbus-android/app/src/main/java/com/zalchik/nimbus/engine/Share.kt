@@ -20,16 +20,20 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Sharing: Xray outbounds back to share links (`vless://` …), and configs as standalone JSON —
- * the port of nimbus/share.py.
+ * Sharing: outbounds back to share links (`vless://` …), and configs as standalone JSON — the
+ * port of nimbus/share.py.
  *
- * Share links describe Xray-shaped nodes, and that's what a panel's full config holds, so the
- * outbound -> link half is the desktop's code as it stands. The JSON half differs: the phone has
- * no Xray core, so what it exports is the sing-box config it actually runs, which SFA, Happ and
- * any other sing-box client imports as is.
+ * The desktop's outbound -> link half speaks Xray, because that's what a panel's config holds and
+ * what the desktop runs; it stays as it is. The phone also builds sing-box outbounds of its own,
+ * so the same half reads those too. The JSON half differs from the desktop's outright: the phone
+ * has no Xray core, so what it exports is the sing-box config it actually runs, which SFA, Happ
+ * and any other sing-box client imports as is.
  */
 object Share {
     private val NON_PROXY = setOf("freedom", "blackhole", "dns", "loopback")
+
+    /** The same, as sing-box types: a built config's helpers and its groups are not nodes. */
+    private val NON_PROXY_TYPES = setOf("direct", "block", "dns", "selector", "urltest")
 
     private fun q(params: Map<String, Any?>): String = params.entries
         .filter { (_, value) -> value != null && value != "" && value != false }
@@ -127,8 +131,16 @@ object Share {
 
     private fun JSONObject.objOrNull(key: String): JSONObject? = optJSONObject(key)
 
+    /**
+     * A share link for one outbound, or null for what links can't express. Both shapes arrive
+     * here: Xray's, which is what a panel's config holds, and sing-box's, which is what Nimbus
+     * builds and what a config imported from another sing-box client holds.
+     */
+    fun outboundLink(outbound: JSONObject, name: String): String? =
+        if (outbound.has("protocol")) xrayLink(outbound, name) else singBoxLink(outbound, name)
+
     /** Share link for one Xray outbound, or null for protocols links can't express. */
-    fun outboundLink(outbound: JSONObject, name: String): String? {
+    private fun xrayLink(outbound: JSONObject, name: String): String? {
         val protocol = outbound.str("protocol")
         val settings = outbound.optJSONObject("settings") ?: JSONObject()
         val stream = outbound.optJSONObject("streamSettings") ?: JSONObject()
@@ -250,10 +262,179 @@ object Share {
         return null
     }
 
+    // -- sing-box outbounds ---------------------------------------------------------------------
+
+    /**
+     * The inverse of [Links.parseLink]: a sing-box outbound as the link that produces it. What a
+     * link can't spell (an xhttp transport, Reality's spiderX) is left out rather than
+     * half-honoured, exactly as the Xray half above does.
+     */
+    private fun singBoxLink(outbound: JSONObject, name: String): String? {
+        val server = host(outbound.str("server"))
+        val port = outbound.int("server_port")
+        val params = singBoxStreamParams(outbound)
+        val fragment = "#" + percentEncode(name)
+        return when (outbound.str("type")) {
+            "vless" -> {
+                val extra = linkedMapOf<String, Any?>(
+                    "flow" to outbound.str("flow"),
+                    "packetEncoding" to outbound.str("packet_encoding"),
+                ).apply { putAll(params) }
+                "vless://${percentEncode(outbound.str("uuid"))}@$server:$port?${q(extra)}$fragment"
+            }
+
+            "trojan" ->
+                "trojan://${percentEncode(outbound.str("password"))}@$server:$port?${q(params)}$fragment"
+
+            "vmess" -> {
+                val reality = outbound.objOrNull("tls")?.objOrNull("reality")
+                if (reality != null) {
+                    // The base64 JSON form has nowhere to put Reality's public key.
+                    val extra = linkedMapOf<String, Any?>("encryption" to outbound.str("security"))
+                        .apply { putAll(params) }
+                    "vmess://${percentEncode(outbound.str("uuid"))}@$server:$port?${q(extra)}$fragment"
+                } else {
+                    val json = obj(
+                        "v" to "2",
+                        "ps" to name,
+                        "add" to outbound.str("server"),
+                        "port" to port.toString(),
+                        "id" to outbound.str("uuid"),
+                        "aid" to outbound.int("alter_id").toString(),
+                        "scy" to outbound.str("security").ifEmpty { "auto" },
+                        "net" to params["type"].toString(),
+                        "type" to (params["headerType"]?.toString() ?: "none"),
+                        "host" to (params["host"]?.toString() ?: ""),
+                        // A vmess link carries gRPC's service name in its path.
+                        "path" to if (params["type"] == "grpc") params["serviceName"]?.toString() ?: ""
+                        else params["path"]?.toString() ?: "",
+                        "tls" to if (params["security"] == "none") "" else params["security"].toString(),
+                        "sni" to (params["sni"]?.toString() ?: ""),
+                        "alpn" to (params["alpn"]?.toString() ?: ""),
+                        "fp" to (params["fp"]?.toString() ?: ""),
+                    )
+                    "vmess://" + b64Encode(stringify(json))
+                }
+            }
+
+            "shadowsocks" -> {
+                val method = outbound.str("method")
+                val password = outbound.str("password")
+                if (method.isEmpty() || password.isEmpty()) return null
+                // SIP002: AEAD-2022 keys go percent-encoded, not base64.
+                val userinfo = if (method.startsWith("2022-")) {
+                    "${percentEncode(method)}:${percentEncode(password)}"
+                } else {
+                    b64Encode("$method:$password", urlSafe = true, pad = false)
+                }
+                val extra = linkedMapOf<String, Any?>(
+                    "plugin" to outbound.str("plugin"),
+                    "plugin-opts" to outbound.str("plugin_opts"),
+                )
+                if (outbound.objOrNull("udp_over_tcp") != null) extra["type"] = "udp-over-tcp"
+                val query = q(extra)
+                "ss://$userinfo@$server:$port${if (query.isEmpty()) "" else "?$query"}$fragment"
+            }
+
+            "hysteria2" -> {
+                val hops = outbound.listOfStrings("server_ports")
+                // Port hopping carries no port of its own; the link still needs one to dial.
+                val firstHop = hops.firstOrNull()?.substringBefore('-')?.toIntOrNull() ?: 0
+                val dialPort = if (port > 0) port else firstHop
+                if (dialPort <= 0) return null
+                val extra = linkedMapOf<String, Any?>(
+                    "sni" to (outbound.objOrNull("tls") ?: JSONObject()).str("server_name"),
+                    "mport" to hops.joinToString(","),
+                    "upmbps" to outbound.int("up_mbps").takeIf { it > 0 },
+                    "downmbps" to outbound.int("down_mbps").takeIf { it > 0 },
+                )
+                val obfs = outbound.objOrNull("obfs")
+                if (obfs != null && obfs.str("type") == "salamander") {
+                    extra["obfs"] = "salamander"
+                    extra["obfs-password"] = obfs.str("password")
+                }
+                "hy2://${percentEncode(outbound.str("password"))}@$server:$dialPort?${q(extra)}$fragment"
+            }
+
+            "socks" -> {
+                val user = outbound.str("username")
+                val password = outbound.str("password")
+                val credentials = if (user.isEmpty() && password.isEmpty()) {
+                    ""
+                } else {
+                    b64Encode("$user:$password", urlSafe = true, pad = false) + "@"
+                }
+                "socks://$credentials$server:$port$fragment"
+            }
+
+            else -> null
+        }
+    }
+
+    /** A sing-box transport and TLS, as the share-link query parameters that spell them. */
+    private fun singBoxStreamParams(outbound: JSONObject): LinkedHashMap<String, Any?> {
+        val transport = outbound.objOrNull("transport") ?: JSONObject()
+        val params = linkedMapOf<String, Any?>()
+        when (transport.str("type")) {
+            "ws" -> {
+                params["type"] = "ws"
+                params["path"] = transport.str("path")
+                params["host"] = (transport.objOrNull("headers") ?: JSONObject())
+                    .listOfStrings("Host").joinToString(",")
+                params["ed"] = transport.int("max_early_data").takeIf { it > 0 }
+                params["eh"] = transport.str("early_data_header_name")
+            }
+
+            "httpupgrade" -> {
+                params["type"] = "httpupgrade"
+                params["path"] = transport.str("path")
+                params["host"] = transport.str("host")
+            }
+
+            "http" -> {
+                // sing-box's http transport is what a link spells as TCP with an HTTP header; the
+                // h2 form parses back to the same thing.
+                params["type"] = "tcp"
+                params["headerType"] = "http"
+                params["path"] = transport.str("path")
+                params["host"] = transport.listOfStrings("host").joinToString(",")
+            }
+
+            "grpc" -> {
+                params["type"] = "grpc"
+                params["serviceName"] = transport.str("service_name")
+                if (transport.bool("permit_without_stream")) params["permitWithoutStream"] = "true"
+            }
+
+            "quic" -> params["type"] = "quic"
+
+            else -> params["type"] = "tcp"
+        }
+
+        val tls = outbound.objOrNull("tls")
+        if (tls != null && tls.bool("enabled")) {
+            val reality = tls.objOrNull("reality")
+            params["sni"] = tls.str("server_name")
+            params["fp"] = (tls.objOrNull("utls") ?: JSONObject()).str("fingerprint")
+            if (reality != null) {
+                params["security"] = "reality"
+                params["pbk"] = reality.str("public_key")
+                params["sid"] = reality.str("short_id")
+            } else {
+                params["security"] = "tls"
+                params["alpn"] = tls.listOfStrings("alpn").joinToString(",")
+                params["ech"] = (tls.objOrNull("ech") ?: JSONObject()).str("config")
+            }
+        } else {
+            params["security"] = "none"
+        }
+        return params
+    }
+
     /** The proxy outbounds of a full config, the one tagged "proxy" first. */
     fun mainOutbounds(server: Server): List<JSONObject> {
         val outbounds = (server.config ?: JSONObject()).arrOrEmpty("outbounds").objects()
-            .filter { it.str("protocol") !in NON_PROXY }
+            .filter { it.str("protocol") !in NON_PROXY && it.str("type") !in NON_PROXY_TYPES }
         return outbounds.sortedBy { it.str("tag") != "proxy" }
     }
 
@@ -290,6 +471,9 @@ object Share {
         val built = ConfigBuilder.build(Selected.OfServer(server), plain, ipv6 = false)
         val config = built.config.copy()
         config.remove("log")
+        // The client that imports this makes its own tunnel; this phone's TUN would only be in
+        // its way (and a kill switch on someone else's device is not ours to set).
+        config.remove("inbounds")
         config.put("remarks", server.name)
         return config
     }

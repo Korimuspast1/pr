@@ -66,12 +66,15 @@ class UtilTests {
             "zero" to 0,
             "kept" to "value",
         )
-        // An absent option stays absent, which is what sing-box's omitempty means for it.
-        assertEquals(setOf("on", "zero", "kept"), nonEmpty.keys().asSequence().toSet())
+        // An absent option stays absent, which is what sing-box's omitempty means for it. A false
+        // is not an absence: it is what one writes where the core's own default is true, so it
+        // stays. An option that means "off, and leave it out" is passed as `true.takeIf { … }`.
+        assertEquals(setOf("off", "on", "zero", "kept"), nonEmpty.keys().asSequence().toSet())
         assertTrue(isEmptyJson(null))
         assertTrue(isEmptyJson(""))
         assertFalse(isEmptyJson("x"))
         assertFalse(isEmptyJson(0))
+        assertFalse(isEmptyJson(false))
     }
 
     @Test
@@ -168,9 +171,10 @@ class UtilTests {
 
     @Test
     fun stringifyLeavesNonAsciiAlone() {
-        val json = obj("name" to "🇳🇱 Авто")
+        val json = obj("name" to "🇳🇱 Авто", "code" to "nl")
         assertTrue(stringify(json).contains("Авто"))
         assertFalse(stringify(json).contains("\\u"))
+        // Two keys: org.json writes a one-key object on a single line however it is indented.
         assertTrue(stringify(json, 2).contains("\n"))
         assertEquals("null", stringify(null))
         assertEquals("\"x\"", stringify("x"))

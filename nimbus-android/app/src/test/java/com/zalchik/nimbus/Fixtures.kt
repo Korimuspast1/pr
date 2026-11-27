@@ -50,7 +50,10 @@ object Fixtures {
         "ss-sip002" to "ss://" + b64Encode("chacha20-ietf-poly1305:secret", urlSafe = true, pad = false) +
             "@5.6.7.8:8388#ss",
         "ss-2022-plain" to "ss://2022-blake3-aes-128-gcm:AAAAAAAAAAAAAAAAAAAAAA%3D%3D@5.6.7.8:8388#ss2022",
-        "ss-legacy" to "ss://" + b64Encode("aes-256-gcm:pw@9.9.9.9:443") + "#legacy",
+        // Legacy: standard (padded) base64 of method:password, where SIP002 uses the url-safe
+        // alphabet without padding. The older form that hides the address inside the base64 too is
+        // covered in LinksTests.
+        "ss-legacy" to "ss://" + b64Encode("aes-256-gcm:pw") + "@5.6.7.8:8388#legacy",
         "hy2" to "hy2://authpass@h.example.com:443?sni=h.example.com&obfs=salamander&obfs-password=ob#hy2",
         "hy2-hop" to "hysteria2://authpass@h.example.com:443?sni=h.example.com&mport=20000-30000#hop",
         "socks" to "socks://" + b64Encode("user:pw") + "@10.0.0.1:1080#socks",

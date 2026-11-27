@@ -325,6 +325,7 @@ object Happ {
         val encoded = HappKeys.PKCS1[name] ?: throw HappError("no key for $name")
         val key = key(encoded)
         val data = payloadBytes(payload)
+        if (data.isEmpty()) throw HappError("the payload isn't base64")
         if (data.size % key.size != 0) {
             throw HappError("the payload isn't a multiple of ${key.size} bytes")
         }

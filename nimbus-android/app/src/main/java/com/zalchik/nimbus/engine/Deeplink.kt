@@ -81,7 +81,10 @@ object Deeplink {
 
     /** A Happ encrypted link: whatever it carries is what gets added. */
     private fun encrypted(text: String): DeepLink = try {
-        classify(Happ.unwrap(text))
+        val plain = Happ.unwrap(text).trim()
+        // Nothing inside is still a crypt link's failure, not an invalid one: the message is what
+        // the import sheet shows, and "invalid" would say the link itself makes no sense.
+        if (plain.isEmpty()) DeepLink("crypt", "the link is empty") else classify(plain)
     } catch (e: HappError) {
         DeepLink("crypt", e.message ?: "")
     }

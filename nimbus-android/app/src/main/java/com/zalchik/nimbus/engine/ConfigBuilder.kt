@@ -140,9 +140,13 @@ object ConfigBuilder {
         val keep = keepProviderRouting(server, settings)
 
         val outbounds = converted.outbounds.toMutableList()
+        // The provider's balancers ride along as urltest groups: its rules point at them and the
+        // node switcher lists them. A config without them would route into nothing.
+        outbounds += converted.groups
         if (outbounds.none { it.str("tag") == DIRECT }) outbounds.add(obj("type" to "direct", "tag" to DIRECT))
         if (outbounds.none { it.str("tag") == BLOCK }) outbounds.add(obj("type" to "block", "tag" to BLOCK))
-        val mainTag = outbounds.firstOrNull { it.str("type") !in setOf("direct", "block") }?.str("tag") ?: PROXY
+        val mainTag = outbounds.firstOrNull { it.str("type") !in setOf("direct", "block", "urltest", "selector") }
+            ?.str("tag") ?: PROXY
         val groupTag = converted.groups.firstOrNull()?.str("tag")
 
         // Settings the provider's config can't carry: multiplexing and TLS fragmentation are
@@ -481,7 +485,7 @@ object ConfigBuilder {
             "auto_route" to true,
             // A kill switch on Android is the system's Always-on VPN + "block connections without
             // VPN"; strict_route is what the desktop needs and the phone ignores.
-            "strict_route" to settings.killSwitch,
+            "strict_route" to true.takeIf { settings.killSwitch },
             "route_exclude_address" to JSONArray(exclude),
         )
     }

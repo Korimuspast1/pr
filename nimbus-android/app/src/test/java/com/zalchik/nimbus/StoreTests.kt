@@ -146,7 +146,7 @@ class StoreTests {
         // Servers of other subscriptions are untouched, and the position in the list is kept.
         store.servers.add(Server("other", "Other", "s2"))
         store.replaceServers("s1", listOf(Server(newId(), "NL", "s1", "trojan://a@1.1.1.1:443")))
-        assertEquals(listOf("NL", "other"), store.servers.map { it.name })
+        assertEquals(listOf("keep", "other"), store.servers.map { it.id })
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.zalchik.nimbus
 import com.zalchik.nimbus.engine.Links
 import com.zalchik.nimbus.engine.LinkError
 import com.zalchik.nimbus.util.arrOrEmpty
+import com.zalchik.nimbus.util.b64Encode
 import com.zalchik.nimbus.util.objOrNull
 import com.zalchik.nimbus.util.objects
 import com.zalchik.nimbus.util.str
@@ -107,6 +108,12 @@ class LinksTests {
             "aes-256-gcm",
             Links.parseLink(Fixtures.LINKS.getValue("ss-legacy")).outbound.str("method"),
         )
+
+        // The oldest form of all hides the address inside the base64 as well.
+        val whole = Links.parseLink("ss://" + b64Encode("aes-256-gcm:pw@9.9.9.9:443") + "#old").outbound
+        assertEquals("9.9.9.9", whole.str("server"))
+        assertEquals(443, whole.opt("server_port"))
+        assertEquals("pw", whole.str("password"))
     }
 
     @Test
@@ -189,9 +196,13 @@ class LinksTests {
     fun multiplexAndFragmentAreAppliedOnRequest() {
         val outbound = Links.parseLink(Fixtures.LINKS.getValue("trojan"), "proxy").outbound
         Links.applyMultiplex(outbound, true, 8)
-        assertEquals(8, outbound.objOrNull("multiplex")?.opt("concurrency"))
+        // sing-box's multiplex has no `concurrency`: how many streams one connection carries is
+        // `max_streams`, and `max_connections` conflicts with it (option/multiplex.go).
+        assertEquals(8, outbound.objOrNull("multiplex")?.opt("max_streams"))
         Links.applyFragment(outbound, true)
-        assertNotNull(outbound.objOrNull("fragment"))
+        // Xray fragments in a sockopt of its own; sing-box fragments at the TLS layer.
+        assertEquals(true, outbound.objOrNull("tls")?.opt("fragment"))
+        assertEquals(true, outbound.objOrNull("tls")?.opt("record_fragment"))
 
         // Reality's flow already fills a connection; mux on top of it is refused by servers.
         val reality = Links.parseLink(Fixtures.LINKS.getValue("vless-reality")).outbound

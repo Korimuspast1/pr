@@ -53,11 +53,20 @@ data class Server(
                 }
                 return protos.firstOrNull()?.takeIf { it.isNotEmpty() } ?: "config"
             }
-            return link.substringBefore("://", "").lowercase()
+            val scheme = link.substringBefore("://", "").lowercase()
+            return SCHEME_PROTOCOLS[scheme] ?: scheme
         }
 
     companion object {
         val NON_PROXY_PROTOCOLS = setOf("freedom", "blackhole", "dns", "loopback")
+
+        /** What the abbreviations a link may use stand for, so one protocol has one name. */
+        val SCHEME_PROTOCOLS = mapOf(
+            "hy2" to "hysteria2",
+            "wg" to "wireguard",
+            "socks5" to "socks",
+            "ss" to "shadowsocks",
+        )
 
         fun fromJson(json: JSONObject): Server = Server(
             id = json.str("id").ifEmpty { newId() },

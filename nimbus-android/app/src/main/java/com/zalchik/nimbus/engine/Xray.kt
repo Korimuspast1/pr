@@ -85,6 +85,11 @@ object Xray {
         val outbounds: MutableList<JSONObject> = mutableListOf(),
         val endpoints: MutableList<JSONObject> = mutableListOf(),
         val rules: MutableList<JSONObject> = mutableListOf(),
+        /**
+         * The urltest groups the provider's balancers became. They ride apart from [outbounds]
+         * because the two callers want different things: a config needs both, a latency probe of
+         * [proxyOutbounds] needs the nodes on their own.
+         */
         val groups: MutableList<JSONObject> = mutableListOf(),
         val ruleSets: RuleSets = RuleSets(),
         var domainStrategy: String = "AsIs",
@@ -529,9 +534,12 @@ object Xray {
                     "yamux" -> "yamux"
                     else -> "h2mux"
                 },
-                "max_connections" to mux.int("concurrency").takeIf { it > 0 },
-                "max_streams" to mux.int("maxStreams").takeIf { it > 0 },
-                "padding" to mux.bool("padding"),
+                // Xray's concurrency is how many streams one connection carries, which is
+                // sing-box's max_streams; max_connections and min_streams are the alternative
+                // strategy and the core rejects them next to it (docs: "Conflict with").
+                "max_streams" to (mux.int("maxStreams").takeIf { it > 0 }
+                    ?: mux.int("concurrency").takeIf { it > 0 }),
+                "padding" to (mux.opt("padding") as? Boolean),
             ),
         )
     }

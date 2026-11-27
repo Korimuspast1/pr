@@ -95,7 +95,10 @@ class ConfigBuilderTests {
         val plain = ConfigBuilder.sbDns("8.8.8.8", "dns-direct", null, false)
         assertEquals("udp", plain.str("type"))
         assertEquals("8.8.8.8", plain.str("server"))
-        assertEquals(53, plain.opt("server_port"))
+        // No port: sing-box dials 53 for a plain resolver on its own (dns/transport/udp.go), and
+        // an address that names one keeps it.
+        assertFalse(plain.has("server_port"))
+        assertEquals(5353, ConfigBuilder.sbDns("8.8.8.8:5353", "dns-direct", null, false).opt("server_port"))
 
         // UDP through a tunnel is unreliable, so a resolver reached through the proxy becomes DoH
         // when it is a known one and TCP otherwise.
@@ -121,7 +124,10 @@ class ConfigBuilderTests {
         val dns = built(settings).config.objOrNull("dns")!!
         val fake = dns.arrOrEmpty("servers").objects().firstOrNull { it.str("type") == "fakeip" }
         assertNotNull(fake)
-        assertEquals(ConfigBuilder.FAKE_RANGE4, fake!!.objOrNull("fakeip")?.str("inet4_range"))
+        // The ranges sit on the fakeip server itself: the `dns.fakeip` block they used to live in
+        // was removed in sing-box 1.14 (option/dns.go).
+        assertEquals(ConfigBuilder.FAKE_RANGE4, fake!!.str("inet4_range"))
+        assertEquals(ConfigBuilder.FAKE_RANGE6, fake.str("inet6_range"))
         // A one-second TTL: apps cached fake addresses for ten minutes and they led nowhere after
         // the tunnel went down.
         val rule = dns.arrOrEmpty("rules").objects().firstOrNull { it.str("server") == ConfigBuilder.DNS_FAKE }
@@ -325,9 +331,12 @@ class ConfigBuilderTests {
     @Test
     fun muxAndFragmentSettingsReachTheOutbound() {
         val settings = Fixtures.settings { it.mux = true; it.muxConcurrency = 4; it.fragment = true }
-        val outbound = Fixtures.outbounds(built(settings).config).getValue(ConfigBuilder.PROXY)
-        assertEquals(4, outbound.objOrNull("multiplex")?.opt("concurrency"))
-        assertNotNull(outbound.objOrNull("fragment"))
+        // Not the default server: Reality's flow already fills a connection, so mux stays off it.
+        val server = Fixtures.server(link = Fixtures.LINKS.getValue("trojan"))
+        val outbound = Fixtures.outbounds(built(settings, server).config).getValue(ConfigBuilder.PROXY)
+        assertEquals(4, outbound.objOrNull("multiplex")?.opt("max_streams"))
+        // Fragmentation is a TLS option in sing-box, not an outbound of its own as in Xray.
+        assertEquals(true, outbound.objOrNull("tls")?.opt("fragment"))
     }
 
     @Test
@@ -384,9 +393,11 @@ class ConfigBuilderTests {
             )
         )
         val off = built(Fixtures.settings { it.useProviderRouting = false }, Fixtures.configServer())
-        // Without the provider's rules, Nimbus' own final rule sends everything to the proxy.
+        // Without the provider's rules, Nimbus' own final rule sends everything to the proxy — for
+        // a provider config that is the group its balancer became, so both of its nodes stay in
+        // play and the core moves to the other one when this one stops answering.
         val rules = off.config.objOrNull("route")!!.arrOrEmpty("rules").objects()
-        assertEquals(ConfigBuilder.PROXY, rules.last().str("outbound"))
+        assertEquals(off.groupTag, rules.last().str("outbound"))
         assertTrue(on.config.objOrNull("route")!!.arrOrEmpty("rules").length() > 0)
     }
 

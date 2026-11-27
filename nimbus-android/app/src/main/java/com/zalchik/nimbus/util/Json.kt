@@ -50,12 +50,16 @@ fun objNonEmpty(vararg pairs: Pair<String, Json>): JSONObject {
     return out
 }
 
+/**
+ * Whether [objNonEmpty] leaves a value out. A boolean is never empty: `false` is what one writes
+ * when sing-box's own default is `true`, and dropping it would silently reverse the meaning.
+ * Options that should stay absent when they are off are passed as `true.takeIf { … }` instead.
+ */
 fun isEmptyJson(value: Json): Boolean = when (value) {
     null -> true
     is String -> value.isEmpty()
     is JSONArray -> value.length() == 0
     is JSONObject -> value.length() == 0
-    is Boolean -> !value
     else -> false
 }
 
@@ -71,10 +75,13 @@ fun arr(items: Iterable<Json>): JSONArray {
     return out
 }
 
-/** Every element of a list, as JSON values (a list of strings becomes a JSON array). */
+/** Every element of a list, as JSON values (a list of strings becomes a JSON array). A JSON
+ * `null` is an absence, not a value: panels send `[null]` for an empty list. */
 fun listOfJson(value: Json): List<Json> = when (value) {
-    is JSONArray -> (0 until value.length()).map { value.opt(it) }
-    null -> emptyList()
+    is JSONArray -> (0 until value.length()).mapNotNull { index ->
+        value.opt(index)?.takeUnless { it == JSONObject.NULL }
+    }
+    null, JSONObject.NULL -> emptyList()
     else -> listOf(value)
 }
 

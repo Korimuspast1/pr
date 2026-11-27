@@ -3,6 +3,7 @@ package com.zalchik.nimbus
 import com.zalchik.nimbus.data.Balancer
 import com.zalchik.nimbus.data.Server
 import com.zalchik.nimbus.engine.Balancers
+import com.zalchik.nimbus.engine.ConfigBuilder
 import com.zalchik.nimbus.engine.Xray
 import com.zalchik.nimbus.util.arrOrEmpty
 import com.zalchik.nimbus.util.objects
@@ -137,9 +138,12 @@ class BalancerTests {
 
         val converted = Balancers.convert(same, Fixtures.balancer(), Fixtures.settings())
         assertTrue(converted.providerRules.isNotEmpty())
-        // The provider's rules point at tags that still exist after the rename.
-        val tags = converted.outbounds.map { it.str("tag") }.toSet()
-        for (rule in converted.providerRules) {
+        // The provider's rules point at tags that still exist in the built config: the renamed
+        // nodes, the group, and the direct and block Nimbus adds around them.
+        val built = ConfigBuilder.buildBalancer(Fixtures.balancer(), same, Fixtures.settings(), ipv6 = false)
+        val tags = Fixtures.outbounds(built.config).keys +
+            Fixtures.endpoints(built.config).map { it.str("tag") }
+        for (rule in Fixtures.rules(built.config)) {
             val outbound = rule.str("outbound")
             if (outbound.isNotEmpty()) assertTrue("$outbound in $tags", outbound in tags)
         }
@@ -177,15 +181,19 @@ class BalancerTests {
         assertTrue(types.toString(), types.contains("vless"))
         assertTrue(types.toString(), types.contains("trojan"))
         // Helpers become Nimbus' own direct and block, not Xray's freedom and blackhole.
-        assertTrue(converted.outbounds.any { it.str("type") == "direct" })
-        assertTrue(converted.outbounds.any { it.str("type") == "block" })
-        assertTrue(converted.rules.isNotEmpty())
-        assertFalse(converted.toString().contains("allowInsecure"))
+        assertTrue(types.toString(), converted.outbounds.any { it.str("type") == "direct" })
+        assertTrue(types.toString(), converted.outbounds.any { it.str("type") == "block" })
+        assertTrue(converted.rules.toString(), converted.rules.isNotEmpty())
+        // allowInsecure is dropped from what the core gets, and reported to the user: a notice
+        // that says "allowInsecure is ignored" is the point, not a leak.
+        assertFalse(converted.outbounds.toString().contains("allowInsecure"))
+        assertTrue(converted.unsupported.any { it.contains("allowInsecure") })
 
-        // The provider's balancer becomes a group the node switcher can drive.
+        // The provider's balancer becomes a group the node switcher can drive. Groups ride apart
+        // from the nodes: a latency probe wants one, a config wants both.
         assertTrue(converted.groups.isNotEmpty())
         val group = converted.groups.first()
-        assertTrue(group.str("type") == "urltest" || group.str("type") == "selector")
+        assertTrue(group.toString(), group.str("type") == "urltest" || group.str("type") == "selector")
         val nodes = group.arrOrEmpty("outbounds").strings()
         assertEquals(2, nodes.size)
 
@@ -194,8 +202,8 @@ class BalancerTests {
         assertTrue(tags.toString(), tags.any { it.startsWith("geoip-") })
         assertTrue(tags.toString(), tags.any { it.startsWith("geosite-") })
         for (set in converted.ruleSets.toJsonArray().objects()) {
-            assertEquals("remote", set.str("type"))
-            assertTrue(set.str("url").endsWith(".srs"))
+            assertEquals(set.toString(), "remote", set.str("type"))
+            assertTrue(set.str("url"), set.str("url").endsWith(".srs"))
         }
     }
 

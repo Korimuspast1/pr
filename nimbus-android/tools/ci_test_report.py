@@ -29,6 +29,15 @@ def flat(text: str | None) -> str:
     return " ".join((text or "").split())[:LIMIT]
 
 
+def first_test_frame(trace: str) -> str:
+    """The first stack frame in this project's own sources, as File.kt:line."""
+    for line in trace.splitlines():
+        line = line.strip()
+        if line.startswith("at ") and "com.zalchik.nimbus" in line and "(" in line:
+            return line.split("(", 1)[1].rstrip(")")
+    return ""
+
+
 def main() -> int:
     results = sorted(glob.glob(os.path.join("app", "build", "test-results", "*", "TEST-*.xml")))
     if not results:
@@ -55,9 +64,13 @@ def main() -> int:
             klass = (case.get("classname") or "?").rsplit(".", 1)[-1]
             name = case.get("name") or "?"
             for problem in problems:
-                detail = flat(problem.get("message") or problem.text)
-                print(f"::error title={klass}.{name}::{detail or problem.get('type') or 'failed'}")
-                lines.append(f"- `{klass}.{name}` — {detail or problem.get('type') or 'failed'}")
+                # The message alone is often just "java.lang.AssertionError"; the frame that points
+                # back at the test source is what says which assertion it was.
+                detail = flat(problem.get("message")) or problem.get("type") or "failed"
+                where = first_test_frame(problem.text or "")
+                text_out = f"{detail} — {where}" if where else detail
+                print(f"::error title={klass}.{name}::{text_out}")
+                lines.append(f"- `{klass}.{name}` — {text_out}")
 
     ran = total - skipped
     summary = f"{total} tests, {ran} ran, {failures} failed, {skipped} skipped"
