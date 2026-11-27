@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zalchik.grust.data.Mood
+import com.zalchik.grust.data.Russian
 import com.zalchik.grust.data.MoodEntry
 import com.zalchik.grust.data.Stats
 import com.zalchik.grust.ui.theme.Palette
@@ -65,14 +66,14 @@ fun StatsScreen(entries: List<MoodEntry>, today: LocalDate) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricCard(
                 modifier = Modifier.weight(1f),
-                value = if (average == null) "—" else Format.oneDecimal(average),
-                label = "среднее за $WINDOW_DAYS ${Format.pluralDays(WINDOW_DAYS)}",
+                value = if (average == null) "—" else Russian.oneDecimal(average),
+                label = "среднее за $WINDOW_DAYS ${Russian.pluralDays(WINDOW_DAYS)}",
                 accent = Stats.moodFor(average)?.tint ?: Palette.Mist,
             )
             MetricCard(
                 modifier = Modifier.weight(1f),
                 value = "$streak",
-                label = "${Format.pluralDays(streak)} подряд",
+                label = "${Russian.pluralDays(streak)} подряд",
                 accent = Palette.Lamp,
             )
         }
@@ -93,7 +94,7 @@ fun StatsScreen(entries: List<MoodEntry>, today: LocalDate) {
         }
 
         Spacer(Modifier.height(24.dp))
-        Text("Последние $WINDOW_DAYS ${Format.pluralDays(WINDOW_DAYS)}", fontSize = 13.sp, color = Palette.Mist)
+        Text("Последние $WINDOW_DAYS ${Russian.pluralDays(WINDOW_DAYS)}", fontSize = 13.sp, color = Palette.Mist)
         Spacer(Modifier.height(10.dp))
         Strip(window, today)
 
@@ -180,7 +181,7 @@ private fun Strip(window: List<MoodEntry?>, today: LocalDate) {
                 )
                 Spacer(Modifier.height(5.dp))
                 Text(
-                    text = if (index == window.lastIndex) "сегодня" else Format.weekdayShort(day),
+                    text = if (index == window.lastIndex) "сегодня" else Russian.weekdayShort(day),
                     fontSize = 8.sp,
                     maxLines = 1,
                     color = Palette.Mist.copy(alpha = if (index == window.lastIndex) 1f else 0.7f),

@@ -1,26 +1,31 @@
-package com.zalchik.grust.ui
+package com.zalchik.grust.data
 
 import java.time.LocalDate
-import java.time.format.TextStyle
-import java.util.Locale
 
 /**
  * Russian dates and numbers, written out by hand instead of through a locale.
  *
  * The app is in Russian only; depending on the phone's ICU data for month names would make the
- * diary look different on different devices for no reason.
+ * diary look different on different devices for no reason. Nothing here touches Android, so the
+ * plural rule - which is easy to get wrong - is covered by unit tests.
  */
-object Format {
+object Russian {
+
     private val months = listOf(
         "января", "февраля", "марта", "апреля", "мая", "июня",
         "июля", "августа", "сентября", "октября", "ноября", "декабря",
     )
+
     private val monthsShort = listOf(
         "янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек",
     )
+
     private val weekdays = listOf(
         "понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье",
     )
+
+    /** Monday-first, two letters: "пн", "вт", … for the two-week strip. */
+    private val weekdaysShort = listOf("пн", "вт", "ср", "чт", "пт", "сб", "вс")
 
     fun longDate(day: LocalDate): String =
         "${day.dayOfMonth} ${months[day.monthValue - 1]}, ${weekdays[day.dayOfWeek.value - 1]}"
@@ -28,10 +33,7 @@ object Format {
     fun shortDate(day: LocalDate): String =
         "${day.dayOfMonth} ${monthsShort[day.monthValue - 1]}"
 
-    fun weekdayShort(day: LocalDate): String =
-        day.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.forLanguageTag("ru"))
-            .take(2)
-            .replace(".", "")
+    fun weekdayShort(day: LocalDate): String = weekdaysShort[day.dayOfWeek.value - 1]
 
     fun pluralDays(count: Int): String {
         val tail = count % 100
@@ -43,15 +45,9 @@ object Format {
         }
     }
 
+    /** 2.0 -> "2,0", 1.857 -> "1,9": built from tenths, so no string round-trip can double the tail. */
     fun oneDecimal(value: Double): String {
-        val rounded = Math.round(value * 10) / 10.0
-        val text = rounded.toString().replace('.', ',')
-        return if (rounded == Math.floor(rounded)) "$text,0" else text
-    }
-
-    fun bytes(count: Int): String = when {
-        count < 1024 -> "$count Б"
-        count < 1024 * 1024 -> "${count / 1024} КБ"
-        else -> "${oneDecimal(count / 1024.0 / 1024.0)} МБ"
+        val tenths = Math.round(value * 10)
+        return "${tenths / 10},${Math.abs(tenths % 10)}"
     }
 }

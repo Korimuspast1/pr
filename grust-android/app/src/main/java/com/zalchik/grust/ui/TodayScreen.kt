@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zalchik.grust.data.Mood
+import com.zalchik.grust.data.Russian
 import com.zalchik.grust.data.MoodEntry
 import com.zalchik.grust.data.Stats
 import com.zalchik.grust.data.Words
@@ -70,7 +71,7 @@ fun TodayScreen(
         item {
             Spacer(Modifier.height(24.dp))
             Text(
-                text = Format.longDate(today),
+                text = Russian.longDate(today),
                 fontSize = 13.sp,
                 color = Palette.Mist,
                 letterSpacing = 0.6.sp,
@@ -85,7 +86,7 @@ fun TodayScreen(
             if (streak > 0) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "$streak ${Format.pluralDays(streak)} подряд ты остаёшься на связи с собой",
+                    text = "$streak ${Russian.pluralDays(streak)} подряд ты остаёшься на связи с собой",
                     fontSize = 12.sp,
                     color = Palette.Mist,
                 )
@@ -249,7 +250,16 @@ private fun MoodChip(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(mood.emoji, fontSize = 22.sp)
+        // The emoji is drawn over a slightly darker disc: on a near-black background the stock
+        // yellow face loses its outline, and a smiley with no outline is a coloured smear.
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .background(Palette.Night.copy(alpha = 0.55f), RoundedCornerShape(50)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(mood.emoji, fontSize = 18.sp)
+        }
         Spacer(Modifier.height(6.dp))
         Text(
             text = mood.title,

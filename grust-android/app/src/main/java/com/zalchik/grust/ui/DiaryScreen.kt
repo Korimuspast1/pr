@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zalchik.grust.data.MoodEntry
+import com.zalchik.grust.data.Russian
 import com.zalchik.grust.ui.theme.Palette
 import java.time.LocalDate
 
@@ -65,7 +66,7 @@ fun DiaryScreen(
                 color = Palette.Lavender,
             )
             Text(
-                text = "${ordered.size} ${Format.pluralDays(ordered.size)} записано · ${ordered.count { it.note.isNotBlank() }} с текстом",
+                text = "записей: ${ordered.size} · с текстом: ${ordered.count { it.note.isNotBlank() }}",
                 fontSize = 12.sp,
                 color = Palette.Mist,
             )
@@ -85,7 +86,7 @@ fun DiaryScreen(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             containerColor = Palette.Deep,
-            title = { Text("Убрать ${Format.shortDate(entry.day)}?", color = Palette.onNight) },
+            title = { Text("Убрать ${Russian.shortDate(entry.day)}?", color = Palette.onNight) },
             text = {
                 Text(
                     "Запись и текст исчезнут. Это нельзя отменить.",
@@ -132,7 +133,7 @@ private fun DiaryRow(entry: MoodEntry, isToday: Boolean, onDelete: () -> Unit) {
         Column(modifier = Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = Format.shortDate(entry.day),
+                    text = Russian.shortDate(entry.day),
                     fontSize = 14.sp,
                     color = Palette.onNight,
                 )

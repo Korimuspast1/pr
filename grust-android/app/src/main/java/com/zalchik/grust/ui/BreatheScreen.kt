@@ -70,6 +70,12 @@ fun BreatheScreen() {
         finished = false
     }
 
+    // The circle snaps to where the practice begins. Without this the first phase of "Квадрат"
+    // animates towards the scale the circle is already at, so the first inhale is invisible.
+    LaunchedEffect(practiceIndex, running) {
+        if (running) scale.snapTo(practice.phases.first().from)
+    }
+
     // A different practice starts from its own beginning.
     LaunchedEffect(practiceIndex) {
         running = false
@@ -81,6 +87,7 @@ fun BreatheScreen() {
         if (finished) return@LaunchedEffect
         while (true) {
             val phase = practice.phases[phaseIndex]
+            scale.snapTo(phase.from)
             val target = phase.to
             scale.animateTo(target, tween(phase.seconds * 1000, easing = LinearEasing))
             // The phase ran out: step on, or finish after the last cycle.
