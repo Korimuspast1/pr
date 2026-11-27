@@ -1,75 +1,14 @@
-===== Fri Nov 27 02:38:54 UTC 2026 =====
---- yt-dlp version: 2026.11.23
---- curl head:
-http=200 ip=142.251.157.4
---- python requests smoke:
-status 200 len 2000
-
-===== attempt 1 : --extractor-args youtube:player_client=tv_simply =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=tv_simply', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
-[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
-[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
-[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
-[debug] Optional libraries: sqlite3-3.46.1
-[debug] JS runtimes: none
-[debug] Proxy map: {}
-[debug] Request Handlers: urllib
-[debug] Plugin directories: none
-[debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
-[debug] [youtube] [pot] PO Token Cache Providers: memory
-[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
-[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
+===== Fri Nov 27 02:40:25 UTC 2026 =====
+--- yt-dlp: 2026.11.23
 [youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
 [youtube] 40-Bp04QC6w: Downloading webpage
-[debug] [youtube] Forcing "tv" player JS variant for player b485e332
-        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
-[youtube] 40-Bp04QC6w: Downloading tv simply player API JSON
-[debug] [youtube] 40-Bp04QC6w: tv_simply player response playability status: UNPLAYABLE
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[youtube] 40-Bp04QC6w: Downloading visionos player API JSON
+WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
 ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
-    ie_result = self._real_extract(url)
-                ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
-    self.raise_no_formats(reason, expected=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
-    raise ExtractorError(msg, expected=expected, video_id=video_id)
+subs failed
 
-
-===== attempt 2 : --extractor-args youtube:player_client=tv_simply;formats=missing_pot =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=tv_simply;formats=missing_pot', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
-[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
-[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
-[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
-[debug] Optional libraries: sqlite3-3.46.1
-[debug] JS runtimes: none
-[debug] Proxy map: {}
-[debug] Request Handlers: urllib
-[debug] Plugin directories: none
-[debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
-[debug] [youtube] [pot] PO Token Cache Providers: memory
-[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
-[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
-[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-[youtube] 40-Bp04QC6w: Downloading webpage
-[debug] [youtube] Forcing "tv" player JS variant for player b485e332
-        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
-[youtube] 40-Bp04QC6w: Downloading tv simply player API JSON
-[debug] [youtube] 40-Bp04QC6w: tv_simply player response playability status: UNPLAYABLE
-ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
-    ie_result = self._real_extract(url)
-                ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
-    self.raise_no_formats(reason, expected=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
-    raise ExtractorError(msg, expected=expected, video_id=video_id)
-
-
-===== attempt 3 : --extractor-args youtube:player_client=tv =====
+===== attempt: --extractor-args youtube:player_client=tv =====
 [debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=tv', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
 [debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
 [debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
@@ -79,9 +18,13 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
 [debug] JS runtimes: none
 [debug] Proxy map: {}
 [debug] Request Handlers: urllib
-[debug] Plugin directories: none
+[debug] Plugin directories: /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp_plugins
 [debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
+[debug] [youtube] [pot:bgutil:script-node] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-node] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/build/generate_once.js
+[debug] [youtube] [pot:bgutil:script-deno] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-deno] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/src/generate_once.ts
+[debug] [youtube] [pot] PO Token Providers: bgutil:http-2.0.2 (external), bgutil:script-node-2.0.2 (external, unavailable), bgutil:script-deno-2.0.2 (external, unavailable)
 [debug] [youtube] [pot] PO Token Cache Providers: memory
 [debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
 [debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
@@ -104,42 +47,7 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
     raise ExtractorError(msg, expected=expected, video_id=video_id)
 
 
-===== attempt 4 : --extractor-args youtube:player_client=tv;formats=missing_pot =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=tv;formats=missing_pot', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
-[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
-[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
-[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
-[debug] Optional libraries: sqlite3-3.46.1
-[debug] JS runtimes: none
-[debug] Proxy map: {}
-[debug] Request Handlers: urllib
-[debug] Plugin directories: none
-[debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
-[debug] [youtube] [pot] PO Token Cache Providers: memory
-[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
-[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
-[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-[youtube] 40-Bp04QC6w: Downloading webpage
-[youtube] 40-Bp04QC6w: Downloading tv client config
-[debug] [youtube] Forcing "tv" player JS variant for player b485e332
-        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
-[youtube] 40-Bp04QC6w: Downloading player b485e332-tv
-[youtube] 40-Bp04QC6w: Downloading tv player API JSON
-[debug] [youtube] 40-Bp04QC6w: tv player response playability status: LOGIN_REQUIRED
-[debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
-ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
-    ie_result = self._real_extract(url)
-                ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
-    self.raise_no_formats(reason, expected=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
-    raise ExtractorError(msg, expected=expected, video_id=video_id)
-
-
-===== attempt 5 : --extractor-args youtube:player_client=web_safari =====
+===== attempt: --extractor-args youtube:player_client=web_safari =====
 [debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=web_safari', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
 [debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
 [debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
@@ -149,9 +57,13 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
 [debug] JS runtimes: none
 [debug] Proxy map: {}
 [debug] Request Handlers: urllib
-[debug] Plugin directories: none
+[debug] Plugin directories: /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp_plugins
 [debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
+[debug] [youtube] [pot:bgutil:script-node] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-node] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/build/generate_once.js
+[debug] [youtube] [pot:bgutil:script-deno] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-deno] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/src/generate_once.ts
+[debug] [youtube] [pot] PO Token Providers: bgutil:http-2.0.2 (external), bgutil:script-node-2.0.2 (external, unavailable), bgutil:script-deno-2.0.2 (external, unavailable)
 [debug] [youtube] [pot] PO Token Cache Providers: memory
 [debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
 [debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
@@ -174,174 +86,7 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
     raise ExtractorError(msg, expected=expected, video_id=video_id)
 
 
-===== attempt 6 : --extractor-args youtube:player_client=web_safari;formats=missing_pot =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=web_safari;formats=missing_pot', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
-[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
-[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
-[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
-[debug] Optional libraries: sqlite3-3.46.1
-[debug] JS runtimes: none
-[debug] Proxy map: {}
-[debug] Request Handlers: urllib
-[debug] Plugin directories: none
-[debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
-[debug] [youtube] [pot] PO Token Cache Providers: memory
-[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
-[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
-[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-[youtube] 40-Bp04QC6w: Downloading webpage
-[youtube] 40-Bp04QC6w: Downloading web safari client config
-[debug] [youtube] Forcing "tv" player JS variant for player b485e332
-        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
-[debug] [youtube] 40-Bp04QC6w: Detected experiment to bind GVS PO Token to video ID for web_safari client
-[youtube] 40-Bp04QC6w: Downloading web safari player API JSON
-[debug] [youtube] 40-Bp04QC6w: web_safari player response playability status: LOGIN_REQUIRED
-[debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
-ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
-    ie_result = self._real_extract(url)
-                ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
-    self.raise_no_formats(reason, expected=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
-    raise ExtractorError(msg, expected=expected, video_id=video_id)
-
-
-===== attempt 7 : --extractor-args youtube:player_client=ios =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=ios', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
-[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
-[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
-[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
-[debug] Optional libraries: sqlite3-3.46.1
-[debug] JS runtimes: none
-[debug] Proxy map: {}
-[debug] Request Handlers: urllib
-[debug] Plugin directories: none
-[debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
-[debug] [youtube] [pot] PO Token Cache Providers: memory
-[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
-[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
-[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-[youtube] 40-Bp04QC6w: Downloading webpage
-[debug] [youtube] Forcing "tv" player JS variant for player b485e332
-        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
-[youtube] 40-Bp04QC6w: Downloading ios player API JSON
-[debug] [youtube] 40-Bp04QC6w: ios player response playability status: LOGIN_REQUIRED
-[debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
-ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
-    ie_result = self._real_extract(url)
-                ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
-    self.raise_no_formats(reason, expected=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
-    raise ExtractorError(msg, expected=expected, video_id=video_id)
-
-
-===== attempt 8 : --extractor-args youtube:player_client=ios;formats=missing_pot =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=ios;formats=missing_pot', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
-[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
-[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
-[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
-[debug] Optional libraries: sqlite3-3.46.1
-[debug] JS runtimes: none
-[debug] Proxy map: {}
-[debug] Request Handlers: urllib
-[debug] Plugin directories: none
-[debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
-[debug] [youtube] [pot] PO Token Cache Providers: memory
-[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
-[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
-[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-[youtube] 40-Bp04QC6w: Downloading webpage
-[debug] [youtube] Forcing "tv" player JS variant for player 9244921b
-        original url = /s/player/9244921b/player_es6.vflset/en_US/base.js
-[youtube] 40-Bp04QC6w: Downloading ios player API JSON
-[debug] [youtube] 40-Bp04QC6w: ios player response playability status: LOGIN_REQUIRED
-[debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
-ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
-    ie_result = self._real_extract(url)
-                ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
-    self.raise_no_formats(reason, expected=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
-    raise ExtractorError(msg, expected=expected, video_id=video_id)
-
-
-===== attempt 9 : --extractor-args youtube:player_client=android_vr =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=android_vr', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
-[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
-[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
-[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
-[debug] Optional libraries: sqlite3-3.46.1
-[debug] JS runtimes: none
-[debug] Proxy map: {}
-[debug] Request Handlers: urllib
-[debug] Plugin directories: none
-[debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
-[debug] [youtube] [pot] PO Token Cache Providers: memory
-[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
-[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
-[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-[youtube] 40-Bp04QC6w: Downloading webpage
-[debug] [youtube] Forcing "tv" player JS variant for player b485e332
-        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
-[youtube] 40-Bp04QC6w: Downloading android vr player API JSON
-[debug] [youtube] 40-Bp04QC6w: android_vr player response playability status: LOGIN_REQUIRED
-[debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
-ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
-    ie_result = self._real_extract(url)
-                ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
-    self.raise_no_formats(reason, expected=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
-    raise ExtractorError(msg, expected=expected, video_id=video_id)
-
-
-===== attempt 10 : --extractor-args youtube:player_client=android_vr;formats=missing_pot =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=android_vr;formats=missing_pot', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
-[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
-[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
-[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
-[debug] Optional libraries: sqlite3-3.46.1
-[debug] JS runtimes: none
-[debug] Proxy map: {}
-[debug] Request Handlers: urllib
-[debug] Plugin directories: none
-[debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
-[debug] [youtube] [pot] PO Token Cache Providers: memory
-[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
-[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
-[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-[youtube] 40-Bp04QC6w: Downloading webpage
-[debug] [youtube] Forcing "tv" player JS variant for player b485e332
-        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
-[youtube] 40-Bp04QC6w: Downloading android vr player API JSON
-[debug] [youtube] 40-Bp04QC6w: android_vr player response playability status: LOGIN_REQUIRED
-[debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
-ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
-    ie_result = self._real_extract(url)
-                ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
-    self.raise_no_formats(reason, expected=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
-    raise ExtractorError(msg, expected=expected, video_id=video_id)
-
-
-===== attempt 11 : --extractor-args youtube:player_client=mweb =====
+===== attempt: --extractor-args youtube:player_client=mweb =====
 [debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=mweb', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
 [debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
 [debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
@@ -351,9 +96,13 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
 [debug] JS runtimes: none
 [debug] Proxy map: {}
 [debug] Request Handlers: urllib
-[debug] Plugin directories: none
+[debug] Plugin directories: /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp_plugins
 [debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
+[debug] [youtube] [pot:bgutil:script-node] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-node] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/build/generate_once.js
+[debug] [youtube] [pot:bgutil:script-deno] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-deno] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/src/generate_once.ts
+[debug] [youtube] [pot] PO Token Providers: bgutil:http-2.0.2 (external), bgutil:script-node-2.0.2 (external, unavailable), bgutil:script-deno-2.0.2 (external, unavailable)
 [debug] [youtube] [pot] PO Token Cache Providers: memory
 [debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
 [debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
@@ -376,42 +125,7 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
     raise ExtractorError(msg, expected=expected, video_id=video_id)
 
 
-===== attempt 12 : --extractor-args youtube:player_client=mweb;formats=missing_pot =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=mweb;formats=missing_pot', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
-[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
-[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
-[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
-[debug] Optional libraries: sqlite3-3.46.1
-[debug] JS runtimes: none
-[debug] Proxy map: {}
-[debug] Request Handlers: urllib
-[debug] Plugin directories: none
-[debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
-[debug] [youtube] [pot] PO Token Cache Providers: memory
-[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
-[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
-[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-[youtube] 40-Bp04QC6w: Downloading webpage
-[youtube] 40-Bp04QC6w: Downloading mweb client config
-[debug] [youtube] Forcing "tv" player JS variant for player b485e332
-        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
-[debug] [youtube] 40-Bp04QC6w: Detected experiment to bind GVS PO Token to video ID for mweb client
-[youtube] 40-Bp04QC6w: Downloading mweb player API JSON
-[debug] [youtube] 40-Bp04QC6w: mweb player response playability status: LOGIN_REQUIRED
-[debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
-ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
-    ie_result = self._real_extract(url)
-                ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
-    self.raise_no_formats(reason, expected=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
-    raise ExtractorError(msg, expected=expected, video_id=video_id)
-
-
-===== attempt 13 : --extractor-args youtube:player_client=web_embedded =====
+===== attempt: --extractor-args youtube:player_client=web_embedded =====
 [debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=web_embedded', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
 [debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
 [debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
@@ -421,9 +135,13 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
 [debug] JS runtimes: none
 [debug] Proxy map: {}
 [debug] Request Handlers: urllib
-[debug] Plugin directories: none
+[debug] Plugin directories: /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp_plugins
 [debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
+[debug] [youtube] [pot:bgutil:script-node] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-node] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/build/generate_once.js
+[debug] [youtube] [pot:bgutil:script-deno] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-deno] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/src/generate_once.ts
+[debug] [youtube] [pot] PO Token Providers: bgutil:http-2.0.2 (external), bgutil:script-node-2.0.2 (external, unavailable), bgutil:script-deno-2.0.2 (external, unavailable)
 [debug] [youtube] [pot] PO Token Cache Providers: memory
 [debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
 [debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
@@ -447,8 +165,8 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
     raise ExtractorError(msg, expected=expected, video_id=video_id)
 
 
-===== attempt 14 : --extractor-args youtube:player_client=web_embedded;formats=missing_pot =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=web_embedded;formats=missing_pot', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
+===== attempt: --extractor-args youtube:player_client=android_vr =====
+[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=android_vr', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
 [debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
 [debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
 [debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
@@ -457,21 +175,22 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
 [debug] JS runtimes: none
 [debug] Proxy map: {}
 [debug] Request Handlers: urllib
-[debug] Plugin directories: none
+[debug] Plugin directories: /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp_plugins
 [debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
+[debug] [youtube] [pot:bgutil:script-node] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-node] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/build/generate_once.js
+[debug] [youtube] [pot:bgutil:script-deno] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-deno] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/src/generate_once.ts
+[debug] [youtube] [pot] PO Token Providers: bgutil:http-2.0.2 (external), bgutil:script-node-2.0.2 (external, unavailable), bgutil:script-deno-2.0.2 (external, unavailable)
 [debug] [youtube] [pot] PO Token Cache Providers: memory
 [debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
 [debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
 [youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
 [youtube] 40-Bp04QC6w: Downloading webpage
-[youtube] 40-Bp04QC6w: Downloading web embedded client config
 [debug] [youtube] Forcing "tv" player JS variant for player b485e332
         original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
-[debug] [youtube] 40-Bp04QC6w: Detected experiment to bind GVS PO Token to video ID for web_embedded client
-[youtube] 40-Bp04QC6w: Downloading player b485e332-tv
-[youtube] 40-Bp04QC6w: Downloading web embedded player API JSON
-[debug] [youtube] 40-Bp04QC6w: web_embedded player response playability status: LOGIN_REQUIRED
+[youtube] 40-Bp04QC6w: Downloading android vr player API JSON
+[debug] [youtube] 40-Bp04QC6w: android_vr player response playability status: LOGIN_REQUIRED
 [debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
 ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
   File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
@@ -483,8 +202,8 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
     raise ExtractorError(msg, expected=expected, video_id=video_id)
 
 
-===== attempt 15 : --extractor-args youtube:player_client=default =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=default', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
+===== attempt:  =====
+[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
 [debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
 [debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
 [debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
@@ -493,47 +212,19 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
 [debug] JS runtimes: none
 [debug] Proxy map: {}
 [debug] Request Handlers: urllib
-[debug] Plugin directories: none
+[debug] Plugin directories: /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp_plugins
 [debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
+[debug] [youtube] [pot:bgutil:script-node] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-node] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/build/generate_once.js
+[debug] [youtube] [pot:bgutil:script-deno] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-deno] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/src/generate_once.ts
+[debug] [youtube] [pot] PO Token Providers: bgutil:http-2.0.2 (external), bgutil:script-node-2.0.2 (external, unavailable), bgutil:script-deno-2.0.2 (external, unavailable)
 [debug] [youtube] [pot] PO Token Cache Providers: memory
 [debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
 [debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
 [youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
 [youtube] 40-Bp04QC6w: Downloading webpage
-[debug] [youtube] Forcing "tv" player JS variant for player b485e332
-        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
-[youtube] 40-Bp04QC6w: Downloading visionos player API JSON
-[debug] [youtube] 40-Bp04QC6w: visionos player response playability status: LOGIN_REQUIRED
-[debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
-ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
-    ie_result = self._real_extract(url)
-                ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
-    self.raise_no_formats(reason, expected=True)
-  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
-    raise ExtractorError(msg, expected=expected, video_id=video_id)
-
-
-===== attempt 16 : --extractor-args youtube:player_client=default;formats=missing_pot =====
-[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=default;formats=missing_pot', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
-[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
-[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
-[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
-[debug] Optional libraries: sqlite3-3.46.1
-[debug] JS runtimes: none
-[debug] Proxy map: {}
-[debug] Request Handlers: urllib
-[debug] Plugin directories: none
-[debug] Loaded 1744 extractors
-[debug] [youtube] [pot] PO Token Providers: none
-[debug] [youtube] [pot] PO Token Cache Providers: memory
-[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
-[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
-[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-[youtube] 40-Bp04QC6w: Downloading webpage
+[debug] WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
 [debug] [youtube] Forcing "tv" player JS variant for player b485e332
         original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
 [youtube] 40-Bp04QC6w: Downloading visionos player API JSON
@@ -548,5 +239,66 @@ ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps 
   File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
     raise ExtractorError(msg, expected=expected, video_id=video_id)
 
---- DOWNLOAD FAILED after 16 attempts
---- done Fri Nov 27 02:39:16 UTC 2026
+
+===== attempt: --extractor-args youtube:player_client=tv_simply;formats=missing_pot =====
+[debug] Command-line config: ['-v', '--no-warnings', '--retries', '3', '--fragment-retries', '5', '--no-playlist', '--extractor-args', 'youtube:player_client=tv_simply;formats=missing_pot', '-f', 'bv*[height<=1080]+ba/b[height<=1080]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
+[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
+[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
+[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
+[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
+[debug] Optional libraries: sqlite3-3.46.1
+[debug] JS runtimes: none
+[debug] Proxy map: {}
+[debug] Request Handlers: urllib
+[debug] Plugin directories: /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp_plugins
+[debug] Loaded 1744 extractors
+[debug] [youtube] [pot:bgutil:script-node] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-node] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/build/generate_once.js
+[debug] [youtube] [pot:bgutil:script-deno] No server_home or script_path passed, defaulting to /home/runner/bgutil-ytdlp-pot-provider/server
+[debug] [youtube] [pot:bgutil:script-deno] Script path doesn't exist: /home/runner/bgutil-ytdlp-pot-provider/server/src/generate_once.ts
+[debug] [youtube] [pot] PO Token Providers: bgutil:http-2.0.2 (external), bgutil:script-node-2.0.2 (external, unavailable), bgutil:script-deno-2.0.2 (external, unavailable)
+[debug] [youtube] [pot] PO Token Cache Providers: memory
+[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
+[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
+[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
+[youtube] 40-Bp04QC6w: Downloading webpage
+[debug] [youtube] Forcing "tv" player JS variant for player b485e332
+        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
+[youtube] 40-Bp04QC6w: Downloading tv simply player API JSON
+[debug] [youtube] 40-Bp04QC6w: tv_simply player response playability status: UNPLAYABLE
+ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
+    ie_result = self._real_extract(url)
+                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
+    self.raise_no_formats(reason, expected=True)
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
+    raise ExtractorError(msg, expected=expected, video_id=video_id)
+
+=== invidious https://inv.nadeko.net
+size=26
+=== invidious https://invidious.nerdvpn.de
+curl: (92) HTTP/2 stream 1 was not closed cleanly: PROTOCOL_ERROR (err 1)
+size=0
+=== invidious https://yewtu.be
+size=11354
+=== invidious https://invidious.f5.si
+size=17
+=== invidious https://iv.melmac.space
+curl: (7) Failed to connect to iv.melmac.space port 443 after 765 ms: Could not connect to server
+size=0
+=== piped https://pipedapi.kavin.rocks
+
+=== piped https://api.piped.private.coffee
+{"error":"org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException: YouTube probably temporarily blocked anonymous watch access with this IP , got error LOGIN_REQUIRED: \"Sign in to confirm that you're not a bot\"\n\tat org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStre
+=== piped https://pipedapi.adminforge.de
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+--- DOWNLOAD FAILED
+--- done Fri Nov 27 02:41:01 UTC 2026
