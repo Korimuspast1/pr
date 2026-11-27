@@ -486,9 +486,29 @@ def selftest() -> int:
 
 
 # --- main --------------------------------------------------------------------
+def check_token() -> int:
+    """проверка токена без запуска бота: печатает ok:<username> или bad:<причина>"""
+    token = os.environ.get("YTDL_BOT_TOKEN", "").strip()
+    if not token:
+        print("bad:секрет YTDL_BOT_TOKEN не задан")
+        return 2
+    try:
+        r = requests.get(f"https://api.telegram.org/bot{token}/getMe", timeout=20).json()
+    except Exception as e:                            # noqa: BLE001
+        print("bad:сеть недоступна: " + str(e)[:120])
+        return 3
+    if r.get("ok"):
+        print("ok:" + str(r["result"].get("username")))
+        return 0
+    print("bad:" + str(r.get("description", "неизвестно")))
+    return 1
+
+
 def main() -> int:
     if "--selftest" in sys.argv:
         return selftest()
+    if "--check" in sys.argv:
+        return check_token()
 
     token = os.environ.get("YTDL_BOT_TOKEN", "").strip()
     if not token:
