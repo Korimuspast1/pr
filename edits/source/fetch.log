@@ -2,7 +2,7 @@
 [debug] Command-line config: ['-v', '--no-warnings', '--no-playlist', '--retries', '2', '-f', 'bv*[height<=720]+ba/b[height<=720]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
 [debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
 [debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
-[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1018-aws-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
+[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1016-aws-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
 [debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
 [debug] Optional libraries: sqlite3-3.46.1
 [debug] JS runtimes: none
@@ -38,9 +38,9 @@ invidious: https://inv.nadeko.net/latest_version?id=40-Bp04QC6w&itag=18&local=tr
 invidious: https://inv.nadeko.net/latest_version?id=40-Bp04QC6w&itag=22&local=true
   download error: HTTPError HTTP Error 500: Internal Server Error
 invidious: https://invidious.nerdvpn.de/latest_version?id=40-Bp04QC6w&itag=18&local=true
-  download error: HTTPError HTTP Error 403: Forbidden
+  download error: URLError <urlopen error [Errno 101] Network is unreachable>
 invidious: https://invidious.nerdvpn.de/latest_version?id=40-Bp04QC6w&itag=22&local=true
-  download error: HTTPError HTTP Error 403: Forbidden
+  download error: URLError <urlopen error [Errno 101] Network is unreachable>
 invidious: https://yt.chocolatemoo53.com/latest_version?id=40-Bp04QC6w&itag=18&local=true
   download error: HTTPError HTTP Error 403: Forbidden
 invidious: https://yt.chocolatemoo53.com/latest_version?id=40-Bp04QC6w&itag=22&local=true
