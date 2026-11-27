@@ -185,25 +185,10 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           disable-spellchecker: true
-          # Absolute paths on purpose: the emulator action's own working directory has varied
-          # between versions, and a screenshot written to the wrong place is a screenshot lost.
-          script: |
-            set -o pipefail
-            export SMOKE_OUT="$GITHUB_WORKSPACE/screenshots-capture"
-            export SMOKE_LOG="$GITHUB_WORKSPACE/smoke.log"
-            apk=$(find "$GITHUB_WORKSPACE/grust-android/app/build/outputs/apk/debug" -name '*.apk' | head -1)
-            {
-              echo "workspace=$GITHUB_WORKSPACE"
-              echo "pwd=$(pwd)"
-              echo "apk=$apk"
-              echo "adb=$(command -v adb || echo none)"
-            } >"$SMOKE_LOG"
-            if [ -z "$apk" ]; then
-              echo "::error title=Smoke::no debug APK to install"
-              exit 1
-            fi
-            bash "$GITHUB_WORKSPACE/grust-android/tools/ci-smoke.sh" "$apk" "$SMOKE_OUT" >>"$SMOKE_LOG" 2>&1
-            echo "smoke exit=$?" >>"$SMOKE_LOG"
+          # One `bash` call to a file in the repository rather than an inline script: the action
+          # runs `script` with /bin/sh, and multiline shell inside YAML hides its quoting mistakes
+          # until a runner has booted an emulator to discover them.
+          script: bash grust-android/tools/run-smoke.sh
 
       - name: Show what the emulator run saw
         # The run logs of this repository cannot be downloaded from where it is maintained, so
