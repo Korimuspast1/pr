@@ -1,0 +1,105 @@
+curl: (60) SSL: no alternative certificate subject name matches target hostname 'instances.cobalt.best'
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the webpage mentioned above.
+--- candidates:
+parse error [Errno 2] No such file or directory: '/tmp/inst.json'
+===== yt-dlp 
+[debug] Command-line config: ['-v', '--no-warnings', '--no-playlist', '-f', 'bv*[height<=720]+ba/b[height<=720]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
+[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
+[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
+[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
+[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
+[debug] Optional libraries: sqlite3-3.46.1
+[debug] JS runtimes: none
+[debug] Proxy map: {}
+[debug] Request Handlers: urllib
+[debug] Plugin directories: none
+[debug] Loaded 1744 extractors
+[debug] [youtube] [pot] PO Token Providers: none
+[debug] [youtube] [pot] PO Token Cache Providers: memory
+[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
+[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
+[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
+[youtube] 40-Bp04QC6w: Downloading webpage
+[debug] WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+[debug] [youtube] Forcing "tv" player JS variant for player b485e332
+        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
+[youtube] 40-Bp04QC6w: Downloading visionos player API JSON
+[debug] [youtube] 40-Bp04QC6w: visionos player response playability status: LOGIN_REQUIRED
+[debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
+ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
+    ie_result = self._real_extract(url)
+                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
+    self.raise_no_formats(reason, expected=True)
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
+    raise ExtractorError(msg, expected=expected, video_id=video_id)
+
+===== yt-dlp --extractor-args youtube:player_client=android_vr;formats=missing_pot
+[debug] Command-line config: ['-v', '--no-warnings', '--no-playlist', '--extractor-args', 'youtube:player_client=android_vr;formats=missing_pot', '-f', 'bv*[height<=720]+ba/b[height<=720]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
+[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
+[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
+[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
+[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
+[debug] Optional libraries: sqlite3-3.46.1
+[debug] JS runtimes: none
+[debug] Proxy map: {}
+[debug] Request Handlers: urllib
+[debug] Plugin directories: none
+[debug] Loaded 1744 extractors
+[debug] [youtube] [pot] PO Token Providers: none
+[debug] [youtube] [pot] PO Token Cache Providers: memory
+[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
+[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
+[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
+[youtube] 40-Bp04QC6w: Downloading webpage
+[debug] [youtube] Forcing "tv" player JS variant for player 9244921b
+        original url = /s/player/9244921b/player_es6.vflset/en_US/base.js
+[youtube] 40-Bp04QC6w: Downloading android vr player API JSON
+[debug] [youtube] 40-Bp04QC6w: android_vr player response playability status: LOGIN_REQUIRED
+[debug] WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
+ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
+    ie_result = self._real_extract(url)
+                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
+    self.raise_no_formats(reason, expected=True)
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
+    raise ExtractorError(msg, expected=expected, video_id=video_id)
+
+===== yt-dlp --extractor-args youtube:player_client=tv_simply
+[debug] Command-line config: ['-v', '--no-warnings', '--no-playlist', '--extractor-args', 'youtube:player_client=tv_simply', '-f', 'bv*[height<=720]+ba/b[height<=720]', '--merge-output-format', 'mp4', '-o', 'edits/source/raw.mp4', 'https://www.youtube.com/watch?v=40-Bp04QC6w']
+[debug] Encodings: locale UTF-8, fs utf-8, pref UTF-8, out utf-8 (No ANSI), error utf-8 (No ANSI), screen utf-8 (No ANSI)
+[debug] yt-dlp version stable@2026.11.23 from yt-dlp/yt-dlp [696c0673e] (pip)
+[debug] Python 3.12.16 (CPython x86_64 64bit) - Linux-7.0.0-1020-azure-x86_64-with-glibc2.43 (OpenSSL 3.5.5 27 Jan 2026, glibc 2.43)
+[debug] exe versions: ffmpeg 8.0.1 (setts), ffprobe 8.0.1
+[debug] Optional libraries: sqlite3-3.46.1
+[debug] JS runtimes: none
+[debug] Proxy map: {}
+[debug] Request Handlers: urllib
+[debug] Plugin directories: none
+[debug] Loaded 1744 extractors
+[debug] [youtube] [pot] PO Token Providers: none
+[debug] [youtube] [pot] PO Token Cache Providers: memory
+[debug] [youtube] [pot] PO Token Cache Spec Providers: webpo
+[debug] [youtube] [jsc] JS Challenge Providers: bun (unavailable), deno (unavailable), node (unavailable), quickjs (unavailable)
+[youtube] Extracting URL: https://www.youtube.com/watch?v=40-Bp04QC6w
+[youtube] 40-Bp04QC6w: Downloading webpage
+[debug] [youtube] Forcing "tv" player JS variant for player b485e332
+        original url = /s/player/b485e332/player_es6.vflset/en_US/base.js
+[youtube] 40-Bp04QC6w: Downloading tv simply player API JSON
+[debug] [youtube] 40-Bp04QC6w: tv_simply player response playability status: UNPLAYABLE
+ERROR: [youtube] 40-Bp04QC6w: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 764, in extract
+    ie_result = self._real_extract(url)
+                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/youtube/_video.py", line 4103, in _real_extract
+    self.raise_no_formats(reason, expected=True)
+  File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/yt_dlp/extractor/common.py", line 1271, in raise_no_formats
+    raise ExtractorError(msg, expected=expected, video_id=video_id)
+
+--- DOWNLOAD FAILED
