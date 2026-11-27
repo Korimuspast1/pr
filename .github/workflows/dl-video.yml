@@ -30,104 +30,87 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg >/dev/null
-          python -m pip install -q --upgrade yt-dlp bgutil-ytdlp-pot-provider
+          python -m pip install -q --upgrade yt-dlp
           yt-dlp --version
-          ffmpeg -version | head -1
 
-      - name: Start PO token provider
-        continue-on-error: true
-        run: |
-          docker run -d --name pot -p 4416:4416 brainicism/bgutil-ytdlp-pot-provider:latest || true
-          sleep 8
-          docker ps || true
-          curl -s --max-time 10 http://127.0.0.1:4416/ping || echo "ping failed"
-
-      - name: Probe and download
+      - name: Fetch via cobalt instances
         continue-on-error: true
         env:
           URL: https://www.youtube.com/watch?v=40-Bp04QC6w
-          VID: 40-Bp04QC6w
         run: |
           mkdir -p edits/source
-          LOG=edits/source/probe.log
-          : > "$LOG"
-          exec > >(tee -a "$LOG") 2>&1
+          LOG=edits/source/probe2.log
+          : > "$LOG"; exec > >(tee -a "$LOG") 2>&1
           set +e
-          echo "===== $(date -u) ====="
-          echo "--- yt-dlp: $(yt-dlp --version)"
 
-          # subtitles first: they work more often than the media streams
-          yt-dlp --skip-download --write-auto-subs --write-subs \
-            --sub-langs "ru.*,en.*" --sub-format vtt/srv3/json3 \
-            -o "edits/source/subs" "$URL" || echo "subs failed"
+          curl -sS --max-time 60 https://instances.cobalt.best/api/instances.json -o /tmp/inst.json || true
+          ls -l /tmp/inst.json 2>/dev/null || true
 
-          attempt() {
-            echo ""
-            echo "===== attempt: $* ====="
-            rm -f edits/source/raw.mp4 edits/source/raw.mp4.part
-            yt-dlp -v --no-warnings --retries 3 --fragment-retries 5 --no-playlist \
-              "$@" -f "bv*[height<=1080]+ba/b[height<=1080]" \
-              --merge-output-format mp4 -o "edits/source/raw.mp4" "$URL"
-          }
-
-          # 1) with the PO token provider
-          for CLIENT in tv web_safari mweb web_embedded android_vr; do
-            [ -s edits/source/raw.mp4 ] && break
-            attempt --extractor-args "youtube:player_client=$CLIENT"
-          done
-
-          # 2) plain defaults
-          [ -s edits/source/raw.mp4 ] || attempt
-          [ -s edits/source/raw.mp4 ] || attempt --extractor-args "youtube:player_client=tv_simply;formats=missing_pot"
-
-          # 3) invidious mirrors as a last resort
-          if [ ! -s edits/source/raw.mp4 ]; then
-            for HOST in https://inv.nadeko.net https://invidious.nerdvpn.de https://yewtu.be https://invidious.f5.si https://iv.melmac.space; do
-              echo "=== invidious $HOST"
-              curl -sS -L --max-time 240 -A "Mozilla/5.0" \
-                "$HOST/latest_version?id=$VID&itag=22" -o edits/source/raw.mp4 || true
-              SZ=$(stat -c%s edits/source/raw.mp4 2>/dev/null || echo 0)
-              echo "size=$SZ"
-              if [ "$SZ" -gt 2000000 ]; then break; else rm -f edits/source/raw.mp4; fi
-            done
-          fi
-
-          # 4) piped api mirrors
-          if [ ! -s edits/source/raw.mp4 ]; then
-            for HOST in https://pipedapi.kavin.rocks https://api.piped.private.coffee https://pipedapi.adminforge.de; do
-              echo "=== piped $HOST"
-              curl -sS -L --max-time 60 -A "Mozilla/5.0" "$HOST/streams/$VID" -o /tmp/piped.json || continue
-              head -c 300 /tmp/piped.json; echo
-              U=$(python - <<'PY'
+          python - <<'PY' > /tmp/api.txt
           import json
           try:
-              d = json.load(open('/tmp/piped.json'))
+              d = json.load(open('/tmp/inst.json'))
+          except Exception as e:
+              print("parse error", e); raise SystemExit(0)
+          rows = d if isinstance(d, list) else d.get('instances', [])
+          out = []
+          for r in rows:
+              api = r.get('api') or ''
+              svc = r.get('services') or {}
+              yt = svc.get('youtube')
+              score = r.get('score', 0)
+              if api and yt:
+                  out.append((score, api.rstrip('/')))
+          out.sort(reverse=True)
+          for s, a in out[:14]:
+              print(a)
+          print("TOTAL", len(out))
+          PY
+          echo "--- candidates:"; cat /tmp/api.txt
+
+          while read -r INST; do
+            case "$INST" in TOTAL*|"") continue;; esac
+            echo ""
+            echo "===== cobalt: $INST"
+            curl -sS --max-time 45 -X POST "$INST/" \
+              -H "Accept: application/json" -H "Content-Type: application/json" \
+              -d "{\"url\":\"$URL\",\"videoQuality\":\"720\",\"downloadMode\":\"auto\",\"filenameStyle\":\"basic\",\"youtubeVideoCodec\":\"h264\"}" \
+              -o /tmp/cob.json || { echo "post failed"; continue; }
+            head -c 400 /tmp/cob.json; echo
+            LINK=$(python - <<'PY'
+          import json
+          try:
+              d = json.load(open('/tmp/cob.json'))
           except Exception:
               raise SystemExit(0)
-          for s in d.get('videoStreams', []):
-              if s.get('videoOnly') is False and s.get('url'):
-                  print(s['url']); break
-          else:
-              for s in d.get('videoStreams', []):
-                  if s.get('url'):
-                      print(s['url']); break
+          for k in ('url', 'tunnel'):
+              if d.get(k):
+                  print(d[k]); raise SystemExit(0)
+          st = d.get('status') or (d.get('error') or {}).get('code')
+          print("", end="")
           PY
           )
-              [ -z "$U" ] && continue
-              curl -sS -L --max-time 600 -A "Mozilla/5.0" "$U" -o edits/source/raw.mp4 || true
-              SZ=$(stat -c%s edits/source/raw.mp4 2>/dev/null || echo 0)
-              echo "size=$SZ"
-              if [ "$SZ" -gt 2000000 ]; then break; else rm -f edits/source/raw.mp4; fi
+            if [ -z "$LINK" ]; then echo "no link"; continue; fi
+            echo "link ok, downloading"
+            curl -sS -L --max-time 1200 -A "Mozilla/5.0" "$LINK" -o edits/source/raw.mp4 || true
+            SZ=$(stat -c%s edits/source/raw.mp4 2>/dev/null || echo 0)
+            echo "size=$SZ"
+            if [ "$SZ" -gt 3000000 ]; then echo "COBALT OK"; break; fi
+            rm -f edits/source/raw.mp4
+          done < <(grep -E '^https?://' /tmp/api.txt)
+
+          # ---- last resort: yt-dlp plain attempts
+          if [ ! -s edits/source/raw.mp4 ]; then
+            for ARG in "" "--extractor-args youtube:player_client=android_vr;formats=missing_pot" "--extractor-args youtube:player_client=tv_simply"; do
+              echo "===== yt-dlp $ARG"
+              yt-dlp -v --no-warnings --no-playlist $ARG -f "bv*[height<=720]+ba/b[height<=720]" \
+                --merge-output-format mp4 -o "edits/source/raw.mp4" "$URL" || true
+              [ -s edits/source/raw.mp4 ] && break
             done
           fi
 
-          if [ -s edits/source/raw.mp4 ]; then
-            echo "--- DOWNLOAD OK"; ls -lh edits/source/raw.mp4
-            ffprobe -v error -show_entries format=duration -of default=nw=1 edits/source/raw.mp4
-          else
-            echo "--- DOWNLOAD FAILED"
-          fi
-          echo "--- done $(date -u)"
+          if [ -s edits/source/raw.mp4 ]; then echo "--- DOWNLOAD OK"; ls -lh edits/source/raw.mp4
+          else echo "--- DOWNLOAD FAILED"; fi
           exit 0
 
       - name: Transcode to a git-friendly size
@@ -136,16 +119,13 @@ jobs:
           set -e
           ffprobe -v error -show_entries format=duration,size -of default=nw=1 edits/source/raw.mp4
           for H in 720 600 480; do
-            ffmpeg -y -v error -i edits/source/raw.mp4 \
-              -vf "scale=-2:$H" -c:v libx264 -preset veryfast -crf 30 \
-              -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart \
-              edits/source/mono-vajbkoding.mp4
-            SZ=$(stat -c%s edits/source/mono-vajbkoding.mp4)
-            echo "height=$H size=$SZ"
-            if [ "$SZ" -lt 88000000 ]; then break; fi
+            ffmpeg -y -v error -i edits/source/raw.mp4 -vf "scale=-2:$H" \
+              -c:v libx264 -preset veryfast -crf 30 -pix_fmt yuv420p \
+              -c:a aac -b:a 96k -movflags +faststart edits/source/mono-vajbkoding.mp4
+            SZ=$(stat -c%s edits/source/mono-vajbkoding.mp4); echo "h=$H size=$SZ"
+            [ "$SZ" -lt 88000000 ] && break
           done
           rm -f edits/source/raw.mp4
-          ls -lh edits/source/
 
       - name: Push results back to the branch
         if: always()
