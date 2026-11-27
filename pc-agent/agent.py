@@ -791,6 +791,19 @@ def main() -> int:
         return 2
 
     allowed_raw = os.environ.get("PC_AGENT_ALLOWED", "").strip()
+
+    # если переменной нет (или стоит *) — список берём из файла рядом с агентом.
+    # это не секрет: id чата ничего не даёт посторонним, доступ проверяется
+    # по отправителю сообщения, а не по знанию идентификатора.
+    if not re.search(r"-?\d", allowed_raw):
+        fallback = Path(__file__).resolve().parent / "allowed_chats.txt"
+        if fallback.is_file():
+            file_ids = fallback.read_text(encoding="utf-8", errors="replace")
+            file_ids = "\n".join(l.split("#", 1)[0] for l in file_ids.splitlines())
+            if re.search(r"-?\d", file_ids):
+                allowed_raw = file_ids.strip()
+                print(f"список разрешённых взят из {fallback.name}")
+
     wildcard = allowed_raw == "*"
     allowed = {int(x) for x in re.findall(r"-?\d+", allowed_raw)}
     if not allowed and not wildcard:
