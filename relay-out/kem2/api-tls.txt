@@ -1,0 +1,7 @@
+### C. TLS on api.kem-rp.com
+subject=CN=kem-rp.com
+issuer=C=US, O=Let's Encrypt, CN=YR2
+notBefore=Oct  7 04:26:41 2026 GMT
+notAfter=Jan  5 04:26:40 2027 GMT
+X509v3 Subject Alternative Name: 
+    DNS:*.kem-rp.com, DNS:kem-rp.com

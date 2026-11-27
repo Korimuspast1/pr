@@ -1,0 +1,42 @@
+### A. api.kem-rp.com response headers (root + documented endpoints)
+== GET https://api.kem-rp.com/
+HTTP/2 200 
+server: nginx
+date: Fri, 27 Nov 2026 10:41:45 GMT
+content-type: text/html; charset=utf-8
+content-length: 769117
+vary: Accept-Encoding
+last-modified: Thu, 07 Aug 2025 22:47:45 GMT
+etag: "bbc5d-63bce3ee9aa4f"
+accept-ranges: bytes
+
+-- body: <!doctype html><html lang="ru" data-panel-url="https://vip254.hosting.reg.ru/manager">    <head>        <meta charset="UTF-8">        <meta name="viewport" content="width=device-width,initial-scal
+
+== GET https://api.kem-rp.com/v1/
+HTTP/2 302 
+server: nginx
+date: Fri, 27 Nov 2026 10:41:46 GMT
+content-type: text/html; charset=iso-8859-1
+content-length: 213
+content-security-policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' data: https://cdnjs.cloudflare.com; img-src 'self' data: https: http: https://cdn.discordapp.com https://fs.kem-rp.com; media-src 'self' https: http: https://fs.kem-rp.com; connect-src 'self' https://kem-rp.com wss://ws.kem-rp.com;
+location: https://kem-rp.com/errors/403
+
+-- body: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title>302 Found</title></head><body><h1>Found</h1><p>The document has moved <a href="https://kem-rp.com/errors/403">here</a>.</p></
+
+== GET https://api.kem-rp.com/v1/auth/check.php
+HTTP/2 200 
+server: nginx
+date: Fri, 27 Nov 2026 10:41:47 GMT
+content-type: application/json; charset=utf-8
+x-content-type-options: nosniff
+x-frame-options: DENY
+referrer-policy: no-referrer
+cache-control: no-store, no-cache, must-revalidate, max-age=0
+content-security-policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' data: https://cdnjs.cloudflare.com; img-src 'self' data: https: http: https://cdn.discordapp.com https://fs.kem-rp.com; media-src 'self' https: http: https://fs.kem-rp.com; connect-src 'self' https://kem-rp.com wss://ws.kem-rp.com;
+x-frame-options: DENY
+x-xss-protection: 1; mode=block
+x-content-type-options: nosniff
+referrer-policy: strict-origin-when-cross-origin
+
+-- body: {"success":true,"authenticated":false}
+

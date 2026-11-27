@@ -1,0 +1,9 @@
+### E. Soft-404 check (does a missing page return 200?)
+/nope-page-zzz          code=302 size=213 <title>302 Found</title>
+
+/errors/404             code=200 size=1849 <title>Страница не найдена</title>
+
+/user/999999999         code=200 size=8755 <title>Профиль | KRP</title>
+
+/forum/nope             code=302 size=213 <title>302 Found</title>
+
