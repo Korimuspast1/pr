@@ -16,7 +16,7 @@ jobs:
   fetch:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[dl-video]')
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,14 +30,23 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg >/dev/null
-          python -m pip install -q --upgrade yt-dlp
+          python -m pip install -q --upgrade yt-dlp bgutil-ytdlp-pot-provider
           yt-dlp --version
           ffmpeg -version | head -1
+
+      - name: Start PO token provider
+        continue-on-error: true
+        run: |
+          docker run -d --name pot -p 4416:4416 brainicism/bgutil-ytdlp-pot-provider:latest || true
+          sleep 8
+          docker ps || true
+          curl -s --max-time 10 http://127.0.0.1:4416/ping || echo "ping failed"
 
       - name: Probe and download
         continue-on-error: true
         env:
           URL: https://www.youtube.com/watch?v=40-Bp04QC6w
+          VID: 40-Bp04QC6w
         run: |
           mkdir -p edits/source
           LOG=edits/source/probe.log
@@ -45,45 +54,78 @@ jobs:
           exec > >(tee -a "$LOG") 2>&1
           set +e
           echo "===== $(date -u) ====="
-          echo "--- yt-dlp version: $(yt-dlp --version)"
-          echo "--- curl head:"
-          curl -sS -o /dev/null -w "http=%{http_code} ip=%{remote_ip}\n" --max-time 20 https://www.youtube.com/ || echo "curl failed"
-          echo "--- python requests smoke:"
-          python - <<'PY' || true
-          import urllib.request
-          try:
-              r = urllib.request.urlopen("https://www.youtube.com/", timeout=20)
-              print("status", r.status, "len", len(r.read(2000)))
-          except Exception as e:
-              print("ERR", type(e).__name__, e)
-          PY
+          echo "--- yt-dlp: $(yt-dlp --version)"
 
-          ATTEMPT=0
-          try() {
-            ATTEMPT=$((ATTEMPT+1))
+          # subtitles first: they work more often than the media streams
+          yt-dlp --skip-download --write-auto-subs --write-subs \
+            --sub-langs "ru.*,en.*" --sub-format vtt/srv3/json3 \
+            -o "edits/source/subs" "$URL" || echo "subs failed"
+
+          attempt() {
             echo ""
-            echo "===== attempt $ATTEMPT : $* ====="
+            echo "===== attempt: $* ====="
             rm -f edits/source/raw.mp4 edits/source/raw.mp4.part
             yt-dlp -v --no-warnings --retries 3 --fragment-retries 5 --no-playlist \
-              "$@" \
-              -f "bv*[height<=1080]+ba/b[height<=1080]" \
-              --merge-output-format mp4 \
-              -o "edits/source/raw.mp4" "$URL"
-            return $?
+              "$@" -f "bv*[height<=1080]+ba/b[height<=1080]" \
+              --merge-output-format mp4 -o "edits/source/raw.mp4" "$URL"
           }
 
-          for CLIENT in tv_simply tv web_safari ios android_vr mweb web_embedded default; do
-            if [ -s edits/source/raw.mp4 ]; then break; fi
-            try --extractor-args "youtube:player_client=$CLIENT"
-            if [ -s edits/source/raw.mp4 ]; then break; fi
-            try --extractor-args "youtube:player_client=$CLIENT;formats=missing_pot"
+          # 1) with the PO token provider
+          for CLIENT in tv web_safari mweb web_embedded android_vr; do
+            [ -s edits/source/raw.mp4 ] && break
+            attempt --extractor-args "youtube:player_client=$CLIENT"
           done
 
+          # 2) plain defaults
+          [ -s edits/source/raw.mp4 ] || attempt
+          [ -s edits/source/raw.mp4 ] || attempt --extractor-args "youtube:player_client=tv_simply;formats=missing_pot"
+
+          # 3) invidious mirrors as a last resort
+          if [ ! -s edits/source/raw.mp4 ]; then
+            for HOST in https://inv.nadeko.net https://invidious.nerdvpn.de https://yewtu.be https://invidious.f5.si https://iv.melmac.space; do
+              echo "=== invidious $HOST"
+              curl -sS -L --max-time 240 -A "Mozilla/5.0" \
+                "$HOST/latest_version?id=$VID&itag=22" -o edits/source/raw.mp4 || true
+              SZ=$(stat -c%s edits/source/raw.mp4 2>/dev/null || echo 0)
+              echo "size=$SZ"
+              if [ "$SZ" -gt 2000000 ]; then break; else rm -f edits/source/raw.mp4; fi
+            done
+          fi
+
+          # 4) piped api mirrors
+          if [ ! -s edits/source/raw.mp4 ]; then
+            for HOST in https://pipedapi.kavin.rocks https://api.piped.private.coffee https://pipedapi.adminforge.de; do
+              echo "=== piped $HOST"
+              curl -sS -L --max-time 60 -A "Mozilla/5.0" "$HOST/streams/$VID" -o /tmp/piped.json || continue
+              head -c 300 /tmp/piped.json; echo
+              U=$(python - <<'PY'
+          import json
+          try:
+              d = json.load(open('/tmp/piped.json'))
+          except Exception:
+              raise SystemExit(0)
+          for s in d.get('videoStreams', []):
+              if s.get('videoOnly') is False and s.get('url'):
+                  print(s['url']); break
+          else:
+              for s in d.get('videoStreams', []):
+                  if s.get('url'):
+                      print(s['url']); break
+          PY
+          )
+              [ -z "$U" ] && continue
+              curl -sS -L --max-time 600 -A "Mozilla/5.0" "$U" -o edits/source/raw.mp4 || true
+              SZ=$(stat -c%s edits/source/raw.mp4 2>/dev/null || echo 0)
+              echo "size=$SZ"
+              if [ "$SZ" -gt 2000000 ]; then break; else rm -f edits/source/raw.mp4; fi
+            done
+          fi
+
           if [ -s edits/source/raw.mp4 ]; then
-            echo "--- DOWNLOAD OK"
-            ls -lh edits/source/raw.mp4
+            echo "--- DOWNLOAD OK"; ls -lh edits/source/raw.mp4
+            ffprobe -v error -show_entries format=duration -of default=nw=1 edits/source/raw.mp4
           else
-            echo "--- DOWNLOAD FAILED after $ATTEMPT attempts"
+            echo "--- DOWNLOAD FAILED"
           fi
           echo "--- done $(date -u)"
           exit 0
@@ -104,7 +146,6 @@ jobs:
           done
           rm -f edits/source/raw.mp4
           ls -lh edits/source/
-          ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate,codec_name -of default=nw=1 edits/source/mono-vajbkoding.mp4
 
       - name: Push results back to the branch
         if: always()
@@ -114,11 +155,6 @@ jobs:
           git config user.email "arena-bot@users.noreply.github.com"
           ls -lh edits/source/ || true
           git add -f edits/source/ || true
-          if git diff --cached --quiet; then
-            echo "nothing to push"
-            exit 0
-          fi
+          if git diff --cached --quiet; then echo "nothing to push"; exit 0; fi
           git commit -m "bot: source video / probe log [skip ci]"
-          for i in 1 2 3; do
-            git push origin HEAD:arena/7de30c9c-pr && break || sleep 5
-          done
+          for i in 1 2 3; do git push origin HEAD:arena/7de30c9c-pr && break || sleep 5; done
