@@ -33,84 +33,21 @@ jobs:
           python -m pip install -q --upgrade yt-dlp
           yt-dlp --version
 
-      - name: Fetch via cobalt instances
+      - name: Fetch source video via public frontends
         continue-on-error: true
-        env:
-          URL: https://www.youtube.com/watch?v=40-Bp04QC6w
         run: |
           mkdir -p edits/source
-          LOG=edits/source/probe2.log
-          : > "$LOG"; exec > >(tee -a "$LOG") 2>&1
+          LOG=edits/source/fetch.log
+          : > "$LOG"
           set +e
-
-          curl -sS --max-time 60 https://instances.cobalt.best/api/instances.json -o /tmp/inst.json || true
-          ls -l /tmp/inst.json 2>/dev/null || true
-
-          python - <<'PY' > /tmp/api.txt
-          import json
-          try:
-              d = json.load(open('/tmp/inst.json'))
-          except Exception as e:
-              print("parse error", e); raise SystemExit(0)
-          rows = d if isinstance(d, list) else d.get('instances', [])
-          out = []
-          for r in rows:
-              api = r.get('api') or ''
-              svc = r.get('services') or {}
-              yt = svc.get('youtube')
-              score = r.get('score', 0)
-              if api and yt:
-                  out.append((score, api.rstrip('/')))
-          out.sort(reverse=True)
-          for s, a in out[:14]:
-              print(a)
-          print("TOTAL", len(out))
-          PY
-          echo "--- candidates:"; cat /tmp/api.txt
-
-          while read -r INST; do
-            case "$INST" in TOTAL*|"") continue;; esac
-            echo ""
-            echo "===== cobalt: $INST"
-            curl -sS --max-time 45 -X POST "$INST/" \
-              -H "Accept: application/json" -H "Content-Type: application/json" \
-              -d "{\"url\":\"$URL\",\"videoQuality\":\"720\",\"downloadMode\":\"auto\",\"filenameStyle\":\"basic\",\"youtubeVideoCodec\":\"h264\"}" \
-              -o /tmp/cob.json || { echo "post failed"; continue; }
-            head -c 400 /tmp/cob.json; echo
-            LINK=$(python - <<'PY'
-          import json
-          try:
-              d = json.load(open('/tmp/cob.json'))
-          except Exception:
-              raise SystemExit(0)
-          for k in ('url', 'tunnel'):
-              if d.get(k):
-                  print(d[k]); raise SystemExit(0)
-          st = d.get('status') or (d.get('error') or {}).get('code')
-          print("", end="")
-          PY
-          )
-            if [ -z "$LINK" ]; then echo "no link"; continue; fi
-            echo "link ok, downloading"
-            curl -sS -L --max-time 1200 -A "Mozilla/5.0" "$LINK" -o edits/source/raw.mp4 || true
-            SZ=$(stat -c%s edits/source/raw.mp4 2>/dev/null || echo 0)
-            echo "size=$SZ"
-            if [ "$SZ" -gt 3000000 ]; then echo "COBALT OK"; break; fi
-            rm -f edits/source/raw.mp4
-          done < <(grep -E '^https?://' /tmp/api.txt)
-
-          # ---- last resort: yt-dlp plain attempts
+          python3 scripts/fetch_source.py 2>&1 | tee -a "$LOG"
           if [ ! -s edits/source/raw.mp4 ]; then
-            for ARG in "" "--extractor-args youtube:player_client=android_vr;formats=missing_pot" "--extractor-args youtube:player_client=tv_simply"; do
-              echo "===== yt-dlp $ARG"
-              yt-dlp -v --no-warnings --no-playlist $ARG -f "bv*[height<=720]+ba/b[height<=720]" \
-                --merge-output-format mp4 -o "edits/source/raw.mp4" "$URL" || true
-              [ -s edits/source/raw.mp4 ] && break
-            done
+            echo "===== fallback: yt-dlp on runner ip" | tee -a "$LOG"
+            yt-dlp --no-warnings --no-playlist --retries 2 \
+              -f "bv*[height<=720]+ba/b[height<=720]" --merge-output-format mp4 \
+              -o "edits/source/raw.mp4" https://www.youtube.com/watch?v=40-Bp04QC6w 2>&1 | tee -a "$LOG"
           fi
-
-          if [ -s edits/source/raw.mp4 ]; then echo "--- DOWNLOAD OK"; ls -lh edits/source/raw.mp4
-          else echo "--- DOWNLOAD FAILED"; fi
+          ls -lh edits/source/ || true
           exit 0
 
       - name: Transcode to a git-friendly size
