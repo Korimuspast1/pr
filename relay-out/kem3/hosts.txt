@@ -1,0 +1,6 @@
+### DNS + TLS for fs / ws
+fs.kem-rp.com          31.31.196.228   fs.kem-rp.com 
+ws.kem-rp.com          31.31.196.228   ws.kem-rp.com 
+adm.kem-rp.com         31.31.196.228   adm.kem-rp.com 
+status.kem-rp.com      31.31.196.228   status.kem-rp.com 
+media.kem-rp.com       31.31.196.228   media.kem-rp.com 

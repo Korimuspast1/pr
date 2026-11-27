@@ -1,0 +1,30 @@
+### fs.kem-rp.com (user file host) — headers only
+== GET https://fs.kem-rp.com/
+HTTP/2 200 
+server: nginx
+date: Fri, 27 Nov 2026 10:42:54 GMT
+content-type: text/html; charset=utf-8
+content-length: 769117
+vary: Accept-Encoding
+last-modified: Thu, 07 Aug 2025 22:47:45 GMT
+etag: "bbc5d-63bce3ee9aa4f"
+accept-ranges: bytes
+
+-- first bytes: <!doctype html><html lang="ru" data-panel-url="https://vip254.hosting.reg.ru/manager">    <head>        <meta charset
+
+== GET https://fs.kem-rp.com/nonexistent-probe-zzz.png
+HTTP/2 302 
+server: nginx
+date: Fri, 27 Nov 2026 10:42:55 GMT
+content-type: text/html; charset=iso-8859-1
+content-length: 213
+location: https://kem-rp.com/errors/404
+
+-- first bytes: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title>302 Found</title></head><body><h1>Found</h1><p
+
+### Does fs host echo client-supplied content-type? (probe only, no upload)
+HTTP/2 302 
+content-type: text/html; charset=iso-8859-1
+### ws.kem-rp.com upgrade surface
+HTTP/2 302 
+server: nginx
