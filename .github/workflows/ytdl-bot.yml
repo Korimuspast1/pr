@@ -1,0 +1,63 @@
+name: ytdl-bot
+
+# живёт сменами по ~5.5 часа, потом сама поднимается заново.
+# у github actions один job максимум 6 часов — поэтому расписание, а не «вечный» процесс.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+concurrency:
+  group: ytdl-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: кэш загрузок pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ytdl-${{ hashFiles('ytdl-bot/requirements.txt') }}
+
+      - name: ставим зависимости
+        run: pip install -r ytdl-bot/requirements.txt
+
+      - name: ffmpeg (нужен для слияния дорожек и сжатия)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -1
+
+      - name: самопроверка логики без сети
+        run: python ytdl-bot/bot.py --selftest
+
+      - name: проверка токена
+        id: token
+        env:
+          YTDL_BOT_TOKEN: ${{ secrets.YTDL_BOT_TOKEN }}
+        run: |
+          if [ -z "$YTDL_BOT_TOKEN" ]; then
+            echo "::warning::секрет YTDL_BOT_TOKEN не задан — выхожу"
+            echo "have=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "have=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: запускаем бота
+        if: steps.token.outputs.have == '1'
+        working-directory: ytdl-bot
+        env:
+          YTDL_BOT_TOKEN: ${{ secrets.YTDL_BOT_TOKEN }}
+        run: python -u bot.py
