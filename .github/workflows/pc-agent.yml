@@ -41,6 +41,11 @@ jobs:
         env:
           PC_AGENT_TOKEN: ${{ secrets.PC_AGENT_TOKEN || secrets.YTDL_BOT_TOKEN }}
         run: |
+          if [ -n "${{ secrets.PC_AGENT_TOKEN }}" ]; then
+            echo "источник: секрет PC_AGENT_TOKEN"
+          elif [ -n "$PC_AGENT_TOKEN" ]; then
+            echo "источник: запасной секрет YTDL_BOT_TOKEN (PC_AGENT_TOKEN пуст)"
+          fi
           if [ -z "$PC_AGENT_TOKEN" ]; then
             echo "have=0" >> "$GITHUB_OUTPUT"
             echo "::error title=нужен токен::не нашёл ни PC_AGENT_TOKEN, ни YTDL_BOT_TOKEN. добавь любой из них в secrets"
