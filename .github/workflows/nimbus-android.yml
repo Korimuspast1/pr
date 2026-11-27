@@ -31,6 +31,12 @@ permissions:
   contents: read
   pull-requests: write
 
+# A push that supersedes this one cancels it: four APK jobs and a test job per run, and only the
+# newest commit's verdict is of any use.
+concurrency:
+  group: nimbus-android-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   JAVA_VERSION: '17'
   # What the build compiles against, kept in one place: the SDK step installs exactly this.
