@@ -1,0 +1,13 @@
+### 5. Auto-exposed sensitive files (single GET each, no exploitation)
+/.git/HEAD          code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/.env               code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/.env.local         code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/config.json        code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/config.php         code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/composer.json      code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/package.json       code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/backup.zip         code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/db.sql             code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/dump.sql           code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/.DS_Store          code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he
+/server-status      code=302 size=213 first=<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><he

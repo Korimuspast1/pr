@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111111">
+
+    <title>KEMEROVO RP</title>
+
+    <meta name="description" content="KEMEROVO RP — ролевой проект в Roblox. Играй за сотрудников МВД, МЧС, ОПГ или таксиста. Форум, обращения, фракции, топ игроков и магазин. Присоединяйся!">
+    <meta name="keywords" content="KEMEROVO RP, Kemerovo RP, ролевой сервер Roblox, RP Roblox, МВД, МЧС, ОПГ, РП сервер, kem-rp, kemerovo, рп проект, ролевая игра">
+    <meta name="author" content="KEMEROVO RP">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="language" content="Russian">
+    <meta name="geo.region" content="RU">
+    <meta name="rating" content="general">
+
+    <link rel="canonical" href="https://kem-rp.com/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="KEMEROVO RP">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://kem-rp.com/">
+    <meta property="og:title" content="KEMEROVO RP — ролевой сервер в Roblox">
+    <meta property="og:description" content="Играй за сотрудников МВД, МЧС, ОПГ или таксиста. Форум, обращения, фракции, топ игроков и магазин.">
+    <meta property="og:image" content="https://global.kem-rp.com/brand.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="KEMEROVO RP">
+
+    <link rel="icon" type="image/svg+xml" href="https://global.kem-rp.com/favicon.svg">
+    <link rel="apple-touch-icon" href="https://global.kem-rp.com/favicon.svg">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://global.kem-rp.com">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+
+    <link rel="preload" href="https://global.kem-rp.com/favicon.svg" as="image">
+    <link rel="preload" href="https://global.kem-rp.com/favicon.svg" as="image" type="image/svg+xml">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <link rel="stylesheet" href="assets__v.0.3.0/css/main.css">
+    <link rel="stylesheet" href="assets__v.0.3.0/css/pages/index.css">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "KEMEROVO RP",
+        "alternateName": ["Kemerovo RP", "Кемерово РП", "KRP"],
+        "url": "https://kem-rp.com/",
+        "description": "Ролевой сервер KEMEROVO RP в Roblox. Фракции МВД, МЧС, ОПГ, гражданские работы, форум и обращения.",
+        "inLanguage": "ru-RU",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://kem-rp.com/search?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "KEMEROVO RP",
+        "url": "https://kem-rp.com/",
+        "logo": "https://global.kem-rp.com/brand.png",
+        "sameAs": [
+            "https://discord.gg/kemerovo",
+            "https://t.me/kemerovo_rbx"
+        ]
+    }
+    </script>
+
+    <script>
+        (function () {
+            try {
+                var mode = localStorage.getItem('krp-sidebar') === 'expanded' ? 'expanded' : 'collapsed';
+                document.documentElement.setAttribute('data-sidebar', mode);
+            } catch (e) {
+                document.documentElement.setAttribute('data-sidebar', 'collapsed');
+            }
+        })();
+    </script>
+</head>
+<body>
+
+<div class="app">
+
+<aside class="sidebar">
+        <div class="sidebar-logo">
+            <a href="/">
+                <img src="https://global.kem-rp.com/favicon.svg" alt="KEMEROVO RP">
+            </a>
+        </div>
+
+        <nav class="sidebar-navigation">
+            <a href="/" class="sidebar-button active" data-tooltip="Главная">
+                <i class="fas fa-house"></i>
+                <span class="sidebar-label">Главная</span>
+            </a>
+
+            <a href="/forum" class="sidebar-button" data-tooltip="Форум">
+                <i class="fas fa-comments"></i>
+                <span class="sidebar-label">Форум</span>
+            </a>
+            
+            <a href="/clans" class="sidebar-button" data-tooltip="Кланы">
+                <i class="fas fa-users-rectangle"></i>
+                <span class="sidebar-label">Кланы</span>
+            </a>
+
+            <a href="/rules" class="sidebar-button" data-tooltip="Правила">
+                <i class="fas fa-book"></i>
+                <span class="sidebar-label">Правила</span>
+            </a>
+
+            <div class="sidebar-button-wrap">
+                <button type="button" class="sidebar-button" id="shopMenuBtn" data-tooltip="Магазин" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-store"></i>
+                    <span class="sidebar-label">Магазин</span>
+                </button>
+
+                <div class="sidebar-submenu" id="shopSubmenu">
+                    <a href="/shop/frames" class="sidebar-submenu-item">
+                        <i class="fas fa-circle-user"></i>
+                        <span>Магазин рамок аватара</span>
+                    </a>
+                    <a href="/shop/comment-banners" class="sidebar-submenu-item">
+                        <i class="fas fa-image"></i>
+                        <span>Магазин баннеров на комментарии</span>
+                    </a>
+                    <a href="/shop/cosmetics" class="sidebar-submenu-item">
+                        <i class="fas fa-palette"></i>
+                        <span>Своя косметика</span>
+                    </a>
+                </div>
+            </div>
+            
+            <a href="/advent" class="sidebar-button"
+               data-tooltip="Новогодний адвент" aria-current="page">
+                <i class="fas fa-gift" aria-hidden="true"></i>
+                <span class="sidebar-label">Новогодний адвент</span>
+            </a>
+
+            <a href="https://media.kem-rp.com/" class="sidebar-button" data-tooltip="Медиа-партнеры">
+                <i class="fas fa-photo-film"></i>
+                <span class="sidebar-label">Медиа-партнеры</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <button type="button" class="sidebar-button" id="sidebarToggle" data-tooltip="Развернуть меню">
+                <i class="fas fa-chevron-right"></i>
+                <span class="sidebar-label">Развернуть меню</span>
+            </button>
+        </div>
+    </aside>
+
+    <header class="top-bar">
+
+        <div class="top-bar-left">
+
+            <div class="breadcrumbs">
+                <a href="/" class="breadcrumb-muted">krp</a>
+                <span class="breadcrumb-separator">
+                    <i class="fas fa-chevron-right"></i>
+                </span>
+                <span class="breadcrumb-current">Главная</span>
+            </div>
+
+            <div class="top-search">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="search" placeholder="Поиск пользователей">
+                <span class="search-shortcut">CTRL K</span>
+            </div>
+
+        </div>
+
+        <div class="top-bar-right">
+
+            <button class="top-icon-button" id="adminPanelBtn" aria-label="Админ-панель" style="display: none;">
+                <i class="fas fa-shield-halved"></i>
+            </button>
+
+            <div class="notification-wrapper">
+                <button class="top-icon-button" id="notificationsBtn" aria-label="Уведомления" style="display: none;">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notificationsBadge" style="display: none;">0</span>
+                </button>
+
+                <div class="dropdown notification-dropdown" id="notificationsDropdown">
+                    <div class="dropdown-header">
+                        <strong>Уведомления</strong>
+                        <button class="mark-all-read" onclick="markAllNotificationsRead(event)">Прочитать все</button>
+                    </div>
+
+                    <div class="notification-list" id="notificationsList"></div>
+                </div>
+            </div>
+
+            <div class="profile-wrapper">
+                <div id="authButtonContainer"></div>
+
+                <div class="dropdown profile-dropdown" id="profileMenu" style="display: none;">
+                    <a href="/settings">
+                        <i class="fas fa-gear"></i>
+                        <span>Настройки</span>
+                    </a>
+
+                    <a href="/promo">
+                        <i class="fas fa-ticket"></i>
+                        <span>Промокод</span>
+                    </a>
+
+                    <a href="/profile" id="profileLink">
+                        <i class="fas fa-user"></i>
+                        <span>Мой профиль</span>
+                    </a>
+
+                    <div class="dropdown-divider"></div>
+
+                    <a href="/logout" class="dropdown-danger" id="logoutBtn">
+                        <i class="fas fa-right-from-bracket"></i>
+                        <span>Выйти</span>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+    </header>
+
+    <aside class="friendsbar">
+    
+        <div class="friendsbar-header">
+            <i class="fas fa-user-group"></i>
+        </div>
+    
+        <div class="friends-list" id="friendsList"></div>
+    
+        <button type="button" class="friends-all" id="friendsAddBtn" data-tooltip="Добавить друга">
+            <i class="fas fa-plus"></i>
+        </button>
+    
+    </aside>
+
+    <main class="main-content">
+        <div class="page-container">
+
+            <section class="hero-section">
+
+                <div class="news-slider" id="newsSlider">
+                    
+                    <div class="news-slide active">
+                        <img class="news-slide-image" src="https://global.kem-rp.com/main-banners/advent.png" alt="Событие">
+                        <div class="news-slide-overlay"></div>
+                        <div class="news-slide-content">
+                            <span class="news-slide-tag">Событие</span>
+                            <h2>Адвент календарь</h2>
+                            <p>10 призов на каждый день - от обычных до интересных и дорогих! Скоро в продаже!</p>
+                        </div>
+                    </div>
+
+                    <div class="news-slide">
+                        <img class="news-slide-image" src="https://global.kem-rp.com/main-banners/national-guard.png" alt="Новость">
+                        <div class="news-slide-overlay"></div>
+                        <div class="news-slide-content">
+                            <span class="news-slide-tag">Фракции</span>
+                            <h2>Росгвардия</h2>
+                            <p>Служба в Росгвардии - твой выбор!</p>
+                        </div>
+                    </div>
+
+                    <div class="news-slide">
+                        <img class="news-slide-image" src="https://global.kem-rp.com/main-banners/mvd.png" alt="Событие">
+                        <div class="news-slide-overlay"></div>
+                        <div class="news-slide-content">
+                            <span class="news-slide-tag">Событие</span>
+                            <h2>Ивенты</h2>
+                            <p>Обязательно присоединяйтесь к нашему Discord-серверу - там мы объявляем о грядущих ивентах, которые вы можете посетить лично.</p>
+                        </div>
+                    </div>
+
+                    <div class="news-dots" id="newsDots">
+                        <button class="news-dot active" aria-label="Слайд 1"></button>
+                        <button class="news-dot" aria-label="Слайд 2"></button>
+                        <button class="news-dot" aria-label="Слайд 3"></button>
+                    </div>
+
+                </div>
+
+                <div class="top-players">
+                    <div class="top-players-header">
+                        <h3>Топ игроков</h3>
+                        <span>По минутам</span>
+                    </div>
+                
+                    <div class="top-players-list" id="topPlayersList">
+                        <div class="top-player top-player-skeleton">
+                            <span class="top-player-rank">—</span>
+                            <div class="top-player-avatar top-player-skeleton-avatar"></div>
+                            <div class="top-player-info">
+                                <div class="top-player-skeleton-line" style="width:70%"></div>
+                                <div class="top-player-skeleton-line" style="width:40%"></div>
+                            </div>
+                            <span class="top-player-minutes">—</span>
+                        </div>
+                        <div class="top-player top-player-skeleton">
+                            <span class="top-player-rank">—</span>
+                            <div class="top-player-avatar top-player-skeleton-avatar"></div>
+                            <div class="top-player-info">
+                                <div class="top-player-skeleton-line" style="width:65%"></div>
+                                <div class="top-player-skeleton-line" style="width:35%"></div>
+                            </div>
+                            <span class="top-player-minutes">—</span>
+                        </div>
+                        <div class="top-player top-player-skeleton">
+                            <span class="top-player-rank">—</span>
+                            <div class="top-player-avatar top-player-skeleton-avatar"></div>
+                            <div class="top-player-info">
+                                <div class="top-player-skeleton-line" style="width:75%"></div>
+                                <div class="top-player-skeleton-line" style="width:45%"></div>
+                            </div>
+                            <span class="top-player-minutes">—</span>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <section class="factions-section">
+
+                <div class="factions-header">
+                    <h2>Фракции</h2>
+
+                    <div class="factions-tabs" id="factionsTabs">
+                        <button class="factions-tab active" data-tab="all">Все</button>
+                        <button class="factions-tab" data-tab="state">Гос.структуры</button>
+                        <button class="factions-tab" data-tab="crime">Криминал</button>
+                        <button class="factions-tab" data-tab="civil">Гражданская работа</button>
+                    </div>
+                </div>
+
+                <div class="factions-grid" id="factionsGrid">
+
+                    <div class="faction-card" data-category="state">
+                        <img class="faction-card-image" src="https://global.kem-rp.com/main-fraction/mvd.png" alt="МВД">
+                        <div class="faction-card-overlay"></div>
+                        <div class="faction-card-content">
+                            <h3>МВД</h3>
+                            <p>Охрана порядка, патрулирование города и борьба с преступностью.</p>
+                        </div>
+                    </div>
+
+                    <div class="faction-card" data-category="state">
+                        <img class="faction-card-image" src="https://global.kem-rp.com/main-fraction/mhs.png" alt="МЧС">
+                        <div class="faction-card-overlay"></div>
+                        <div class="faction-card-content">
+                            <h3>МЧС</h3>
+                            <p>Спасение граждан, тушение пожаров и ликвидация последствий ЧС.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="faction-card" data-category="state">
+                        <img class="faction-card-image" src="https://global.kem-rp.com/main-fraction/cmp.png" alt="СМП">
+                        <div class="faction-card-overlay"></div>
+                        <div class="faction-card-content">
+                            <h3>СМП</h3>
+                            <p>Станьте врачом в больнице или разъезжайте на машине скорой помощи.</p>
+                        </div>
+                    </div>
+
+                    <div class="faction-card" data-category="crime">
+                        <img class="faction-card-image" src="https://global.kem-rp.com/main-fraction/opg.png" alt="ОПГ">
+                        <div class="faction-card-overlay"></div>
+                        <div class="faction-card-content">
+                            <h3>ОПГ</h3>
+                            <p>Уличные группировки, грабежи и борьба за территории города.</p>
+                        </div>
+                    </div>
+
+                    <div class="faction-card" data-category="civil">
+                        <img class="faction-card-image" src="https://global.kem-rp.com/main-fraction/taxi.png" alt="Таксист">
+                        <div class="faction-card-overlay"></div>
+                        <div class="faction-card-content">
+                            <h3>Таксист</h3>
+                            <p>Перевозка пассажиров по городу и между районами за деньги.</p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </div>
+    </main>
+
+    <footer class="footer">
+
+        <div class="footer-main">
+
+            <div class="footer-brand">
+
+                <a href="/" class="footer-logo">
+                    <img src="https://global.kem-rp.com/brand.png" alt="KEMEROVO RP">
+                </a>
+
+            </div>
+
+            <div class="footer-socials">
+                <a href="https://discord.gg/kemerovo" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                <a href="https://t.me/kemerovo_rbx" aria-label="Telegram"><i class="fab fa-telegram"></i></a>
+            </div>
+
+        </div>
+
+        <div class="footer-bottom">
+            <span>© 2026 KEMEROVO RP. Все права защищены.</span>
+
+            <div class="footer-bottom-links">
+                <a href="/legal/privacy">Конфиденциальность</a>
+                <a href="/legal/terms">Соглашение</a>
+                <a href="https://status.kem-rp.com">Статус</a>
+            </div>
+        </div>
+
+    </footer>
+
+</div>
+
+<script type="module" src="assets__v.0.3.0/js/app.js"></script>
+<script type="module" src="assets__v.0.3.0/js/pages/index.page.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+### 4. Well-known / policy files
+/robots.txt                       200 size=50 content-type: text/plain
+/sitemap.xml                      302 size=213 content-type: text/html; charset=iso-8859-1
+/.well-known/security.txt         302 size=213 content-type: text/html; charset=iso-8859-1
+/security.txt                     302 size=213 content-type: text/html; charset=iso-8859-1
+/.well-known/change-password      302 size=213 content-type: text/html; charset=iso-8859-1
+/humans.txt                       302 size=213 content-type: text/html; charset=iso-8859-1
+/ads.txt                          302 size=213 content-type: text/html; charset=iso-8859-1

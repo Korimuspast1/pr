@@ -1,0 +1,9 @@
+### 8. HTML fingerprinting
+<meta name="description" content="KEMEROVO RP — ролевой проект в Roblox. Играй за сотрудников МВД, МЧС, ОПГ или таксиста. Форум, обращения, фракции, топ игроков и магазин. Присоединяйся!">
+<meta property="og:description" content="Играй за сотрудников МВД, МЧС, ОПГ или таксиста. Форум, обращения, фракции, топ игроков и магазин.">
+--- script srcs ---
+assets__v.0.3.0/js/app.js
+assets__v.0.3.0/js/pages/index.page.js
+--- forms ---
+--- framework hints ---
+--- cookies set (names/flags) ---

@@ -1,0 +1,17 @@
+### 7. Hosts referenced by the site itself
+cdnjs.cloudflare.com
+discord.gg
+fonts.googleapis.com
+fonts.gstatic.com
+global.kem-rp.com
+kem-rp.com
+media.kem-rp.com
+schema.org
+status.kem-rp.com
+t.me
+--- DNS for referenced hosts ---
+kem-rp.com               31.31.196.228   kem-rp.com 
+www.kem-rp.com           31.31.196.228   www.kem-rp.com 
+global.kem-rp.com        31.31.196.228   global.kem-rp.com 
+cdn.kem-rp.com           31.31.196.228   cdn.kem-rp.com 
+api.kem-rp.com           31.31.196.228   api.kem-rp.com 
