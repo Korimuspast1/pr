@@ -15,5 +15,5 @@ Network: healthy
 Network: healthy
 Network: healthy
 Network: healthy
-warp-cli youtube=200 ip=2a09:bac5:9f21:2446::39d:62 loc=US 
+warp-cli youtube=200 ip=2a09:bac1:76a0:830::1c:347 loc=US 
 USE_PROXY=socks5h://127.0.0.1:40000
