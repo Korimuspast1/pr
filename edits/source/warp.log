@@ -1,91 +1,19 @@
-error: warp-plus: parse args: unknown flag "version"
-=== starting: --scan
-  wait 1 youtube=000
-  wait 2 youtube=000
-  wait 3 youtube=000
-  wait 4 youtube=000
-  wait 5 youtube=000
-  wait 6 youtube=000
-  wait 7 youtube=000
-  wait 8 youtube=000
-  wait 9 youtube=000
-  wait 10 youtube=000
-  wait 11 youtube=000
-  wait 12 youtube=000
-  wait 13 youtube=000
-  wait 14 youtube=000
-  wait 15 youtube=000
-  wait 16 youtube=000
-=== starting: --scan --cfon --country NL
-  wait 1 youtube=000
-  wait 2 youtube=000
-  wait 3 youtube=000
-  wait 4 youtube=000
-  wait 5 youtube=000
-  wait 6 youtube=000
-  wait 7 youtube=000
-  wait 8 youtube=000
-  wait 9 youtube=000
-  wait 10 youtube=000
-  wait 11 youtube=000
-  wait 12 youtube=000
-  wait 13 youtube=000
-  wait 14 youtube=000
-  wait 15 youtube=000
-  wait 16 youtube=000
-=== starting: --scan --cfon --country DE
-  wait 1 youtube=000
-  wait 2 youtube=000
-  wait 3 youtube=000
-  wait 4 youtube=000
-  wait 5 youtube=000
-  wait 6 youtube=000
-  wait 7 youtube=000
-  wait 8 youtube=000
-  wait 9 youtube=000
-  wait 10 youtube=000
-  wait 11 youtube=000
-  wait 12 youtube=000
-  wait 13 youtube=000
-  wait 14 youtube=000
-  wait 15 youtube=000
-  wait 16 youtube=000
-WARP NOT WORKING
---- trace:
-youtube=000
---- warp-plus output:
-time=2026-11-27T02:58:13.580Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.589Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.599Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.609Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.618Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.626Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.635Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.643Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.652Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.661Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.671Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.679Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.687Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.696Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.705Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.713Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.722Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.731Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.739Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.748Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.757Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.765Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.773Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.783Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.793Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.802Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.810Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.819Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.828Z level=ERROR msg="connection test failed"
-time=2026-11-27T02:58:13.838Z level=ERROR msg="connection test failed"
-State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess
-LISTEN 0      4096         0.0.0.0:22        0.0.0.0:*          
-LISTEN 0      4096   127.0.0.53%lo:53        0.0.0.0:*          
-LISTEN 0      4096      127.0.0.54:53        0.0.0.0:*          
-LISTEN 0      4096            [::]:22           [::]:*          
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+Success
+Success
+Success
+Success
+Network: healthy
+Network: healthy
+Network: healthy
+Network: healthy
+Network: healthy
+Network: healthy
+Network: healthy
+Network: healthy
+Network: healthy
+Network: healthy
+warp-cli youtube=200 ip=2a09:bac5:9f21:2446::39d:62 loc=US 
+USE_PROXY=socks5h://127.0.0.1:40000
