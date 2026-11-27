@@ -185,10 +185,45 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           disable-spellchecker: true
+          # Absolute paths on purpose: the emulator action's own working directory has varied
+          # between versions, and a screenshot written to the wrong place is a screenshot lost.
           script: |
             set -o pipefail
-            apk=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
-            bash tools/ci-smoke.sh "$apk" ../screenshots-capture 2>&1 | tee ../smoke.log
+            export SMOKE_OUT="$GITHUB_WORKSPACE/screenshots-capture"
+            export SMOKE_LOG="$GITHUB_WORKSPACE/smoke.log"
+            apk=$(find "$GITHUB_WORKSPACE/grust-android/app/build/outputs/apk/debug" -name '*.apk' | head -1)
+            {
+              echo "workspace=$GITHUB_WORKSPACE"
+              echo "pwd=$(pwd)"
+              echo "apk=$apk"
+              echo "adb=$(command -v adb || echo none)"
+            } >"$SMOKE_LOG"
+            if [ -z "$apk" ]; then
+              echo "::error title=Smoke::no debug APK to install"
+              exit 1
+            fi
+            bash "$GITHUB_WORKSPACE/grust-android/tools/ci-smoke.sh" "$apk" "$SMOKE_OUT" >>"$SMOKE_LOG" 2>&1
+            echo "smoke exit=$?" >>"$SMOKE_LOG"
+
+      - name: Show what the emulator run saw
+        # The run logs of this repository cannot be downloaded from where it is maintained, so
+        # whatever the script reported is turned into annotations here, where the API serves it.
+        if: always()
+        run: |
+          set -uo pipefail
+          LOG="$GITHUB_WORKSPACE/smoke.log"
+          if [ ! -f "$LOG" ]; then
+            echo "::error title=Smoke::no smoke.log at all - the emulator script never started"
+            exit 0
+          fi
+          ls -l "$GITHUB_WORKSPACE/screenshots-capture" 2>/dev/null || echo "no screenshots directory"
+          # Each line becomes its own annotation; the script's own ::error lines are passed through.
+          head -c 20000 "$LOG" | while IFS= read -r line; do
+            case "$line" in
+              ::*) echo "$line" ;;
+              *) echo "::notice title=Smoke log::$(printf '%s' "$line" | cut -c1-900)" ;;
+            esac
+          done
 
       - name: Commit the screenshots
         if: always()
@@ -197,12 +232,13 @@ jobs:
           set -uo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ -z "$(ls -A ../screenshots-capture 2>/dev/null)" ]; then
+          CAPTURE="$GITHUB_WORKSPACE/screenshots-capture"
+          if [ -z "$(ls -A "$CAPTURE" 2>/dev/null)" ]; then
             echo "::notice title=Smoke::no screenshots to commit"
             exit 0
           fi
           rm -rf screenshots && mkdir -p screenshots
-          cp ../screenshots-capture/*.png screenshots/
+          cp "$CAPTURE"/*.png screenshots/
           ls -l screenshots | sed -E 's|^(.*)$|::notice title=Screenshot::\1|'
           git add -f screenshots
           if git diff --cached --quiet; then
@@ -218,6 +254,6 @@ jobs:
         with:
           name: Grust-screenshots
           path: |
-            screenshots-capture/*.png
-            smoke.log
+            ${{ github.workspace }}/screenshots-capture/*.png
+            ${{ github.workspace }}/smoke.log
           if-no-files-found: ignore

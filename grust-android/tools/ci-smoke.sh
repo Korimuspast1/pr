@@ -14,6 +14,8 @@
 
 set -uo pipefail
 
+step() { echo "== $*"; }
+
 apk="${1:?usage: ci-smoke.sh <apk> <out dir>}"
 out="${2:?usage: ci-smoke.sh <apk> <out dir>}"
 mkdir -p "$out"
@@ -25,6 +27,7 @@ fail() {
 }
 note() { echo "::notice title=Smoke::$*"; }
 
+step "waiting for the device"
 adb wait-for-device
 # sys.boot_completed turns 1 only after the launcher is up, which is what the taps need.
 for _ in $(seq 1 180); do
@@ -34,6 +37,7 @@ done
 adb shell input keyevent 82 >/dev/null 2>&1 || true   # dismiss the lock screen
 sleep 2
 
+step "device is up, installing"
 adb logcat -c || true
 adb install -r "$apk" || {
     fail "the APK did not install"
@@ -43,7 +47,8 @@ note "installed $(basename "$apk")"
 
 # The debug variant carries a different application id (com.zalchik.grust.debug) but the same
 # activity class, so the component is spelled out rather than derived from the file name.
-adb shell am start -W -n com.zalchik.grust.debug/com.zalchik.grust.ui.MainActivity >/dev/null ||
+step "starting the app"
+adb shell am start -W -n com.zalchik.grust.debug/com.zalchik.grust.ui.MainActivity ||
     fail "the launcher activity did not start"
 sleep 4
 
@@ -99,20 +104,25 @@ tap() {
     sleep 2
 }
 
+step "screens"
 shot 01-entry
 
+step "entry -> today"
 if tap "Побыть с ней"; then
     shot 02-today
     tap "Грустно" && shot 03-mood
     tap "Сохранить день" && shot 04-saved
 fi
 
+step "stats"
 if tap "Статистика"; then shot 05-stats; fi
+step "breathing"
 if tap "Дыхание"; then
     tap "Начать" || true
     sleep 3
     shot 06-breathe
 fi
+step "diary"
 if tap "Дневник"; then shot 07-diary; fi
 if tap "Сегодня"; then shot 08-today-again; fi
 
