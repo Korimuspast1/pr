@@ -1,0 +1,58 @@
+name: pc-agent
+
+# агент слушает телеграм сменой до ~5.5 часов; cron каждые 10 минут поднимает
+# новую смену, если предыдущей уже нет. если секрета с токеном нет — выходит
+# за пару секунд и ничего не жжёт.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['main', 'arena/**']
+    paths: ['pc-agent/**', '.github/workflows/pc-agent.yml']
+  schedule:
+    - cron: '*/10 * * * *'
+
+# один слушатель на токен: новый прогон вытесняет старый, иначе Conflict
+concurrency:
+  group: pc-agent-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: зависимости
+        run: pip install -q requests psutil
+
+      - name: самопроверка агента
+        run: python pc-agent/agent.py --selftest
+
+      - name: есть ли токен
+        id: token
+        env:
+          PC_AGENT_TOKEN: ${{ secrets.PC_AGENT_TOKEN }}
+        run: |
+          if [ -z "$PC_AGENT_TOKEN" ]; then
+            echo "have=0" >> "$GITHUB_OUTPUT"
+            echo "::error title=нужен токен::секрет PC_AGENT_TOKEN не задан. settings -> secrets and variables -> actions -> new repository secret, name: PC_AGENT_TOKEN"
+          else
+            echo "have=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: запускаем агента
+        if: steps.token.outputs.have == '1'
+        working-directory: pc-agent
+        env:
+          PC_AGENT_TOKEN: ${{ secrets.PC_AGENT_TOKEN }}
+          PC_AGENT_ALLOWED: ${{ secrets.PC_AGENT_ALLOWED }}
+          PC_AGENT_WORKDIR: ${{ github.workspace }}
+        run: python -u agent.py
