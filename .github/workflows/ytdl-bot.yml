@@ -5,7 +5,7 @@ name: ytdl-bot
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: ['main', 'arena/**']
     paths: ['ytdl-bot/**', '.github/workflows/ytdl-bot.yml']
   schedule:
     - cron: '0 */6 * * *'
@@ -52,8 +52,10 @@ jobs:
           YTDL_BOT_TOKEN: ${{ secrets.YTDL_BOT_TOKEN }}
         run: |
           if [ -z "$YTDL_BOT_TOKEN" ]; then
-            echo "::warning::секрет YTDL_BOT_TOKEN не задан — выхожу"
             echo "have=0" >> "$GITHUB_OUTPUT"
+            echo "::error title=нужен токен::секрет YTDL_BOT_TOKEN не задан."
+            echo "settings -> secrets and variables -> actions -> new repository secret"
+            echo "name: YTDL_BOT_TOKEN, value: токен от @BotFather"
           else
             echo "have=1" >> "$GITHUB_OUTPUT"
           fi
