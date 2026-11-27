@@ -1,3 +1,0 @@
-### 6. CORS + methods
-vary: Accept-Encoding
-allow: OPTIONS,HEAD,GET,POST,TRACE
