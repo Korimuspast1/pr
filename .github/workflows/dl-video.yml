@@ -37,18 +37,47 @@ jobs:
         continue-on-error: true
         run: |
           set +e
+          mkdir -p edits/source
+          WLOG=edits/source/warp.log
+          : > "$WLOG"
           curl -fsSL --retry 3 -o /tmp/wp.zip \
             https://github.com/bepass-org/warp-plus/releases/download/v1.2.6/warp-plus_linux-amd64.zip
           unzip -o -q /tmp/wp.zip -d /tmp/wp && chmod +x /tmp/wp/warp-plus
-          ls -l /tmp/wp
-          nohup /tmp/wp/warp-plus --bind 127.0.0.1:8086 --scan > /tmp/wp.log 2>&1 &
-          for i in $(seq 1 12); do
-            sleep 5
-            code=$(curl -s --max-time 20 --socks5-hostname 127.0.0.1:8086 https://www.youtube.com/ -o /dev/null -w "%{http_code}")
-            echo "try $i -> $code"
-            [ "$code" = "200" ] && break
-          done
-          tail -20 /tmp/wp.log
+          /tmp/wp/warp-plus --version 2>&1 | tee -a "$WLOG"
+
+          probe() {
+            echo "--- trace:" | tee -a "$WLOG"
+            curl -s --max-time 20 --socks5-hostname 127.0.0.1:8086 https://www.cloudflare.com/cdn-cgi/trace 2>&1 | head -8 | tee -a "$WLOG"
+            curl -s --max-time 20 --socks5-hostname 127.0.0.1:8086 -o /dev/null -w "youtube=%{http_code}\n" https://www.youtube.com/ 2>&1 | tee -a "$WLOG"
+          }
+
+          start_and_wait() {
+            pkill -f warp-plus || true
+            sleep 2
+            echo "=== starting: $*" | tee -a "$WLOG"
+            nohup /tmp/wp/warp-plus -b 127.0.0.1:8086 "$@" > /tmp/wp.out 2>&1 &
+            for i in $(seq 1 16); do
+              sleep 6
+              CODE=$(curl -s --max-time 15 --socks5-hostname 127.0.0.1:8086 -o /dev/null -w "%{http_code}" https://www.youtube.com/ 2>/dev/null)
+              echo "  wait $i youtube=$CODE" | tee -a "$WLOG"
+              [ "$CODE" = "200" ] && return 0
+            done
+            return 1
+          }
+
+          if start_and_wait --scan; then
+            echo "WARP OK" | tee -a "$WLOG"
+          elif start_and_wait --scan --cfon --country NL; then
+            echo "WARP+PSIPHON(NL) OK" | tee -a "$WLOG"
+          elif start_and_wait --scan --cfon --country DE; then
+            echo "WARP+PSIPHON(DE) OK" | tee -a "$WLOG"
+          else
+            echo "WARP NOT WORKING" | tee -a "$WLOG"
+          fi
+          probe || true
+          echo "--- warp-plus output:" | tee -a "$WLOG"
+          tail -30 /tmp/wp.out 2>/dev/null | tee -a "$WLOG"
+          ss -ltnp 2>/dev/null | head -10 | tee -a "$WLOG"
 
       - name: Download source video
         continue-on-error: true
