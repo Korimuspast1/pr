@@ -92,6 +92,31 @@ jobs:
             grust-android/dist/SHA256SUMS.txt
           if-no-files-found: error
 
+      - name: Publish the APK to a rolling release
+        # A workflow artifact needs authentication to download; a release asset does not. Every
+        # build of this workflow, from any branch, replaces the same two files, so there is always
+        # one plain link to the newest APK.
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(grep '^VERSION_NAME=' version.properties | cut -d= -f2)
+          tag=grust-apk
+          notes="Дневник настроения, дыхательные практики и статистика. Приложение работает офлайн: без разрешений и без сети.
+
+          APK подписан debug-ключом: годится для ручной установки (нужно разрешить установку из неизвестных источников), но не для Google Play.
+
+          Проверить файл: sha256sum -c SHA256SUMS.txt"
+          if ! gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "${{ github.repository }}" \
+              --title "Грусть — свежий APK" \
+              --notes "$notes"
+          fi
+          gh release upload "$tag" dist/*.apk dist/SHA256SUMS.txt --clobber \
+            --repo "${{ github.repository }}"
+          echo "::notice title=Release::Grust-${version}.apk at /releases/tag/$tag"
+
       - name: Attach the APK to a release (tags only)
         if: startsWith(github.ref, 'refs/tags/')
         env:
