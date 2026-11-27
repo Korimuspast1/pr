@@ -189,8 +189,25 @@ jobs:
   checksums:
     name: Checksums
     runs-on: ubuntu-latest
+    # needs: apk with fail-fast: false means every leg built, and apk needs test: by the time this
+    # job runs, the whole run is green - which is what makes it the place to say so.
     needs: apk
     steps:
+      - uses: actions/checkout@v5
+
+      # Each job that failed left one comment on the pull request; a green run takes them back
+      # down, so the request reports the newest commit and not the one before it.
+      - name: Clear the failure reports
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          for job in test apk; do
+            MARKER="<!-- nimbus-android:$job -->" bash nimbus-android/tools/ci-report-failure.sh --clear
+          done
+
       - uses: actions/download-artifact@v5
         with:
           pattern: Nimbus-android-*

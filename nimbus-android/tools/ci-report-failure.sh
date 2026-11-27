@@ -10,6 +10,10 @@
 # If posting fails, this says so as an annotation and still exits 0: the job is already red
 # because of the build, and a red reporting step would hide which of the two it was.
 #
+# `--clear` is the other half: a job that passes removes the comment its own earlier failure
+# left, so a green pull request does not keep reporting a failure the newest commit fixed. It
+# needs neither the checkout's build nor ../gradle.log, only the marker.
+#
 # Environment: GH_TOKEN, PR_NUMBER, MARKER, GITHUB_REPOSITORY, GITHUB_JOB, GITHUB_SHA.
 # Run from the nimbus-android directory, after tools/ci-gradle.sh has written ../gradle.log.
 
@@ -19,6 +23,31 @@ note() { echo "::notice title=Report::$*"; }
 fail() { echo "::error title=Report::$*"; }
 # Annotation messages are one line, and a long one is a useless one.
 flat() { tr '\n\r' '  ' | tr -s ' ' | cut -c1-900; }
+
+api="repos/${GITHUB_REPOSITORY:?}/issues/${PR_NUMBER:?}/comments"
+
+# The id of the comment this job left last, if any. The newest of them, which is the one the
+# failure path below edits, so the two halves always mean the same comment.
+existing_comment() {
+    local listing
+    if listing=$(gh api "$api" --paginate \
+        --jq '.[] | select(.body != null and (.body | contains(env.MARKER))) | .id' 2>&1); then
+        printf '%s' "$listing" | tail -1
+    else
+        fail "listing the comments of #$PR_NUMBER failed: $(printf '%s' "$listing" | flat)"
+    fi
+}
+
+if [ "${1:-}" = "--clear" ]; then
+    : "${MARKER:?MARKER is required}"
+    found=$(existing_comment)
+    if [ -n "$found" ]; then
+        out=$(gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$found" 2>&1) ||
+            fail "deleting comment $found failed: $(printf '%s' "$out" | flat)"
+        note "the build is green: cleared the failure comment $found"
+    fi
+    exit 0
+fi
 
 log="../gradle.log"
 body=$(mktemp)
@@ -64,15 +93,7 @@ gradle_said=$(grep -B2 -A20 -E '^\* What went wrong' "$log" 2>/dev/null | head -
     echo '</details>'
 } >"$body"
 
-api="repos/${GITHUB_REPOSITORY:?}/issues/${PR_NUMBER:?}/comments"
-
-existing=''
-if listing=$(gh api "$api" --paginate \
-    --jq '.[] | select(.body != null and (.body | contains(env.MARKER))) | .id' 2>&1); then
-    [ -n "$listing" ] && existing=$(printf '%s' "$listing" | tail -1)
-else
-    fail "listing the comments of #$PR_NUMBER failed: $(printf '%s' "$listing" | flat)"
-fi
+existing=$(existing_comment)
 
 # --input rather than -F body=@file: the report is markdown full of quotes and backticks, and a
 # JSON document has no trouble with any of it.
