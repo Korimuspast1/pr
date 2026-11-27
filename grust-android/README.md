@@ -28,8 +28,16 @@ APK подписан debug-ключом: он ставится вручную (�
 
 ## Скриншоты
 
-Их делает эмулятор в CI (`grust-android/screenshots/`), а не художник: это настоящие кадры
-запущенного приложения.
+Их делает эмулятор в CI (`screenshots/`), а не художник: это настоящие кадры запущенного
+приложения, снятые на API 34 во время прогона из `tools/ci-smoke.sh`.
+
+| Вход | Сегодня | Дневник |
+| --- | --- | --- |
+| ![вход](screenshots/01-entry.png) | ![сегодня](screenshots/02-today.png) | ![дневник](screenshots/07-diary.png) |
+
+| Настроение | Статистика | Дыхание |
+| --- | --- | --- |
+| ![настроение](screenshots/03-mood.png) | ![статистика](screenshots/05-stats.png) | ![дыхание](screenshots/06-breathe.png) |
 
 ## Сборка
 
@@ -46,8 +54,9 @@ cd grust-android
 
 * `build` — юнит-тесты, `assembleRelease`, публикация APK и суммы в rolling-release `grust-apk`
   (артефакт Actions требует авторизации для скачивания, ассет релиза — нет);
-* `smoke` — ставит debug-сборку на эмулятор API 34, проходит по всем экранам через uiautomator,
-  падает при `FATAL EXCEPTION` в logcat и коммитит скриншоты обратно в ветку.
+* `smoke` — ставит debug-сборку на эмулятор API 34, проходит по всем экранам через uiautomator
+  (с прокруткой, если кнопка ниже сгиба), падает при `FATAL EXCEPTION` в logcat и коммитит
+  скриншоты обратно в ветку.
 
 ## Структура
 
@@ -57,13 +66,14 @@ grust-android/
     data/      Mood, MoodEntry, MoodStore, EntryCodec, Stats, Words, Practices
     ui/        MainActivity, App, TodayScreen, DiaryScreen, BreatheScreen, StatsScreen
     ui/theme/  палитра и тема
-  app/src/test/  StatsTest, EntryCodecTest — 18 тестов, JVM, без эмулятора
+  app/src/test/  StatsTest, EntryCodecTest, RussianTest — 22 теста, JVM, без эмулятора
   tools/         ci-android-sdk.sh, ci-gradle.sh, ci-smoke.sh
 ```
 
-`data/Stats.kt` и `data/EntryCodec.kt` не знают про Android — поэтому их можно проверять
-обычными JVM-тестами, включая «вчера заполнено, сегодня ещё нет — серия не рвётся» и «битый JSON
-стоит строк, а не всего дневника».
+`data/Stats.kt`, `data/EntryCodec.kt` и `data/Russian.kt` не знают про Android — поэтому их можно
+проверять обычными JVM-тестами, включая «вчера заполнено, сегодня ещё нет — серия не рвётся»,
+«битый JSON стоит строк, а не всего дневника» и «2,0 не превращается в 2,0,0» (этот баг был в
+первой сборке и виден на её скриншоте).
 
 ## Если тяжело не по-приложенчески
 
