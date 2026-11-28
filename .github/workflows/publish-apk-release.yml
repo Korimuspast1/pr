@@ -25,14 +25,18 @@ jobs:
         run: |
           sha256sum cocaser-telegram-gifts.apk > SHA256SUMS.txt
           cat << 'NOTES' > RELEASE_NOTES.md
-          ### Telegram Gifts 1.0.0 (`cocaser.app`) — Android APK
+          ### Telegram Gifts 2.0.0 (`cocaser.app`) — Android APK
 
           - **651 официальный подарок и скин Telegram** (все 124 коллекции, 11 обычных подарков чата, все лимитированные спецвыпуски и 492 скина моделей)
           - **40 кейсов**, Маркет, Крафт, Апгрейд, Ракета, Альбом и Профиль в нативном дизайне Telegram
           - **Лёгкая регистрация и вход (Логин + Пароль)** при запуске (без почты)
           - **Облачная синхронизация Firebase (`lool-4d49c`)** через `google-services.json`
-          - Убрана админка и исправлены баги интерфейса Android
-          - Пакет: `cocaser.app` · `minSdk 24` / `targetSdk 34` · подпись APK Signature **v2 + v3**
+          - **Код игры больше не лежит в APK в открытом виде**: в `assets/` только заглушка-загрузчик (6.6 КБ) и пакет `r0.pak`, зашифрованный **AES-256-GCM**; расшифровка идёт в памяти при запуске. Энтропия пакета 7.9998 бит/байт
+          - **Убрана тема «Liquid glass»** — остались только понятные палитры, близкие к оригинальному оформлению
+          - **Убраны экспорт и импорт сохранения** — работает только автосохранение
+          - **Убрано поле даты рождения** из профиля
+          - Подпись прежним постоянным ключом (SHA-256 `0F:96:E1:C6:…:13:4F:DB`), поэтому обновление поверх 1.0.0 устанавливается без удаления данных
+          - Пакет: `cocaser.app` · `versionCode 2` · `minSdk 24` / `targetSdk 34` · подпись APK Signature **v2 + v3**
           - Правила для Firebase Firestore лежат в файле `FIREBASE_RULES.md`
           NOTES
 
@@ -40,8 +44,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="telegram-gifts-v1.0.0"
-          TITLE="Telegram Gifts 1.0.0 — Все 651 подарков + Firebase Sync (APK)"
+          TAG="telegram-gifts-v2.0.0"
+          TITLE="Telegram Gifts 2.0.0 — 651 подарок, Firebase Sync, зашифрованные ассеты (APK)"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" cocaser-telegram-gifts.apk SHA256SUMS.txt --clobber
             gh release edit "$TAG" --title "$TITLE" --notes-file RELEASE_NOTES.md --latest
