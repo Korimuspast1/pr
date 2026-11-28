@@ -1,0 +1,6 @@
+# Local server state and generated configuration
+docker/.env
+data/
+source/
+build/
+*.log
