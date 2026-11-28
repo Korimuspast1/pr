@@ -1,0 +1,205 @@
+run: 43010874965  ref: refs/heads/arena/8849556d-pr  sha: a569f4d2ac4d50b109aa77fce19e55a06b8759b1
+flavor: arm64
+===== overlay.log (tail) =====
+[1m==>[0m tree   : /home/runner/work/_temp/ayu
+[1m==>[0m overlay: /home/runner/work/pr/pr/ayuox4gg
+wrote /home/runner/work/_temp/ayu/API_KEYS (mode 600, git-ignored by the upstream repository)
+APP_ID   = 6
+APP_HASH = eb0**************************81e
+[1m==>[0m installing public proprietary/ stand-ins
+[1m==>[0m    features: AyuSecrets.java AyuUpdateVerifier.java -> ayugram/security/
+   .gitmodules: removed the private proprietary submodule entry
+[1m==>[0m applying security patches
+[1m==>[0m applied 0001-sync-https-only.patch
+[1m==>[0m applied 0002-transport-and-manifest.patch
+[1m==>[0m applied 0003-sync-frame-hardening.patch
+[1m==>[0m applied 0004-wire-features.patch
+[1m==>[0m applied 0005-built-features-and-rebrand.patch
+[1m==>[0m 5 patch(es) applied
+[1m==>[0m java syntax check
+[1m==>[0m stand-ins parse
+[1m==>[0m done
+
+Next:
+  cd <tree> && ./gradlew assembleAfatRelease
+  # in this sandbox the Gradle build cannot run (no SDK/NDK, no Maven access);
+  # see ayuox4gg/docs/BUILD.md for a real build machine.
+===== gradle: What went wrong =====
+* What went wrong:
+Execution failed for task ':TMessagesProj:compileArm64ReleaseJavaWithJavac'.
+> Compilation failed; see the compiler error output for details.
+
+* Try:
+* What went wrong:
+java.lang.StackOverflowError (no error message)
+
+* Try:
+
+===== gradle: signals =====
+Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
+C/C++:   near the top of the file, but after cmake_minimum_required().
+/home/runner/work/_temp/ayu/TMessagesProj/src/main/java/com/radolyn/ayugram/export/AyuChatExporter.java:68: error: incompatible types: org.telegram.SQLite.SQLiteDatabase cannot be converted to android.database.sqlite.SQLiteDatabase
+> Task :TMessagesProj:compileArm64ReleaseJavaWithJavac FAILED
+Execution failed for task ':TMessagesProj:compileArm64ReleaseJavaWithJavac'.
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':TMessagesProj:compileArm64ReleaseJavaWithJavac'.
+Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Compilation failed; see the compiler error output for details.
+java.lang.StackOverflowError (no error message)
+java.lang.StackOverflowError
+BUILD FAILED in 24m 30s
+
+===== javac diagnostics =====
+/home/runner/work/_temp/ayu/TMessagesProj/src/main/java/com/radolyn/ayugram/export/AyuChatExporter.java:68: error: incompatible types: org.telegram.SQLite.SQLiteDatabase cannot be converted to android.database.sqlite.SQLiteDatabase
+
+===== gradle: tasks =====
+> Task :TMessagesProj:preBuild UP-TO-DATE
+> Task :TMessagesProj:preArm64ReleaseBuild UP-TO-DATE
+> Task :TMessagesProj:configureCMakeRelWithDebInfo[arm64-v8a]
+> Task :TMessagesProj:buildCMakeRelWithDebInfo[arm64-v8a]
+> Task :TMessagesProj:externalNativeBuildArm64Release
+> Task :TMessagesProj:mergeArm64ReleaseJniLibFolders
+> Task :TMessagesProj:mergeArm64ReleaseNativeLibs
+> Task :TMessagesProj:checkArm64ReleaseDuplicateClasses
+> Task :TMessagesProj:compileArm64ReleaseAidl NO-SOURCE
+> Task :TMessagesProj:compileArm64ReleaseRenderscript NO-SOURCE
+> Task :TMessagesProj:generateArm64ReleaseBuildConfig
+> Task :TMessagesProj:generateArm64ReleaseResValues
+> Task :TMessagesProj:generateArm64ReleaseResources
+> Task :TMessagesProj:injectCrashlyticsMappingFileIdArm64Release
+> Task :TMessagesProj:processArm64ReleaseGoogleServices
+> Task :TMessagesProj:stripArm64ReleaseDebugSymbols
+> Task :TMessagesProj:packageArm64ReleaseResources
+> Task :TMessagesProj:parseArm64ReleaseLocalResources
+> Task :TMessagesProj:createArm64ReleaseCompatibleScreenManifests
+> Task :TMessagesProj:extractDeepLinksArm64Release
+> Task :TMessagesProj:processArm64ReleaseMainManifest
+> Task :TMessagesProj:processArm64ReleaseManifest
+> Task :TMessagesProj:processArm64ReleaseManifestForPackage
+> Task :TMessagesProj:generateArm64ReleaseRFile
+> Task :TMessagesProj:javaPreCompileArm64Release
+> Task :TMessagesProj:extractArm64ReleaseNativeDebugMetadata
+> Task :TMessagesProj:compileArm64ReleaseJavaWithJavac
+> Task :TMessagesProj:compileArm64ReleaseJavaWithJavac FAILED
+
+===== gradle: head =====
+Downloading https://services.gradle.org/distributions/gradle-7.5.1-bin.zip
+...............................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+Unzipping /home/runner/.gradle/wrapper/dists/gradle-7.5.1-bin/3vjt446puusec1d68mcse4lj4s/gradle-7.5.1-bin.zip to /home/runner/.gradle/wrapper/dists/gradle-7.5.1-bin/3vjt446puusec1d68mcse4lj4s
+Set executable permissions for: /home/runner/.gradle/wrapper/dists/gradle-7.5.1-bin/3vjt446puusec1d68mcse4lj4s/gradle-7.5.1/bin/gradle
+
+Welcome to Gradle 7.5.1!
+
+Here are the highlights of this release:
+ - Support for Java 18
+ - Support for building with Groovy 4
+ - Much more responsive continuous builds
+ - Improved diagnostics for dependency resolution
+
+For more details see https://docs.gradle.org/7.5.1/release-notes.html
+
+Starting a Gradle Daemon (subsequent builds will be faster)
+
+> Configure project :TMessagesProj
+WARNING:The option setting 'android.experimental.enableNewResourceShrinker.preciseShrinking=true' is experimental.
+The current default is 'false'.
+WARNING:The option setting 'android.enableAppCompileTimeRClass=true' is experimental.
+The current default is 'false'.
+Checking the license for package CMake 3.22.1 in /usr/local/lib/android/sdk/licenses
+License for package CMake 3.22.1 accepted.
+Preparing "Install CMake 3.22.1 (revision: 3.22.1)".
+"Install CMake 3.22.1 (revision: 3.22.1)" ready.
+Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
+"Install CMake 3.22.1 (revision: 3.22.1)" complete.
+"Install CMake 3.22.1 (revision: 3.22.1)" finished.
+[CXX5202] This app only has 32-bit [armeabi-v7a] native libraries. Beginning August 1, 2019 Google Play store requires that all apps that include native libraries must provide 64-bit versions. For more information, visit https://g.co/64-bit-requirement
+[CXX5202] This app only has 32-bit [x86] native libraries. Beginning August 1, 2019 Google Play store requires that all apps that include native libraries must provide 64-bit versions. For more information, visit https://g.co/64-bit-requirement
+WARNING:[CXX5202] This app only has 32-bit [armeabi-v7a] native libraries. Beginning August 1, 2019 Google Play store requires that all apps that include native libraries must provide 64-bit versions. For more information, visit https://g.co/64-bit-requirement
+[CXX5202] This app only has 32-bit [armeabi-v7a] native libraries. Beginning August 1, 2019 Google Play store requires that all apps that include native libraries must provide 64-bit versions. For more information, visit https://g.co/64-bit-requirement
+WARNING:[CXX5202] This app only has 32-bit [x86] native libraries. Beginning August 1, 2019 Google Play store requires that all apps that include native libraries must provide 64-bit versions. For more information, visit https://g.co/64-bit-requirement
+[CXX5202] This app only has 32-bit [x86] native libraries. Beginning August 1, 2019 Google Play store requires that all apps that include native libraries must provide 64-bit versions. For more information, visit https://g.co/64-bit-requirement
+
+> Task :TMessagesProj:preBuild UP-TO-DATE
+> Task :TMessagesProj:preArm64ReleaseBuild UP-TO-DATE
+
+> Task :TMessagesProj:configureCMakeRelWithDebInfo[arm64-v8a]
+C/C++: CMake Warning (dev) in CMakeLists.txt:
+C/C++:   No project() command is present.  The top-level CMakeLists.txt file must
+C/C++:   contain a literal, direct call to the project() command.  Add a line of
+C/C++:   code such as
+C/C++:     project(ProjectName)
+C/C++:   near the top of the file, but after cmake_minimum_required().
+C/C++:   CMake is pretending there is a "project(Project)" command on the first
+C/C++:   line.
+C/C++: This warning is for project developers.  Use -Wno-dev to suppress it.
+
+> Task :TMessagesProj:buildCMakeRelWithDebInfo[arm64-v8a]
+C/C++: ninja: Entering directory `/home/runner/work/_temp/ayu/TMessagesProj/.cxx/RelWithDebInfo/6c3n4546/arm64-v8a'
+C/C++: /home/runner/work/_temp/ayu/TMessagesProj/jni/tgnet/FileLog.cpp:181:16: warning: unused variable 'now' [-Wunused-variable]
+C/C++: /home/runner/work/_temp/ayu/TMessagesProj/jni/tgnet/FileLog.cpp:200:16: warning: unused variable 'now' [-Wunused-variable]
+C/C++: /home/runner/work/_temp/ayu/TMessagesProj/jni/tgnet/ApiScheme.cpp:491:21: warning: unused variable 'document_id' [-Wunused-variable]
+C/C++: /home/runner/work/_temp/ayu/TMessagesProj/jni/tgnet/ApiScheme.cpp:494:21: warning: unused variable 'document_id' [-Wunused-variable]
+C/C++: /home/runner/work/_temp/ayu/TMessagesProj/jni/tgnet/ApiScheme.cpp:495:17: warning: unused variable 'until' [-Wunused-variable]
+C/C++: /home/runner/work/_temp/ayu/TMessagesProj/jni/tgnet/Connection.cpp:223:93: warning: '&&' within '||' [-Wlogical-op-parentheses]
+C/C++: /home/runner/work/_temp/ayu/TMessagesProj/jni/tgnet/Connection.cpp:223:93: note: place parentheses around the '&&' expression to silence this warning
+C/C++: /home/runner/work/_temp/ayu/TMessagesProj/jni/tgnet/Connection.cpp:531:223: warning: '&&' within '||' [-Wlogical-op-parentheses]
+
+===== gradle: tail =====
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+	at org.gradle.execution.plan.CompositeNodeGroup.isCanCancel(CompositeNodeGroup.java:101)
+	at org.gradle.execution.plan.Node.isCanCancel(Node.java:232)
+	at org.gradle.execution.plan.FinalizerGroup.isCanCancel(FinalizerGroup.java:155)
+
+==============================================================================
+
+* Get more help at https://help.gradle.org
+
+BUILD FAILED in 24m 30s
+22 actionable tasks: 22 executed

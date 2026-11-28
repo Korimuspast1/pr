@@ -1,0 +1,23 @@
+run: 42610257398  ref: refs/heads/arena/8849556d-pr  sha: b575d7a00ad28f315218849f3e165017dc14bd58
+flavor: arm64
+===== overlay.log (last 400 lines) =====
+[1m==>[0m tree   : /home/runner/work/_temp/ayu
+[1m==>[0m overlay: /home/runner/work/pr/pr/ayuox4gg
+wrote /home/runner/work/_temp/ayu/API_KEYS (mode 600, git-ignored by the upstream repository)
+APP_ID   = 6
+APP_HASH = eb0**************************81e
+[1m==>[0m installing public proprietary/ stand-ins
+   .gitmodules: removed the private proprietary submodule entry
+[1m==>[0m applying security patches
+[1m==>[0m applied 0001-sync-https-only.patch
+[1m==>[0m applied 0002-transport-and-manifest.patch
+[1m==>[0m applied 0003-sync-frame-hardening.patch
+[1m==>[0m 3 patch(es) applied
+[1m==>[0m java syntax check
+[1m==>[0m stand-ins parse
+[1m==>[0m done
+
+Next:
+  cd <tree> && ./gradlew assembleAfatRelease
+  # in this sandbox the Gradle build cannot run (no SDK/NDK, no Maven access);
+  # see ayuox4gg/docs/BUILD.md for a real build machine.

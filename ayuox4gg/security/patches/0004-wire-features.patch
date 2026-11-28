@@ -1,0 +1,66 @@
+diff --git a/TMessagesProj/src/main/java/com/radolyn/ayugram/AyuConfig.java b/TMessagesProj/src/main/java/com/radolyn/ayugram/AyuConfig.java
+--- a/TMessagesProj/src/main/java/com/radolyn/ayugram/AyuConfig.java
++++ b/TMessagesProj/src/main/java/com/radolyn/ayugram/AyuConfig.java
+@@ -186,9 +186,35 @@
+     }
+ 
+     public static String getSyncServerToken() {
+-        return preferences.getString("syncServerToken", "");
++        // ayuox4gg: prefer the encrypted copy. The plaintext key is still read
++        // as a fallback so an existing login is not lost on upgrade, and it is
++        // re-encrypted on first use.
++        try {
++            String encrypted = com.radolyn.ayugram.security.AyuSecrets.getString(
++                    org.telegram.messenger.ApplicationLoader.applicationContext,
++                    SYNC_TOKEN_SECRET, null);
++            if (encrypted != null) {
++                return encrypted;
++            }
++        } catch (Throwable ignored) {
++            // Keystore unavailable: fall through to the old plaintext value.
++        }
++        String legacy = preferences.getString("syncServerToken", "");
++        if (legacy != null && !legacy.isEmpty()) {
++            try {
++                com.radolyn.ayugram.security.AyuSecrets.putString(
++                        org.telegram.messenger.ApplicationLoader.applicationContext,
++                        SYNC_TOKEN_SECRET, legacy);
++                preferences.edit().remove("syncServerToken").apply();
++            } catch (Throwable ignored) {
++                // Keep the plaintext copy rather than losing the login.
++            }
++        }
++        return legacy == null ? "" : legacy;
+     }
+ 
++    private static final String SYNC_TOKEN_SECRET = "syncServerToken";
++
+     public static ArrayList<String> getRegexFilters() {
+         var str = preferences.getString("regexFilters", "[]");
+         var arr = new Gson().fromJson(str, String[].class);
+diff --git a/TMessagesProj/src/main/java/com/exteragram/messenger/utils/UpdaterUtils.java b/TMessagesProj/src/main/java/com/exteragram/messenger/utils/UpdaterUtils.java
+--- a/TMessagesProj/src/main/java/com/exteragram/messenger/utils/UpdaterUtils.java
++++ b/TMessagesProj/src/main/java/com/exteragram/messenger/utils/UpdaterUtils.java
+@@ -187,6 +187,22 @@
+         var file = new File(path);
+         if (!file.exists())
+             return;
++
++        // ayuox4gg: never hand an unsigned or re-signed APK to the installer.
++        // The updater used to check nothing but file presence, so anyone able to
++        // serve the update URL could replace the client. Signature comparison is
++        // what makes that attack fail; a hash is optional (no pinned value yet).
++        try {
++            var verification = com.radolyn.ayugram.security.AyuUpdateVerifier.verify(context, file, null);
++            if (!verification.isOk()) {
++                org.telegram.messenger.FileLog.e("ayuox4gg: refusing to install update: "
++                        + verification.getMessage());
++                return;
++            }
++        } catch (Throwable t) {
++            org.telegram.messenger.FileLog.e("ayuox4gg: update verification crashed, refusing", t);
++            return;
++        }
+         var install = new Intent(Intent.ACTION_VIEW);
+         Uri fileUri;
+         if (Build.VERSION.SDK_INT >= 24) {
