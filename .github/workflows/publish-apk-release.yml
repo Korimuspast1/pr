@@ -49,8 +49,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="telegram-gifts-v2.0.0"
-          TITLE="Telegram Gifts 2.0.0 — 651 подарок, Firebase Sync, зашифрованные ассеты (APK)"
+          TAG="telegram-gifts-v2.2.0"
+          TITLE="Telegram Gifts 2.2.0 — Соцсеть, P2P-маркет, E2E-шифрование, без зума (APK)"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" cocaser-telegram-gifts.apk SHA256SUMS.txt --clobber
             gh release edit "$TAG" --title "$TITLE" --notes-file RELEASE_NOTES.md --latest
