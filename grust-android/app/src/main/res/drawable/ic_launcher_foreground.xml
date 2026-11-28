@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A drop of rain inside a warm lamp: the app's two halves. Drawn inside the 72dp safe zone of a
+     108dp adaptive icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- outer glow -->
+    <path
+        android:fillColor="#1FAAB6E8"
+        android:pathData="M54,26m-26,0a26,26 0,1 1,52 0a26,26 0,1 1,-52 0" />
+
+    <!-- the drop -->
+    <path
+        android:fillColor="#AAB6E8"
+        android:pathData="M54,30 C54,30 66,46 66,54.5 A12,12 0,0 1,42 54.5 C42,46 54,30 54,30 Z" />
+
+    <!-- a highlight on the drop -->
+    <path
+        android:fillColor="#66FFFFFF"
+        android:pathData="M48.5,52 A5,7 0,0 1,58 51 A9,9 0,0 0,48.5 52 Z" />
+
+    <!-- the lamp beneath -->
+    <path
+        android:fillColor="#F0C77E"
+        android:pathData="M54,74 C54,74 62,82 62,86.5 A8,8 0,0 1,46 86.5 C46,82 54,74 54,74 Z" />
+</vector>

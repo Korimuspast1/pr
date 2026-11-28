@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The sky behind the launcher icon. A flat colour rather than a gradient: it is a few pixels
+     under the adaptive-icon mask, and a gradient there would not be visible. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#141B33" />
+</shape>
