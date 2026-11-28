@@ -54,12 +54,16 @@ service cloud.firestore {
         && d.stateJson is string && d.stateJson.size() < 950000;
     }
     match /users/{userId} {
-      allow read: if me(userId);
-      allow create: if me(userId) && validSave(request.resource.data);
-      // Баланс за одну запись не может вырасти больше чем на 1 000 000 — массовая накрутка одним запросом закрыта
-      allow update: if me(userId) && validSave(request.resource.data)
-        && request.resource.data.coins <= resource.data.coins + 1000000;
-      allow delete: if false;
+      // Читать свой сейв может владелец; любой сейв — только админ @visa (список игроков в админке)
+      allow read: if me(userId) || isAdmin();
+      allow create: if (me(userId) && validSave(request.resource.data))
+        || (isAdmin() && validAdminSave(request.resource.data));
+      // Баланс за одну запись не может вырасти больше чем на 1 000 000 — массовая накрутка одним запросом закрыта.
+      // Админ (@visa) пишет без этого потолка — выдача из админ-панели в приложении.
+      allow update: if (me(userId) && validSave(request.resource.data)
+          && request.resource.data.coins <= resource.data.coins + 1000000)
+        || (isAdmin() && validAdminSave(request.resource.data));
+      allow delete: if isAdmin();
     }
 
     // ---------- Публичные профили соцсети ----------
