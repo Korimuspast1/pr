@@ -41,7 +41,7 @@ public class MainActivity extends Activity {
         s.setDisplayZoomControls(false);
         s.setLoadWithOverviewMode(false);
         s.setUseWideViewPort(false);
-        s.setUserAgentString("Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 TelegramGifts/2.2");
+        s.setUserAgentString("Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 TelegramGifts/2.3");
         WebView.setWebContentsDebuggingEnabled(false);
         webView.setVerticalScrollBarEnabled(false);
         webView.setHorizontalScrollBarEnabled(false);
