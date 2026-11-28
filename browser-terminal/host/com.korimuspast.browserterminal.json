@@ -1,0 +1,9 @@
+{
+  "name": "com.korimuspast.browserterminal",
+  "description": "Browser Terminal: локальное выполнение команд в системе (только для расширения-терминала)",
+  "path": "__HOST_ABS_PATH__",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://__EXTENSION_ID__/"
+  ]
+}

@@ -1,0 +1,14 @@
+Вкладка терминала (terminal.html, xterm.js)
+        |
+        |  chrome.runtime.connectNative("com.korimuspast.browserterminal")
+        |  (4-байтовая длина + JSON поверх stdio, порт живёт пока открыта вкладка)
+        v
+host/run-host.sh --> host/host.py   (процесс на вашем ПК, права вашего пользователя)
+        |
+        |  каждая команда:  $SHELL -c "<ваша команда>\n__bt_rc=$?\nprintf '<маркер статуса и pwd>'"
+        |  маркер обрезается из вывода, code и cwd возвращаются расширению
+        v
+ваш shell (bash / zsh / fish ... или cmd.exe в Windows)
+        |
+        v
+результат стримится обратно во вкладку терминала порциями
