@@ -1,0 +1,21 @@
+{
+  "format": "custom-profile-cstm",
+  "version": 1,
+  "name": "Neon local preview",
+  "profile": {
+    "enabled": true,
+    "scope": 0,
+    "verified": true,
+    "premium": true,
+    "stars_enabled": true,
+    "stars_amount": 2500000,
+    "stars_level": 12,
+    "display_name": "Neon Profile",
+    "display_username": "neon_preview",
+    "display_bio": "This is a local Custom Profile preview.",
+    "name_color_enabled": true,
+    "name_color_index": 4,
+    "profile_color_enabled": true,
+    "profile_color_index": 4
+  }
+}
