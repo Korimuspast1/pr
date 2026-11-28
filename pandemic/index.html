@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ПАНДЕМИЯ — симулятор патогена</title>
+  <meta name="description" content="Симулятор эпидемии в духе Plague Inc: создайте патоген, развивайте мутации и попробуйте уничтожить человечество раньше, чем учёные создадут лекарство." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☣</text></svg>" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="hud">
+      <div class="brand">
+        <svg class="brand__mark" viewBox="0 0 48 48" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <circle cx="24" cy="24" r="7.5" />
+            <circle cx="24" cy="24" r="15" stroke-dasharray="3 5" />
+            <path d="M24 4v7M24 37v7M4 24h7M37 24h7M9.9 9.9l5 5M33.1 33.1l5 5M38.1 9.9l-5 5M14.9 33.1l-5 5" />
+          </g>
+        </svg>
+        <div>
+          <h1>ПАНДЕМИЯ</h1>
+          <span>симулятор патогена</span>
+        </div>
+      </div>
+
+      <div class="hud__stats">
+        <div class="hud__stat">
+          <label>День</label>
+          <b id="statDay">0</b>
+          <i id="statDate">01.01.2026</i>
+        </div>
+        <div class="hud__stat hud__stat--dna">
+          <label>ДНК</label>
+          <b id="statDna">8</b>
+          <i>очки эволюции</i>
+        </div>
+        <div class="hud__stat">
+          <label>Заражено</label>
+          <b id="statInf">4</b>
+          <i id="statInfPct">0% населения</i>
+        </div>
+        <div class="hud__stat hud__stat--dead">
+          <label>Погибло</label>
+          <b id="statDead">0</b>
+          <i id="statDeadPct">0% населения</i>
+        </div>
+        <div class="hud__stat">
+          <label>Стран</label>
+          <b id="statCountries">1<small>/175</small></b>
+          <i>с заражением</i>
+        </div>
+      </div>
+
+      <div class="hud__controls">
+        <div class="speed" role="group" aria-label="Скорость времени">
+          <button type="button" data-speed="0" title="Пауза (пробел)">❚❚</button>
+          <button type="button" data-speed="1" class="is-active" title="Обычная скорость">1×</button>
+          <button type="button" data-speed="2" title="Ускорение">2×</button>
+          <button type="button" data-speed="4" title="Максимум">4×</button>
+        </div>
+        <button type="button" id="helpBtn" class="icon-btn" title="Как играть">?</button>
+        <button type="button" id="soundBtn" class="icon-btn" title="Звук">♪</button>
+        <button type="button" id="menuBtn" class="icon-btn" title="Начать заново">⟲</button>
+      </div>
+    </header>
+
+    <main class="stage">
+      <aside class="panel panel--left">
+        <section class="card card--cure" id="cureCard">
+          <div class="card__head">
+            <h2>Лекарство</h2>
+            <span class="chip" id="cureState">не начато</span>
+          </div>
+          <div class="cure">
+            <div class="cure__ring">
+              <svg viewBox="0 0 100 100">
+                <circle class="cure__track" cx="50" cy="50" r="42" />
+                <circle class="cure__value" id="cureRing" cx="50" cy="50" r="42" />
+              </svg>
+              <b id="curePct">0<span>%</span></b>
+            </div>
+            <div class="cure__meta">
+              <div><label>Лаборатории</label><b id="cureLabs">0</b></div>
+              <div><label>Сопротивление</label><b id="cureResist">0%</b></div>
+              <div><label>Сложность</label><b id="cureComplex">×1.0</b></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card__head"><h2>Реакция мира</h2></div>
+          <div class="meters">
+            <div class="meter">
+              <div class="meter__top"><span>Осведомлённость</span><b id="awareVal">0%</b></div>
+              <div class="meter__bar"><i id="awareBar"></i></div>
+            </div>
+            <div class="meter">
+              <div class="meter__top"><span>Закрытые границы</span><b id="closedVal">0</b></div>
+              <div class="meter__bar meter__bar--warn"><i id="closedBar"></i></div>
+            </div>
+          </div>
+          <div class="kv">
+            <div><span>Обнаружено стран</span><b id="detectedVal">0</b></div>
+            <div><span>Переболело</span><b id="exposedVal">0</b></div>
+          </div>
+        </section>
+
+        <section class="card card--strain">
+          <div class="card__head">
+            <h2>Штамм</h2>
+            <span class="chip chip--ghost" id="strainType">—</span>
+          </div>
+          <div class="strain__name" id="strainName">—</div>
+          <div class="statbars">
+            <div class="statbar"><label>Заразность</label><div><i id="barInf"></i></div><b id="valInf">0</b></div>
+            <div class="statbar"><label>Летальность</label><div><i id="barLeth" class="is-red"></i></div><b id="valLeth">0</b></div>
+            <div class="statbar"><label>Заметность</label><div><i id="barVis" class="is-violet"></i></div><b id="valVis">0</b></div>
+          </div>
+        </section>
+
+        <section class="card card--log">
+          <div class="card__head"><h2>Сводка</h2><span class="chip chip--ghost" id="eventCount">0</span></div>
+          <div class="log" id="log"></div>
+        </section>
+      </aside>
+
+      <section class="map-wrap" id="mapWrap">
+        <div class="map-bg"></div>
+        <svg id="map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-label="Карта мира">
+          <defs>
+            <radialGradient id="ocean" cx="50%" cy="40%" r="75%">
+              <stop offset="0%" stop-color="#0a1c26" />
+              <stop offset="100%" stop-color="#050e14" />
+            </radialGradient>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.2" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+            <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+              <path d="M50 0H0V50" fill="none" stroke="#5ad1ff" stroke-opacity="0.05" stroke-width="1" />
+            </pattern>
+          </defs>
+          <rect width="1000" height="500" fill="url(#ocean)" />
+          <rect width="1000" height="500" fill="url(#grid)" />
+          <g id="countries"></g>
+          <g id="pulses"></g>
+          <g id="labels"></g>
+        </svg>
+
+        <div class="map-legend">
+          <span><i class="dot dot--healthy"></i>чисто</span>
+          <span><i class="dot dot--mild"></i>случаи</span>
+          <span><i class="dot dot--hot"></i>вспышка</span>
+          <span><i class="dot dot--dead"></i>вымерло</span>
+        </div>
+
+        <div class="map-status">
+          <div class="map-status__title" id="mapStatusTitle">Выберите очаг заражения</div>
+          <div class="map-status__sub" id="mapStatusSub">Кликните по стране на карте, чтобы начать эпидемию именно там</div>
+        </div>
+
+        <div class="tooltip" id="tooltip" role="tooltip"></div>
+
+        <div class="dash">
+          <div class="dash__head">
+            <span>Демография планеты</span>
+            <span id="dashTotal">7,58 млрд</span>
+          </div>
+          <div class="dash__bar" id="dashBar">
+            <i class="seg seg--healthy" id="segHealthy"></i>
+            <i class="seg seg--sick" id="segSick"></i>
+            <i class="seg seg--dead" id="segDead"></i>
+            <i class="seg seg--immune" id="segImmune"></i>
+          </div>
+          <div class="dash__legend">
+            <span><i class="dot dot--healthy"></i>здоровы <b id="lgHealthy">—</b></span>
+            <span><i class="dot dot--mild"></i>болеют <b id="lgSick">—</b></span>
+            <span><i class="dot dot--dead"></i>погибли <b id="lgDead">—</b></span>
+            <span><i class="dot dot--immune"></i>переболели <b id="lgImmune">—</b></span>
+          </div>
+          <div class="dash__list" id="hotList"></div>
+        </div>
+      </section>
+
+      <aside class="panel panel--right">
+        <div class="tabs" id="tabs" role="tablist">
+          <button type="button" class="is-active" data-cat="transmission" role="tab">Передача</button>
+          <button type="button" data-cat="symptom" role="tab">Симптомы</button>
+          <button type="button" data-cat="ability" role="tab">Способности</button>
+        </div>
+        <div class="tab-hint" id="tabHint">Как патоген переходит от человека к человеку</div>
+        <div class="upgrades" id="upgrades"></div>
+        <div class="panel__foot">
+          <span>ДНК: <b id="footDna">8</b></span>
+          <span id="footOwned">0 / 46 улучшений</span>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="ticker">
+      <span class="ticker__label">СРОЧНО</span>
+      <div class="ticker__text" id="tickerText">В мире спокойно. Пока что.</div>
+      <span class="ticker__hint" id="tickerHint">пробел — пауза</span>
+    </footer>
+  </div>
+
+  <!-- ------------------------------------------------------------ СТАРТ -->
+  <div class="overlay overlay--start" id="startScreen">
+    <div class="start">
+      <div class="start__eyebrow">лаборатория биобезопасности · уровень 4</div>
+      <h2 class="start__title">Создайте патоген</h2>
+      <p class="start__lead">
+        Один штамм против восьми миллиардов. Развивайте передачу, симптомы и способности,
+        обгоняйте учёных — и постарайтесь, чтобы человечество не успело придумать лекарство.
+      </p>
+
+      <div class="start__block">
+        <div class="start__label">1. Тип патогена</div>
+        <div class="pathogens" id="pathogens"></div>
+      </div>
+
+      <div class="start__block">
+        <div class="start__label">2. Сложность</div>
+        <div class="segmented" id="difficulties"></div>
+        <p class="start__note" id="difficultyNote"></p>
+      </div>
+
+      <div class="start__block start__block--row">
+        <div>
+          <div class="start__label">3. Название штамма</div>
+          <input id="strainInput" class="input" maxlength="22" value="Штамм «Аврора»" />
+        </div>
+        <div>
+          <div class="start__label">Очаг заражения</div>
+          <div class="pick" id="startPick">
+            <b id="pickName">Россия</b>
+            <span id="pickMeta">144 млн · умеренный климат</span>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn--primary btn--launch" id="launchBtn">
+        Начать эпидемию
+        <span>Enter</span>
+      </button>
+      <p class="start__hint">Страну очага можно выбрать кликом по карте</p>
+    </div>
+  </div>
+
+  <!-- --------------------------------------------------------------- СПРАВКА -->
+  <div class="overlay overlay--help is-hidden" id="helpScreen">
+    <div class="ending ending--help">
+      <div class="ending__stamp ending__stamp--cyan">ПОЛЕВОЕ РУКОВОДСТВО</div>
+      <h2 class="ending__title">Как играть</h2>
+      <div class="help-grid">
+        <div><b>◆ ДНК</b><span>Капает каждый день: чем больше заражённых, тем быстрее. Тратьте на эволюцию в правой панели.</span></div>
+        <div><b>Передача</b><span>Воздух, вода, насекомые и скот помогают патогену перебираться между странами быстрее.</span></div>
+        <div><b>Симптомы</b><span>Повышают смертность и заметность. Заметный штамм быстрее обнаруживают и начинают лечить.</span></div>
+        <div><b>Способности</b><span>Устойчивость к климату, лекарствам и вниманию врачей. Позволяют тянуть время.</span></div>
+        <div><b>Обнаружение</b><span>Когда больных становится слишком много, страна подтверждает вспышку и закрывает границы.</span></div>
+        <div><b>Лекарство</b><span>Богатые и активные страны качают прогресс. Дошло до 100% — новые заражения прекращаются.</span></div>
+        <div><b>Победа</b><span>Погибло 99,5% человечества. Обычно нужно дождаться, пока зараза доберётся до каждого острова.</span></div>
+        <div><b>Горячие клавиши</b><span>Пробел — пауза, 1/2/3 — скорость, клик по стране — детали.</span></div>
+      </div>
+      <div class="ending__actions">
+        <button type="button" class="btn btn--primary" id="helpClose">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- -------------------------------------------------------------- КОНЕЦ -->
+  <div class="overlay overlay--end is-hidden" id="endScreen">
+    <div class="ending">
+      <div class="ending__stamp" id="endStamp">КОНЕЦ</div>
+      <h2 class="ending__title" id="endTitle">Человечество уничтожено</h2>
+      <p class="ending__text" id="endText"></p>
+      <div class="ending__stats" id="endStats"></div>
+      <div class="ending__actions">
+        <button type="button" class="btn btn--primary" id="againBtn">Новый патоген</button>
+        <button type="button" class="btn" id="watchBtn">Посмотреть карту</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="data/world.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
