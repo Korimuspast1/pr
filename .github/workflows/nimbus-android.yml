@@ -1,0 +1,233 @@
+name: Nimbus Android
+
+# Builds and tests the Android port. The sing-box core (libbox.aar) is not in the repository: it
+# is downloaded from the pinned release before Gradle runs, so no Go toolchain and no NDK are
+# needed here.
+#
+# Two things about this file are unusual, and both are because the run logs cannot be downloaded
+# from where this project is maintained (the log host is unreachable), while the REST API can be:
+#
+#   * every step that learns something - which SDK it found, which task it ran, which test failed
+#     and why - says so through ::notice/::error, which come back as check annotations;
+#   * a failed build edits one comment on the pull request per job instead of adding a new one,
+#     so the compiler errors and the failing tests are readable from the API.
+#
+# The SDK is set up by tools/ci-android-sdk.sh rather than by an action, and the Gradle task to run
+# is looked up by tools/ci-gradle.sh, because AGP 9 renamed the unit test tasks.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nimbus-android/**'
+      - '.github/workflows/nimbus-android.yml'
+  pull_request:
+    paths:
+      - 'nimbus-android/**'
+      - '.github/workflows/nimbus-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# A push that supersedes this one cancels it: four APK jobs and a test job per run, and only the
+# newest commit's verdict is of any use.
+concurrency:
+  group: nimbus-android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '17'
+  # What the build compiles against, kept in one place: the SDK step installs exactly this.
+  COMPILE_SDK: '37'
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nimbus-android
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Android SDK
+        run: bash tools/ci-android-sdk.sh
+
+      - name: Fetch the sing-box core (libbox.aar)
+        run: |
+          set -euo pipefail
+          . ./libbox.env.sh
+          ls -l app/libs/
+
+      - name: Unit tests
+        # The first name that exists wins; AGP 8 called it testReleaseUnitTest, AGP 9 does not.
+        run: bash tools/ci-gradle.sh 'testReleaseUnitTest|testRelease|test'
+
+      - name: Read the test results
+        if: always()
+        run: python3 tools/ci_test_report.py
+
+      - name: Annotate Kotlin errors
+        if: failure()
+        run: |
+          set -uo pipefail
+          # "e: file:///path:line:col message" is what kotlinc prints; this makes it clickable.
+          grep -E '^e: ' ../gradle.log 2>/dev/null | head -80 |
+            sed -E 's|^e: file://([^:]+):([0-9]+):([0-9]+) (.*)$|::error file=\1,line=\2,col=\3::\4|' || true
+          grep -E '^(\* What went wrong|Execution failed|A problem occurred)' ../gradle.log 2>/dev/null |
+            head -10 | sed -E 's|^(.*)$|::error::\1|' || true
+
+      - name: Report the failure in the pull request
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MARKER: '<!-- nimbus-android:${{ github.job }} -->'
+        run: bash tools/ci-report-failure.sh
+
+      - name: Collect generated configs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: generated-configs
+          path: nimbus-android/app/build/generated-configs/
+          if-no-files-found: ignore
+
+      - name: Collect the build log
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: gradle-log
+          path: |
+            gradle.log
+            tasks.log
+            test-report.md
+          if-no-files-found: ignore
+
+  apk:
+    name: APK (${{ matrix.abi }})
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        # "universal" carries every ABI; the splits are what most phones should install.
+        abi: [universal, arm64-v8a, armeabi-v7a, x86_64]
+    defaults:
+      run:
+        working-directory: nimbus-android
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Android SDK
+        run: bash tools/ci-android-sdk.sh
+
+      - name: Fetch the sing-box core (libbox.aar)
+        run: |
+          set -euo pipefail
+          . ./libbox.env.sh
+
+      - name: Assemble
+        run: bash tools/ci-gradle.sh 'assembleRelease|assemble'
+
+      - name: Annotate Kotlin errors
+        if: failure()
+        run: |
+          set -uo pipefail
+          grep -E '^e: ' ../gradle.log 2>/dev/null | head -80 |
+            sed -E 's|^e: file://([^:]+):([0-9]+):([0-9]+) (.*)$|::error file=\1,line=\2,col=\3::\4|' || true
+
+      - name: Report the failure in the pull request
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MARKER: '<!-- nimbus-android:${{ github.job }} -->'
+        run: bash tools/ci-report-failure.sh
+
+      - name: Rename
+        run: |
+          set -uo pipefail
+          version=$(grep '^VERSION_NAME=' version.properties | cut -d= -f2)
+          found=$(find app/build/outputs -name "*-${{ matrix.abi }}-release.apk" | head -1)
+          if [ -z "$found" ]; then
+            echo "::error::no APK for ${{ matrix.abi }} under app/build/outputs"
+            find app/build/outputs -type f 2>/dev/null | head -30 |
+              sed -E 's|^(.*)$|::notice title=Build outputs::\1|'
+            exit 1
+          fi
+          mkdir -p dist
+          # The name the in-app updater looks for: Nimbus-<version>-<abi>.apk (engine/Update.kt).
+          cp "$found" "dist/Nimbus-${version}-${{ matrix.abi }}.apk"
+          echo "::notice title=APK::$found -> dist/Nimbus-${version}-${{ matrix.abi }}.apk"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: Nimbus-android-${{ matrix.abi }}
+          path: nimbus-android/dist/*.apk
+
+  checksums:
+    name: Checksums
+    runs-on: ubuntu-latest
+    # needs: apk with fail-fast: false means every leg built, and apk needs test: by the time this
+    # job runs, the whole run is green - which is what makes it the place to say so.
+    needs: apk
+    steps:
+      - uses: actions/checkout@v5
+
+      # Each job that failed left one comment on the pull request; a green run takes them back
+      # down, so the request reports the newest commit and not the one before it.
+      - name: Clear the failure reports
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          for job in test apk; do
+            MARKER="<!-- nimbus-android:$job -->" bash nimbus-android/tools/ci-report-failure.sh --clear
+          done
+
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: Nimbus-android-*
+          path: dist
+          merge-multiple: true
+
+      # The in-app updater (engine/Update.kt) reads the newest release of the repository: it looks
+      # for Nimbus-<version>-<abi>.apk next to SHA256SUMS.txt and refuses a file whose sum differs.
+      # Publishing a release is a maintainer's step (tag v<VERSION_NAME>, attach dist/*), so the
+      # sums are built here and uploaded as an artifact.
+      - name: SHA256SUMS.txt
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum *.apk > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: Nimbus-apks
+          path: |
+            dist/*.apk
+            dist/SHA256SUMS.txt
