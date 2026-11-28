@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">RootDB Pro</string>
+    <string name="guardian_channel_name">Guardian — защита баз</string>
+    <string name="guardian_channel_desc">Фоновая служба следит за изменёнными базами и не даёт приложению откатить правки</string>
+</resources>
