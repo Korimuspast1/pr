@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Смайлики 😊 — язык программирования</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">😊</span>
+    <div>
+      <h1>Смайлики</h1>
+      <p>язык программирования на эмодзи</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <a class="ghost" href="#cheatsheet">Шпаргалка</a>
+    <a class="ghost" href="#about">Что это</a>
+  </div>
+</header>
+
+<main>
+  <section class="workspace">
+    <div class="pane editor-pane">
+      <div class="pane-head">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="pane-title">программа.smile</div>
+        <div class="pane-tools">
+          <select id="examples" aria-label="Примеры программ">
+            <option value="">Примеры…</option>
+          </select>
+        </div>
+      </div>
+      <div class="editor-wrap">
+        <div class="gutter" id="gutter" aria-hidden="true">1</div>
+        <textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off"
+          aria-label="Код программы">🗣 "Привет, мир 😊"</textarea>
+      </div>
+      <div class="runbar">
+        <button id="run" class="primary">▶ Запустить <kbd>Ctrl</kbd><kbd>↵</kbd></button>
+        <button id="clear" class="ghost">Очистить вывод</button>
+        <button id="reset" class="ghost">Сброс кода</button>
+        <span class="hint" id="stats"></span>
+      </div>
+    </div>
+
+    <div class="pane output-pane">
+      <div class="pane-head">
+        <div class="pane-title">вывод <span class="badge" id="exit-badge">готов</span></div>
+      </div>
+      <div class="console" id="console" aria-live="polite">
+        <div class="placeholder">Нажми «Запустить» — результат появится тут 🙂</div>
+      </div>
+      <div class="input-pane">
+        <label for="stdin">Ввод для <code>спросить()</code> — по строке на ответ</label>
+        <textarea id="stdin" spellcheck="false" placeholder="Аня&#10;42"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <section id="cheatsheet" class="cheatsheet">
+    <h2>Шпаргалка</h2>
+    <p class="lead">Кликни по примеру — он вставится в редактор в позицию курсора. У каждой команды есть ASCII- и русский синоним.</p>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section id="about" class="about">
+    <h2>Что это</h2>
+    <p>
+      «Смайлики» — маленький учебный язык программирования, в котором все ключевые слова заменены эмодзи.
+      Внутри — лексер, рекурсивный парсер и интерпретатор с областями видимости, функциями, рекурсией и циклами.
+    </p>
+    <ul>
+      <li>Переменные <code>📦</code>, присваивание <code>⬅</code>, печать <code>🗣</code></li>
+      <li>Условия <code>❓ … 🤔 … 🙃 … 🔚</code>, циклы <code>🔁</code> и <code>🔂</code>, выход <code>💔</code>, пропуск <code>⏭</code></li>
+      <li>Функции <code>🎁 имя(арг)</code> и возврат <code>↩</code>, рекурсия работает</li>
+      <li>Типы: числа, строки, <code>✅</code>/<code>❌</code>; встроенные функции <code>длина</code>, <code>спросить</code>, <code>случайное</code> и другие</li>
+      <li>Ошибки объясняются по-русски и показывают номер строки</li>
+    </ul>
+    <p class="muted">Полная версия с CLI и тестами — <code>smileylang/smiley.py</code> в этом репозитории.</p>
+  </section>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
