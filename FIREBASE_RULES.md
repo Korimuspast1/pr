@@ -42,6 +42,50 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // === Социальные функции (v2.2): публичные профили ===
+    match /pub/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // Заявки в друзья: видны и меняются только участниками
+    match /freq/{docId} {
+      allow read: if request.auth != null
+        && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.from == request.auth.uid;
+      allow update: if request.auth != null
+        && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow delete: if request.auth != null
+        && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+    }
+
+    // Личные сообщения (текст зашифрован E2E на устройстве): только участники переписки
+    match /dm/{docId} {
+      allow read: if request.auth != null
+        && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.from == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Передачи подарков между игроками: только отправитель и получатель
+    match /transfers/{docId} {
+      allow read: if request.auth != null
+        && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.from == request.auth.uid;
+      allow update: if request.auth != null
+        && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow delete: if false;
+    }
+
+    // P2P-маркет: лоты видны всем вошедшим, создаёт только продавец
+    match /p2p/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.seller == request.auth.uid;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.seller == request.auth.uid;
+    }
+
     // Все остальные пути закрыты
     match /{document=**} {
       allow read, write: if false;
