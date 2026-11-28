@@ -45,8 +45,10 @@ jobs:
           - **Серверная проверка без Cloud Functions**: строгие правила Firestore с машинами состояний для передач и P2P — вставь из `FIREBASE_RULES.md` по прямой ссылке на редактор правил
           - **Соцхаб починен под строгими правилами**: Firestore запрещает читать списки dm/freq/transfers одним запросом («правила — не фильтры»), клиент переведён на точечные runQuery по from/to. Экран ошибки теперь показывает настоящий код ошибки вместо общей фразы
           - **Кастомные SVG вместо смайликов** во всём соцхабе и кнопке соцсети в шапке (люди, друзья, чат, подарок, маркет, отправка, обновление)
+          - **Убраны все технические подписи**: «E2E включено», пояснения в передачах/P2P/подарках, коды ошибок, упоминания Firebase в ошибках входа. В чате вместо них — нормальная шапка с аватаром и именем собеседника
+          - Вкладки соцхаба больше не обрезаются справа — переносятся на вторую строку
           - Подпись прежним постоянным ключом (SHA-256 `0F:96:E1:C6:…:13:4F:DB`), поэтому обновление поверх старых версий устанавливается без удаления данных
-          - Пакет: `cocaser.app` · `versionCode 6` · `minSdk 24` / `targetSdk 34` · подпись APK Signature **v2 + v3**
+          - Пакет: `cocaser.app` · `versionCode 7` · `minSdk 24` / `targetSdk 34` · подпись APK Signature **v2 + v3**
           - Правила для Firebase Firestore лежат в файле `FIREBASE_RULES.md`
           NOTES
 
@@ -54,8 +56,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="telegram-gifts-v2.4.0"
-          TITLE="Telegram Gifts 2.4.0 — Работающий соцхаб с правилами Firestore + кастомные SVG вместо смайликов (APK)"
+          TAG="telegram-gifts-v2.5.0"
+          TITLE="Telegram Gifts 2.5.0 — Чистый интерфейс без технических подписей (APK)"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" cocaser-telegram-gifts.apk SHA256SUMS.txt --clobber
             gh release edit "$TAG" --title "$TITLE" --notes-file RELEASE_NOTES.md --latest
