@@ -1,0 +1,54 @@
+name: Publish Telegram Gifts APK Release
+
+on:
+  push:
+    branches:
+      - arena/5866a533-pr
+      - main
+    paths:
+      - 'cocaser-telegram-gifts.apk'
+      - '.github/workflows/publish-apk-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare checksum and release notes
+        run: |
+          sha256sum cocaser-telegram-gifts.apk > SHA256SUMS.txt
+          cat << 'NOTES' > RELEASE_NOTES.md
+          ### Telegram Gifts 1.0.0 (`cocaser.app`) — Android APK
+
+          - **651 официальный подарок и скин Telegram** (все 124 коллекции, 11 обычных подарков чата, все лимитированные спецвыпуски и 492 скина моделей)
+          - **40 кейсов**, Маркет, Крафт, Апгрейд, Ракета, Альбом и Профиль в нативном дизайне Telegram
+          - **Лёгкая регистрация и вход (Логин + Пароль)** при запуске (без почты)
+          - **Облачная синхронизация Firebase (`lool-4d49c`)** через `google-services.json`
+          - Убрана админка и исправлены баги интерфейса Android
+          - Пакет: `cocaser.app` · `minSdk 24` / `targetSdk 34` · подпись APK Signature **v2 + v3**
+          - Правила для Firebase Firestore лежат в файле `FIREBASE_RULES.md`
+          NOTES
+
+      - name: Create or update GitHub Release with APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="telegram-gifts-v1.0.0"
+          TITLE="Telegram Gifts 1.0.0 — Все 651 подарков + Firebase Sync (APK)"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" cocaser-telegram-gifts.apk SHA256SUMS.txt --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes-file RELEASE_NOTES.md --latest
+          else
+            gh release create "$TAG" cocaser-telegram-gifts.apk SHA256SUMS.txt \
+              --target "${{ github.sha }}" \
+              --title "$TITLE" \
+              --notes-file RELEASE_NOTES.md \
+              --latest
+          fi
