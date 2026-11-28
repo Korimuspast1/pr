@@ -1,0 +1,27 @@
+plugins {
+    id "com.android.application"
+    id "com.google.gms.google-services"
+}
+
+android {
+    namespace "cocaser.app"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "cocaser.app"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}

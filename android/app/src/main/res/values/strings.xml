@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Telegram Gifts</string>
+    <string name="google_app_id" translatable="false">1:76010286017:android:658dd9032a847a58931d40</string>
+    <string name="google_api_key" translatable="false">AIzaSyB1MTF9e3x59VoSiFvuRtkx4e3D4hpyTSA</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyB1MTF9e3x59VoSiFvuRtkx4e3D4hpyTSA</string>
+    <string name="project_id" translatable="false">lool-4d49c</string>
+    <string name="gcm_defaultSenderId" translatable="false">76010286017</string>
+    <string name="google_storage_bucket" translatable="false">lool-4d49c.firebasestorage.app</string>
+</resources>
