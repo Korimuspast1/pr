@@ -1,0 +1,15 @@
+{
+  "name": "virtual-social-network",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Виртуальная соцсеть: аккаунты, лента, посты, лайки, комментарии и подписчики, которые растут со временем.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test test/app.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}
